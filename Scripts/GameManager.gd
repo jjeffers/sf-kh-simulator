@@ -4,14 +4,27 @@ extends Node2D
 @export var map_radius: int = 25
 
 var ships: Array[Ship] = []
-var current_turn_index: int = 0
+var current_player_id: int = 1 # The "Active" moving player
+var firing_player_id: int = 0 # The player currently firing in Combat Phase
 var selected_ship: Ship = null
+var combat_target: Ship = null
 
 @export var camera_speed: float = 500.0
 
 # Phase Enum
 enum Phase { START, MOVEMENT, COMBAT, END }
 var current_phase: Phase = Phase.START
+
+# Combat Subphase: 0 = None, 1 = Passive Fire (First), 2 = Active Fire (Second)
+var combat_subphase: int = 0
+
+# ... (UI Nodes omitted, they remain)
+
+# Movement State references need to be reset properly
+
+# Movement State references need to be reset properly
+
+# UI Nodes
 
 # UI Nodes
 var ui_layer: CanvasLayer
@@ -33,7 +46,7 @@ func _ready():
 	_setup_ui()
 	queue_redraw()
 	spawn_ships()
-	start_turn()
+	start_turn_cycle()
 
 func _process(delta):
 	var move_vec = Vector2.ZERO
@@ -51,6 +64,9 @@ func _process(delta):
 		
 	if Input.is_key_pressed(KEY_SPACE):
 		_update_camera()
+
+	if Input.is_action_just_pressed("ui_focus_next"): # TAB usually
+		_cycle_selection()
 
 func _setup_ui():
 	ui_layer = CanvasLayer.new()
@@ -185,29 +201,62 @@ func log_message(msg: String):
 func _handle_combat_click(hex: Vector3i):
 	if combat_action_taken: return
 	
+	# Check if clicked on a FRIENDLY ship to switch shooter
+	# Only checks ships belonging to firing_player_id that haven't fired
 	for s in ships:
-		if s != selected_ship and s.grid_position == hex:
-			var start_pos = HexGrid.hex_to_pixel(selected_ship.grid_position)
-			var target_pos = HexGrid.hex_to_pixel(s.grid_position)
-			
-			combat_action_taken = true
-			_spawn_laser(start_pos, target_pos)
-			if audio_laser.stream: audio_laser.play()
-			
-			var d = HexGrid.hex_distance(selected_ship.grid_position, s.grid_position)
-			if Combat.roll_for_hit(d):
-				var dmg = Combat.roll_damage()
-				log_message("[color=green]HIT![/color] Range: %d, Damage: %d" % [d, dmg])
-				s.take_damage(dmg)
-				_spawn_hit_text(target_pos, dmg)
-				if audio_hit.stream: audio_hit.play()
+		if s.grid_position == hex and s.player_id == firing_player_id and not s.has_fired:
+			if s != selected_ship:
+				selected_ship = s
+				# Auto-retarget
+				combat_target = null
+				var targets = _get_valid_targets(selected_ship)
+				if targets.size() > 0: combat_target = targets[0]
 				
-				# Wait for hit animation (3.0s)
-				get_tree().create_timer(3.0).timeout.connect(end_turn)
-			else:
-				log_message("[color=red]MISS![/color] Range: %d" % d)
-				# Wait for laser animation (2.0s)
-				get_tree().create_timer(2.0).timeout.connect(end_turn)
+				queue_redraw()
+				_update_ui_state()
+				log_message("Switched to %s" % selected_ship.name)
+				return
+	
+	if not combat_target: return
+	
+	var mouse_pos = get_local_mouse_position()
+	var dist_to_target = mouse_pos.distance_to(combat_target.position)
+	var is_click_on_target = (combat_target.grid_position == hex) or (dist_to_target < HexGrid.TILE_SIZE * 0.8)
+
+	# If click on the target's hex OR visual representation, FIRE
+	if is_click_on_target:
+		var s = combat_target
+		var start_pos = HexGrid.hex_to_pixel(selected_ship.grid_position)
+		var target_pos = s.position # Use actual visual position for laser end
+		
+		combat_action_taken = true
+		_spawn_laser(start_pos, target_pos)
+		if audio_laser.stream: audio_laser.play()
+		
+		var d = HexGrid.hex_distance(selected_ship.grid_position, s.grid_position)
+		if Combat.roll_for_hit(d):
+			var dmg = Combat.roll_damage()
+			log_message("[color=green]HIT![/color] Range: %d, Damage: %d" % [d, dmg])
+			s.take_damage(dmg)
+			_spawn_hit_text(target_pos, dmg)
+			if audio_hit.stream: audio_hit.play()
+			
+			# Wait for hit animation (3.0s)
+			get_tree().create_timer(3.0).timeout.connect(end_turn)
+		else:
+			log_message("[color=red]MISS![/color] Range: %d" % d)
+			# Wait for laser animation (2.0s)
+			get_tree().create_timer(2.0).timeout.connect(end_turn)
+	else:
+		# Check if valid enemies at this hex to switch target
+		for s in ships:
+			if s.player_id != firing_player_id and s.grid_position == hex:
+				var d = HexGrid.hex_distance(selected_ship.grid_position, s.grid_position)
+				if d <= Combat.MAX_RANGE:
+					combat_target = s
+					queue_redraw()
+					log_message("Targeting: %s" % s.name)
+					break
 
 func _spawn_laser(start: Vector2, end: Vector2):
 	var line = Line2D.new()
@@ -235,55 +284,205 @@ func _spawn_hit_text(pos: Vector2, damage: int):
 	tween.chain().tween_callback(lbl.queue_free)
 
 func spawn_ships():
-	# Ship 1 (Left side) - Player 1
-	var s1 = Ship.new()
-	s1.name = "Ship_Player1"
-	s1.player_id = 1
-	s1.color = Color.CYAN
-	s1.grid_position = Vector3i(-3, 0, 3)
-	s1.facing = 0 # Right
-	s1.speed = 0 # Start stopped or 0? User moved from 0 to 1, implies 0 start.
-	s1.adf = 5
-	s1.mr = 3
-	s1.mr = 3
-	s1.ship_destroyed.connect(func(): _on_ship_destroyed(s1))
-	add_child(s1)
-	ships.append(s1)
-	
-	# Ship 2 (Right side) - Player 2
-	var s2 = Ship.new()
-	s2.name = "Ship_Player2"
-	s2.player_id = 2
-	s2.color = Color.RED
-	s2.grid_position = Vector3i(3, 0, -3)
-	s2.facing = 3 # Left
-	s2.speed = 0
-	s2.adf = 5
-	s2.mr = 3
-	s2.ship_destroyed.connect(func(): _on_ship_destroyed(s2))
-	add_child(s2)
-	ships.append(s2)
+	# Player 1 (Left side)
+	for i in range(3):
+		var s = Ship.new()
+		s.name = "P1_Ship_%d" % (i + 1)
+		s.player_id = 1
+		s.color = Color.CYAN
+		s.grid_position = Vector3i(-3, i, 3 - i) # Staggered positions or stack if desired. Let's stack 2 and 3?
+		# User asked to stack. Let's stack them all on one hex for test, or adjacent? 
+		# "Add 2 more ships per side". Let's put them nearby.
+		if i == 0: s.grid_position = Vector3i(-3, 0, 3)
+		if i == 1: s.grid_position = Vector3i(-3, 1, 2)
+		if i == 2: s.grid_position = Vector3i(-4, 1, 3) 
+		
+		s.facing = 0
+		s.speed = 0
+		s.adf = 5
+		s.mr = 3
+		s.ship_destroyed.connect(func(): _on_ship_destroyed(s))
+		add_child(s)
+		ships.append(s)
 
-func start_turn():
+	# Player 2 (Right side)
+	for i in range(3):
+		var s = Ship.new()
+		s.name = "P2_Ship_%d" % (i + 1)
+		s.player_id = 2
+		s.color = Color.RED
+		if i == 0: s.grid_position = Vector3i(3, 0, -3)
+		if i == 1: s.grid_position = Vector3i(3, -1, -2)
+		if i == 2: s.grid_position = Vector3i(4, -1, -3)
+		
+		s.facing = 3
+		s.speed = 0
+		s.adf = 5
+		s.mr = 3
+		s.ship_destroyed.connect(func(): _on_ship_destroyed(s))
+		add_child(s)
+		ships.append(s)
+	
+	_update_ship_visuals()
+
+func _cycle_selection():
+	if current_phase == Phase.MOVEMENT:
+		# Filter: Active Player, !has_moved
+		var available = ships.filter(func(s): return s.player_id == current_player_id and not s.has_moved)
+		if available.size() <= 1: return
+		
+		var idx = available.find(selected_ship)
+		var next_idx = (idx + 1) % available.size()
+		selected_ship = available[next_idx]
+		
+		# Reset plotting
+		current_path = []
+		turns_remaining = selected_ship.mr
+		can_turn_this_step = false
+		start_speed = selected_ship.speed
+		
+		if audio_ship_select and audio_ship_select.stream: audio_ship_select.play()
+		_spawn_ghost()
+		_update_camera()
+		_update_ui_state()
+
+	elif current_phase == Phase.COMBAT:
+		# Cycling TARGETS? Or Cycling SHOOTERS?
+		# Standard UI implies we have a "Selected Ship" that is acting.
+		# But combat cycling usually means cycling TARGETS for the selected shooter.
+		# Let's support BOTH via context? No, TAB usually cycles what you "control".
+		# Actually, user might want to switch which ship is FIRING if they have multiple available.
+		# But `_check_combat_availability` locks us into one.
+		# Let's allow cycling the SHOOTER if multiple are available?
+		# Or cycling the TARGET if a shooter is selected?
+		# Consistent UI: TAB cycles controllable units. 
+		# If we want to cycle targets, we need a different key or context.
+		# EXISTING logic cycled targets. Let's keep that for now if a shooter is locked?
+		# BUT wait, the previous code cycled TARGETS.
+		# Let's split: TAB cycles SHOOTERS (if we allow changing shooter). click cycles targets?
+		# Or TAB cycles targets if we have a shooter?
+		
+		# DECISION: Tab cycles TARGETS for the current shooter.
+		# Changing shooter: Click on friendly ship?
+		
+		# Update target cycling
+		if not selected_ship: return
+		var valid_targets = _get_valid_targets(selected_ship)
+		
+		if valid_targets.size() <= 1: return
+		
+		var target_idx = valid_targets.find(combat_target)
+		var next_target_idx = (target_idx + 1) % valid_targets.size()
+		combat_target = valid_targets[next_target_idx]
+		
+		queue_redraw()
+		log_message("Targeting: %s" % combat_target.name)
+
+func _update_ship_visuals():
+	var grid_counts = {}
+	for s in ships:
+		if s.is_exploding: continue
+		if not grid_counts.has(s.grid_position):
+			grid_counts[s.grid_position] = []
+		grid_counts[s.grid_position].append(s)
+	
+	for hex in grid_counts:
+		var stack: Array = grid_counts[hex]
+		for i in range(stack.size()):
+			var s: Ship = stack[i]
+			var base_pos = HexGrid.hex_to_pixel(hex)
+			# Offset logic: simple diagonal scatter or vertical stack?
+			# Let's do a slight diagonal offset based on index (10px per index)
+			var offset = Vector2(5 * i, 5 * i)
+			s.position = base_pos + offset
+			# Z-index to show top one?
+			s.z_index = i
+
+	combat_action_taken = false
+	_update_camera()
+
+func start_turn_cycle():
+	start_movement_phase()
+
+func start_movement_phase():
 	current_phase = Phase.MOVEMENT
-	selected_ship = ships[current_turn_index]
+	combat_subphase = 0
+	firing_player_id = 0
+	
+	# Find un-moved ships for ACTIVE player
+	var available = ships.filter(func(s): return s.player_id == current_player_id and not s.has_moved)
+	
+	if available.size() == 0:
+		start_combat_passive()
+		return
+
+	# Select first available
+	selected_ship = available[0]
 	
 	if audio_ship_select and audio_ship_select.stream:
 		audio_ship_select.play()
 	
 	_spawn_ghost()
-	
-	start_speed = selected_ship.speed
 	current_path = []
+	start_speed = selected_ship.speed
 	turns_remaining = selected_ship.mr
 	can_turn_this_step = false
 	
-	_update_ui_state()
-	_update_ui_state()
-	log_message("Turn Start: Player %d" % selected_ship.player_id)
-	
-	combat_action_taken = false
 	_update_camera()
+	_update_ui_state()
+	log_message("Movement Phase: Player %d" % current_player_id)
+
+func start_combat_passive():
+	current_phase = Phase.COMBAT
+	combat_subphase = 1 # Passive First
+	firing_player_id = 3 - current_player_id # The Non-Active Player
+	
+	_check_combat_availability()
+
+func start_combat_active():
+	current_phase = Phase.COMBAT
+	combat_subphase = 2 # Active Second
+	firing_player_id = current_player_id # The Active Player
+	
+	_check_combat_availability()
+
+func _check_combat_availability():
+	# Find un-fired ships for FIRING player
+	var available = ships.filter(func(s): return s.player_id == firing_player_id and not s.has_fired)
+	
+	if available.size() == 0:
+		if combat_subphase == 1:
+			start_combat_active()
+		else:
+			end_turn_cycle()
+		return
+
+	# Select first available to fire
+	selected_ship = available[0]
+	
+	# Reset action lock
+	combat_action_taken = false
+	
+	# Auto-target logic
+	combat_target = null
+	var targets = _get_valid_targets(selected_ship)
+	if targets.size() > 0:
+		combat_target = targets[0]
+	
+	queue_redraw()
+	_update_ui_state()
+	_update_camera()
+	log_message("Combat: Player %d Firing (%s)" % [firing_player_id, "Passive" if combat_subphase == 1 else "Active"])
+
+func end_turn_cycle():
+	log_message("Turn Complete. Switching Active Player.")
+	current_player_id = 3 - current_player_id
+	
+	# Reset ALL ships
+	for s in ships:
+		s.reset_turn_state()
+		
+	start_movement_phase()
 
 func _update_camera():
 	if not selected_ship: return
@@ -339,7 +538,9 @@ func _update_ui_state():
 		btn_commit.visible = false
 		btn_turn_left.visible = false
 		btn_turn_right.visible = false
-		label_status.text = "Combat Phase: Click target in range (10)"
+		
+		var phase_name = "Passive" if combat_subphase == 1 else "Active"
+		label_status.text = "Combat (%s Fire)\nPlayer %d Firing" % [phase_name, firing_player_id]
 	elif current_phase == Phase.END:
 		btn_undo.visible = false
 		btn_commit.visible = false
@@ -378,27 +579,10 @@ func _on_commit_move():
 	ghost_ship.queue_free()
 	ghost_ship = null
 	
-	start_combat()
+	end_turn()
 
-func start_combat():
-	# Check for valid targets
-	var targets_in_range = false
-	for s in ships:
-		if s != selected_ship:
-			var d = HexGrid.hex_distance(selected_ship.grid_position, s.grid_position)
-			if d <= Combat.MAX_RANGE:
-				targets_in_range = true
-				break
-	
-	if not targets_in_range:
-		log_message("No targets in range. Skipping combat.")
-		get_tree().create_timer(1.5).timeout.connect(end_turn)
-		return
-
-	current_phase = Phase.COMBAT
-	queue_redraw()
-	_update_ui_state()
-	log_message("Combat Phase Started")
+	combat_action_taken = false
+	_update_camera()
 
 func _draw():
 	# transform.origin = center # REMOVED: Camera is now handled by _update_camera
@@ -437,6 +621,17 @@ func _draw():
 			current_check_hex += forward_vec
 			_draw_hex_outline(current_check_hex, Color(1, 1, 0, 0.6), 4.0)
 
+	# Combat Target Highlight
+	if current_phase == Phase.COMBAT and combat_target:
+		# Draw brackets or circle around target
+		var pos = combat_target.position # Use visual position since it accounts for stacks
+		var size = HexGrid.TILE_SIZE * 0.8
+		draw_arc(pos, size, 0, TAU, 32, Color.RED, 3.0)
+		# Draw crosshair
+		var len = 10
+		draw_line(pos + Vector2(-len, 0), pos + Vector2(len, 0), Color.RED, 2.0)
+		draw_line(pos + Vector2(0, -len), pos + Vector2(0, len), Color.RED, 2.0)
+
 func _draw_hex_outline(hex: Vector3i, color: Color, width: float):
 	var center = HexGrid.hex_to_pixel(hex)
 	var size = HexGrid.TILE_SIZE
@@ -465,8 +660,39 @@ func _input(event):
 		var hex_clicked = HexGrid.pixel_to_hex(local_mouse)
 		handle_click(hex_clicked)
 
+func _get_valid_targets(shooter: Ship) -> Array:
+	var valid = []
+	for s in ships:
+		if s.player_id != shooter.player_id:
+			var d = HexGrid.hex_distance(shooter.grid_position, s.grid_position)
+			if d <= Combat.MAX_RANGE:
+				valid.append(s)
+	return valid
+
 func handle_click(hex: Vector3i):
 	if current_phase == Phase.MOVEMENT:
+		# Check if clicked on a friendly available ship (CHANGE SELECTION)
+		var clicked_ship = null
+		for s in ships:
+			if s.grid_position == hex and s.player_id == current_player_id and not s.has_moved:
+				clicked_ship = s
+				break
+		
+		if clicked_ship and clicked_ship != selected_ship:
+			selected_ship = clicked_ship
+			# Reset plot
+			start_speed = selected_ship.speed
+			current_path = []
+			turns_remaining = selected_ship.mr
+			can_turn_this_step = false
+			
+			if audio_ship_select and audio_ship_select.stream: audio_ship_select.play()
+			_spawn_ghost()
+			_update_camera()
+			_update_ui_state()
+			log_message("Selected %s" % selected_ship.name)
+			return
+
 		_handle_ghost_input(hex)
 	elif current_phase == Phase.COMBAT:
 		_handle_combat_click(hex)
@@ -526,6 +752,7 @@ func _handle_ghost_input(hex: Vector3i):
 
 func _on_ship_destroyed(ship: Ship):
 	ships.erase(ship)
+	_update_ship_visuals() # Re-calc stacks
 	log_message("Ship destroyed: %s" % ship.name)
 	
 	if ships.size() == 0:
@@ -548,6 +775,11 @@ func end_turn():
 
 	if audio_turn_end and audio_turn_end.stream:
 		audio_turn_end.play()
+	
+	if current_phase == Phase.MOVEMENT:
+		if selected_ship: selected_ship.has_moved = true
+		start_movement_phase() # Loop to next ship
 		
-	current_turn_index = (current_turn_index + 1) % ships.size()
-	start_turn()
+	elif current_phase == Phase.COMBAT:
+		if selected_ship: selected_ship.has_fired = true
+		_check_combat_availability() # Loop to next ship or next subphase

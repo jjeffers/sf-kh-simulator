@@ -12,6 +12,8 @@ var hull: int = MAX_HULL
 var grid_position: Vector3i = Vector3i.ZERO : set = _set_grid_position
 var facing: int = 0 : set = _set_facing # 0 to 5, direction index
 var speed: int = 0
+var has_moved: bool = false
+var has_fired: bool = false
 
 signal ship_moved(new_pos)
 signal ship_destroyed
@@ -27,7 +29,8 @@ func _set_facing(v: int):
 
 func _set_grid_position(v: Vector3i):
 	grid_position = v
-	# Snap visual position to grid
+	# Position update is now handled by GameManager's stack update or explicit call
+	# But we set a default here just in case, though it might be overridden immediately
 	position = HexGrid.hex_to_pixel(v)
 	ship_moved.emit(v)
 
@@ -124,3 +127,7 @@ func trigger_explosion():
 	# Wait for particles to finish before freeing
 	var timer = get_tree().create_timer(1.2)
 	timer.timeout.connect(queue_free)
+
+func reset_turn_state():
+	has_moved = false
+	has_fired = false
