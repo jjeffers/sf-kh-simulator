@@ -171,10 +171,15 @@ func _setup_ui():
 		audio_beep.stream = load("res://Assets/Audio/short-low-beep.mp3")
 	add_child(audio_beep)
 
-	audio_turn_end = AudioStreamPlayer.new()
+	audio_action_complete = AudioStreamPlayer.new()
+	if FileAccess.file_exists("res://Assets/Audio/short-next-selection.mp3"):
+		audio_action_complete.stream = load("res://Assets/Audio/short-next-selection.mp3")
+	add_child(audio_action_complete)
+	
+	audio_phase_change = AudioStreamPlayer.new()
 	if FileAccess.file_exists("res://Assets/Audio/short-sound.mp3"):
-		audio_turn_end.stream = load("res://Assets/Audio/short-sound.mp3")
-	add_child(audio_turn_end)
+		audio_phase_change.stream = load("res://Assets/Audio/short-sound.mp3")
+	add_child(audio_phase_change)
 
 	audio_ship_select = AudioStreamPlayer.new()
 	if FileAccess.file_exists("res://Assets/Audio/short-departure.mp3"):
@@ -184,7 +189,8 @@ func _setup_ui():
 var audio_laser: AudioStreamPlayer
 var audio_hit: AudioStreamPlayer
 var audio_beep: AudioStreamPlayer
-var audio_turn_end: AudioStreamPlayer
+var audio_action_complete: AudioStreamPlayer
+var audio_phase_change: AudioStreamPlayer
 var audio_ship_select: AudioStreamPlayer
 
 var combat_log: RichTextLabel
@@ -434,6 +440,7 @@ func start_turn_cycle():
 	start_movement_phase()
 
 func start_movement_phase():
+	var is_phase_change = (current_phase != Phase.MOVEMENT)
 	current_phase = Phase.MOVEMENT
 	combat_subphase = 0
 	firing_player_id = 0
@@ -460,11 +467,17 @@ func start_movement_phase():
 	_update_camera()
 	_update_ui_state()
 	log_message("Movement Phase: Player %d" % current_player_id)
+	
+	if is_phase_change and audio_phase_change and audio_phase_change.stream:
+		audio_phase_change.play()
 
 func start_combat_passive():
 	current_phase = Phase.COMBAT
 	combat_subphase = 1 # Passive First
 	firing_player_id = 3 - current_player_id # The Non-Active Player
+	
+	if audio_phase_change and audio_phase_change.stream:
+		audio_phase_change.play()
 	
 	_check_combat_availability()
 
@@ -472,6 +485,9 @@ func start_combat_active():
 	current_phase = Phase.COMBAT
 	combat_subphase = 2 # Active Second
 	firing_player_id = current_player_id # The Active Player
+	
+	if audio_phase_change and audio_phase_change.stream:
+		audio_phase_change.play()
 	
 	_check_combat_availability()
 
@@ -805,8 +821,8 @@ func _on_restart():
 func end_turn():
 	if current_phase == Phase.END: return
 
-	if audio_turn_end and audio_turn_end.stream:
-		audio_turn_end.play()
+	if audio_action_complete and audio_action_complete.stream:
+		audio_action_complete.play()
 	
 	if current_phase == Phase.MOVEMENT:
 		if selected_ship: selected_ship.has_moved = true
