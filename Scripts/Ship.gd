@@ -15,9 +15,79 @@ var speed: int = 0
 var has_moved: bool = false
 var has_fired: bool = false
 
+# Class and Weapons
+var ship_class: String = "Scout"
+var defense: String = "None"
+# Weapon Dictionary: {name, type, range, arc, ammo, max_ammo, damage_dice, damage_bonus}
+var weapons: Array = [] 
+var current_weapon_index: int = 0
+
 signal ship_moved(new_pos)
 signal ship_destroyed
 signal hull_changed(new_value)
+
+func configure_fighter():
+	ship_class = "Fighter"
+	defense = "RH" # Reflective Hull
+	hull = 8
+	adf = 5
+	mr = 5
+	
+	weapons.clear()
+	# Assault Rockets: Range 4, Forward Firing (FF), Ammo 3, 2d10+4
+	weapons.append({
+		"name": "Assault Rockets",
+		"type": "Rocket",
+		"range": 4,
+		"arc": "FF",
+		"ammo": 3,
+		"max_ammo": 3,
+		"damage_dice": "2d10",
+		"damage_bonus": 4,
+		"fired": false
+	})
+	current_weapon_index = 0
+
+func configure_assault_scout():
+	ship_class = "Assault Scout"
+	defense = "RH"
+	hull = 15
+	adf = 5
+	mr = 4
+	
+	weapons.clear()
+	# Laser Battery: Range 9, 360 Arc, 1d10
+	weapons.append({
+		"name": "Laser Battery",
+		"type": "Laser",
+		"range": 9,
+		"arc": "360",
+		"ammo": 999, # Infinite
+		"max_ammo": 999,
+		"damage_dice": "1d10",
+		"damage_bonus": 0,
+		"fired": false
+	})
+	
+	# Assault Rockets: Range 4, FF, Ammo 4, 2d10+4
+	weapons.append({
+		"name": "Assault Rockets",
+		"type": "Rocket",
+		"range": 4,
+		"arc": "FF",
+		"ammo": 4,
+		"max_ammo": 4,
+		"damage_dice": "2d10",
+		"damage_bonus": 4,
+		"fired": false
+	})
+	current_weapon_index = 0 # Default to Laser
+
+func reset_weapons():
+	has_fired = false
+	for w in weapons:
+		w["fired"] = false
+	queue_redraw()
 
 func _ready():
 	hull = MAX_HULL
@@ -57,6 +127,9 @@ func set_ghost(val: bool):
 		modulate.a = 1.0
 		z_index = 0
 	queue_redraw()
+
+func binding_pos_update():
+	position = HexGrid.hex_to_pixel(grid_position)
 
 func _draw():
 	if is_exploding: return
@@ -139,3 +212,4 @@ func trigger_explosion():
 func reset_turn_state():
 	has_moved = false
 	has_fired = false
+	reset_weapons()

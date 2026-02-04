@@ -224,11 +224,13 @@ func _handle_combat_click(hex: Vector3i):
 				log_message("Switched to %s" % selected_ship.name)
 				return
 	
-	if not combat_target: return
+	# if not combat_target: return # REMOVED: Prevent blocking target selection
 	
-	var mouse_pos = get_local_mouse_position()
-	var dist_to_target = mouse_pos.distance_to(combat_target.position)
-	var is_click_on_target = (combat_target.grid_position == hex) or (dist_to_target < HexGrid.TILE_SIZE * 0.8)
+	var is_click_on_target = false
+	if combat_target:
+		var mouse_pos = get_local_mouse_position()
+		var dist_to_target = mouse_pos.distance_to(combat_target.position)
+		is_click_on_target = (combat_target.grid_position == hex) or (dist_to_target < HexGrid.TILE_SIZE * 0.8)
 
 	# If click on the target's hex OR visual representation, FIRE
 	if is_click_on_target:
@@ -237,23 +239,93 @@ func _handle_combat_click(hex: Vector3i):
 		var target_pos = s.position # Use actual visual position for laser end
 		
 		combat_action_taken = true
-		_spawn_laser(start_pos, target_pos)
-		if audio_laser.stream: audio_laser.play()
-		
+		# Validate Range and Arc for specific weapon
+		var weapon = selected_ship.weapons[selected_ship.current_weapon_index]
+		var w_range = weapon["range"]
+		var w_arc = weapon["arc"]
 		var d = HexGrid.hex_distance(selected_ship.grid_position, s.grid_position)
-		if Combat.roll_for_hit(d):
-			var dmg = Combat.roll_damage()
-			log_message("[color=green]HIT![/color] Range: %d, Damage: %d" % [d, dmg])
-			s.take_damage(dmg)
-			_spawn_hit_text(target_pos, dmg)
-			if audio_hit.stream: audio_hit.play()
+		
+		# Basic Range Check
+		if d > w_range:
+			log_message("[color=red]Target out of range! (Max %d)[/color]" % w_range)
+			return
+
+		# Arc Check (FF)
+		if w_arc == "FF":
+			var valid_hexes = _get_ff_arc_hexes(selected_ship, w_range)
+			if not s.grid_position in valid_hexes:
+				log_message("[color=red]Target not in Forward Firing Arc![/color]")
+				return
+				log_message("[color=red]Target not in Forward Firing Arc![/color]")
+				return
+
+		# Ammo Check
+		if weapon["ammo"] <= 0:
+			log_message("[color=red]Weapon Empty![/color]")
+			return
+
+		# FIRE!
+		weapon["ammo"] -= 1
+		combat_action_taken = true
+		
+		# FX
+		_spawn_attack_fx(start_pos, target_pos, weapon.get("type", "Laser"))
+		
+		# Log shot
+		var is_head_on = false
+		if w_arc == "FF":
+			if s.grid_position == selected_ship.grid_position:
+				is_head_on = true
+			else:
+				var fwd_vec = HexGrid.get_direction_vec(selected_ship.facing)
+				var check = selected_ship.grid_position + fwd_vec
+				for i in range(w_range):
+					if check == s.grid_position:
+						is_head_on = true
+						break
+					check += fwd_vec
+		
+		if is_head_on:
+			log_message("Heads On Bonus! +10% Hit Chance")
+		
+		log_message("Firing %s at %s..." % [weapon["name"], s.name])
+		
+		# Roll to Hit
+		if Combat.roll_for_hit(d, weapon, s, is_head_on):
+			# Construct Damage String: 2d10+4
+			var dmg_str = "%s+%d" % [weapon["damage_dice"], weapon["damage_bonus"]]
+			var dmg = Combat.roll_damage(dmg_str)
 			
-			# Wait for hit animation (3.0s)
-			get_tree().create_timer(3.0).timeout.connect(end_turn)
+			log_message("[color=green]HIT![/color] Range: %d, Damage: %d" % [d, dmg])
+			
+			# Delay damage application to match FX? 
+			# Simple approach: Apply now, showing floating text with delay matching FX
+			
+			# Wait for travel time (approx 0.5s for rockets)
+			var delay = 0.5
+			if weapon.get("type", "Laser") == "Laser": delay = 0.1
+			
+			get_tree().create_timer(delay).timeout.connect(func():
+				s.take_damage(dmg)
+				_spawn_hit_text(target_pos, dmg)
+				if audio_hit.stream: audio_hit.play()
+			)
+
+			# Mark Weapon as Fired
+			weapon["fired"] = true
+
+			# Wait for turn end (Total animation time)
+			get_tree().create_timer(3.0).timeout.connect(_post_fire_check)
 		else:
 			log_message("[color=red]MISS![/color] Range: %d" % d)
-			# Wait for laser animation (2.0s)
-			get_tree().create_timer(2.0).timeout.connect(end_turn)
+			# Mark Weapon as Fired (Even on miss?)
+			# Standard rules: A shot is a shot.
+			weapon["fired"] = true
+			
+			# Wait for animation (2.0s)
+			get_tree().create_timer(2.0).timeout.connect(_post_fire_check)
+
+
 	else:
 		# Check if valid enemies at this hex to switch target
 		for s in ships:
@@ -266,16 +338,94 @@ func _handle_combat_click(hex: Vector3i):
 					_update_ship_visuals() # Ensure target pops to top
 					break
 
-func _spawn_laser(start: Vector2, end: Vector2):
-	var line = Line2D.new()
-	line.width = 3.0
-	line.default_color = Color(1, 0, 0, 1) # Red laser
-	line.points = PackedVector2Array([start, end])
-	add_child(line)
+func _spawn_attack_fx(start: Vector2, end: Vector2, type: String):
+	if type == "Rocket":
+		# Rocket Visual
+		var container = Node2D.new()
+		container.position = start
+		container.z_index = 20 # Above ships
+		add_child(container)
+		
+		# Projectile (Small white/orange missile)
+		var missile = Polygon2D.new()
+		missile.polygon = PackedVector2Array([Vector2(5, 0), Vector2(-5, -3), Vector2(-5, 3)])
+		missile.color = Color.ORANGE
+		container.add_child(missile)
+		
+		# Smoke Trail
+		var smoke = CPUParticles2D.new()
+		smoke.amount = 30
+		smoke.lifetime = 0.5
+		smoke.direction = Vector2(-1, 0)
+		smoke.spread = 15.0
+		smoke.gravity = Vector2.ZERO
+		smoke.initial_velocity_min = 20.0
+		smoke.initial_velocity_max = 20.0
+		smoke.scale_amount_min = 2.0
+		smoke.scale_amount_max = 5.0
+		smoke.color = Color(0.8, 0.8, 0.8, 0.5)
+		smoke.local_coords = false # Trail effect
+		container.add_child(smoke)
+		
+		# Rotate to face target
+		container.rotation = (end - start).angle()
+		
+		# Tween Movement
+		var dist_px = start.distance_to(end)
+		var travel_time = 0.5 # Fast rocket
+		
+		var tween = create_tween()
+		tween.tween_property(container, "position", end, travel_time).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_IN)
+		tween.tween_callback(func():
+			# Explosion or impact effect could go here
+			missile.visible = false
+			smoke.emitting = false
+			# Cleanup after smoke fades
+			get_tree().create_timer(1.0).timeout.connect(container.queue_free)
+		)
+
+		if audio_laser.stream: audio_laser.play() # Use existing sound like a launch
+		
+	else:
+		# Default Laser
+		var line = Line2D.new()
+		line.width = 3.0
+		line.default_color = Color(1, 0, 0, 1) # Red laser
+		line.points = PackedVector2Array([start, end])
+		add_child(line)
+		
+		var tween = create_tween()
+		tween.tween_property(line, "modulate:a", 0.0, 2.0)
+		tween.tween_callback(line.queue_free)
+
+		if audio_laser.stream: audio_laser.play()
+
+func _post_fire_check():
+	# Check if selected_ship has ANY valid targets remaining with UNFIRED, LOADED weapons
+	var targets = _get_valid_targets(selected_ship)
 	
-	var tween = create_tween()
-	tween.tween_property(line, "modulate:a", 0.0, 2.0)
-	tween.tween_callback(line.queue_free)
+	if targets.size() > 0:
+		# Continue Turn
+		combat_action_taken = false
+		log_message("Attack Complete. Select next weapon [W] or target.")
+		
+		# Auto-switch to next available weapon if current is done?
+		var weapon = selected_ship.weapons[selected_ship.current_weapon_index]
+		if weapon.get("fired", false) or weapon["ammo"] <= 0:
+			# Find next valid weapon
+			for i in range(selected_ship.weapons.size()):
+				var w = selected_ship.weapons[i]
+				if not w.get("fired", false) and w["ammo"] > 0:
+					selected_ship.current_weapon_index = i
+					log_message("Auto-switched to %s" % w["name"])
+					break
+		
+		queue_redraw()
+		_update_ui_state()
+		_update_camera() # Ensure camera stays valid
+	else:
+		# No more valid attacks
+		end_turn()
 
 func _spawn_hit_text(pos: Vector2, damage: int):
 	var lbl = Label.new()
@@ -295,7 +445,15 @@ func spawn_ships():
 	# Player 1 (Left side)
 	for i in range(3):
 		var s = Ship.new()
-		s.name = "P1_Ship_%d" % (i + 1)
+		s.name = "P1_Fighter_%d" % (i + 1)
+		
+		# Make the 3rd ship an Assault Scout for testing
+		if i == 2:
+			s.configure_assault_scout()
+			s.name = "P1_Scout_1"
+		else:
+			s.configure_fighter() # Set stats and weapons
+			
 		s.player_id = 1
 		s.color = Color.CYAN
 		s.grid_position = Vector3i(-3, i, 3 - i) # Staggered positions or stack if desired. Let's stack 2 and 3?
@@ -305,10 +463,8 @@ func spawn_ships():
 		if i == 1: s.grid_position = Vector3i(-3, 1, 2)
 		if i == 2: s.grid_position = Vector3i(-4, 1, 3) 
 		
-		s.facing = 0
-		s.speed = 0
-		s.adf = 5
-		s.mr = 3
+		s.binding_pos_update() # Call helper to set initial position immediately
+		
 		s.ship_destroyed.connect(func(): _on_ship_destroyed(s))
 		add_child(s)
 		ships.append(s)
@@ -316,7 +472,8 @@ func spawn_ships():
 	# Player 2 (Right side)
 	for i in range(3):
 		var s = Ship.new()
-		s.name = "P2_Ship_%d" % (i + 1)
+		s.name = "P2_Fighter_%d" % (i + 1)
+		s.configure_fighter() # Set stats and weapons
 		s.player_id = 2
 		s.color = Color.RED
 		if i == 0: s.grid_position = Vector3i(3, 0, -3)
@@ -324,9 +481,8 @@ func spawn_ships():
 		if i == 2: s.grid_position = Vector3i(4, -1, -3)
 		
 		s.facing = 3
-		s.speed = 0
-		s.adf = 5
-		s.mr = 3
+		s.binding_pos_update()
+		
 		s.ship_destroyed.connect(func(): _on_ship_destroyed(s))
 		add_child(s)
 		ships.append(s)
@@ -437,6 +593,8 @@ func _update_ship_visuals():
 	_update_camera()
 
 func start_turn_cycle():
+	for s in ships:
+		s.reset_weapons()
 	start_movement_phase()
 
 func start_movement_phase():
@@ -493,31 +651,72 @@ func start_combat_active():
 
 func _check_combat_availability():
 	# Find un-fired ships for FIRING player
-	var available = ships.filter(func(s): return s.player_id == firing_player_id and not s.has_fired)
+	# Loop until we find a ship with targets OR perform phase transition
+	var found_valid_shooter = false
 	
-	if available.size() == 0:
-		if combat_subphase == 1:
-			start_combat_active()
-		else:
-			end_turn_cycle()
-		return
+	while not found_valid_shooter:
+		var available = ships.filter(func(s): return s.player_id == firing_player_id and not s.has_fired and not s.is_exploding)
+		
+		if available.size() == 0:
+			if combat_subphase == 1:
+				start_combat_active()
+			else:
+				end_turn_cycle()
+			return
 
-	# Select first available to fire
-	selected_ship = available[0]
-	
-	# Reset action lock
-	combat_action_taken = false
-	
-	# Auto-target logic
-	combat_target = null
-	var targets = _get_valid_targets(selected_ship)
-	if targets.size() > 0:
-		combat_target = targets[0]
-	
-	queue_redraw()
-	_update_ui_state()
-	_update_camera()
-	log_message("Combat: Player %d Firing (%s)" % [firing_player_id, "Passive" if combat_subphase == 1 else "Active"])
+		# Check the first available ship
+		# We must iterate through them because available[0] might have no targets, 
+		# but available[1] might have targets.
+		# THE RULE: "If no ships have any targets then end that turn" -> implicaiton: we skip useless ships.
+		# "display a message indicating that no targets were avaialble."
+		
+		# Let's iterate through the available list
+		var candidate = null
+		
+		for s in available:
+			var targets = _get_valid_targets(s)
+			if targets.size() > 0:
+				candidate = s
+				break
+			else:
+				# Mark as fired (Skipped)
+				log_message("Skipping %s (No valid targets)" % s.name)
+				s.has_fired = true
+				
+		if candidate:
+			found_valid_shooter = true
+			selected_ship = candidate
+			
+			# Ensure we start with a valid, unfired weapon
+			var cur_w = selected_ship.weapons[selected_ship.current_weapon_index]
+			if cur_w["ammo"] <= 0 or cur_w.get("fired", false):
+				for i in range(selected_ship.weapons.size()):
+					var w = selected_ship.weapons[i]
+					if w["ammo"] > 0 and not w.get("fired", false):
+						selected_ship.current_weapon_index = i
+						break
+		
+			# Reset action lock
+			combat_action_taken = false
+			
+			# Auto-target logic
+			combat_target = null
+			var targets = _get_valid_targets(selected_ship)
+			if targets.size() > 0:
+				combat_target = targets[0]
+			
+			queue_redraw()
+			_update_ui_state()
+			_update_camera()
+			log_message("Combat: Player %d Firing (%s)" % [firing_player_id, "Passive" if combat_subphase == 1 else "Active"])
+			
+			# Ensure visual stack is updated
+			_update_ship_visuals()
+		else:
+			# Loop will continue, checking 'available' again.
+			# Since we marked ships with no targets as 'has_fired', the list size will shrink.
+			# Eventually it hits 0 and changes phase.
+			continue
 
 func end_turn_cycle():
 	log_message("Turn Complete. Switching Active Player.")
@@ -571,9 +770,16 @@ func _update_ui_state():
 		btn_turn_right.disabled = not allow_turn
 		
 		var txt = "Player %d Plotting\n" % selected_ship.player_id
+		txt += "Ship: %s (%s)\n" % [selected_ship.name, selected_ship.ship_class]
+		txt += "Hull: %d\n" % selected_ship.hull
 		txt += "Stats: ADF %d | MR %d\n" % [selected_ship.adf, selected_ship.mr]
 		txt += "Remaining MR: %d\n" % turns_remaining
-		txt += "Speed: %d -> %d / Range: [%d, %d]" % [start_speed, steps, min_speed, max_speed]
+		txt += "Speed: %d -> %d / Range: [%d, %d]\n" % [start_speed, steps, min_speed, max_speed]
+		
+		txt += "Weapons:\n"
+		for w in selected_ship.weapons:
+			txt += "- %s (Ammo: %d)\n" % [w["name"], w["ammo"]]
+
 		if not is_valid:
 			txt += "\n(Invalid Speed)"
 		label_status.text = txt
@@ -585,7 +791,18 @@ func _update_ui_state():
 		btn_turn_right.visible = false
 		
 		var phase_name = "Passive" if combat_subphase == 1 else "Active"
-		label_status.text = "Combat (%s Fire)\nPlayer %d Firing" % [phase_name, firing_player_id]
+		var txt = "Combat (%s Fire)\nPlayer %d Firing" % [phase_name, firing_player_id]
+		
+		if selected_ship:
+			txt += "\nShip: %s" % selected_ship.name
+			if selected_ship.weapons.size() > 0:
+				var w = selected_ship.weapons[selected_ship.current_weapon_index]
+				txt += "\nWeapon: %s" % w["name"]
+				txt += "\nAmmo: %d | Rng: %d | Arc: %s" % [w["ammo"], w["range"], w["arc"]]
+				if w.get("fired", false):
+					txt += " (FIRED)"
+		
+		label_status.text = txt
 	elif current_phase == Phase.END:
 		btn_undo.visible = false
 		btn_commit.visible = false
@@ -668,6 +885,47 @@ func _draw():
 			current_check_hex += forward_vec
 			_draw_hex_outline(current_check_hex, Color(1, 1, 0, 0.6), 4.0)
 
+	# Weapon Range Highlighting (Combat Phase)
+	if current_phase == Phase.COMBAT and selected_ship and selected_ship.weapons.size() > 0:
+		var weapon = selected_ship.weapons[selected_ship.current_weapon_index]
+		var w_range = weapon["range"]
+		var w_arc = weapon["arc"]
+		
+		# For FF (Forward Firing), we project a 3-hex wide spread
+		if w_arc == "FF":
+			var valid_hexes = _get_ff_arc_hexes(selected_ship, w_range)
+			var forward_vec = HexGrid.get_direction_vec(selected_ship.facing)
+			var head_on_hexes = []
+			
+			# Identify Head-on Hexes (Center Line)
+			head_on_hexes.append(selected_ship.grid_position) # Own hex is Head-on
+			var trace = selected_ship.grid_position + forward_vec
+			for i in range(w_range):
+				head_on_hexes.append(trace)
+				trace += forward_vec
+			
+			for hex in valid_hexes:
+				if hex in head_on_hexes:
+					# Head-on: Orange/Yellow Highlight
+					_draw_filled_hex(hex, Color(1, 0.6, 0, 0.4))
+				else:
+					# Side/Standard: Red Highlight
+					_draw_filled_hex(hex, Color(1, 0.2, 0.2, 0.3))
+		
+		elif w_arc == "360":
+			# Highlight Radius
+			# Drawing all hexes is expensive. Draw a circle outline at range?
+			for hex in _get_hexes_in_range(selected_ship.grid_position, w_range):
+				_draw_filled_hex(hex, Color(1, 0.2, 0.2, 0.1)) # Faint red background
+			
+			# Draw Range Boundary
+			var pos = HexGrid.hex_to_pixel(selected_ship.grid_position)
+			# Radius approx: (w_range + 0.5) * TILE_SIZE * sqrt(3)
+			# Hex width = 2 * size. Distance center-to-center = sqrt(3) * size.
+			# Max distance = w_range * sqrt(3) * size
+			# Let's just use raw pixel distance for "Visual" circle
+			draw_arc(pos, w_range * HexGrid.TILE_SIZE * 1.732, 0, TAU, 64, Color(1, 0.2, 0.2, 0.5), 2.0)
+
 	# Combat Target Highlight
 	if current_phase == Phase.COMBAT and combat_target:
 		# Draw brackets or circle around target
@@ -689,6 +947,15 @@ func _draw_hex_outline(hex: Vector3i, color: Color, width: float):
 	points.append(points[0]) # Close loop
 	draw_polyline(points, color, width)
 
+func _draw_filled_hex(hex: Vector3i, color: Color):
+	var center = HexGrid.hex_to_pixel(hex)
+	var size = HexGrid.TILE_SIZE
+	var points = PackedVector2Array()
+	for i in range(6):
+		var angle = deg_to_rad(60 * i + 30)
+		points.append(center + Vector2(size * cos(angle), size * sin(angle)))
+	draw_colored_polygon(points, color)
+
 func draw_hex(hex: Vector3i):
 	var center = HexGrid.hex_to_pixel(hex)
 	var size = HexGrid.TILE_SIZE
@@ -706,13 +973,103 @@ func _input(event):
 		var local_mouse = get_local_mouse_position()
 		var hex_clicked = HexGrid.pixel_to_hex(local_mouse)
 		handle_click(hex_clicked)
+	
+	if event is InputEventKey and event.pressed and event.keycode == KEY_W:
+		# Cycle Weapon
+		if current_phase == Phase.COMBAT and selected_ship and selected_ship.weapons.size() > 1:
+			var idx = selected_ship.current_weapon_index
+			idx = (idx + 1) % selected_ship.weapons.size()
+			selected_ship.current_weapon_index = idx
+			var w = selected_ship.weapons[idx]
+			log_message("Weapon switched to: %s (Ammo: %d, Arc: %s)" % [w["name"], w["ammo"], w["arc"]])
+			queue_redraw()
+			_update_ui_state()
+			_update_camera()
+
+func _get_ff_arc_hexes(ship: Ship, w_range: int) -> Array:
+	var hexes = [ship.grid_position] # Range 0 is always valid for FF (and is Head-on)
+	var fwd_vec = HexGrid.get_direction_vec(ship.facing)
+	
+	# Directions for "Forward Left" and "Forward Right" (The hexes adjacent to the Forward hex)
+	# In hex grid, "Left of Forward" when facing 'i' is usually 'i-1' relative to the center?
+	# Let's assume compact packing (Columns share edges).
+	# Neighbor of (Shift+Fwd) in direction (Facing-1) is the Forward-Left neighbor.
+	
+	# Side Lines Visualization:
+	# C (Dist 1)
+	# L R (Neighbors of C, Dist 2 from Ship)
+	# So Left Start is ship.grid + fwd_vec + left_bias
+	
+	var left_vec = HexGrid.get_direction_vec((ship.facing - 1 + 6) % 6)
+	var right_vec = HexGrid.get_direction_vec((ship.facing + 1) % 6)
+	
+	# Define Start Points for the 3 columns
+	# Center starts at Range 1
+	var center_start = ship.grid_position + fwd_vec
+	
+	# Sides start "1 hex away" (interpreted as neighbors of the Range 1 Center hex)
+	var left_start = center_start + left_vec
+	var right_start = center_start + right_vec
+	
+	var starts = [center_start, left_start, right_start]
+	
+	for start_hex in starts:
+		var curr = start_hex
+		# Trace forward from this start point
+		# We check distance constraint for EVERY hex
+		
+		# Optimization: If the start is already out of range, skip column
+		if HexGrid.hex_distance(ship.grid_position, curr) > w_range:
+			continue
+			
+		# Trace
+		for i in range(w_range):
+			if HexGrid.hex_distance(ship.grid_position, curr) <= w_range:
+				if not curr in hexes:
+					hexes.append(curr)
+			else:
+				# Once we exceed range, we stop this column (distance strictly increases)
+				break
+			curr += fwd_vec
+			
+	return hexes
+
+func _get_hexes_in_range(center: Vector3i, dist: int) -> Array:
+	var results = []
+	for q in range(-dist, dist + 1):
+		for r in range(max(-dist, -q - dist), min(dist, -q + dist) + 1):
+			var s = -q - r
+			results.append(center + Vector3i(q, r, s))
+	return results
 
 func _get_valid_targets(shooter: Ship) -> Array:
 	var valid = []
 	for s in ships:
-		if s.player_id != shooter.player_id:
-			var d = HexGrid.hex_distance(shooter.grid_position, s.grid_position)
-			if d <= Combat.MAX_RANGE:
+		if s.player_id != shooter.player_id and not s.is_exploding:
+			# Check against ALL available weapons (or just current? usually any valid weapon means ship is active)
+			# Let's check if ANY weapon can hit the target
+			var can_hit = false
+			for weapon in shooter.weapons:
+				if weapon["ammo"] <= 0: continue
+				if weapon.get("fired", false): continue
+				
+				var w_range = weapon["range"]
+				var w_arc = weapon["arc"]
+				var d = HexGrid.hex_distance(shooter.grid_position, s.grid_position)
+				
+				if d > w_range: continue
+				
+				if w_arc == "FF":
+					var valid_hexes = _get_ff_arc_hexes(shooter, w_range)
+					if s.grid_position in valid_hexes:
+						can_hit = true
+						break # Found a valid weapon for this target
+				else:
+					# Default or Turret (360)
+					can_hit = true
+					break
+			
+			if can_hit:
 				valid.append(s)
 	return valid
 
@@ -803,10 +1160,19 @@ func _on_ship_destroyed(ship: Ship):
 	_update_ship_visuals() # Re-calc stacks
 	log_message("Ship destroyed: %s" % ship.name)
 	
-	if ships.size() == 0:
+	# Check for Victory
+	var p1_count = 0
+	var p2_count = 0
+	for s in ships:
+		if s.player_id == 1: p1_count += 1
+		elif s.player_id == 2: p2_count += 1
+	
+	if p1_count == 0 and p2_count == 0:
 		show_game_over("Draw!")
-	elif ships.size() == 1:
-		show_game_over("Winner: Player %d!" % ships[0].player_id)
+	elif p1_count == 0:
+		show_game_over("Winner: Player 2!")
+	elif p2_count == 0:
+		show_game_over("Winner: Player 1!")
 
 func show_game_over(msg: String):
 	current_phase = Phase.END
