@@ -213,6 +213,7 @@ func _handle_combat_click(hex: Vector3i):
 				if targets.size() > 0: combat_target = targets[0]
 				
 				queue_redraw()
+				_update_ship_visuals() # Re-sort stack
 				_update_ui_state()
 				log_message("Switched to %s" % selected_ship.name)
 				return
@@ -256,6 +257,7 @@ func _handle_combat_click(hex: Vector3i):
 					combat_target = s
 					queue_redraw()
 					log_message("Targeting: %s" % s.name)
+					_update_ship_visuals() # Ensure target pops to top
 					break
 
 func _spawn_laser(start: Vector2, end: Vector2):
@@ -344,6 +346,7 @@ func _cycle_selection():
 		if audio_ship_select and audio_ship_select.stream: audio_ship_select.play()
 		_spawn_ghost()
 		_update_camera()
+		_update_ship_visuals() # Re-sort stack
 		_update_ui_state()
 
 	elif current_phase == Phase.COMBAT:
@@ -377,6 +380,7 @@ func _cycle_selection():
 		
 		queue_redraw()
 		log_message("Targeting: %s" % combat_target.name)
+		_update_ship_visuals() # Ensure target pops to top
 
 func _update_ship_visuals():
 	var grid_counts = {}
@@ -388,15 +392,40 @@ func _update_ship_visuals():
 	
 	for hex in grid_counts:
 		var stack: Array = grid_counts[hex]
+		
+		# Sorting Logic:
+		# 1. Selected Ship moves to Top (Highest priority)
+		# 2. Combat Target moves to Top (If no selected ship overlaying it, or same hex?)
+		# Actually, if I am targeting someone, THEY should be on top of THEIR stack.
+		# My ship should be on top of MY stack.
+		
+		# Move combat_target to top
+		if combat_target and combat_target in stack:
+			stack.erase(combat_target)
+			stack.append(combat_target)
+
+		# Move selected_ship to top (Overrides target if in same hex, which is rare/weird but okay)
+		if selected_ship and selected_ship in stack:
+			stack.erase(selected_ship)
+			stack.append(selected_ship)
+		
 		for i in range(stack.size()):
 			var s: Ship = stack[i]
 			var base_pos = HexGrid.hex_to_pixel(hex)
-			# Offset logic: simple diagonal scatter or vertical stack?
-			# Let's do a slight diagonal offset based on index (10px per index)
+			# Offset logic: simple diagonal scatter
 			var offset = Vector2(5 * i, 5 * i)
 			s.position = base_pos + offset
-			# Z-index to show top one?
+			
+			# Z-index: Higher index = on top
 			s.z_index = i
+			
+			# Force Tree Order (Draw Last = Top)
+			move_child(s, -1)
+			
+			# Info: Only show for the top-most ship
+			s.show_info = (i == stack.size() - 1)
+			s.queue_redraw()
+			# print("Hex %s: Ship %s Z=%d Info=%s" % [hex, s.name, s.z_index, s.show_info])
 
 	combat_action_taken = false
 	_update_camera()
@@ -576,6 +605,8 @@ func _on_commit_move():
 	selected_ship.facing = ghost_ship.facing
 	selected_ship.speed = current_path.size()
 	
+	_update_ship_visuals() # Ensure we re-stack after movement
+	
 	ghost_ship.queue_free()
 	ghost_ship = null
 	
@@ -689,6 +720,7 @@ func handle_click(hex: Vector3i):
 			if audio_ship_select and audio_ship_select.stream: audio_ship_select.play()
 			_spawn_ghost()
 			_update_camera()
+			_update_ship_visuals() # Re-sort stack
 			_update_ui_state()
 			log_message("Selected %s" % selected_ship.name)
 			return

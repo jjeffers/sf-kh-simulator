@@ -46,6 +46,7 @@ func take_damage(amount: int):
 
 var is_ghost: bool = false
 var is_exploding: bool = false
+var show_info: bool = true
 
 func set_ghost(val: bool):
 	is_ghost = val
@@ -80,8 +81,15 @@ func _draw():
 	outline.append(rotated_points[0]) # Close the loop
 	draw_polyline(outline, Color.BLACK, 2.0)
 	
-	# Draw Health Bar (Only for real ships)
-	if not is_ghost:
+	# Draw Info (Name and Health) - Only for real ships AND if show_info is true
+	if not is_ghost and show_info:
+		# Draw Name
+		var default_font = ThemeDB.fallback_font
+		var font_size = 14
+		var name_pos = Vector2(-size, -size - 10)
+		draw_string(default_font, name_pos, name, HORIZONTAL_ALIGNMENT_CENTER, -1, font_size, Color.WHITE)
+		
+		# Draw Health Bar
 		var bar_width = HexGrid.TILE_SIZE * 0.8
 		var bar_height = 6.0
 		var bar_pos = Vector2(-bar_width / 2, size/2 + 10)
