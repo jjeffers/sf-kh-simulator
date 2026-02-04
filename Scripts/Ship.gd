@@ -39,9 +39,10 @@ func take_damage(amount: int):
 	if hull <= 0:
 		hull = 0
 		ship_destroyed.emit()
-		queue_free()
+		trigger_explosion()
 
 var is_ghost: bool = false
+var is_exploding: bool = false
 
 func set_ghost(val: bool):
 	is_ghost = val
@@ -54,6 +55,8 @@ func set_ghost(val: bool):
 	queue_redraw()
 
 func _draw():
+	if is_exploding: return
+
 	# Draw simple triangle for ship representation
 	var size = HexGrid.TILE_SIZE * 0.6
 	# Triangle pointing right (0 degrees)
@@ -90,3 +93,34 @@ func _draw():
 		var fill_rect = Rect2(bar_pos, Vector2(fill_width, bar_height))
 		var health_color = Color.DARK_RED.lerp(Color.GREEN, pct)
 		draw_rect(fill_rect, health_color, true)
+
+func trigger_explosion():
+	is_exploding = true
+	queue_redraw()
+	
+	var particles = CPUParticles2D.new()
+	particles.emitting = false
+	particles.one_shot = true
+	particles.amount = 50
+	particles.lifetime = 1.0
+	particles.explosiveness = 1.0
+	particles.spread = 180.0
+	particles.gravity = Vector2.ZERO
+	particles.initial_velocity_min = 50.0
+	particles.initial_velocity_max = 150.0
+	particles.scale_amount_min = 3.0
+	particles.scale_amount_max = 6.0
+	particles.color = Color.ORANGE
+	
+	# Color gradient for fire effect
+	var gradient = Gradient.new()
+	gradient.set_color(0, Color.YELLOW)
+	gradient.set_color(1, Color(1, 0, 0, 0)) # Fade to red transparent
+	particles.color_ramp = gradient
+	
+	add_child(particles)
+	particles.emitting = true
+	
+	# Wait for particles to finish before freeing
+	var timer = get_tree().create_timer(1.2)
+	timer.timeout.connect(queue_free)

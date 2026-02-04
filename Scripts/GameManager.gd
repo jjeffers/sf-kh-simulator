@@ -7,6 +7,8 @@ var ships: Array[Ship] = []
 var current_turn_index: int = 0
 var selected_ship: Ship = null
 
+@export var camera_speed: float = 500.0
+
 # Phase Enum
 enum Phase { START, MOVEMENT, COMBAT, END }
 var current_phase: Phase = Phase.START
@@ -32,6 +34,23 @@ func _ready():
 	queue_redraw()
 	spawn_ships()
 	start_turn()
+
+func _process(delta):
+	var move_vec = Vector2.ZERO
+	if Input.is_key_pressed(KEY_W) or Input.is_key_pressed(KEY_UP):
+		move_vec.y += 1
+	if Input.is_key_pressed(KEY_S) or Input.is_key_pressed(KEY_DOWN):
+		move_vec.y -= 1
+	if Input.is_key_pressed(KEY_A) or Input.is_key_pressed(KEY_LEFT):
+		move_vec.x += 1
+	if Input.is_key_pressed(KEY_D) or Input.is_key_pressed(KEY_RIGHT):
+		move_vec.x -= 1
+	
+	if move_vec != Vector2.ZERO:
+		position += move_vec.normalized() * camera_speed * delta
+		
+	if Input.is_key_pressed(KEY_SPACE):
+		_update_camera()
 
 func _setup_ui():
 	ui_layer = CanvasLayer.new()
@@ -90,6 +109,28 @@ func _setup_ui():
 	combat_log.size_flags_vertical = Control.SIZE_EXPAND_FILL
 	log_panel.add_child(combat_log)
 	
+	# Game Over Panel
+	panel_game_over = PanelContainer.new()
+	panel_game_over.visible = false
+	# Center it
+	panel_game_over.anchors_preset = Control.PRESET_CENTER
+	ui_layer.add_child(panel_game_over)
+	
+	var go_vbox = VBoxContainer.new()
+	go_vbox.custom_minimum_size = Vector2(200, 100)
+	panel_game_over.add_child(go_vbox)
+	
+	label_winner = Label.new()
+	label_winner.text = "Winner!"
+	label_winner.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	label_winner.add_theme_font_size_override("font_size", 24)
+	go_vbox.add_child(label_winner)
+	
+	btn_restart = Button.new()
+	btn_restart.text = "Play Again"
+	btn_restart.pressed.connect(_on_restart)
+	go_vbox.add_child(btn_restart)
+	
 	# Audio Setup
 	var audio_node = Node.new()
 	audio_node.name = "AudioParams"
@@ -109,11 +150,33 @@ func _setup_ui():
 		audio_hit.stream = load("res://Assets/Audio/hit.mp3")
 	add_child(audio_hit)
 
+	audio_beep = AudioStreamPlayer.new()
+	if FileAccess.file_exists("res://Assets/Audio/short-low-beep.mp3"):
+		audio_beep.stream = load("res://Assets/Audio/short-low-beep.mp3")
+	add_child(audio_beep)
+
+	audio_turn_end = AudioStreamPlayer.new()
+	if FileAccess.file_exists("res://Assets/Audio/short-sound.mp3"):
+		audio_turn_end.stream = load("res://Assets/Audio/short-sound.mp3")
+	add_child(audio_turn_end)
+
+	audio_ship_select = AudioStreamPlayer.new()
+	if FileAccess.file_exists("res://Assets/Audio/short-departure.mp3"):
+		audio_ship_select.stream = load("res://Assets/Audio/short-departure.mp3")
+	add_child(audio_ship_select)
+
 var audio_laser: AudioStreamPlayer
 var audio_hit: AudioStreamPlayer
+var audio_beep: AudioStreamPlayer
+var audio_turn_end: AudioStreamPlayer
+var audio_ship_select: AudioStreamPlayer
 
 var combat_log: RichTextLabel
 
+# Game Over UI
+var panel_game_over: PanelContainer
+var label_winner: Label
+var btn_restart: Button
 
 func log_message(msg: String):
 	combat_log.append_text(msg + "\n")
@@ -182,6 +245,8 @@ func spawn_ships():
 	s1.speed = 0 # Start stopped or 0? User moved from 0 to 1, implies 0 start.
 	s1.adf = 5
 	s1.mr = 3
+	s1.mr = 3
+	s1.ship_destroyed.connect(func(): _on_ship_destroyed(s1))
 	add_child(s1)
 	ships.append(s1)
 	
@@ -195,12 +260,16 @@ func spawn_ships():
 	s2.speed = 0
 	s2.adf = 5
 	s2.mr = 3
+	s2.ship_destroyed.connect(func(): _on_ship_destroyed(s2))
 	add_child(s2)
 	ships.append(s2)
 
 func start_turn():
 	current_phase = Phase.MOVEMENT
 	selected_ship = ships[current_turn_index]
+	
+	if audio_ship_select and audio_ship_select.stream:
+		audio_ship_select.play()
 	
 	_spawn_ghost()
 	
@@ -271,6 +340,12 @@ func _update_ui_state():
 		btn_turn_left.visible = false
 		btn_turn_right.visible = false
 		label_status.text = "Combat Phase: Click target in range (10)"
+	elif current_phase == Phase.END:
+		btn_undo.visible = false
+		btn_commit.visible = false
+		btn_turn_left.visible = false
+		btn_turn_right.visible = false
+		label_status.text = "Game Over"
 
 func _on_undo():
 	if current_path.size() > 0:
@@ -306,6 +381,20 @@ func _on_commit_move():
 	start_combat()
 
 func start_combat():
+	# Check for valid targets
+	var targets_in_range = false
+	for s in ships:
+		if s != selected_ship:
+			var d = HexGrid.hex_distance(selected_ship.grid_position, s.grid_position)
+			if d <= Combat.MAX_RANGE:
+				targets_in_range = true
+				break
+	
+	if not targets_in_range:
+		log_message("No targets in range. Skipping combat.")
+		get_tree().create_timer(1.5).timeout.connect(end_turn)
+		return
+
 	current_phase = Phase.COMBAT
 	queue_redraw()
 	_update_ui_state()
@@ -428,11 +517,37 @@ func _handle_ghost_input(hex: Vector3i):
 	# Enable turning for the final step
 	can_turn_this_step = true
 	
+	if audio_beep.stream: audio_beep.play()
+
 	queue_redraw()
 	_update_ui_state()
 
 
 
+func _on_ship_destroyed(ship: Ship):
+	ships.erase(ship)
+	log_message("Ship destroyed: %s" % ship.name)
+	
+	if ships.size() == 0:
+		show_game_over("Draw!")
+	elif ships.size() == 1:
+		show_game_over("Winner: Player %d!" % ships[0].player_id)
+
+func show_game_over(msg: String):
+	current_phase = Phase.END
+	label_winner.text = msg
+	panel_game_over.visible = true
+	_update_ui_state()
+	log_message(msg)
+
+func _on_restart():
+	get_tree().reload_current_scene()
+
 func end_turn():
+	if current_phase == Phase.END: return
+
+	if audio_turn_end and audio_turn_end.stream:
+		audio_turn_end.play()
+		
 	current_turn_index = (current_turn_index + 1) % ships.size()
 	start_turn()
