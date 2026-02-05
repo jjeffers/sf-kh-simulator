@@ -24,6 +24,12 @@ static func calculate_hit_chance(dist: int, weapon: Dictionary = {}, target: Shi
 		if is_head_on: chance += 10 # Assuming Head-on still applies as positional bonus?
 		return chance
 	
+	# Special Rule: Rocket Battery (Flat 40%)
+	if weapon.get("type") == "Rocket Battery":
+		chance = 40
+		if is_head_on: chance += 10
+		return chance
+	
 	# Base Chance Calculation
 	var base = BASE_HIT_CHANCE # 80
 	

@@ -307,7 +307,7 @@ func _handle_combat_click(hex: Vector3i):
 		var weapon = selected_ship.weapons[selected_ship.current_weapon_index]
 		
 		# Availability Check (Phase Rule)
-		if not _is_weapon_available_in_phase(weapon):
+		if not _is_weapon_available_in_phase(weapon, selected_ship):
 			log_message("[color=red]Cannot fire %s in Passive Turn![/color]" % weapon["name"])
 			return
 
@@ -375,7 +375,7 @@ func _handle_combat_click(hex: Vector3i):
 					break
 
 func _spawn_attack_fx(start: Vector2, end: Vector2, type: String):
-	if type == "Rocket":
+	if type == "Rocket" or type == "Rocket Battery":
 		# Rocket Visual
 		var container = Node2D.new()
 		container.position = start
@@ -655,10 +655,10 @@ func spawn_ships():
 	for i in range(3):
 		var s = Ship.new()
 		
-		# Make the 3rd ship a Frigate (Boss)
+		# Make the 3rd ship a Heavy Cruiser (for testing)
 		if i == 1: # Center one
-			s.name = "P2_Frigate_1"
-			s.configure_frigate()
+			s.name = "P2_HeavyCruiser_1"
+			s.configure_heavy_cruiser()
 			s.player_id = 2
 			s.color = Color.RED
 			s.grid_position = Vector3i(3, -1, -2)
@@ -1363,7 +1363,7 @@ func _unhandled_input(event):
 			while true:
 				idx = (idx + 1) % selected_ship.weapons.size()
 				var w = selected_ship.weapons[idx]
-				if _is_weapon_available_in_phase(w):
+				if _is_weapon_available_in_phase(w, selected_ship):
 					selected_ship.current_weapon_index = idx # commit
 					log_message("Weapon switched to: %s (Ammo: %d, Arc: %s)" % [w["name"], w["ammo"], w["arc"]])
 					break
@@ -1376,21 +1376,41 @@ func _unhandled_input(event):
 			_update_ui_state()
 			_update_camera()
 
-func _is_weapon_available_in_phase(weapon: Dictionary) -> bool:
-	# Rule: Rockets and Torpedoes ("Propelled") are Moving Player Only
-	# If current_phase is COMBAT, check subphase/player
+func _is_weapon_available_in_phase(weapon: Dictionary, ship: Ship = null) -> bool:
+	var w_type = weapon.get("type")
+	# Rule 1: Moving Player Only for Propelled weapons (Assault Rockets, Torpedoes)
+	# Rocket Batteries are EXEMPT from this (can be fired defensively)
+	var is_propelled_movement_restricted = w_type in ["Rocket", "Torpedo"]
 	
-	var is_propelled = (weapon.get("type") in ["Rocket", "Torpedo"])
-	
-	if is_propelled:
-		# Can only be used by the "Active Moving Player" (current_player_id)
-		# In Passive Fire (subphase 1), firing_player_id is NOT current_player_id.
-		# In Active Fire (subphase 2), firing_player_id IS current_player_id.
-		
-		# So if firing_player_id != current_player_id, these are banned.
+	if is_propelled_movement_restricted:
 		if firing_player_id != current_player_id:
 			return false
 			
+	# Rule 2: Limit 1 per Phase for certain types (Rocket Battery, Torpedo, Rocket)
+	# User Request: "a ship may only fire 1 rocket battery per combat phase" (and "just like torpedoes")
+	# We interpret this as: Unique Weapon Type Usage Limit = 1 per ship per phase.
+	if w_type in ["Rocket Battery", "Torpedo", "Rocket"]:
+		if ship:
+			# Check if ANY other weapon of this type has been fired or planned?
+			# Check Planned Attacks
+			for atk in queued_attacks:
+				if atk["source"] == ship:
+					var planned_w_idx = atk["weapon_idx"]
+					var planned_w = ship.weapons[planned_w_idx]
+					
+					# Allow if it's THIS exact weapon (allowing overwrite/edit)
+					if planned_w == weapon: continue
+					
+					# Block if it's a DIFFERENT weapon of SAME type
+					if planned_w.get("type") == w_type:
+						return false
+			
+			# Check Fired State (if we support multi-step firing later, or just safety)
+			for w in ship.weapons:
+				if w == weapon: continue
+				if w.get("type") == w_type and w.get("fired", false):
+					return false
+
 	return true
 
 
