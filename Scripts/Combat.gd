@@ -16,15 +16,26 @@ static func calculate_hit_chance(dist: int, weapon: Dictionary = {}, target: Shi
 		chance = 60
 		if is_head_on: chance += 10
 		return chance
+
+	# Special Rule: Torpedo (Flat 70%)
+	# "70% chance to hit any target"
+	if weapon.get("type") == "Torpedo":
+		chance = 70
+		if is_head_on: chance += 10 # Assuming Head-on still applies as positional bonus?
+		return chance
 	
 	# Base Chance Calculation
 	var base = BASE_HIT_CHANCE # 80
 	
 	# Special Rule: Laser vs Reflective Hull (RH)
-	if target and target.defense == "RH" and weapon.get("type") == "Laser":
-		base = 50
+	if target and target.defense == "RH":
+		if weapon.get("type") == "Laser":
+			base = 50
+		elif weapon.get("type") == "Laser Canon":
+			base = 60 # "60% chance to hit a target with a reflective hull"
+
 	
-	# Standard / Laser Rule: Range Diffusion (RD)
+	# Standard / Laser / Laser Canon Rule: Range Diffusion (RD)
 	# -5% per hex
 	chance = base - (dist * RANGE_PENALTY)
 	if is_head_on: chance += 10

@@ -83,6 +83,71 @@ func configure_assault_scout():
 	})
 	current_weapon_index = 0 # Default to Laser
 
+func configure_frigate():
+	ship_class = "Frigate"
+	defense = "RH"
+	hull = 40
+	adf = 3
+	mr = 3
+	
+	weapons.clear()
+	# Laser Battery: Range 10 (User said Laser Canon is 10, Battery usually 9? Keeping Battery as 9 for consistency or standard?)
+	# User: "laser battery, 4 assault rockets, and 2 new weapons - a laser canon and 2 torpedoes"
+	# Standard Laser Battery (from Scout):
+	weapons.append({
+		"name": "Laser Battery",
+		"type": "Laser",
+		"range": 10, # User might have meant Canon is 10? Standard Battery is 10? Code has 9 usually.
+		# Let's assume Standard Battery (Range 10 is common in Star Frontiers).
+		"arc": "360",
+		"ammo": 999,
+		"max_ammo": 999,
+		"damage_dice": "1d10",
+		"damage_bonus": 0,
+		"fired": false
+	})
+	
+	# Laser Canon: Range 10, FF, 2d10. 
+	weapons.append({
+		"name": "Laser Canon",
+		"type": "Laser Canon",
+		"range": 10,
+		"arc": "FF",
+		"ammo": 999, # Canons usually infinite? Or limited? Assuming infinite unless specified.
+		"max_ammo": 999,
+		"damage_dice": "2d10",
+		"damage_bonus": 0,
+		"fired": false
+	})
+	
+	# Assault Rockets: Range 4, FF, Ammo 4, 2d10+4
+	weapons.append({
+		"name": "Assault Rockets",
+		"type": "Rocket",
+		"range": 4,
+		"arc": "FF",
+		"ammo": 4,
+		"max_ammo": 4,
+		"damage_dice": "2d10",
+		"damage_bonus": 4,
+		"fired": false
+	})
+	
+	# Torpedoes: Range 4, FF (Propelled), Ammo 2, 4d10
+	weapons.append({
+		"name": "Torpedo",
+		"type": "Torpedo",
+		"range": 4,
+		"arc": "360",
+		"ammo": 2,
+		"max_ammo": 2,
+		"damage_dice": "4d10",
+		"damage_bonus": 0,
+		"fired": false
+	})
+	
+	current_weapon_index = 0
+
 func reset_weapons():
 	has_fired = false
 	for w in weapons:
@@ -158,6 +223,17 @@ func _draw():
 				Vector2(-size * 0.5, -size * 0.5),
 				Vector2(-size * 0.2, 0), # Rear Notch
 				Vector2(-size * 0.5, size * 0.5)
+			])
+		"Frigate":
+			# Large Heavy Shape (Pentagon/Hammerhead)
+			size = HexGrid.TILE_SIZE * 0.8
+			points = PackedVector2Array([
+				Vector2(size, 0), # Nose
+				Vector2(size * 0.5, -size * 0.5), # R Fwd
+				Vector2(-size * 0.5, -size * 0.6), # R Rear
+				Vector2(-size * 0.8, 0), # Engine
+				Vector2(-size * 0.5, size * 0.6), # L Rear
+				Vector2(size * 0.5, size * 0.5) # L Fwd
 			])
 	# Rotate points based on facing (each facing is 60 degrees = PI/3)
 	var angle = facing * (PI / 3.0)

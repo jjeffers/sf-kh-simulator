@@ -50,6 +50,9 @@ var combat_action_taken: bool = false # Lock to prevent click spam
 var queued_attacks: Array = [] # Objects: {source, target, weapon_idx}
 var pending_resolutions: Array = []
 
+# Environment
+var planet_hexes: Array[Vector3i] = [Vector3i(0, 0, 0)] # Center hex
+
 # Planning UI
 var panel_planning: PanelContainer
 var container_ships: VBoxContainer
@@ -58,6 +61,7 @@ var container_ships: VBoxContainer
 func _ready():
 	_setup_ui()
 	queue_redraw()
+	_spawn_planets()
 	spawn_ships()
 	start_turn_cycle()
 
@@ -283,6 +287,12 @@ func _handle_combat_click(hex: Vector3i):
 		
 		# Validation
 		var weapon = selected_ship.weapons[selected_ship.current_weapon_index]
+		
+		# Availability Check (Phase Rule)
+		if not _is_weapon_available_in_phase(weapon):
+			log_message("[color=red]Cannot fire %s in Passive Turn![/color]" % weapon["name"])
+			return
+
 		var w_range = weapon["range"]
 		var w_arc = weapon["arc"]
 		var d = HexGrid.hex_distance(selected_ship.grid_position, s.grid_position)
@@ -312,10 +322,19 @@ func _handle_combat_click(hex: Vector3i):
 		# Check if already targeting this specific enemy with this weapon?
 		# Rules don't say we can't double tap, so allow it.
 		
+		# Check for existing plan with THIS weapon and remove it (Overwrite Rule)
+		for i in range(queued_attacks.size() - 1, -1, -1):
+			var atk = queued_attacks[i]
+			if atk["source"] == selected_ship and atk["weapon_idx"] == selected_ship.current_weapon_index:
+				queued_attacks.remove_at(i)
+				# log_message("Command updated.") # Optional feedback
+				break
+
 		# ADD TO PLAN
 		queued_attacks.append({
 			"source": selected_ship,
 			"target": s,
+			"target_pos": s.position, # Store visual position for FX if target dies
 			"weapon_idx": selected_ship.current_weapon_index,
 			"weapon_name": weapon["name"]
 		})
@@ -385,11 +404,57 @@ func _spawn_attack_fx(start: Vector2, end: Vector2, type: String):
 
 		if audio_laser.stream: audio_laser.play() # Use existing sound like a launch
 		
+	elif type == "Torpedo":
+		# Low Freq Launch Sound?
+		if audio_laser.stream: audio_laser.play()
+
+		var container = Node2D.new()
+		container.position = start
+		container.z_index = 20
+		add_child(container)
+		
+		# Torpedo Visual (Blue pill shape)
+		var proj = Polygon2D.new()
+		proj.polygon = PackedVector2Array([Vector2(8, 0), Vector2(4, -4), Vector2(-4, -4), Vector2(-6, 0), Vector2(-4, 4), Vector2(4, 4)])
+		proj.color = Color.CYAN
+		container.add_child(proj)
+		
+		# Engine glow
+		var glow = CPUParticles2D.new()
+		glow.amount = 15
+		glow.lifetime = 0.8
+		glow.direction = Vector2(-1, 0)
+		glow.spread = 10.0
+		glow.gravity = Vector2.ZERO
+		glow.initial_velocity_min = 10.0
+		glow.initial_velocity_max = 10.0
+		glow.scale_amount_min = 3.0
+		glow.scale_amount_max = 5.0
+		glow.color = Color(0, 1, 1, 0.5)
+		glow.local_coords = false
+		container.add_child(glow)
+		
+		container.rotation = (end - start).angle()
+		
+		# TWEEN
+		var dist_px = start.distance_to(end)
+		var travel_time = 0.8 # Slower than rocket
+		
+		var tween = create_tween()
+		tween.tween_property(container, "position", end, travel_time).set_trans(Tween.TRANS_LINEAR)
+		tween.tween_callback(func():
+			proj.visible = false
+			glow.emitting = false
+			get_tree().create_timer(1.0).timeout.connect(container.queue_free)
+		)
+
 	else:
-		# Default Laser
+		# Laser or Laser Canon
 		var line = Line2D.new()
-		line.width = 3.0
-		line.default_color = Color(1, 0, 0, 1) # Red laser
+		var is_canon = (type == "Laser Canon")
+		
+		line.width = 5.0 if is_canon else 3.0
+		line.default_color = Color.ORANGE if is_canon else Color(1, 0, 0, 1) # Canon Orange, Battery Red
 		line.points = PackedVector2Array([start, end])
 		add_child(line)
 		
@@ -415,16 +480,11 @@ func _process_next_attack():
 		return
 		
 	var atk = pending_resolutions.pop_front()
-	var source: Ship = atk["source"]
-	var target: Ship = atk["target"]
+	var source = atk["source"] # Remove type hint to allow check? Or keep it, but check validity before use
+	var target = atk["target"]
 	var weapon_idx: int = atk["weapon_idx"]
 	
-	# Visual focus
-	selected_ship = source
-	combat_target = target
-	_update_camera()
-	
-	# Validate Sources
+	# Validate Source FIRST
 	if not is_instance_valid(source):
 		log_message("Source ship destroyed! Attack fizzles.")
 		get_tree().create_timer(1.0).timeout.connect(_process_next_attack)
@@ -433,19 +493,36 @@ func _process_next_attack():
 	# If ship exists but is technically dead/dying (hull <= 0)
 	if source.hull <= 0:
 		log_message("%s destroyed before firing! Attack fizzles." % source.name)
-		# Consume ammo on wreck if possible, though it doesn't matter much
 		source.weapons[weapon_idx]["ammo"] -= 1
 		get_tree().create_timer(1.0).timeout.connect(_process_next_attack)
 		return
+		
+	# Now safe to assign and focus
+	selected_ship = source
+	
+	# Validate Target for focus (assign null if invalid)
+	if is_instance_valid(target):
+		combat_target = target
+	else:
+		combat_target = null
+		
+	_update_camera()
 
 	var weapon = source.weapons[weapon_idx]
 	# Strict Ammo Consumption (happens now at resolution)
 	weapon["ammo"] -= 1
 	weapon["fired"] = true # Mark as fired for this turn
 	
+	var start_pos = HexGrid.hex_to_pixel(source.grid_position)
+	var target_pos = atk["target_pos"]
+	
+	# Update target_pos if target is crucial and still alive (for moving targets? ships don't move in combat phase though)
+	if is_instance_valid(target):
+		target_pos = target.position
+
 	if not is_instance_valid(target) or target.hull <= 0:
-		log_message("%s firing at WRECK of %s! (Wasted)" % [source.name, target.name if target else "Unknown"])
-		_spawn_attack_fx(HexGrid.hex_to_pixel(source.grid_position), target.position if target else source.position, weapon.get("type"))
+		log_message("%s firing at WRECK of %s! (Wasted)" % [source.name, target.name if is_instance_valid(target) else "Unknown"])
+		_spawn_attack_fx(start_pos, target_pos, weapon.get("type"))
 		# Wait for FX then continue
 		get_tree().create_timer(1.5).timeout.connect(_process_next_attack)
 		return
@@ -454,8 +531,6 @@ func _process_next_attack():
 	log_message("%s firing %s at %s" % [source.name, weapon["name"], target.name])
 	
 	# FX
-	var start_pos = HexGrid.hex_to_pixel(source.grid_position)
-	var target_pos = target.position
 	_spawn_attack_fx(start_pos, target_pos, weapon.get("type", "Laser"))
 	
 	# Hit Calc
@@ -561,13 +636,21 @@ func spawn_ships():
 	# Player 2 (Right side)
 	for i in range(3):
 		var s = Ship.new()
-		s.name = "P2_Fighter_%d" % (i + 1)
-		s.configure_fighter() # Set stats and weapons
-		s.player_id = 2
-		s.color = Color.RED
-		if i == 0: s.grid_position = Vector3i(3, 0, -3)
-		if i == 1: s.grid_position = Vector3i(3, -1, -2)
-		if i == 2: s.grid_position = Vector3i(4, -1, -3)
+		
+		# Make the 3rd ship a Frigate (Boss)
+		if i == 1: # Center one
+			s.name = "P2_Frigate_1"
+			s.configure_frigate()
+			s.player_id = 2
+			s.color = Color.RED
+			s.grid_position = Vector3i(3, -1, -2)
+		else:
+			s.name = "P2_Fighter_%d" % (i + 1)
+			s.configure_fighter() # Set stats and weapons
+			s.player_id = 2
+			s.color = Color.RED
+			if i == 0: s.grid_position = Vector3i(3, 0, -3)
+			if i == 2: s.grid_position = Vector3i(4, -1, -3)
 		
 		s.facing = 3
 		s.binding_pos_update()
@@ -781,16 +864,26 @@ func _update_planning_ui_list():
 		elif not has_targets: status_str = "[NO]"
 		else: status_str = "[!]"
 		
-		btn.text = "%s %s" % [status_str, s.name]
+		# Check if ship has ANY available weapons for this phase
+		var any_weapon_available = false
+		for w in s.weapons:
+			if _is_weapon_available_in_phase(w):
+				any_weapon_available = true
+				break
 		
-		if s == selected_ship:
+		if not any_weapon_available:
+			status_str = "[N/A]"
+			btn.disabled = true
+			btn.modulate = Color(0.5, 0.5, 0.5, 0.5) # Greyed out
+		elif s == selected_ship:
 			btn.modulate = Color.YELLOW
 		elif is_planned:
 			btn.modulate = Color.GREEN
 		elif not has_targets:
 			btn.modulate = Color.GRAY
 		
-		
+		btn.text = "%s %s" % [status_str, s.name]
+
 		btn.pressed.connect(func():
 			selected_ship = s
 			combat_target = null
@@ -923,10 +1016,37 @@ func _on_turn(direction: int):
 	_update_ui_state()
 
 func _on_commit_move():
-	selected_ship.grid_position = ghost_ship.grid_position
+	# If current path intersects a planet, we need to handle "Enter hex -> Destroy".
+	# We can just apply the path steps one by one.
+	
+	# selected_ship.grid_position = ghost_ship.grid_position # OLD IMMEDIATE JUMP
+	# selected_ship.facing = ghost_ship.facing
+	# selected_ship.speed = current_path.size()
+	
+	# Logic:
+	# 1. Update facing effectively immediately (for the whole move? Or should we simulate steps?)
+	# 2. Update speed.
+	# 3. Simulate movement step by step for collision check.
+	
 	selected_ship.facing = ghost_ship.facing
 	selected_ship.speed = current_path.size()
 	
+	for hex in current_path:
+		selected_ship.grid_position = hex # Teleport step
+		# Collision Check
+		if _check_planet_collision(selected_ship):
+			# Ship died. Stop moving.
+			combat_action_taken = false
+			# Cleanup Ghosts and UI before ending turn
+			ghost_ship.queue_free()
+			ghost_ship = null
+			
+			end_turn() # Will select next ship or switch phase
+			
+			# No need to reset selected_ship = null or update_ui here, 
+			# as end_turn -> start_movement_phase handles everything.
+			return # Exit function
+
 	_update_ship_visuals() # Ensure we re-stack after movement
 	
 	ghost_ship.queue_free()
@@ -974,8 +1094,24 @@ func _draw():
 			current_check_hex += forward_vec
 			_draw_hex_outline(current_check_hex, Color(1, 1, 0, 0.6), 4.0)
 
-	# Weapon Range Highlighting (Combat Phase)
-	if current_phase == Phase.COMBAT and selected_ship and selected_ship.weapons.size() > 0:
+	# PLAN VISUALIZATION
+	if current_phase == Phase.COMBAT and current_combat_state == CombatState.PLANNING:
+		# Iterate queued attacks
+		for atk in queued_attacks:
+			if atk["source"] == selected_ship:
+				# Check if this attack corresponds to the currently selected weapon
+				if atk["weapon_idx"] == selected_ship.current_weapon_index:
+					# Draw line to target
+					var visible_target_pos = atk["target_pos"]
+					if is_instance_valid(atk["target"]): 
+						visible_target_pos = atk["target"].position
+					
+					var start = HexGrid.hex_to_pixel(selected_ship.grid_position)
+					draw_line(start, visible_target_pos, Color(1, 1, 0, 0.5), 2.0)
+					draw_circle(visible_target_pos, 5.0, Color(1, 1, 0, 0.5))
+
+	# Weapon Range Highlight (Combat Phase) - ONLY IN PLANNING
+	if current_phase == Phase.COMBAT and selected_ship and selected_ship.weapons.size() > 0 and current_combat_state == CombatState.PLANNING:
 		var weapon = selected_ship.weapons[selected_ship.current_weapon_index]
 		var w_range = weapon["range"]
 		var w_arc = weapon["arc"]
@@ -1067,13 +1203,42 @@ func _input(event):
 		# Cycle Weapon
 		if current_phase == Phase.COMBAT and selected_ship and selected_ship.weapons.size() > 1:
 			var idx = selected_ship.current_weapon_index
-			idx = (idx + 1) % selected_ship.weapons.size()
-			selected_ship.current_weapon_index = idx
-			var w = selected_ship.weapons[idx]
-			log_message("Weapon switched to: %s (Ammo: %d, Arc: %s)" % [w["name"], w["ammo"], w["arc"]])
+			var start_idx = idx
+			
+			# Cycle until we find an available weapon or circle back
+			while true:
+				idx = (idx + 1) % selected_ship.weapons.size()
+				var w = selected_ship.weapons[idx]
+				if _is_weapon_available_in_phase(w):
+					selected_ship.current_weapon_index = idx # commit
+					log_message("Weapon switched to: %s (Ammo: %d, Arc: %s)" % [w["name"], w["ammo"], w["arc"]])
+					break
+				
+				if idx == start_idx:
+					log_message("No other weapons available in this phase!")
+					break
+
 			queue_redraw()
 			_update_ui_state()
 			_update_camera()
+
+func _is_weapon_available_in_phase(weapon: Dictionary) -> bool:
+	# Rule: Rockets and Torpedoes ("Propelled") are Moving Player Only
+	# If current_phase is COMBAT, check subphase/player
+	
+	var is_propelled = (weapon.get("type") in ["Rocket", "Torpedo"])
+	
+	if is_propelled:
+		# Can only be used by the "Active Moving Player" (current_player_id)
+		# In Passive Fire (subphase 1), firing_player_id is NOT current_player_id.
+		# In Active Fire (subphase 2), firing_player_id IS current_player_id.
+		
+		# So if firing_player_id != current_player_id, these are banned.
+		if firing_player_id != current_player_id:
+			return false
+			
+	return true
+
 
 func _get_ff_arc_hexes(ship: Ship, w_range: int) -> Array:
 	var hexes = [ship.grid_position] # Range 0 is always valid for FF (and is Head-on)
@@ -1148,6 +1313,24 @@ func _get_valid_targets(shooter: Ship) -> Array:
 				
 				if d > w_range: continue
 				
+				# LOS Check (Planet Blocking)
+				var line_hexes = HexGrid.get_line_coords(shooter.grid_position, s.grid_position)
+				var blocked = false
+				for h in line_hexes:
+					if h in planet_hexes:
+						# "Firing through". 
+						# Usually, if shooter or target is IN the planet, it's weird, but technically blocked too?
+						# Or is it only blocked if an INTERMEDIATE hex mimics blocking?
+						# Prompt: "A ship may not fire through a hex containing a planet."
+						# Exclude Start and End? 
+						# If Start is inside, you can't fire out? If End is inside, you can't fire in?
+						# Let's assume strict blocking: If ANY hex in the line is a planet, it's blocked.
+						# Unless the ship is magically "above" it? No, collisions imply same plane.
+						blocked = true
+						break
+				
+				if blocked: continue
+
 				if w_arc == "FF":
 					var valid_hexes = _get_ff_arc_hexes(shooter, w_range)
 					if s.grid_position in valid_hexes:
@@ -1289,3 +1472,64 @@ func end_turn():
 		log_message("Turn ending...")
 		# If somehow called, just ensure UI is updated
 		_update_planning_ui_list()
+
+func _spawn_planets():
+	for hex in planet_hexes:
+		var pos = HexGrid.hex_to_pixel(hex)
+		
+		# Visual Container
+		var p_node = Node2D.new()
+		p_node.position = pos
+		p_node.z_index = -1 # Background object
+		add_child(p_node)
+		
+		# Try to load sprite, fallback to shape
+		var sprite = Sprite2D.new()
+		# Randomly pick from planet1..planet6 if available. For now just planet1.
+		# Note: In a real scenario we'd check availability.
+		# Assuming texture names: "res://Assets/planet1.png"
+		# To be safe against missing files, we check file existence or just TryLoad.
+		var tex = load("res://Assets/planet1.png")
+		if tex:
+			sprite.texture = tex
+			# Scale to fit hex? 
+			# Tile Size is roughly radius. Planet should probably fit inside or slightly overlap.
+			var target_size = HexGrid.TILE_SIZE * 1.8
+			var s = target_size / tex.get_size().x
+			sprite.scale = Vector2(s, s)
+			p_node.add_child(sprite)
+		else:
+			# Fallback Visual (Circle)
+			var poly = Polygon2D.new()
+			var points = PackedVector2Array()
+			var radius = HexGrid.TILE_SIZE * 0.9
+			for i in range(32):
+				var angle = i * TAU / 32.0
+				points.append(Vector2(cos(angle), sin(angle)) * radius)
+			poly.polygon = points
+			poly.color = Color(0.2, 0.6, 0.8) # Earth-ish Blue
+			p_node.add_child(poly)
+
+			# Label
+			var lbl = Label.new()
+			lbl.text = "PLANET"
+			lbl.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+			lbl.position = Vector2(-20, -10)
+			p_node.add_child(lbl)
+
+func _check_planet_collision(ship: Ship):
+	if ship.grid_position in planet_hexes:
+		log_message("%s flew into a Planet and was destroyed!" % ship.name)
+		
+		# Trigger visual explosion (Ship handles self-queue_free after particles)
+		ship.trigger_explosion() 
+		
+		# Play Sound
+		if audio_hit.stream: audio_hit.play()
+		
+		# Logic Removal
+		_on_ship_destroyed(ship)
+		
+		# Stop movement path if this happened mid-move
+		return true
+	return false

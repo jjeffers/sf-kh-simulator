@@ -61,3 +61,25 @@ static func cube_round(frac: Vector3) -> Vector3i:
 	else:
 		s = -q - r
 	return Vector3i(q, r, s)
+
+static func hex_lerp(a: Vector3i, b: Vector3i, t: float) -> Vector3:
+	return Vector3(
+		lerp(float(a.x), float(b.x), t),
+		lerp(float(a.y), float(b.y), t),
+		lerp(float(a.z), float(b.z), t)
+	)
+
+static func get_line_coords(start: Vector3i, end: Vector3i) -> Array[Vector3i]:
+	var N = hex_distance(start, end)
+	var results: Array[Vector3i] = []
+	if N == 0:
+		results.append(start)
+		return results
+		
+	for i in range(N + 1):
+		var t = float(i) / N
+		var cube = hex_lerp(start, end, t)
+		var hex = cube_round(cube)
+		results.append(hex)
+		
+	return results
