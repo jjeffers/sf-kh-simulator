@@ -134,14 +134,31 @@ func binding_pos_update():
 func _draw():
 	if is_exploding: return
 
-	# Draw simple triangle for ship representation
+	# Draw simple representation based on class
 	var size = HexGrid.TILE_SIZE * 0.6
-	# Triangle pointing right (0 degrees)
-	var points = PackedVector2Array([
-		Vector2(size, 0),
-		Vector2(-size/2, -size/2),
-		Vector2(-size/2, size/2)
-	])
+	var points = PackedVector2Array()
+	
+	match ship_class:
+		"Assault Scout":
+			# Heavier, multi-faceted shape (Bullet/Hex-like)
+			# Nose, Right Shoulder, Right Rear, Rear Center, Left Rear, Left Shoulder
+			points = PackedVector2Array([
+				Vector2(size, 0),
+				Vector2(size * 0.2, -size * 0.5),
+				Vector2(-size * 0.5, -size * 0.5),
+				Vector2(-size * 0.3, 0), # Engine notch
+				Vector2(-size * 0.5, size * 0.5),
+				Vector2(size * 0.2, size * 0.5)
+			])
+		"Fighter", _:
+			# Sleek Delta / Dart
+			# Nose, Right Wing, Rear Notch, Left Wing
+			points = PackedVector2Array([
+				Vector2(size, 0),
+				Vector2(-size * 0.5, -size * 0.5),
+				Vector2(-size * 0.2, 0), # Rear Notch
+				Vector2(-size * 0.5, size * 0.5)
+			])
 	# Rotate points based on facing (each facing is 60 degrees = PI/3)
 	var angle = facing * (PI / 3.0)
 	var rotated_points = PackedVector2Array()

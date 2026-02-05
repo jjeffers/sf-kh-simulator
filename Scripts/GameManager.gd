@@ -13,7 +13,11 @@ var combat_target: Ship = null
 
 # Phase Enum
 enum Phase { START, MOVEMENT, COMBAT, END }
+# Combat State Enum
+enum CombatState { NONE, PLANNING, RESOLVING }
+
 var current_phase: Phase = Phase.START
+var current_combat_state: CombatState = CombatState.NONE
 
 # Combat Subphase: 0 = None, 1 = Passive Fire (First), 2 = Active Fire (Second)
 var combat_subphase: int = 0
@@ -41,6 +45,15 @@ var turns_remaining: int = 0
 var start_speed: int = 0
 var can_turn_this_step: bool = false # "Use it or lose it" flag
 var combat_action_taken: bool = false # Lock to prevent click spam
+
+# Combat State
+var queued_attacks: Array = [] # Objects: {source, target, weapon_idx}
+var pending_resolutions: Array = []
+
+# Planning UI
+var panel_planning: PanelContainer
+var container_ships: VBoxContainer
+
 
 func _ready():
 	_setup_ui()
@@ -106,6 +119,34 @@ func _setup_ui():
 	btn_turn_right.text = "Starbd >"
 	btn_turn_right.pressed.connect(func(): _on_turn(1))
 	turn_box.add_child(btn_turn_right)
+	
+	# Planning UI (Right Side)
+	panel_planning = PanelContainer.new()
+	panel_planning.anchor_left = 0.8
+	panel_planning.anchor_right = 1.0
+	panel_planning.anchor_top = 0.0
+	panel_planning.anchor_bottom = 0.75
+	panel_planning.visible = false
+	ui_layer.add_child(panel_planning)
+	
+	var pp_vbox = VBoxContainer.new()
+	panel_planning.add_child(pp_vbox)
+	
+	var pp_lbl = Label.new()
+	pp_lbl.text = "Attack Planning"
+	pp_lbl.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	pp_vbox.add_child(pp_lbl)
+	
+	container_ships = VBoxContainer.new()
+	pp_vbox.add_child(container_ships)
+	
+	# Execute Button
+	var btn_exec = Button.new()
+	btn_exec.text = "EXECUTE ATTACK"
+	btn_exec.modulate = Color(1, 0.5, 0.5)
+	btn_exec.pressed.connect(_on_combat_commit)
+	pp_vbox.add_child(btn_exec)
+
 	# Combat Log
 	# Combat Log
 	var log_panel = PanelContainer.new()
@@ -226,108 +267,66 @@ func _handle_combat_click(hex: Vector3i):
 	
 	# if not combat_target: return # REMOVED: Prevent blocking target selection
 	
+	# Guard: need a selected ship to interact with targets or plan attacks
+	if not selected_ship:
+		return
+	
 	var is_click_on_target = false
 	if combat_target:
 		var mouse_pos = get_local_mouse_position()
 		var dist_to_target = mouse_pos.distance_to(combat_target.position)
 		is_click_on_target = (combat_target.grid_position == hex) or (dist_to_target < HexGrid.TILE_SIZE * 0.8)
 
-	# If click on the target's hex OR visual representation, FIRE
+	# If click on the target's hex OR visual representation, PLAN FIRE
 	if is_click_on_target:
 		var s = combat_target
-		var start_pos = HexGrid.hex_to_pixel(selected_ship.grid_position)
-		var target_pos = s.position # Use actual visual position for laser end
 		
-		combat_action_taken = true
-		# Validate Range and Arc for specific weapon
+		# Validation
 		var weapon = selected_ship.weapons[selected_ship.current_weapon_index]
 		var w_range = weapon["range"]
 		var w_arc = weapon["arc"]
 		var d = HexGrid.hex_distance(selected_ship.grid_position, s.grid_position)
 		
-		# Basic Range Check
+		# Range Check
 		if d > w_range:
 			log_message("[color=red]Target out of range! (Max %d)[/color]" % w_range)
 			return
 
-		# Arc Check (FF)
+		# Arc Check
 		if w_arc == "FF":
 			var valid_hexes = _get_ff_arc_hexes(selected_ship, w_range)
 			if not s.grid_position in valid_hexes:
 				log_message("[color=red]Target not in Forward Firing Arc![/color]")
 				return
-				log_message("[color=red]Target not in Forward Firing Arc![/color]")
-				return
 
-		# Ammo Check
-		if weapon["ammo"] <= 0:
-			log_message("[color=red]Weapon Empty![/color]")
+		# Ammo Check (Account for already queued shots)
+		var queued_count = 0
+		for atk in queued_attacks:
+			if atk["source"] == selected_ship and atk["weapon_idx"] == selected_ship.current_weapon_index:
+				queued_count += 1
+		
+		if weapon["ammo"] - queued_count <= 0:
+			log_message("[color=red]Insufficent Ammo for planned shot![/color]")
 			return
-
-		# FIRE!
-		weapon["ammo"] -= 1
-		combat_action_taken = true
-		
-		# FX
-		_spawn_attack_fx(start_pos, target_pos, weapon.get("type", "Laser"))
-		
-		# Log shot
-		var is_head_on = false
-		if w_arc == "FF":
-			if s.grid_position == selected_ship.grid_position:
-				is_head_on = true
-			else:
-				var fwd_vec = HexGrid.get_direction_vec(selected_ship.facing)
-				var check = selected_ship.grid_position + fwd_vec
-				for i in range(w_range):
-					if check == s.grid_position:
-						is_head_on = true
-						break
-					check += fwd_vec
-		
-		if is_head_on:
-			log_message("Heads On Bonus! +10% Hit Chance")
-		
-		log_message("Firing %s at %s..." % [weapon["name"], s.name])
-		
-		# Roll to Hit
-		if Combat.roll_for_hit(d, weapon, s, is_head_on):
-			# Construct Damage String: 2d10+4
-			var dmg_str = "%s+%d" % [weapon["damage_dice"], weapon["damage_bonus"]]
-			var dmg = Combat.roll_damage(dmg_str)
 			
-			log_message("[color=green]HIT![/color] Range: %d, Damage: %d" % [d, dmg])
-			
-			# Delay damage application to match FX? 
-			# Simple approach: Apply now, showing floating text with delay matching FX
-			
-			# Wait for travel time (approx 0.5s for rockets)
-			var delay = 0.5
-			if weapon.get("type", "Laser") == "Laser": delay = 0.1
-			
-			get_tree().create_timer(delay).timeout.connect(func():
-				s.take_damage(dmg)
-				_spawn_hit_text(target_pos, dmg)
-				if audio_hit.stream: audio_hit.play()
-			)
-
-			# Mark Weapon as Fired
-			weapon["fired"] = true
-
-			# Wait for turn end (Total animation time)
-			get_tree().create_timer(3.0).timeout.connect(_post_fire_check)
-		else:
-			log_message("[color=red]MISS![/color] Range: %d" % d)
-			# Mark Weapon as Fired (Even on miss?)
-			# Standard rules: A shot is a shot.
-			weapon["fired"] = true
-			
-			# Wait for animation (2.0s)
-			get_tree().create_timer(2.0).timeout.connect(_post_fire_check)
-
+		# Check if already targeting this specific enemy with this weapon?
+		# Rules don't say we can't double tap, so allow it.
+		
+		# ADD TO PLAN
+		queued_attacks.append({
+			"source": selected_ship,
+			"target": s,
+			"weapon_idx": selected_ship.current_weapon_index,
+			"weapon_name": weapon["name"]
+		})
+		
+		log_message("Planned: %s -> %s (%s)" % [selected_ship.name, s.name, weapon["name"]])
+		
+		_update_planning_ui_list()
+		queue_redraw()
 
 	else:
-		# Check if valid enemies at this hex to switch target
+		# Check if switching target (Enemy)
 		for s in ships:
 			if s.player_id != firing_player_id and s.grid_position == hex:
 				var d = HexGrid.hex_distance(selected_ship.grid_position, s.grid_position)
@@ -400,32 +399,122 @@ func _spawn_attack_fx(start: Vector2, end: Vector2, type: String):
 
 		if audio_laser.stream: audio_laser.play()
 
-func _post_fire_check():
-	# Check if selected_ship has ANY valid targets remaining with UNFIRED, LOADED weapons
-	var targets = _get_valid_targets(selected_ship)
+func _on_combat_commit():
+	if current_combat_state != CombatState.PLANNING: return
 	
-	if targets.size() > 0:
-		# Continue Turn
-		combat_action_taken = false
-		log_message("Attack Complete. Select next weapon [W] or target.")
+	current_combat_state = CombatState.RESOLVING
+	pending_resolutions = queued_attacks.duplicate()
+	panel_planning.visible = false
+	
+	log_message("Resolving %d attacks..." % pending_resolutions.size())
+	_process_next_attack()
+
+func _process_next_attack():
+	if pending_resolutions.size() == 0:
+		_on_resolution_complete()
+		return
 		
-		# Auto-switch to next available weapon if current is done?
-		var weapon = selected_ship.weapons[selected_ship.current_weapon_index]
-		if weapon.get("fired", false) or weapon["ammo"] <= 0:
-			# Find next valid weapon
-			for i in range(selected_ship.weapons.size()):
-				var w = selected_ship.weapons[i]
-				if not w.get("fired", false) and w["ammo"] > 0:
-					selected_ship.current_weapon_index = i
-					log_message("Auto-switched to %s" % w["name"])
+	var atk = pending_resolutions.pop_front()
+	var source: Ship = atk["source"]
+	var target: Ship = atk["target"]
+	var weapon_idx: int = atk["weapon_idx"]
+	
+	# Visual focus
+	selected_ship = source
+	combat_target = target
+	_update_camera()
+	
+	# Validate Sources
+	if not is_instance_valid(source):
+		log_message("Source ship destroyed! Attack fizzles.")
+		get_tree().create_timer(1.0).timeout.connect(_process_next_attack)
+		return
+
+	# If ship exists but is technically dead/dying (hull <= 0)
+	if source.hull <= 0:
+		log_message("%s destroyed before firing! Attack fizzles." % source.name)
+		# Consume ammo on wreck if possible, though it doesn't matter much
+		source.weapons[weapon_idx]["ammo"] -= 1
+		get_tree().create_timer(1.0).timeout.connect(_process_next_attack)
+		return
+
+	var weapon = source.weapons[weapon_idx]
+	# Strict Ammo Consumption (happens now at resolution)
+	weapon["ammo"] -= 1
+	weapon["fired"] = true # Mark as fired for this turn
+	
+	if not is_instance_valid(target) or target.hull <= 0:
+		log_message("%s firing at WRECK of %s! (Wasted)" % [source.name, target.name if target else "Unknown"])
+		_spawn_attack_fx(HexGrid.hex_to_pixel(source.grid_position), target.position if target else source.position, weapon.get("type"))
+		# Wait for FX then continue
+		get_tree().create_timer(1.5).timeout.connect(_process_next_attack)
+		return
+
+	# Execute Fire Logic
+	log_message("%s firing %s at %s" % [source.name, weapon["name"], target.name])
+	
+	# FX
+	var start_pos = HexGrid.hex_to_pixel(source.grid_position)
+	var target_pos = target.position
+	_spawn_attack_fx(start_pos, target_pos, weapon.get("type", "Laser"))
+	
+	# Hit Calc
+	var d = HexGrid.hex_distance(source.grid_position, target.grid_position)
+	var is_head_on = false # Recalculate or store from plan? Let's recalc dynamic (positions haven't changed)
+	if weapon["arc"] == "FF":
+		if target.grid_position == source.grid_position:
+			is_head_on = true
+		else:
+			var fwd_vec = HexGrid.get_direction_vec(source.facing)
+			var check = source.grid_position + fwd_vec
+			for i in range(weapon["range"]):
+				if check == target.grid_position:
+					is_head_on = true
 					break
+				check += fwd_vec
+	
+	if Combat.roll_for_hit(d, weapon, target, is_head_on):
+		var dmg_str = "%s+%d" % [weapon["damage_dice"], weapon["damage_bonus"]]
+		var dmg = Combat.roll_damage(dmg_str)
+		log_message("[color=green]HIT![/color] Dmg: %d" % dmg)
 		
-		queue_redraw()
-		_update_ui_state()
-		_update_camera() # Ensure camera stays valid
+		# Delay damage for FX
+		var delay = 0.5
+		if weapon.get("type", "Laser") == "Laser": delay = 0.1
+		
+		get_tree().create_timer(delay).timeout.connect(func():
+			if is_instance_valid(target):
+				target.take_damage(dmg)
+				_spawn_hit_text(target_pos, dmg)
+				if audio_hit.stream: audio_hit.play()
+		)
 	else:
-		# No more valid attacks
-		end_turn()
+		log_message("[color=red]MISS![/color]")
+	
+	# Wait for animation
+	get_tree().create_timer(2.0).timeout.connect(_process_next_attack)
+
+func _on_resolution_complete():
+	log_message("Resolution Phase Complete.")
+	
+	# Mark all ships of this player as "Has Fired" (Actually we tracked individual weapons)
+	# But we need to transition phase if no one else can fire?
+	# Or just check if we have more ships?
+	# Users prompt: "attacks must all be planned out first, then resolved"
+	# Implies one big batch for the player.
+	
+	# We should check if there are ANY OTHER ships for this player that haven't fired?
+	# But we just did the planning phase for THE ENTIRE SIDE (conceptually).
+	# However `start_combat_active` says "Player Plan".
+	
+	# If we want to allow "Plan for A, Commit. Plan for B, Commit" -> no, user said "attacks must all be planned out first"
+	# So we assume the user has planned EVERYTHING they want to.
+	# So we end this player's combat subphase.
+	
+	if combat_subphase == 1:
+		start_combat_active()
+	else:
+		end_turn_cycle()
 
 func _spawn_hit_text(pos: Vector2, damage: int):
 	var lbl = Label.new()
@@ -637,7 +726,7 @@ func start_combat_passive():
 	if audio_phase_change and audio_phase_change.stream:
 		audio_phase_change.play()
 	
-	_check_combat_availability()
+	_start_combat_planning()
 
 func start_combat_active():
 	current_phase = Phase.COMBAT
@@ -647,76 +736,76 @@ func start_combat_active():
 	if audio_phase_change and audio_phase_change.stream:
 		audio_phase_change.play()
 	
-	_check_combat_availability()
+	_start_combat_planning()
 
-func _check_combat_availability():
-	# Find un-fired ships for FIRING player
-	# Loop until we find a ship with targets OR perform phase transition
-	var found_valid_shooter = false
+func _start_combat_planning():
+	current_combat_state = CombatState.PLANNING
+	queued_attacks.clear()
+	selected_ship = null
+	combat_target = null
 	
-	while not found_valid_shooter:
-		var available = ships.filter(func(s): return s.player_id == firing_player_id and not s.has_fired and not s.is_exploding)
-		
-		if available.size() == 0:
-			if combat_subphase == 1:
-				start_combat_active()
-			else:
-				end_turn_cycle()
-			return
+	# Reset "fired" state visually for planning (actual state reset happens differently)
+	# Actually, we need to track "planned usage".
+	# For now, let's just refresh the UI.
+	
+	log_message("Combat Planning: Player %d" % firing_player_id)
+	
+	_update_camera()
+	_update_ui_state()
+	_update_planning_ui_list()
+	queue_redraw()
 
-		# Check the first available ship
-		# We must iterate through them because available[0] might have no targets, 
-		# but available[1] might have targets.
-		# THE RULE: "If no ships have any targets then end that turn" -> implicaiton: we skip useless ships.
-		# "display a message indicating that no targets were avaialble."
+func _update_planning_ui_list():
+	# Clear existing
+	for c in container_ships.get_children():
+		c.queue_free()
 		
-		# Let's iterate through the available list
-		var candidate = null
+	# Find ships for firing player
+	var my_ships = ships.filter(func(s): return s.player_id == firing_player_id and not s.is_exploding)
+	
+	for s in my_ships:
+		var btn = Button.new()
+		btn.alignment = HORIZONTAL_ALIGNMENT_LEFT
 		
-		for s in available:
-			var targets = _get_valid_targets(s)
-			if targets.size() > 0:
-				candidate = s
+		# Status Check
+		var targets = _get_valid_targets(s)
+		var has_targets = targets.size() > 0
+		var is_planned = false
+		for atk in queued_attacks:
+			if atk["source"] == s:
+				is_planned = true
 				break
-			else:
-				# Mark as fired (Skipped)
-				log_message("Skipping %s (No valid targets)" % s.name)
-				s.has_fired = true
-				
-		if candidate:
-			found_valid_shooter = true
-			selected_ship = candidate
-			
-			# Ensure we start with a valid, unfired weapon
-			var cur_w = selected_ship.weapons[selected_ship.current_weapon_index]
-			if cur_w["ammo"] <= 0 or cur_w.get("fired", false):
-				for i in range(selected_ship.weapons.size()):
-					var w = selected_ship.weapons[i]
-					if w["ammo"] > 0 and not w.get("fired", false):
-						selected_ship.current_weapon_index = i
-						break
 		
-			# Reset action lock
-			combat_action_taken = false
-			
-			# Auto-target logic
+		var status_str = "[ ]"
+		if is_planned: status_str = "[ORD]" # Ordered
+		elif not has_targets: status_str = "[NO]"
+		else: status_str = "[!]"
+		
+		btn.text = "%s %s" % [status_str, s.name]
+		
+		if s == selected_ship:
+			btn.modulate = Color.YELLOW
+		elif is_planned:
+			btn.modulate = Color.GREEN
+		elif not has_targets:
+			btn.modulate = Color.GRAY
+		
+		
+		btn.pressed.connect(func():
+			selected_ship = s
 			combat_target = null
-			var targets = _get_valid_targets(selected_ship)
-			if targets.size() > 0:
-				combat_target = targets[0]
-			
-			queue_redraw()
+			_update_planning_ui_list()
 			_update_ui_state()
-			_update_camera()
-			log_message("Combat: Player %d Firing (%s)" % [firing_player_id, "Passive" if combat_subphase == 1 else "Active"])
-			
-			# Ensure visual stack is updated
 			_update_ship_visuals()
-		else:
-			# Loop will continue, checking 'available' again.
-			# Since we marked ships with no targets as 'has_fired', the list size will shrink.
-			# Eventually it hits 0 and changes phase.
-			continue
+			queue_redraw()
+		)
+		
+		container_ships.add_child(btn)
+	
+	panel_planning.visible = (current_phase == Phase.COMBAT and current_combat_state == CombatState.PLANNING)
+
+# _check_combat_availability removed/replaced by explicit planning flow
+
 
 func end_turn_cycle():
 	log_message("Turn Complete. Switching Active Player.")
@@ -1195,5 +1284,8 @@ func end_turn():
 		start_movement_phase() # Loop to next ship
 		
 	elif current_phase == Phase.COMBAT:
+		# Legacy: Combat flow is now handled by Planning UI and Execute button
 		if selected_ship: selected_ship.has_fired = true
-		_check_combat_availability() # Loop to next ship or next subphase
+		log_message("Turn ending...")
+		# If somehow called, just ensure UI is updated
+		_update_planning_ui_list()
