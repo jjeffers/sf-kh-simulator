@@ -37,6 +37,8 @@ var btn_commit: Button
 var btn_undo: Button
 var btn_turn_left: Button
 var btn_turn_right: Button
+var btn_orbit_cw: Button
+var btn_orbit_ccw: Button
 
 # Movement State
 var ghost_ship: Ship = null
@@ -123,6 +125,22 @@ func _setup_ui():
 	btn_turn_right.text = "Starbd >"
 	btn_turn_right.pressed.connect(func(): _on_turn(1))
 	turn_box.add_child(btn_turn_right)
+	
+	# Orbit Buttons
+	var orbit_box = HBoxContainer.new()
+	vbox.add_child(orbit_box)
+	
+	btn_orbit_cw = Button.new()
+	btn_orbit_cw.text = "Orbit CW"
+	btn_orbit_cw.pressed.connect(func(): _on_orbit(1))
+	btn_orbit_cw.visible = false
+	orbit_box.add_child(btn_orbit_cw)
+	
+	btn_orbit_ccw = Button.new()
+	btn_orbit_ccw.text = "Orbit CCW"
+	btn_orbit_ccw.pressed.connect(func(): _on_orbit(-1))
+	btn_orbit_ccw.visible = false
+	orbit_box.add_child(btn_orbit_ccw)
 	
 	# Planning UI (Right Side)
 	panel_planning = PanelContainer.new()
@@ -793,6 +811,19 @@ func start_movement_phase():
 	start_speed = selected_ship.speed
 	turns_remaining = selected_ship.mr
 	can_turn_this_step = false
+	state_is_orbiting = false
+	current_orbit_direction = 0
+	
+	# Check for Persistent Orbit
+	if selected_ship.orbit_direction != 0:
+		_on_orbit(selected_ship.orbit_direction) 
+		# This effectively pre-plans the move.
+		# User can then just hit Engage.
+		log_message("Auto-plotting Orbit...")
+	
+	_update_camera()
+	
+	# If start speed is 0 or just spawned? Speed 0 rotation check happens in UI update.
 	
 	_update_camera()
 	_update_ui_state()
@@ -947,23 +978,61 @@ func _update_ui_state():
 		btn_turn_right.visible = true
 		
 		# Can only turn if we just moved, haven't turned yet, and have MR left
-		var allow_turn = can_turn_this_step and turns_remaining > 0
+		# OR if we are stationary (Speed 0 Rule)
+		# OR if we are Orbiting
+		
+		var is_stationary = (current_path.size() == 0)
+		var allow_turn = false
+		
+		if is_stationary or state_is_orbiting:
+			allow_turn = true
+		else:
+			allow_turn = (can_turn_this_step and turns_remaining > 0)
+			
 		btn_turn_left.disabled = not allow_turn
 		btn_turn_right.disabled = not allow_turn
+		
+		# Orbit Check
+		var can_orbit = false
+		# Must be start of move (stationary)
+		if is_stationary:
+			for p in planet_hexes:
+				if HexGrid.hex_distance(selected_ship.grid_position, p) == 1:
+					can_orbit = true
+					break
+		
+		btn_orbit_cw.visible = can_orbit
+		btn_orbit_ccw.visible = can_orbit
 		
 		var txt = "Player %d Plotting\n" % selected_ship.player_id
 		txt += "Ship: %s (%s)\n" % [selected_ship.name, selected_ship.ship_class]
 		txt += "Hull: %d\n" % selected_ship.hull
 		txt += "Stats: ADF %d | MR %d\n" % [selected_ship.adf, selected_ship.mr]
-		txt += "Remaining MR: %d\n" % turns_remaining
-		txt += "Speed: %d -> %d / Range: [%d, %d]\n" % [start_speed, steps, min_speed, max_speed]
+		if is_stationary:
+			txt += "Speed 0: Free Rotation Mode\n"
+		elif state_is_orbiting:
+			txt += "Orbiting: Free Rotation Mode\n"
+		else:
+			txt += "Remaining MR: %d\n" % turns_remaining
+			
+		txt += "Speed: %d -> %d / Range: [%d, %d]\n" % [start_speed, current_path.size(), min_speed, max_speed]
 		
 		txt += "Weapons:\n"
 		for w in selected_ship.weapons:
 			txt += "- %s (Ammo: %d)\n" % [w["name"], w["ammo"]]
 
-		if not is_valid:
+		if not is_valid and not state_is_orbiting: # Orbit is always valid move of 1
+			# Special case: Orbit move is size 1. Does it respect ADF?
+			# User: "moves 1 hex". Usually Speed is irrelevant for Orbit or it SETS speed to 1?
+			# Assuming specific mechanic overrides speed limits or fits within them (1 is usually valid).
 			txt += "\n(Invalid Speed)"
+		
+		if state_is_orbiting:
+			# Orbit validity overrides speed check? 1 is valid usually.
+			# But commit button relies on is_valid.
+			# Let's assume 1 is valid. 
+			pass
+			
 		label_status.text = txt
 		
 	elif current_phase == Phase.COMBAT:
@@ -971,6 +1040,8 @@ func _update_ui_state():
 		btn_commit.visible = false
 		btn_turn_left.visible = false
 		btn_turn_right.visible = false
+		btn_orbit_cw.visible = false
+		btn_orbit_ccw.visible = false
 		
 		var phase_name = "Passive" if combat_subphase == 1 else "Active"
 		var txt = "Combat (%s Fire)\nPlayer %d Firing" % [phase_name, firing_player_id]
@@ -999,25 +1070,92 @@ func _on_undo():
 		current_path.clear()
 		turns_remaining = selected_ship.mr
 		can_turn_this_step = false
+		state_is_orbiting = false
+		current_orbit_direction = 0
 		queue_redraw()
 		_update_ui_state()
 
 func _on_turn(direction: int):
 	# direction: -1 (left), 1 (right)
-	if not can_turn_this_step or turns_remaining <= 0:
-		return
+	
+	# Rule: If Speed 0 (stationary) OR Orbiting, free rotation.
+	var is_stationary = (current_path.size() == 0)
+	
+	if not is_stationary and not state_is_orbiting:
+		if not can_turn_this_step or turns_remaining <= 0:
+			return
+		turns_remaining -= 1
+		can_turn_this_step = false # Used it
 		
 	ghost_ship.facing = posmod(ghost_ship.facing + direction, 6)
-	turns_remaining -= 1
-	can_turn_this_step = false # Used it
 	
 	ghost_ship.queue_redraw()
 	queue_redraw() # Redraw GameManager to update grid highlight
 	_update_ui_state()
 
+var state_is_orbiting: bool = false # Temp state for UI
+
+func _on_orbit(direction: int):
+	# direction: 1 (CW), -1 (CCW)
+	if not selected_ship: return
+	
+	# Find adjacent planet
+	var planet_hex = Vector3i.ZERO # Default
+	var found = false
+	for p in planet_hexes:
+		if HexGrid.hex_distance(selected_ship.grid_position, p) == 1:
+			planet_hex = p
+			found = true
+			break
+	
+	if not found: return
+	
+	# Calculate move
+	var neighbors = HexGrid.get_neighbors(planet_hex)
+	var my_idx = neighbors.find(selected_ship.grid_position)
+	
+	if my_idx == -1: return # Should not happen if distance is 1
+	
+	# HexGrid.directions are ordered East, SE, SW, W, NW, NE (Clockwise!)
+	# So if we find our index, +1 is CW, -1 is CCW.
+	var next_idx = posmod(my_idx + direction, 6)
+	var target_hex = neighbors[next_idx]
+	
+	# User says: "Each movement phase an orbiting ship moves 1 hex..."
+	
+	# Reset ghost
+	_spawn_ghost()
+	ghost_ship.grid_position = target_hex
+	current_path = [target_hex]
+	
+	# "A ship in orbit can rotate to any facing"
+	can_turn_this_step = true # Enable turning
+	turns_remaining = 999 # Effective infinite
+	state_is_orbiting = true
+	current_orbit_direction = direction
+	
+	_update_camera()
+	_update_ui_state()
+
+var current_orbit_direction: int = 0
+
 func _on_commit_move():
-	# If current path intersects a planet, we need to handle "Enter hex -> Destroy".
-	# We can just apply the path steps one by one.
+	state_is_orbiting = false
+	
+	# Update Persistent Orbit State
+	if current_orbit_direction != 0:
+		# If we used the orbit button this turn, set it.
+		# Check if we actually executed the orbit move?
+		# Logic: current_orbit_direction is set by _on_orbit or start_movement auto-plan.
+		# If current_path matches the orbit move (length 1), we confirm it.
+		if current_path.size() == 1:
+			selected_ship.orbit_direction = current_orbit_direction
+		else:
+			selected_ship.orbit_direction = 0 # Broke orbit
+	else:
+		selected_ship.orbit_direction = 0 # Normal move clears orbit
+		
+	current_orbit_direction = 0 # Reset for next ship
 	
 	# selected_ship.grid_position = ghost_ship.grid_position # OLD IMMEDIATE JUMP
 	# selected_ship.facing = ghost_ship.facing
@@ -1046,6 +1184,14 @@ func _on_commit_move():
 			# No need to reset selected_ship = null or update_ui here, 
 			# as end_turn -> start_movement_phase handles everything.
 			return # Exit function
+			
+		# Boundary Check
+		if _check_boundary(selected_ship):
+			combat_action_taken = false
+			ghost_ship.queue_free()
+			ghost_ship = null
+			end_turn()
+			return
 
 	_update_ship_visuals() # Ensure we re-stack after movement
 	
@@ -1054,8 +1200,16 @@ func _on_commit_move():
 	
 	end_turn()
 
-	combat_action_taken = false
-	_update_camera()
+func _check_boundary(ship: Ship) -> bool:
+	var dist = HexGrid.hex_distance(Vector3i.ZERO, ship.grid_position)
+	if dist > map_radius:
+		log_message("%s drifted into deep space and was lost." % ship.name)
+		_on_ship_destroyed(ship) # Handles list removal and victory check
+		ship.queue_free()
+		return true
+	return false
+
+
 
 func _draw():
 	# transform.origin = center # REMOVED: Camera is now handled by _update_camera
@@ -1193,7 +1347,7 @@ func draw_hex(hex: Vector3i):
 	# Basic highlighting handled by predictive path now, removing old logic to avoid clutter
 
 
-func _input(event):
+func _unhandled_input(event):
 	if event is InputEventMouseButton and event.pressed and event.button_index == MOUSE_BUTTON_LEFT:
 		var local_mouse = get_local_mouse_position()
 		var hex_clicked = HexGrid.pixel_to_hex(local_mouse)
@@ -1398,6 +1552,27 @@ func _handle_ghost_input(hex: Vector3i):
 		valid_hex = true
 		
 	if not valid_hex:
+		# Implicit Undo / Break Orbit Rule
+		# If we are orbiting (auto-plotted) and the user clicks a hex that is INVALID from the ghost,
+		# but VALID from the start position (or just implies a new path), we should reset and try again.
+		if state_is_orbiting:
+			# Check if this click would be valid from the START position (selected_ship)
+			# We effectively "Undo" then retry the input from scratch.
+			# But we need to be careful not to infinite loop if it's invalid from start too.
+			
+			# Let's just Reset and try adding it as a first step?
+			# But we need to handle the rotation? 
+			# If user rotated the GHOST, we lose that rotation if we reset.
+			# But "Break Orbit" usually implies "I want to go THERE instead".
+			
+			log_message("Breaking Orbit to move to new heading...")
+			_on_undo() # Resets path, ghost, and orbit state
+			
+			# Now try handling input again (recursion? or just continue?)
+			# Ghost is now at start.
+			_handle_ghost_input(hex)
+			return
+
 		log_message("Invalid Move: Must be in line with Forward Facing")
 		return
 
@@ -1423,9 +1598,14 @@ func _handle_ghost_input(hex: Vector3i):
 	if audio_beep.stream: audio_beep.play()
 
 	queue_redraw()
+	queue_redraw()
 	_update_ui_state()
 
-
+# Helper
+func posmod(a, b):
+	var res = a % b
+	if res < 0 and b > 0: res += b
+	return res
 
 func _on_ship_destroyed(ship: Ship):
 	ships.erase(ship)

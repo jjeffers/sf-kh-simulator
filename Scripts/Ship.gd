@@ -14,6 +14,7 @@ var facing: int = 0 : set = _set_facing # 0 to 5, direction index
 var speed: int = 0
 var has_moved: bool = false
 var has_fired: bool = false
+var orbit_direction: int = 0 # 0=None, 1=CW, -1=CCW
 
 # Class and Weapons
 var ship_class: String = "Scout"
