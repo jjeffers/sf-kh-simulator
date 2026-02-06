@@ -9,6 +9,9 @@ extends Node2D
 
 var max_hull: int = 15
 var hull: int = 15
+var icm_max: int = 0
+var icm_current: int = 0
+
 var grid_position: Vector3i = Vector3i.ZERO : set = _set_grid_position
 var facing: int = 0 : set = _set_facing # 0 to 5, direction index
 var speed: int = 0
@@ -34,6 +37,8 @@ func configure_fighter():
 	hull = max_hull
 	adf = 5
 	mr = 5
+	icm_max = 0
+	icm_current = 0
 	
 	weapons.clear()
 	# Assault Rockets: Range 4, Forward Firing (FF), Ammo 3, 2d10+4
@@ -93,6 +98,8 @@ func configure_frigate():
 	hull = max_hull
 	adf = 3
 	mr = 3
+	icm_max = 4
+	icm_current = 4
 	
 	weapons.clear()
 	# Laser Battery: Range 10 (User said Laser Canon is 10, Battery usually 9? Keeping Battery as 9 for consistency or standard?)
@@ -160,6 +167,8 @@ func configure_destroyer():
 	hull = max_hull
 	adf = 3
 	mr = 2
+	icm_max = 4
+	icm_current = 4
 	
 	weapons.clear()
 	# Laser Battery: Range 10, 360 Arc, 1d10
@@ -225,6 +234,8 @@ func configure_heavy_cruiser():
 	hull = max_hull
 	adf = 1
 	mr = 1
+	icm_max = 8
+	icm_current = 8
 	
 	weapons.clear()
 	# Laser Batteries (x3 - Separate entries)
@@ -276,6 +287,87 @@ func configure_heavy_cruiser():
 		"ammo": 4,
 		"max_ammo": 4,
 		"damage_dice": "4d10",
+		"damage_bonus": 0,
+		"fired": false
+	})
+	
+	current_weapon_index = 0
+	
+func configure_space_station(force_hull: int = -1):
+	ship_class = "Space Station"
+	defense = "RH"
+	
+	if force_hull > 0:
+		hull = force_hull
+	else:
+		# Random Hull 20-200, Normal Distribution around 100
+		# randfn(mean, deviation). 
+		# Range 20-200 is roughly +/- 2.5 sigma if sigma is 30?
+		var h = randfn(100.0, 40.0)
+		hull = int(clamp(h, 20, 200))
+		
+	max_hull = hull
+	adf = 0
+	mr = 0
+	
+	# ICM Scaling: floor(H / 25), clmap 2-8
+	icm_max = int(clamp(floor(hull / 25.0), 2, 8))
+	icm_current = icm_max
+	
+	weapons.clear()
+	
+	# Laser Batteries: floor(H / 60) + 1, clamp 1-3
+	var lb_count = int(clamp(floor(hull / 60.0) + 1, 1, 3))
+	for i in range(lb_count):
+		weapons.append({
+			"name": "Laser Battery %d" % (i+1),
+			"type": "Laser",
+			"range": 10, # Station batteries might have better range? keeping standard 10
+			"arc": "360",
+			"ammo": 999,
+			"max_ammo": 999,
+			"damage_dice": "1d10",
+			"damage_bonus": 0,
+			"fired": false
+		})
+		
+	# Rocket Batteries: floor(H / 15), clamp 2-12
+	var rb_count = int(clamp(floor(hull / 15.0), 2, 12))
+	# Consolidate into one entry? Or separate? 
+	# "2 to 12 rocket batteries". If consolidated, max_ammo = count.
+	# "1 shot per phase" rule usually applies "per weapon TYPE" or "per mount"?
+	# If we have 12 mounts, can we fire 12 times? 
+	# User rules: "a ship may only fire 1 rocket battery per combat phase".
+	# If a station has 12, surely it can fire more than 1? 
+	# A Space Station is likely an exception or "multi-mount" means multiple attacks.
+	# However, to avoid complexity, let's group them or allow them as separate entries?
+	# If `_is_weapon_available_in_phase` checks TYPE, it blocks ALL.
+	# We might need to flag them as separate weapons to allow multi-fire if they are separate mounts.
+	# But `Rocket Battery` restriction was specific.
+	# Let's assume for a STATION (Orbiting Fortress), it can fire ALL of them.
+	# Logic update needed in GameManager if "Type" check blocks it.
+	# For now, let's add them as a single entry with AMMO = Count, 
+	# assuming the specific rule "1 per phase" applies to standard ships.
+	# If the user wants 12 shots per turn, we need 12 entries or code changes.
+	# Given "2 to 12", 12 line items is messy.
+	# Let's add ONE entry "Rocket Battery Array" with Ammo = Count.
+	# But `GameManager` enforces 1 firing per phase.
+	# Prompt says "They have from... 2 to 12 rocket batteries".
+	# Effect: Station should be scary. Limiting to 1 shot is weak.
+	# Let's treat them as separate entries if feasible, OR special rule for Stations.
+	# Let's stick to the user's explicit rule for now: "1 RB per phase".
+	# If the station is huge, maybe it has multiple FACINGS?
+	# Simpler: One entry "Rocket Battery Swarm" with Ammo = RB Count.
+	# But wait, user said "varying from 2 to 12".
+	# Let's just create ONE entry with `rb_count` Ammo.
+	weapons.append({
+		"name": "Rocket Batteries",
+		"type": "Rocket Battery",
+		"range": 3,
+		"arc": "360",
+		"ammo": rb_count,
+		"max_ammo": rb_count,
+		"damage_dice": "2d10",
 		"damage_bonus": 0,
 		"fired": false
 	})
@@ -403,6 +495,23 @@ func _draw():
 				Vector2(size * 0.2, size * 0.7), # L Wingtip Fwd
 				Vector2(size * 0.4, size * 0.4) # L Shoulder
 			])
+		"Space Station":
+			# Hexagonal Fortress with Spokes
+			size = HexGrid.TILE_SIZE * 0.8
+			points = PackedVector2Array()
+			# Central Hexagon
+			for i in range(6):
+				var angle = i * PI / 3.0
+				points.append(Vector2(cos(angle), sin(angle)) * size * 0.6)
+			
+			# Outer Spokes (Add as separate lines? Polygon needs loop)
+			# Let's make a star shape
+			points = PackedVector2Array()
+			for i in range(12):
+				var angle = i * PI / 6.0
+				# Alt between Long and Short
+				var r = size if (i % 2 == 0) else size * 0.4
+				points.append(Vector2(cos(angle), sin(angle)) * r)
 		"Fighter", _:
 			# Sleek Delta / Dart
 			# Nose, Right Wing, Rear Notch, Left Wing

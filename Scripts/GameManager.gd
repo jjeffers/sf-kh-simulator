@@ -59,6 +59,10 @@ var planet_hexes: Array[Vector3i] = [Vector3i(0, 0, 0)] # Center hex
 var panel_planning: PanelContainer
 var container_ships: VBoxContainer
 
+# ICM UI
+signal icm_decision_made(count: int)
+var panel_icm: PanelContainer
+
 
 func _ready():
 	_setup_ui()
@@ -374,7 +378,48 @@ func _handle_combat_click(hex: Vector3i):
 					_update_ship_visuals() # Ensure target pops to top
 					break
 
-func _spawn_attack_fx(start: Vector2, end: Vector2, type: String):
+func _spawn_icm_fx(target: Ship, attacker_pos: Vector2, duration: float = 0.5):
+	var start = target.position
+	# Intercept point roughly 1 hex towards attacker
+	var dir = (attacker_pos - start).normalized()
+	var intercept_pos = start + dir * HexGrid.TILE_SIZE * 0.8
+	
+	# Create multiple small missiles
+	for i in range(3):
+		var m = Polygon2D.new()
+		m.polygon = PackedVector2Array([Vector2(3,0), Vector2(-2, -1), Vector2(-2, 1)])
+		m.color = Color.WHITE
+		m.position = start
+		m.rotation = dir.angle()
+		add_child(m)
+		
+		var tween = create_tween()
+		# Scale timing based on provided duration
+		# We want them to arrive slightly before the end of the full duration
+		var my_time = duration * 0.8 # Arrive at 80% of travel time (near target)
+		
+		# Slight spread
+		var offset = Vector2(randf_range(-10, 10), randf_range(-10, 10))
+		tween.tween_property(m, "position", intercept_pos + offset, my_time + (i*0.05))
+		tween.tween_callback(func():
+			m.queue_free()
+			# Boom
+			var boom = CPUParticles2D.new()
+			boom.position = intercept_pos + offset
+			boom.emitting = true
+			boom.one_shot = true
+			boom.explosiveness = 1.0
+			boom.amount = 10
+			boom.spread = 180
+			boom.gravity = Vector2.ZERO
+			boom.initial_velocity_min = 20
+			boom.initial_velocity_max = 40
+			boom.color = Color.YELLOW
+			add_child(boom)
+			get_tree().create_timer(1.0).timeout.connect(boom.queue_free)
+		)
+
+func _spawn_attack_fx(start: Vector2, end: Vector2, type: String) -> float:
 	if type == "Rocket" or type == "Rocket Battery":
 		# Rocket Visual
 		var container = Node2D.new()
@@ -420,10 +465,10 @@ func _spawn_attack_fx(start: Vector2, end: Vector2, type: String):
 			get_tree().create_timer(1.0).timeout.connect(container.queue_free)
 		)
 
-		if audio_laser.stream: audio_laser.play() # Use existing sound like a launch
+		if audio_laser.stream: audio_laser.play()
+		return travel_time
 		
 	elif type == "Torpedo":
-		# Low Freq Launch Sound?
 		if audio_laser.stream: audio_laser.play()
 
 		var container = Node2D.new()
@@ -465,6 +510,7 @@ func _spawn_attack_fx(start: Vector2, end: Vector2, type: String):
 			glow.emitting = false
 			get_tree().create_timer(1.0).timeout.connect(container.queue_free)
 		)
+		return travel_time
 
 	else:
 		# Laser or Laser Canon
@@ -481,6 +527,7 @@ func _spawn_attack_fx(start: Vector2, end: Vector2, type: String):
 		tween.tween_callback(line.queue_free)
 
 		if audio_laser.stream: audio_laser.play()
+		return 0.1 # Instant
 
 func _on_combat_commit():
 	if current_combat_state != CombatState.PLANNING: return
@@ -492,27 +539,30 @@ func _on_combat_commit():
 	log_message("Resolving %d attacks..." % pending_resolutions.size())
 	_process_next_attack()
 
+# Async recursive-like function (handles sequencing)
 func _process_next_attack():
 	if pending_resolutions.size() == 0:
 		_on_resolution_complete()
 		return
 		
 	var atk = pending_resolutions.pop_front()
-	var source = atk["source"] # Remove type hint to allow check? Or keep it, but check validity before use
+	var source = atk["source"]
 	var target = atk["target"]
 	var weapon_idx: int = atk["weapon_idx"]
 	
 	# Validate Source FIRST
 	if not is_instance_valid(source):
 		log_message("Source ship destroyed! Attack fizzles.")
-		get_tree().create_timer(1.0).timeout.connect(_process_next_attack)
+		await get_tree().create_timer(1.0).timeout
+		_process_next_attack()
 		return
 
 	# If ship exists but is technically dead/dying (hull <= 0)
 	if source.hull <= 0:
 		log_message("%s destroyed before firing! Attack fizzles." % source.name)
 		source.weapons[weapon_idx]["ammo"] -= 1
-		get_tree().create_timer(1.0).timeout.connect(_process_next_attack)
+		await get_tree().create_timer(1.0).timeout
+		_process_next_attack()
 		return
 		
 	# Now safe to assign and focus
@@ -529,31 +579,27 @@ func _process_next_attack():
 	var weapon = source.weapons[weapon_idx]
 	# Strict Ammo Consumption (happens now at resolution)
 	weapon["ammo"] -= 1
-	weapon["fired"] = true # Mark as fired for this turn
+	weapon["fired"] = true 
 	
 	var start_pos = HexGrid.hex_to_pixel(source.grid_position)
 	var target_pos = atk["target_pos"]
 	
-	# Update target_pos if target is crucial and still alive (for moving targets? ships don't move in combat phase though)
 	if is_instance_valid(target):
 		target_pos = target.position
 
 	if not is_instance_valid(target) or target.hull <= 0:
 		log_message("%s firing at WRECK of %s! (Wasted)" % [source.name, target.name if is_instance_valid(target) else "Unknown"])
 		_spawn_attack_fx(start_pos, target_pos, weapon.get("type"))
-		# Wait for FX then continue
-		get_tree().create_timer(1.5).timeout.connect(_process_next_attack)
+		await get_tree().create_timer(1.5).timeout
+		_process_next_attack()
 		return
 
 	# Execute Fire Logic
 	log_message("%s firing %s at %s" % [source.name, weapon["name"], target.name])
 	
-	# FX
-	_spawn_attack_fx(start_pos, target_pos, weapon.get("type", "Laser"))
-	
-	# Hit Calc
+	# Hit Calc Setup
 	var d = HexGrid.hex_distance(source.grid_position, target.grid_position)
-	var is_head_on = false # Recalculate or store from plan? Let's recalc dynamic (positions haven't changed)
+	var is_head_on = false
 	if weapon["arc"] == "FF":
 		if target.grid_position == source.grid_position:
 			is_head_on = true
@@ -566,26 +612,62 @@ func _process_next_attack():
 					break
 				check += fwd_vec
 	
-	if Combat.roll_for_hit(d, weapon, target, is_head_on):
+	# ICM INTERRUPT
+	var icm_used = 0
+	var w_type = weapon.get("type")
+	if target.icm_current > 0 and w_type in ["Torpedo", "Rocket", "Rocket Battery"]:
+		# Calculate hit chance to show player
+		var raw_chance = Combat.calculate_hit_chance(d, weapon, target, is_head_on, 0)
+		
+		# Prompt UI
+		_trigger_icm_decision(source.name, weapon["name"], w_type, raw_chance, target)
+		
+		# Wait for signal
+		var decision_count = await icm_decision_made
+		
+		if decision_count > 0:
+			icm_used = decision_count
+			target.icm_current -= icm_used
+			log_message("%s launches %d ICMs!" % [target.name, icm_used])
+			_spawn_icm_fx(target, source.position)
+			await get_tree().create_timer(1.0).timeout # Wait for counter-fire FX
+	
+	# Determine if hit (Pass ICM count)
+	var hit = Combat.roll_for_hit(d, weapon, target, is_head_on, icm_used)
+	
+	# Spawn Attack FX (Launch concurrently with ICMs)
+	var travel_time = _spawn_attack_fx(start_pos, target_pos, weapon.get("type", "Laser"))
+	
+	if icm_used > 0:
+		log_message("%s launches %d ICMs!" % [target.name, icm_used])
+		# Launch ICMs to intercept near target
+		# They should arrive slightly before the full travel time (e.g. at 80% marks)
+		_spawn_icm_fx(target, source.position, travel_time)
+	
+	if hit:
 		var dmg_str = "%s+%d" % [weapon["damage_dice"], weapon["damage_bonus"]]
 		var dmg = Combat.roll_damage(dmg_str)
 		log_message("[color=green]HIT![/color] Dmg: %d" % dmg)
 		
-		# Delay damage for FX
-		var delay = 0.5
-		if weapon.get("type", "Laser") == "Laser": delay = 0.1
+		# Delay damage for FX arrival
+		var damage_delay = travel_time
+		if damage_delay == 0: damage_delay = 0.5 # Safety for instant lasers
 		
-		get_tree().create_timer(delay).timeout.connect(func():
-			if is_instance_valid(target):
-				target.take_damage(dmg)
-				_spawn_hit_text(target_pos, dmg)
-				if audio_hit.stream: audio_hit.play()
-		)
+		await get_tree().create_timer(damage_delay).timeout
+		
+		if is_instance_valid(target):
+			target.take_damage(dmg)
+			_spawn_hit_text(target_pos, dmg)
+			if audio_hit.stream: audio_hit.play()
 	else:
 		log_message("[color=red]MISS![/color]")
 	
-	# Wait for animation
-	get_tree().create_timer(2.0).timeout.connect(_process_next_attack)
+	# Wait for animation (travel time + buffer)
+	var total_wait = travel_time + 1.0
+	if total_wait < 2.0: total_wait = 2.0
+	
+	await get_tree().create_timer(total_wait).timeout
+	_process_next_attack()
 
 func _on_resolution_complete():
 	log_message("Resolution Phase Complete.")
@@ -623,6 +705,44 @@ func _spawn_hit_text(pos: Vector2, damage: int):
 	tween.tween_property(lbl, "modulate:a", 0.0, 3.0)
 	tween.chain().tween_callback(lbl.queue_free)
 
+func spawn_station(player_id: int):
+	var s = Ship.new()
+	add_child(s)
+	s.configure_space_station() # Random hull
+	s.player_id = player_id
+	s.color = Color.RED if player_id == 2 else Color.GREEN
+	s.name = "Station Alpha"
+	
+	# Placement: Orbit if possible
+	var placed = false
+	if planet_hexes.size() > 0:
+		# Pick random planet hex (excluding 0,0,0 if it's reserved? current array has 0,0,0)
+		var p_hex = planet_hexes.pick_random()
+		# Pick random neighbor for orbit
+		var neighbors = HexGrid.get_neighbors(p_hex)
+		var orbit_hex = neighbors.pick_random()
+		
+		# Check if occupied?
+		# Simple check: Just place it. Collisions handled later?
+		# Better: Check existing ships
+		s.grid_position = orbit_hex
+		s.facing = randi() % 6
+		s.orbit_direction = 1 # CW Orbit default
+		s.orbit_direction = 1 # CW Orbit default
+		# state_is_orbiting is a GM transient var, not on Ship. 
+		# Setting orbit_direction is sufficient for persistence.
+		# For now, just placing it in orbit hex + orbit_dir is enough for GM to pick up "orbit" logic next turn.
+		placed = true
+		
+	if not placed:
+		s.grid_position = Vector3i(0, 0, 0) # Center if no planets (though planet logic usually destroys ships at center!)
+		# User said "place near middle". If Planet at 0,0,0, placing at 0,0,0 dies.
+		# Place at 1,0,-1 (Neighbor of center)
+		s.grid_position = Vector3i(1, 0, -1)
+	
+	ships.append(s)
+	log_message("Station Alpha online. Hull: %d" % s.hull)
+
 func spawn_ships():
 	# Player 1 (Left side)
 	for i in range(3):
@@ -652,30 +772,34 @@ func spawn_ships():
 		ships.append(s)
 
 	# Player 2 (Right side)
-	for i in range(3):
-		var s = Ship.new()
-		
-		# Make the 3rd ship a Heavy Cruiser (for testing)
-		if i == 1: # Center one
-			s.name = "P2_HeavyCruiser_1"
-			s.configure_heavy_cruiser()
-			s.player_id = 2
-			s.color = Color.RED
-			s.grid_position = Vector3i(3, -1, -2)
-		else:
-			s.name = "P2_Fighter_%d" % (i + 1)
-			s.configure_fighter() # Set stats and weapons
-			s.player_id = 2
-			s.color = Color.RED
-			if i == 0: s.grid_position = Vector3i(3, 0, -3)
-			if i == 2: s.grid_position = Vector3i(4, -1, -3)
-		
-		s.facing = 3
-		s.binding_pos_update()
-		
-		s.ship_destroyed.connect(func(): _on_ship_destroyed(s))
-		add_child(s)
-		ships.append(s)
+	# Heavy Cruiser
+	var hc = Ship.new()
+	hc.name = "Heavy Cruiser"
+	hc.configure_heavy_cruiser()
+	hc.player_id = 2
+	hc.color = Color.RED
+	hc.grid_position = Vector3i(4, -8, 4)
+	hc.facing = 3
+	hc.binding_pos_update()
+	hc.ship_destroyed.connect(func(): _on_ship_destroyed(hc))
+	add_child(hc)
+	ships.append(hc)
+	
+	# Destroyer
+	var dd = Ship.new()
+	dd.name = "Destroyer"
+	dd.configure_destroyer()
+	dd.player_id = 2
+	dd.color = Color.RED
+	dd.grid_position = Vector3i(3, -1, -2) # Near centerish or flank?
+	# Let's place it roughly opposite P1
+	dd.facing = 3
+	dd.binding_pos_update()
+	dd.ship_destroyed.connect(func(): _on_ship_destroyed(dd))
+	add_child(dd)
+	ships.append(dd)
+	
+	spawn_station(2) # Spawn Station
 	
 	_update_ship_visuals()
 
@@ -970,6 +1094,10 @@ func _update_ui_state():
 		var min_speed = max(0, start_speed - selected_ship.adf)
 		var max_speed = start_speed + selected_ship.adf
 		var is_valid = (steps >= min_speed and steps <= max_speed)
+		
+		if state_is_orbiting:
+			# Orbit moves are always 1 hex, regardless of ADF/Speed limits
+			is_valid = true
 		
 		btn_commit.visible = true
 		btn_commit.disabled = not is_valid
@@ -1626,6 +1754,90 @@ func posmod(a, b):
 	var res = a % b
 	if res < 0 and b > 0: res += b
 	return res
+
+func _trigger_icm_decision(attacker_name: String, weapon_name: String, weapon_type: String, current_chance: int, target: Ship):
+	# Create modal UI
+	if panel_icm: panel_icm.queue_free()
+	
+	panel_icm = PanelContainer.new()
+	ui_layer.add_child(panel_icm)
+	panel_icm.set_anchors_preset(Control.PRESET_CENTER)
+	
+	# Add style for readability
+	var style = StyleBoxFlat.new()
+	style.bg_color = Color(0.1, 0.1, 0.2, 0.95) # Dark blue opaque
+	style.border_width_left = 2
+	style.border_width_top = 2
+	style.border_width_right = 2
+	style.border_width_bottom = 2
+	style.border_color = Color(1, 0.5, 0) # Orange border
+	style.corner_radius_top_left = 5
+	style.corner_radius_top_right = 5
+	style.corner_radius_bottom_right = 5
+	style.corner_radius_bottom_left = 5
+	style.expand_margin_left = 10
+	style.expand_margin_right = 10
+	style.expand_margin_top = 10
+	style.expand_margin_bottom = 10
+	
+	panel_icm.add_theme_stylebox_override("panel", style)
+	
+	var vbox = VBoxContainer.new()
+	panel_icm.add_child(vbox)
+	
+	var lbl = Label.new()
+	# Initial Text
+	var update_text = func(icm_count: int):
+		var reduction = Combat.calculate_icm_reduction(weapon_type, icm_count)
+		var final_chance = max(0, current_chance - reduction)
+		lbl.text = "INCOMING FIRE DETECTED!\n%s firing %s\nBase Chance: %d%% -> Adjusted: %d%%" % [attacker_name, weapon_name, current_chance, final_chance]
+	
+	update_text.call(0)
+	lbl.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	vbox.add_child(lbl)
+	
+	var lbl_ammo = Label.new()
+	lbl_ammo.text = "ICMs Available: %d" % target.icm_current
+	vbox.add_child(lbl_ammo)
+	
+	var hbox = HBoxContainer.new()
+	vbox.add_child(hbox)
+	
+	var btn_fire = Button.new()
+	btn_fire.text = "LAUNCH ICM !"
+	hbox.add_child(btn_fire)
+	
+	var spin = SpinBox.new()
+	spin.min_value = 0
+	spin.max_value = target.icm_current
+	spin.value = 0
+	spin.select_all_on_focus = true
+	hbox.add_child(spin)
+	
+	spin.value_changed.connect(func(val):
+		update_text.call(int(val))
+	)
+	
+	var btn_skip = Button.new()
+	btn_skip.text = "DO NOT FIRE"
+	vbox.add_child(btn_skip)
+	
+	# Connect signals
+	btn_fire.pressed.connect(func():
+		var count = int(spin.value)
+		if count > 0:
+			_submit_icm_decision(count)
+		else:
+			_submit_icm_decision(0)
+	)
+	
+	btn_skip.pressed.connect(func(): _submit_icm_decision(0))
+
+func _submit_icm_decision(count: int):
+	if panel_icm:
+		panel_icm.queue_free()
+		panel_icm = null
+	icm_decision_made.emit(count)
 
 func _on_ship_destroyed(ship: Ship):
 	ships.erase(ship)

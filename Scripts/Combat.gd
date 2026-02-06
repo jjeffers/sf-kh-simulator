@@ -5,7 +5,24 @@ const BASE_HIT_CHANCE = 80
 const RANGE_PENALTY = 5 # per hex
 const MAX_RANGE = 10
 
-static func calculate_hit_chance(dist: int, weapon: Dictionary = {}, target: Ship = null, is_head_on: bool = false) -> int:
+# ICM Modifiers
+const ICM_MODIFIER_TORPEDO = 10
+const ICM_MODIFIER_ASSAULT_ROCKET = 5
+const ICM_MODIFIER_ROCKET_BATTERY = 3
+
+static func calculate_icm_reduction(weapon_type: String, icm_count: int) -> int:
+	if icm_count <= 0: return 0
+	
+	var reduction_per_missile = 0
+	match weapon_type:
+		"Torpedo": reduction_per_missile = ICM_MODIFIER_TORPEDO
+		"Rocket": reduction_per_missile = ICM_MODIFIER_ASSAULT_ROCKET
+		"Rocket Battery": reduction_per_missile = ICM_MODIFIER_ROCKET_BATTERY
+		_: return 0
+		
+	return icm_count * reduction_per_missile
+
+static func calculate_hit_chance(dist: int, weapon: Dictionary = {}, target: Ship = null, is_head_on: bool = false, icm_count: int = 0) -> int:
 	if dist > MAX_RANGE:
 		return 0
 		
@@ -15,20 +32,23 @@ static func calculate_hit_chance(dist: int, weapon: Dictionary = {}, target: Shi
 	if target and target.defense == "RH" and weapon.get("type") == "Rocket":
 		chance = 60
 		if is_head_on: chance += 10
-		return chance
+		if icm_count > 0: chance -= calculate_icm_reduction("Rocket", icm_count)
+		return max(0, chance)
 
 	# Special Rule: Torpedo (Flat 70%)
 	# "70% chance to hit any target"
 	if weapon.get("type") == "Torpedo":
 		chance = 70
-		if is_head_on: chance += 10 # Assuming Head-on still applies as positional bonus?
-		return chance
+		if is_head_on: chance += 10 
+		if icm_count > 0: chance -= calculate_icm_reduction("Torpedo", icm_count)
+		return max(0, chance)
 	
 	# Special Rule: Rocket Battery (Flat 40%)
 	if weapon.get("type") == "Rocket Battery":
 		chance = 40
 		if is_head_on: chance += 10
-		return chance
+		if icm_count > 0: chance -= calculate_icm_reduction("Rocket Battery", icm_count)
+		return max(0, chance)
 	
 	# Base Chance Calculation
 	var base = BASE_HIT_CHANCE # 80
@@ -48,8 +68,8 @@ static func calculate_hit_chance(dist: int, weapon: Dictionary = {}, target: Shi
 	return max(0, chance)
 
 # Returns true if hit
-static func roll_for_hit(dist: int, weapon: Dictionary = {}, target: Ship = null, is_head_on: bool = false) -> bool:
-	var chance = calculate_hit_chance(dist, weapon, target, is_head_on)
+static func roll_for_hit(dist: int, weapon: Dictionary = {}, target: Ship = null, is_head_on: bool = false, icm_count: int = 0) -> bool:
+	var chance = calculate_hit_chance(dist, weapon, target, is_head_on, icm_count)
 	var roll = randi() % 100 + 1 # 1-100
 	print("Combat Roll: Distance %d, Chance %d%%, Rolled %d" % [dist, chance, roll])
 	return roll <= chance
