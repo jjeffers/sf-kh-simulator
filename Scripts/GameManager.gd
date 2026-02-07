@@ -102,6 +102,16 @@ func _setup_ui():
 	vbox.position = Vector2(20, 20)
 	ui_layer.add_child(vbox)
 	
+	# Mini-Map (Radar) - Top Right
+	var minimap = MiniMap.new()
+	minimap.game_manager = self
+	ui_layer.add_child(minimap)
+	# Position Top-Right (Anchor logic or manual)
+	# Lets use manual position logic relative to viewport size for now, 
+	# or Anchors if Control.
+	minimap.set_anchors_preset(Control.PRESET_TOP_RIGHT)
+	minimap.position = Vector2(get_viewport().size.x - 220, 20) # 200 width + 20 padding
+	
 	label_status = Label.new()
 	label_status.text = "Initializing..."
 	vbox.add_child(label_status)

@@ -17,3 +17,9 @@ mono_crash.*.json
 # System specific
 .DS_Store
 Thumbs.db
+
+# Build artifacts
+*.exe
+*.pck
+*.zip
+*.console.exe
