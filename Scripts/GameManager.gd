@@ -64,15 +64,51 @@ var container_ships: VBoxContainer
 
 # ICM UI
 signal icm_decision_made(count: int)
-var panel_icm: PanelContainer
 
 
 func _ready():
 	_setup_ui()
 	queue_redraw()
 	_spawn_planets()
-	spawn_ships()
-	start_turn_cycle()
+	
+	# Multiplayer Setup
+	# If we are in a networked game, we need to map Network IDs to Player IDs (1, 2)
+	# Determine who is Player 1 and Player 2
+	
+	if multiplayer.has_multiplayer_peer():
+		# Host is Player 1, Client is Player 2
+		# We need to wait for both to be ready?
+		# For now, let's just assume 2 players.
+		
+		var peers = NetworkManager.players.keys()
+		peers.sort() # Ensure deterministic order? 
+		# Host is 1. Client is usually random high number.
+		# Host is always 1 in Godot 4 ENet? YES.
+		
+		# Simple mapping:
+		# Player 1 (Red/Defender) = Server (Id 1)
+		# Player 2 (Blue/Attacker) = First Client
+		
+		# We need to know OUR player ID locally to enforce controls
+		# But 'current_player_id' tracks whose turn it is.
+		
+		spawn_ships()
+		start_turn_cycle()
+	else:
+		# Fallback for testing without lobby (Run Scene F6)
+		# Assume Hotseat Limitless
+		spawn_ships()
+		start_turn_cycle()
+
+
+func get_my_player_id() -> int:
+	if not multiplayer.has_multiplayer_peer():
+		return 0 # 0 means "All/Debug" or "Hotseat"
+		
+	if multiplayer.is_server():
+		return 1
+	else:
+		return 2 # Assumes 1 client for now using P2 slot
 
 func _process(delta):
 	var move_vec = Vector2.ZERO
@@ -195,7 +231,7 @@ func _setup_ui():
 	var btn_exec = Button.new()
 	btn_exec.text = "EXECUTE ATTACK"
 	btn_exec.modulate = Color(1, 0.5, 0.5)
-	btn_exec.pressed.connect(_on_combat_commit)
+	btn_exec.pressed.connect(_on_trigger_commit_combat)
 	pp_vbox.add_child(btn_exec)
 
 	# Combat Log
@@ -1094,6 +1130,7 @@ func start_combat_passive():
 	_start_combat_planning()
 
 func start_combat_active():
+	print("[DEBUG] start_combat_active called. Setting firing_player_id to ", current_player_id)
 	current_phase = Phase.COMBAT
 	combat_subphase = 2 # Active Second
 	firing_player_id = current_player_id # The Active Player
@@ -1175,7 +1212,8 @@ func _update_planning_ui_list():
 		
 		container_ships.add_child(btn)
 	
-	panel_planning.visible = (current_phase == Phase.COMBAT and current_combat_state == CombatState.PLANNING)
+	var is_my_turn = (get_my_player_id() == firing_player_id) or (get_my_player_id() == 0)
+	panel_planning.visible = (current_phase == Phase.COMBAT and current_combat_state == CombatState.PLANNING and is_my_turn)
 
 # _check_combat_availability removed/replaced by explicit planning flow
 
@@ -1232,7 +1270,27 @@ func _spawn_ghost():
 	queue_redraw() # Ensure predictive path draws immediately
 
 func _update_ui_state():
+	# NETWORK CHECK
+	var is_my_turn = true
+	if multiplayer.has_multiplayer_peer():
+		if current_phase == Phase.MOVEMENT:
+			is_my_turn = (get_my_player_id() == current_player_id)
+		elif current_phase == Phase.COMBAT:
+			is_my_turn = (get_my_player_id() == firing_player_id)
+			
 	if current_phase == Phase.MOVEMENT:
+		if not is_my_turn:
+			# Hide all controls
+			btn_undo.visible = false
+			btn_commit.visible = false
+			btn_turn_left.visible = false
+			btn_turn_right.visible = false
+			btn_orbit_cw.visible = false
+			btn_orbit_ccw.visible = false
+			btn_ms_toggle.visible = false
+			label_status.text = "Waiting for Player %d..." % current_player_id
+			return
+
 		btn_undo.visible = (current_path.size() > 0)
 		
 		var steps = current_path.size()
@@ -1367,7 +1425,7 @@ func _update_ui_state():
 		btn_orbit_ccw.visible = false
 		
 		var phase_name = "Passive" if combat_subphase == 1 else "Active"
-		var txt = "Combat (%s Fire)\nPlayer %d Firing" % [phase_name, firing_player_id]
+		var txt = "Combat (%s Fire)\nPlayer %d Firing (Me: %d)" % [phase_name, firing_player_id, get_my_player_id()]
 		
 		if selected_ship:
 			txt += "\nShip: %s" % selected_ship.name
@@ -1508,107 +1566,123 @@ func _on_ms_toggled(pressed: bool):
 	_update_ui_state()
 
 func _on_commit_move():
+	# Local Validation
+	var is_my_turn = (get_my_player_id() == current_player_id)
+	if multiplayer.has_multiplayer_peer() and not is_my_turn:
+		return
+
+	# Pack data for RPC
+	var path_data = current_path
+	var end_facing = ghost_ship.facing
+	var orbit_dir = current_orbit_direction
+	var s_name = selected_ship.name
+	
+	# Execute Locally + Remotely
+	rpc_commit_move.rpc(s_name, path_data, end_facing, orbit_dir)
+
+@rpc("any_peer", "call_local", "reliable")
+func rpc_commit_move(ship_name: String, path_data: Array[Vector3i], end_facing: int, orbit_dir: int):
+	# Find the ship to move
+	var ship_to_move = _find_ship_by_name(ship_name)
+	if not ship_to_move:
+		print("Error: Ship not found for move commit: ", ship_name)
+		return
+		
+	# Apply state
+	# NOTE: We use 'current_path' etc for local state, but here we must use arguments
+	# If this is the LOCAL client, 'current_path' matches 'path_data'
+	# If REMOTE, 'current_path' is irrelevant/garbage.
+	
+	# We should NOT use globals like 'state_is_orbiting' for the logic here if possible,
+	# or at least we must be careful.
+	# The args passed 'orbit_dir' cover the orbit state.
+	
+	ship_to_move.facing = end_facing 
+	
 	# -----------------------------
 	# GHOST TRAIL LOGIC
-	# Store the path we just took for visualization next turn
-	var trail: Array[Vector3i] = [selected_ship.grid_position]
-	trail.append_array(current_path)
-	selected_ship.previous_path = trail
+	var trail: Array[Vector3i] = [ship_to_move.grid_position]
+	trail.append_array(path_data)
+	ship_to_move.previous_path = trail
 	# -----------------------------
 
-	state_is_orbiting = false
-	
 	# Update Persistent Orbit State
-	if current_orbit_direction != 0:
-		# If we used the orbit button this turn, set it.
-		# Check if we actually executed the orbit move?
-		# Logic: current_orbit_direction is set by _on_orbit or start_movement auto-plan.
-		# If current_path matches the orbit move (length 1), we confirm it.
-		if current_path.size() == 1:
-			selected_ship.orbit_direction = current_orbit_direction
+	if orbit_dir != 0:
+		if path_data.size() == 1:
+			ship_to_move.orbit_direction = orbit_dir
 		else:
-			selected_ship.orbit_direction = 0 # Broke orbit
+			ship_to_move.orbit_direction = 0 
 	else:
-		selected_ship.orbit_direction = 0 # Normal move clears orbit
+		ship_to_move.orbit_direction = 0 
 		
-	current_orbit_direction = 0 # Reset for next ship
+	# Final MS Constraint Check
+	if ship_to_move.is_ms_active and orbit_dir == 0:
+		# We don't know 'start_speed' from here easily unless we track it or infer it.
+		# But since we have the path, we know the NEW speed.
+		# If MS was Active at start of turn, we assume it was valid then.
+		# If path size doesn't match... wait. 
+		# We need to know if speed CHANGED.
+		# We can compare path_data.size() to ship_to_move.speed (which is the speed at start of turn before update?)
+		# ship_to_move.speed is typically updated at end of turn.
+		if path_data.size() != ship_to_move.speed:
+			ship_to_move.is_ms_active = false
+			log_message("%s Screen Dropped: Speed Changed" % ship_to_move.name)
 	
-	# selected_ship.grid_position = ghost_ship.grid_position # OLD IMMEDIATE JUMP
-	# selected_ship.facing = ghost_ship.facing
-	# selected_ship.speed = current_path.size()
+	ship_to_move.speed = path_data.size()
 	
-	# 1. Update facing effectively immediately (for the whole move? Or should we simulate steps?)
-	# 2. Update speed.
-	# 3. Simulate movement step by step for collision check.
-	
-	# Final MS Constraint Check (Duration/Commit)
-	if selected_ship.is_ms_active and not state_is_orbiting:
-		if current_path.size() != start_speed:
-			_on_ms_toggled(false) # Drop
-			log_message("Screen Dropped: Speed Changed")
-	
-	selected_ship.facing = ghost_ship.facing
-	selected_ship.speed = current_path.size()
-	
-	for hex in current_path:
-		selected_ship.grid_position = hex # Teleport step
+	for hex in path_data:
+		ship_to_move.grid_position = hex 
 		# Collision Check
-		if _check_planet_collision(selected_ship):
-			# Ship died. Stop moving.
-			combat_action_taken = false
-			# Cleanup Ghosts and UI before ending turn
-			ghost_ship.queue_free()
-			ghost_ship = null
-			
-			end_turn() # Will select next ship or switch phase
-			
-			# No need to reset selected_ship = null or update_ui here, 
-			# as end_turn -> start_movement_phase handles everything.
-			return # Exit function
+		if _check_planet_collision(ship_to_move):
+			if ship_to_move == selected_ship:
+				combat_action_taken = false
+				if ghost_ship: ghost_ship.queue_free()
+				ghost_ship = null
+			end_turn() 
+			return 
 			
 		# Boundary Check
-		if _check_boundary(selected_ship):
-			combat_action_taken = false
-			ghost_ship.queue_free()
-			ghost_ship = null
+		if _check_boundary(ship_to_move):
+			if ship_to_move == selected_ship:
+				combat_action_taken = false
+				if ghost_ship: ghost_ship.queue_free()
+				ghost_ship = null
 			end_turn()
 			return
 
-	_update_ship_visuals() # Ensure we re-stack after movement
+	_update_ship_visuals() 
 	
-	ghost_ship.queue_free()
-	ghost_ship = null
+	if ship_to_move == selected_ship:
+		if ghost_ship: ghost_ship.queue_free()
+		ghost_ship = null
+		state_is_orbiting = false
+		current_orbit_direction = 0
+		current_path.clear()
 	
-	# DOCKING LOGIC (Post-Move)
-	# 1. Check for Auto-Docking
-	# "Any ship can dock at a space station by entering the same hex as the space station and stopping there."
-	var potential_hosts = ships.filter(func(s): return s.player_id == selected_ship.player_id and s != selected_ship and s.ship_class == "Space Station" and s.grid_position == selected_ship.grid_position)
+	# DOCKING LOGIC
+	var potential_hosts = ships.filter(func(s): return s.player_id == ship_to_move.player_id and s != ship_to_move and s.ship_class == "Space Station" and s.grid_position == ship_to_move.grid_position)
 	if potential_hosts.size() > 0:
 		var host = potential_hosts[0]
-		if not selected_ship.is_docked: # Only if not already docked (redundant check but safe)
-			selected_ship.dock_at(host)
-			log_message("%s docked at %s." % [selected_ship.name, host.name])
+		if not ship_to_move.is_docked: 
+			ship_to_move.dock_at(host)
+			log_message("%s docked at %s." % [ship_to_move.name, host.name])
 	else:
-		# Check Undock?
-		# "Once docked it will remain docked until it moves away..."
-		# If we are docked, and we are NOT at our host's position (we moved away), we break link.
-		# Note: logic says "moves away", but if we just moved to same hex (speed 0), we stay docked.
-		if selected_ship.is_docked:
-			if selected_ship.grid_position != selected_ship.docked_host.grid_position:
+		if ship_to_move.is_docked:
+			if ship_to_move.grid_position != ship_to_move.docked_host.grid_position:
 				log_message("%s undocking from %s." % [selected_ship.name, selected_ship.docked_host.name])
 				selected_ship.undock()
 	
-	# 2. Sync Guests if WE are the host
-	if selected_ship.docked_guests.size() > 0:
-		for guest in selected_ship.docked_guests:
-			guest.grid_position = selected_ship.grid_position
-			guest.facing = selected_ship.facing # Rotate with station? Usually stations rotate?
-			# "Docked ships move with the station"
-			# Orbital movement implies rotation + translation.
-			# Let's keep them synced.
+	# Sync Guests
+	if ship_to_move.docked_guests.size() > 0:
+		for guest in ship_to_move.docked_guests:
+			guest.grid_position = ship_to_move.grid_position
+			guest.facing = ship_to_move.facing 
 			
+	# End Turn logic - sync state on all clients
+	# We rely on 'start_movement_phase' to pick the next valid ship or switch phase
+	end_turn(ship_to_move)
 	
-	end_turn()
+# 1689: func _check_boundary(ship: Ship) -> bool:
 
 func _check_boundary(ship: Ship) -> bool:
 	var dist = HexGrid.hex_distance(Vector3i.ZERO, ship.grid_position)
@@ -2002,6 +2076,18 @@ func _get_valid_targets(shooter: Ship) -> Array:
 	return valid
 
 func handle_click(hex: Vector3i):
+	# NETWORK CHECK: Is it my turn?
+	if multiplayer.has_multiplayer_peer():
+		var my_id = get_my_player_id()
+		
+		# Movement Phase: active player is current_player_id
+		if current_phase == Phase.MOVEMENT:
+			if my_id != current_player_id: return
+			
+		# Combat Phase: active player is firing_player_id
+		elif current_phase == Phase.COMBAT:
+			if my_id != firing_player_id: return
+
 	if current_phase == Phase.MOVEMENT:
 		# Check if clicked on a friendly available ship (CHANGE SELECTION)
 		var clicked_ship = null
@@ -2111,89 +2197,6 @@ func posmod(a, b):
 	if res < 0 and b > 0: res += b
 	return res
 
-func _trigger_icm_decision(attacker_name: String, weapon_name: String, weapon_type: String, current_chance: int, target: Ship):
-	# Create modal UI
-	if panel_icm: panel_icm.queue_free()
-	
-	panel_icm = PanelContainer.new()
-	ui_layer.add_child(panel_icm)
-	panel_icm.set_anchors_preset(Control.PRESET_CENTER)
-	
-	# Add style for readability
-	var style = StyleBoxFlat.new()
-	style.bg_color = Color(0.1, 0.1, 0.2, 0.95) # Dark blue opaque
-	style.border_width_left = 2
-	style.border_width_top = 2
-	style.border_width_right = 2
-	style.border_width_bottom = 2
-	style.border_color = Color(1, 0.5, 0) # Orange border
-	style.corner_radius_top_left = 5
-	style.corner_radius_top_right = 5
-	style.corner_radius_bottom_right = 5
-	style.corner_radius_bottom_left = 5
-	style.expand_margin_left = 10
-	style.expand_margin_right = 10
-	style.expand_margin_top = 10
-	style.expand_margin_bottom = 10
-	
-	panel_icm.add_theme_stylebox_override("panel", style)
-	
-	var vbox = VBoxContainer.new()
-	panel_icm.add_child(vbox)
-	
-	var lbl = Label.new()
-	# Initial Text
-	var update_text = func(icm_count: int):
-		var reduction = Combat.calculate_icm_reduction(weapon_type, icm_count)
-		var final_chance = max(0, current_chance - reduction)
-		lbl.text = "INCOMING FIRE DETECTED!\n%s firing %s\nBase Chance: %d%% -> Adjusted: %d%%" % [attacker_name, weapon_name, current_chance, final_chance]
-	
-	update_text.call(0)
-	lbl.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	vbox.add_child(lbl)
-	
-	var lbl_ammo = Label.new()
-	lbl_ammo.text = "ICMs Available: %d" % target.icm_current
-	vbox.add_child(lbl_ammo)
-	
-	var hbox = HBoxContainer.new()
-	vbox.add_child(hbox)
-	
-	var btn_fire = Button.new()
-	btn_fire.text = "LAUNCH ICM !"
-	hbox.add_child(btn_fire)
-	
-	var spin = SpinBox.new()
-	spin.min_value = 0
-	spin.max_value = target.icm_current
-	spin.value = 0
-	spin.select_all_on_focus = true
-	hbox.add_child(spin)
-	
-	spin.value_changed.connect(func(val):
-		update_text.call(int(val))
-	)
-	
-	var btn_skip = Button.new()
-	btn_skip.text = "DO NOT FIRE"
-	vbox.add_child(btn_skip)
-	
-	# Connect signals
-	btn_fire.pressed.connect(func():
-		var count = int(spin.value)
-		if count > 0:
-			_submit_icm_decision(count)
-		else:
-			_submit_icm_decision(0)
-	)
-	
-	btn_skip.pressed.connect(func(): _submit_icm_decision(0))
-
-func _submit_icm_decision(count: int):
-	if panel_icm:
-		panel_icm.queue_free()
-		panel_icm = null
-	icm_decision_made.emit(count)
 
 func _on_ship_destroyed(ship: Ship):
 	if ships.has(ship):
@@ -2239,30 +2242,33 @@ func show_game_over(msg: String):
 func _on_restart():
 	get_tree().reload_current_scene()
 
-func end_turn():
+func end_turn(ship: Ship = null):
 	if current_phase == Phase.END: return
+
+	# Fallback to selected_ship if not provided (local context)
+	if not ship: ship = selected_ship
 
 	if audio_action_complete and audio_action_complete.stream:
 		audio_action_complete.play()
 	
 	if current_phase == Phase.MOVEMENT:
-		if selected_ship: 
-			selected_ship.has_moved = true
+		if ship: 
+			ship.has_moved = true
 			
 			# Orbit MS Check: Did we complete the loop?
 			# If MS active AND Orbiting AND Position == Start Hex
-			if selected_ship.is_ms_active and selected_ship.orbit_direction != 0:
-				if selected_ship.ms_orbit_start_hex != Vector3i.MAX:
-					if selected_ship.grid_position == selected_ship.ms_orbit_start_hex:
-						selected_ship.is_ms_active = false
-						selected_ship.ms_orbit_start_hex = Vector3i.MAX
-						log_message("%s completes orbit; Screen drops." % selected_ship.name)
+			if ship.is_ms_active and ship.orbit_direction != 0:
+				if ship.ms_orbit_start_hex != Vector3i.MAX:
+					if ship.grid_position == ship.ms_orbit_start_hex:
+						ship.is_ms_active = false
+						ship.ms_orbit_start_hex = Vector3i.MAX
+						log_message("%s completes orbit; Screen drops." % ship.name)
 					
 		start_movement_phase() # Loop to next ship
 		
 	elif current_phase == Phase.COMBAT:
 		# Legacy: Combat flow is now handled by Planning UI and Execute button
-		if selected_ship: selected_ship.has_fired = true
+		if ship: ship.has_fired = true
 		log_message("Turn ending...")
 		# If somehow called, just ensure UI is updated
 		_update_planning_ui_list()
@@ -2327,3 +2333,355 @@ func _check_planet_collision(ship: Ship):
 		# Stop movement path if this happened mid-move
 		return true
 	return false
+
+# ------------------------------------------------------------------------------------------------
+# MULTIPLAYER RPC EXTENSIONS
+# ------------------------------------------------------------------------------------------------
+
+func _on_trigger_commit_combat():
+	# Network & ID Check
+	var my_id = get_my_player_id()
+	print("[DEBUG] Trigger Commit. MyID: ", my_id, " FiringID: ", firing_player_id)
+	
+	var is_my_turn = (my_id == firing_player_id)
+	if multiplayer.has_multiplayer_peer() and not is_my_turn:
+		print("[DEBUG] Commit Rejected: Not my turn")
+		return
+
+	print("[DEBUG] Commit Accepted. Packing data...")
+
+	# Pack Attack Data
+	# We need to send 'queued_attacks' across the network.
+	# queued_attacks contains Objects (Ship references). We need to serialize this to Strings/Paths/IDs.
+	# {source: Ship, target: Ship, weapon_idx: int}
+	
+	var networked_attacks = []
+	for atk in queued_attacks:
+		# Check if source/target are valid (not freed)
+		if not is_instance_valid(atk["source"]) or not is_instance_valid(atk["target"]):
+			continue
+			
+		var data = {
+			"source_name": atk["source"].name,
+			"target_name": atk["target"].name,
+			"weapon_idx": atk["weapon_idx"]
+		}
+		networked_attacks.append(data)
+	
+	rpc_combat_commit.rpc(networked_attacks)
+
+@rpc("any_peer", "call_local", "reliable")
+func rpc_combat_commit(networked_attacks: Array):
+	print("[DEBUG] RPC Combat Commit Received! Attacks: ", networked_attacks.size())
+	# Reconstruct queued_attacks locally on all clients
+	queued_attacks.clear()
+	
+	for data in networked_attacks:
+		var s = _find_ship_by_name(data["source_name"])
+		var t = _find_ship_by_name(data["target_name"])
+		
+		if s and t:
+			queued_attacks.append({
+				"source": s,
+				"target": t,
+				"weapon_idx": int(data["weapon_idx"])
+			})
+			
+	# Now execute resolution
+	_start_combat_resolution()
+
+# Async Resolution State
+var server_pending_attacks: Array = []
+var waiting_for_icm_decision: bool = false
+var current_icm_attack_data: Dictionary = {}
+
+func _start_combat_resolution():
+	# Server Authority Only
+	if not multiplayer.is_server():
+		return
+
+	current_combat_state = CombatState.RESOLVING
+	
+	# Populate Server Queue
+	server_pending_attacks.clear()
+	for atk in queued_attacks:
+		if not is_instance_valid(atk["source"]) or not is_instance_valid(atk["target"]) or atk["source"].is_exploding or atk["target"].is_exploding:
+			continue
+		server_pending_attacks.append(atk)
+		
+	# Start Processing
+	_process_server_queue()
+
+func _process_server_queue():
+	if waiting_for_icm_decision: return
+	
+	if server_pending_attacks.size() == 0:
+		# All done
+		rpc_resolution_complete.rpc()
+		return
+
+	var atk = server_pending_attacks[0] # Peek
+	var source = atk["source"]
+	var target = atk["target"]
+	var weapon_idx = atk["weapon_idx"]
+	
+	# Re-validate validity (Ship might have died in previous step)
+	if not is_instance_valid(source) or not is_instance_valid(target) or source.is_exploding or target.is_exploding:
+		server_pending_attacks.pop_front()
+		_process_server_queue()
+		return
+
+	var weapon = source.weapons[weapon_idx]
+	var w_type = weapon.get("type", "Laser")
+	
+	
+	# ICM Check Logic
+	# If weapon is Missile/Torpedo AND Target has ICMs AND Target is not docked...
+	# We must ask the target player for a decision.
+	var can_use_icm = (target.icm_current > 0)
+	if target.is_docked: can_use_icm = false
+	
+	
+	if can_use_icm and w_type in ["Torpedo", "Rocket", "Rocket Battery"]:
+		# Async Request
+		waiting_for_icm_decision = true
+		current_icm_attack_data = atk
+		
+		var chance = Combat.calculate_hit_chance(HexGrid.hex_distance(source.grid_position, target.grid_position), weapon, target, false, 0, source) # Simplify head-on for now or calc properly
+		
+		# Send RPC to Defender (Broadcast, let client filter by ownership)
+		rpc_request_icm_decision.rpc(source.name, weapon["name"], w_type, chance, target.name)
+		return
+
+	# If no ICM needed, resolve immediately
+	_resolve_single_attack(atk, 0)
+
+func _resolve_single_attack(atk: Dictionary, icm_used: int):
+	# Remove from queue
+	if server_pending_attacks.size() > 0 and server_pending_attacks[0] == atk:
+		server_pending_attacks.pop_front()
+	
+	var source = atk["source"]
+	var target = atk["target"]
+	var weapon_idx = atk["weapon_idx"]
+	var weapon = source.weapons[weapon_idx]
+	
+	# Consumes
+	if icm_used > 0:
+		target.icm_current = max(0, target.icm_current - icm_used)
+	
+	# Resolution
+	var dist = HexGrid.hex_distance(source.grid_position, target.grid_position)
+	var is_head_on = false # TODO: Recalculate or pass down
+	if weapon["arc"] == "FF":
+		# Recalc head-on
+		var fwd = HexGrid.get_direction_vec(source.facing)
+		# ... (Simplified check for now or assume false?)
+		# Let's assume standard hit calc handles it or is acceptable approximation
+		pass
+
+	var hit = Combat.roll_for_hit(dist, weapon, target, is_head_on, icm_used, source)
+	var dmg = 0
+	if hit:
+		var base_dmg = Combat.roll_damage(weapon["damage_dice"])
+		var bonus = weapon.get("damage_bonus", 0)
+		dmg = base_dmg + bonus
+	
+	# Broadcast Result
+	var result = {
+		"source_name": source.name,
+		"target_name": target.name,
+		"weapon_name": weapon["name"],
+		"hit": hit,
+		"damage": dmg,
+		"icm_used": icm_used
+	}
+	
+	
+	rpc_resolve_combat_result.rpc(result)
+	
+	# Wait for visual duration + buffer before next attack
+	await get_tree().create_timer(2.5).timeout
+	_process_server_queue()
+
+
+@rpc("any_peer", "call_local", "reliable")
+func rpc_resolve_combat_result(res: Dictionary):
+	# Single Attack Resolution
+	var source = _find_ship_by_name(res["source_name"])
+	var target = _find_ship_by_name(res["target_name"])
+	
+	if not source or not target: return
+	
+	# Visuals
+	_play_attack_visual(source, target, res["hit"], res["weapon_name"])
+	
+	if res.get("icm_used", 0) > 0:
+		log_message("%s launches %d ICMs!" % [target.name, res["icm_used"]])
+		# TODO: ICM Visuals here? _play_attack_visual handles main projectile.
+		# Maybe trigger ICM fx separately?
+		_spawn_icm_fx(target, source.position, 1.0) # Approx travel time
+
+	if res["hit"]:
+		var dmg = res["damage"]
+		log_message("%s hits %s with %s for %d damage!" % [res["source_name"], res["target_name"], res["weapon_name"], dmg])
+		
+		# Delay damage application to match animation
+		await get_tree().create_timer(1.0).timeout
+		
+		if is_instance_valid(target):
+			target.take_damage(dmg)
+			_spawn_hit_text(target.position, dmg)
+			if audio_hit.stream: audio_hit.play()
+	else:
+		log_message("%s missed %s with %s." % [res["source_name"], res["target_name"], res["weapon_name"]])
+
+	# Brief pause before next event
+	# Client side doesn't control the queue, Server does.
+	pass
+
+@rpc("any_peer", "call_local", "reliable")
+func rpc_resolution_complete():
+	log_message("Combat Resolution Complete.")
+	queued_attacks.clear()
+	
+	if combat_subphase == 1:
+		print("[DEBUG] Switching to Active Combat (Subphase 2)")
+		start_combat_active()
+	else:
+		print("[DEBUG] Ending Turn Cycle")
+		end_turn_cycle()
+
+@rpc("call_local", "reliable")
+func rpc_request_icm_decision(source_name: String, weapon_name: String, weapon_type: String, chance: int, target_name: String):
+	# Show UI to the defender (Only if I am the defender)
+	print("[DEBUG] ICM Request received for %s" % target_name)
+	var my_id = get_my_player_id()
+	
+	# Verify target ownership locally
+	var t = _find_ship_by_name(target_name)
+	if not t: return
+	
+	if t.player_id != my_id:
+		# Should not receive this unless we ARE the defender, but check anyway
+		return
+		
+	# Trigger UI
+	_trigger_icm_decision(source_name, weapon_name, weapon_type, chance, t)
+	
+	# Connect UI result to server RPC
+	# The UI helper emits 'icm_decision_made(count)'
+	# We need to bridge that signal to 'rpc_submit_icm_decision'
+	var result_count = await icm_decision_made
+	
+	rpc_submit_icm_decision.rpc_id(1, result_count) # Send to Server (1)
+
+@rpc("any_peer", "call_local", "reliable")
+func rpc_submit_icm_decision(count: int):
+	# Server receives decision
+	if not multiplayer.is_server(): return
+	
+	if not waiting_for_icm_decision:
+		print("[WARN] Received ICM decision when not waiting for one.")
+		return
+		
+	waiting_for_icm_decision = false
+	
+	# Resume Queue
+	if current_icm_attack_data.is_empty():
+		_process_server_queue()
+		return
+		
+	_resolve_single_attack(current_icm_attack_data, count)
+	current_icm_attack_data = {}
+	
+	# No validation/loop here; _resolve_single_attack handles recursion now.
+
+func _play_attack_visual(source: Ship, target: Ship, hit: bool, weapon_name: String):
+	# Map weapon name to type for FX
+	var type = "Laser"
+	if "Rocket" in weapon_name: type = "Rocket"
+	elif "Torpedo" in weapon_name: type = "Torpedo"
+	elif "Laser Canon" in weapon_name: type = "Laser Canon"
+	
+	var start_pos = HexGrid.hex_to_pixel(source.grid_position)
+	var end_pos = HexGrid.hex_to_pixel(target.grid_position)
+	
+	if not hit:
+		# Scatter miss endpoint slightly
+		end_pos += Vector2(randf_range(-30, 30), randf_range(-30, 30))
+	
+	# Use the existing robust FX function
+	# This handles Audio and Visuals for the projectile
+	_spawn_attack_fx(start_pos, end_pos, type)
+	
+	# Floating Text
+	var lbl = Label.new()
+	lbl.text = "HIT!" if hit else "MISS!"
+	lbl.modulate = Color.ORANGE if hit else Color.GRAY
+	lbl.position = end_pos + Vector2(-20, -40) # Above target
+	lbl.z_index = 100
+	add_child(lbl)
+	
+	var tw_lbl = create_tween()
+	tw_lbl.set_parallel(true)
+	tw_lbl.tween_property(lbl, "position:y", lbl.position.y - 30, 1.0)
+	tw_lbl.tween_property(lbl, "modulate:a", 0.0, 1.0)
+	tw_lbl.chain().tween_callback(lbl.queue_free)
+
+
+func _trigger_icm_decision(source_name: String, weapon_name: String, weapon_type: String, chance: int, target_ship: Ship):
+	# Create Modal UI
+	var popup = PanelContainer.new()
+	popup.z_index = 200 # Topmost
+	
+	# Center on screen
+	var viewport_size = get_viewport_rect().size
+	popup.position = (viewport_size / 2) - Vector2(150, 100)
+	popup.custom_minimum_size = Vector2(300, 200)
+	
+	var vbox = VBoxContainer.new()
+	popup.add_child(vbox)
+	
+	var lbl_title = Label.new()
+	lbl_title.text = "INCOMING FIRE: %s" % weapon_name
+	lbl_title.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	lbl_title.modulate = Color.RED
+	vbox.add_child(lbl_title)
+	
+	var lbl_info = Label.new()
+	lbl_info.text = "Fired by %s\nHit Chance: %d%%\nYour ICMs: %d" % [source_name, chance, target_ship.icm_current]
+	lbl_info.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	vbox.add_child(lbl_info)
+	
+	var hs = HSlider.new()
+	hs.min_value = 0
+	hs.max_value = target_ship.icm_current
+	hs.value = 0
+	hs.tick_count = target_ship.icm_current + 1
+	hs.ticks_on_borders = true
+	vbox.add_child(hs)
+	
+	var lbl_val = Label.new()
+	lbl_val.text = "Use 0 ICMs (-0% hit chance)"
+	lbl_val.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	vbox.add_child(lbl_val)
+	
+	hs.value_changed.connect(func(v):
+		var reduction = Combat.calculate_icm_reduction(weapon_type, int(v))
+		lbl_val.text = "Use %d ICMs (-%d%% hit chance)" % [v, reduction]
+	)
+	
+	var btn_box = HBoxContainer.new()
+	btn_box.alignment = BoxContainer.ALIGNMENT_CENTER
+	vbox.add_child(btn_box)
+	
+	var btn_confirm = Button.new()
+	btn_confirm.text = "CONFIRM"
+	btn_confirm.pressed.connect(func():
+		icm_decision_made.emit(int(hs.value))
+		popup.queue_free()
+	)
+	btn_box.add_child(btn_confirm)
+	
+	ui_layer.add_child(popup)
