@@ -1100,6 +1100,7 @@ func _spawn_ghost():
 	ghost_ship = Ship.new()
 	ghost_ship.name = "GhostShip"
 	ghost_ship.player_id = selected_ship.player_id
+	ghost_ship.ship_class = selected_ship.ship_class # Copy visual class
 	ghost_ship.color = selected_ship.color
 	ghost_ship.grid_position = selected_ship.grid_position
 	ghost_ship.facing = selected_ship.facing
