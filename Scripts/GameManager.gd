@@ -33,6 +33,7 @@ var combat_subphase: int = 0
 # UI Nodes
 var ui_layer: CanvasLayer
 var label_status: Label
+var label_target: Label
 var btn_commit: Button
 var btn_undo: Button
 var btn_turn_left: Button
@@ -104,6 +105,11 @@ func _setup_ui():
 	label_status = Label.new()
 	label_status.text = "Initializing..."
 	vbox.add_child(label_status)
+	
+	label_target = Label.new()
+	label_target.text = "Target: None"
+	label_target.modulate = Color(1, 0.5, 0.5) # Reddish
+	vbox.add_child(label_target)
 	
 	var hbox = HBoxContainer.new()
 	vbox.add_child(hbox)
@@ -393,6 +399,7 @@ func _handle_combat_click(hex: Vector3i):
 					queue_redraw()
 					log_message("Targeting: %s" % s.name)
 					_update_ship_visuals() # Ensure target pops to top
+					_update_ui_state()
 					break
 
 func _spawn_icm_fx(target: Ship, attacker_pos: Vector2, duration: float = 0.5):
@@ -786,87 +793,92 @@ func spawn_station(player_id: int):
 	log_message("Station Alpha online. Hull: %d" % s.hull)
 
 func spawn_ships():
-	# Player 1 (Left side)
-	for i in range(3):
-		var s = Ship.new()
-		s.name = "P1_Fighter_%d" % (i + 1)
-		
-		# Make the 3rd ship an Assault Scout for testing
-		if i == 2:
-			s.configure_assault_scout()
-			s.name = "P1_Scout_1"
-		else:
-			s.configure_fighter() # Set stats and weapons
-			
-		s.player_id = 1
-		s.color = Color.CYAN
-		s.grid_position = Vector3i(-3, i, 3 - i) # Staggered positions or stack if desired. Let's stack 2 and 3?
-		# User asked to stack. Let's stack them all on one hex for test, or adjacent? 
-		# "Add 2 more ships per side". Let's put them nearby.
-		if i == 0: s.grid_position = Vector3i(-3, 0, 3)
-		if i == 1: s.grid_position = Vector3i(-3, 1, 2)
-		if i == 2: s.grid_position = Vector3i(-4, 1, 3) 
-		
-		s.binding_pos_update() # Call helper to set initial position immediately
-		
-		s.binding_pos_update() # Call helper to set initial position immediately
-		
-		# Collateral Damage Logic
-		if s.is_docked:
-			# If guest destroyed, host takes damage
-			if is_instance_valid(s.docked_host):
-				var host = s.docked_host
-				var dmg = floor(s.max_hull / 2.0)
-				log_message("[color=red]COLLATERAL DAMAGE: Dock exploson hits %s for %d![/color]" % [host.name, dmg])
-				host.take_damage(dmg)
-				s.undock() # Cleanup
-		
-		# If s was a station with guests? 
-		# Space Station logic is generic "Ship", so we check docked_guests
-		if s.docked_guests.size() > 0:
-			var impact_dmg = floor(s.max_hull / 2.0)
-			log_message("[color=red]STATION DESTROYED! Docked ships take %d damage![/color]" % impact_dmg)
-			# Iterate backwards safely? Or duplicate
-			var guests = s.docked_guests.duplicate()
-			for g in guests:
-				g.undock() # Sever link first
-				g.take_damage(impact_dmg) # Apply damage
-		
-		s.ship_destroyed.connect(func(): _on_ship_destroyed(s))
-		add_child(s)
-		ships.append(s)
+	# --- SCENARIO: EVACUATION ---
+	# SIDE A (DEFENDER - Player 1)
+	# Station Alpha (Custom Stats)
+	var station = Ship.new()
+	station.name = "Station Alpha"
+	station.configure_space_station(25) # 25 HP
+	station.player_id = 1
+	station.color = Color.GREEN
+	# Custom Weapon Loadout: 1 Laser Battery, 0 Rocket Batteries, 6 ICMs
+	station.weapons.clear()
+	station.weapons.append({
+		"name": "Laser Battery",
+		"type": "Laser",
+		"range": 10,
+		"arc": "360",
+		"ammo": 999,
+		"max_ammo": 999,
+		"damage_dice": "1d10",
+		"damage_bonus": 0,
+		"fired": false
+	})
+	station.icm_max = 6
+	station.icm_current = 6
+	
+	# Place Station: 1, 0, -1 (Near Center neighbor)
+	station.grid_position = Vector3i(1, 0, -1)
+	station.orbit_direction = 1 # Start Orbiting CW
+	station.binding_pos_update()
+	_add_ship_safe(station)
 
-	# Player 2 (Right side)
-	# Heavy Cruiser
-	var hc = Ship.new()
-	hc.name = "Heavy Cruiser"
-	hc.configure_heavy_cruiser()
-	hc.player_id = 2
-	hc.color = Color.RED
-	hc.grid_position = Vector3i(4, -8, 4)
-	hc.facing = 3
-	hc.binding_pos_update()
-	hc.ship_destroyed.connect(func(): _on_ship_destroyed(hc))
-	add_child(hc)
-	ships.append(hc)
+	# Frigate "Defiant"
+	var defiant = Ship.new()
+	defiant.name = "Defiant"
+	defiant.configure_frigate()
+	defiant.player_id = 1
+	defiant.color = Color.CYAN
+	defiant.grid_position = station.grid_position # Start at station
+	defiant.binding_pos_update()
+	_add_ship_safe(defiant)
+	defiant.dock_at(station) # Start Docked
+
+	# Assault Scout "Stiletto"
+	var stiletto = Ship.new()
+	stiletto.name = "Stiletto"
+	stiletto.configure_assault_scout()
+	stiletto.player_id = 1
+	stiletto.color = Color.CYAN
+	stiletto.grid_position = station.grid_position
+	stiletto.binding_pos_update()
+	_add_ship_safe(stiletto)
+	stiletto.dock_at(station) # Start Docked
+
+	# SIDE B (ATTACKER - Player 2)
+	# Start at edge (Range ~24 for Map Radius 25)
 	
-	# Destroyer
-	var dd = Ship.new()
-	dd.name = "Destroyer"
-	dd.configure_destroyer()
-	dd.player_id = 2
-	dd.color = Color.RED
-	dd.grid_position = Vector3i(3, -1, -2) # Near centerish or flank?
-	# Let's place it roughly opposite P1
-	dd.facing = 3
-	dd.binding_pos_update()
-	dd.ship_destroyed.connect(func(): _on_ship_destroyed(dd))
-	add_child(dd)
-	ships.append(dd)
+	# Destroyer "Venemous"
+	var venemous = Ship.new()
+	venemous.name = "Venemous"
+	venemous.configure_destroyer()
+	venemous.player_id = 2
+	venemous.color = Color.RED
+	venemous.grid_position = Vector3i(24, -12, -12)
+	venemous.facing = 3 # Face West (towards center roughly)
+	venemous.speed = 8 # Start Speed 8
+	venemous.binding_pos_update()
+	_add_ship_safe(venemous)
 	
-	spawn_station(2) # Spawn Station
+	# Heavy Cruiser "Perdition"
+	var perdition = Ship.new()
+	perdition.name = "Perdition"
+	perdition.configure_heavy_cruiser()
+	perdition.player_id = 2
+	perdition.color = Color.RED
+	perdition.grid_position = Vector3i(24, -11, -13) # Adjacent
+	perdition.facing = 3
+	perdition.speed = 8
+	perdition.binding_pos_update()
+	_add_ship_safe(perdition)
 	
 	_update_ship_visuals()
+
+func _add_ship_safe(s: Ship):
+	# Helper to wire up signals and collateral logic
+	s.ship_destroyed.connect(func(): _on_ship_destroyed(s))
+	add_child(s)
+	ships.append(s)
 
 func _cycle_selection():
 	if current_phase == Phase.MOVEMENT:
@@ -924,6 +936,7 @@ func _cycle_selection():
 		queue_redraw()
 		log_message("Targeting: %s" % combat_target.name)
 		_update_ship_visuals() # Ensure target pops to top
+		_update_ui_state()
 
 func _update_ship_visuals():
 	var grid_counts = {}
@@ -983,6 +996,42 @@ func start_movement_phase():
 	current_phase = Phase.MOVEMENT
 	combat_subphase = 0
 	firing_player_id = 0
+	
+	
+	# Check Victory (Escape Condition) -> Moved to _check_boundary or specific check?
+	# "The frigate must then exit the playing area to win."
+	# We check this when it exits boundary.
+	
+	# ---------------------------------
+	
+	# AUTO-MOVE STATIONS
+	var stations = ships.filter(func(s): return s.player_id == current_player_id and not s.has_moved and s.ship_class == "Space Station")
+	for s in stations:
+		if s.orbit_direction != 0:
+			var planet_hex = Vector3i.MAX
+			for p in planet_hexes:
+				if HexGrid.hex_distance(s.grid_position, p) == 1:
+					planet_hex = p
+					break
+			
+			if planet_hex != Vector3i.MAX:
+				var neighbors = HexGrid.get_neighbors(planet_hex)
+				var my_idx = neighbors.find(s.grid_position)
+				if my_idx != -1:
+					var next_idx = posmod(my_idx + s.orbit_direction, 6)
+					var target_hex = neighbors[next_idx]
+					
+					s.grid_position = target_hex
+					log_message("%s orbits to %s." % [s.name, target_hex])
+					
+					if s.docked_guests.size() > 0:
+						for guest in s.docked_guests:
+							guest.grid_position = s.grid_position
+		else:
+			log_message("%s maintaining station keeping." % s.name)
+		
+		s.has_moved = true
+		_update_ship_visuals()
 	
 	# Find un-moved ships for ACTIVE player
 	var available = ships.filter(func(s): return s.player_id == current_player_id and not s.has_moved)
@@ -1094,7 +1143,7 @@ func _update_planning_ui_list():
 				any_weapon_available = true
 				break
 		
-		if not any_weapon_available:
+		if not any_weapon_available or (not has_targets and not is_planned):
 			status_str = "[N/A]"
 			btn.disabled = true
 			btn.modulate = Color(0.5, 0.5, 0.5, 0.5) # Greyed out
@@ -1102,8 +1151,6 @@ func _update_planning_ui_list():
 			btn.modulate = Color.YELLOW
 		elif is_planned:
 			btn.modulate = Color.GREEN
-		elif not has_targets:
-			btn.modulate = Color.GRAY
 		
 		btn.text = "%s %s" % [status_str, s.name]
 
@@ -1126,6 +1173,25 @@ func _update_planning_ui_list():
 func end_turn_cycle():
 	log_message("Turn Complete. Switching Active Player.")
 	current_player_id = 3 - current_player_id
+	
+	# --- ROUND END LOGIC (Wrap to P1) ---
+	if current_player_id == 1:
+		# Round Complete.
+		log_message("--- Round Complete ---")
+		
+		# Evacuation Logic (Moved here to count full rounds)
+		var defiant = _find_ship_by_name("Defiant")
+		var station = _find_ship_by_name("Station Alpha")
+		
+		if defiant and station and defiant.is_docked and defiant.docked_host == station:
+			defiant.evacuation_turns += 1
+			log_message("[color=yellow]Evacuation Progress: %d/3[/color]" % defiant.evacuation_turns)
+			
+			if defiant.evacuation_turns >= 3:
+				if station.weapons.size() > 0:
+					station.weapons.clear() # Disable weapons
+					log_message("[color=orange]Evacuation Complete! Station weapons OFFLINE. Defiant must escape![/color]")
+	# ------------------------------------
 	
 	# Reset ALL ships
 	for s in ships:
@@ -1255,9 +1321,9 @@ func _update_ui_state():
 		if is_stationary:
 			txt += "Speed 0: Free Rotation Mode\n"
 		elif state_is_orbiting:
-			txt += "Orbiting: Free Rotation Mode\n"
-		else:
-			txt += "Remaining MR: %d\n" % turns_remaining
+			txt += "Orbiting Station/Planet\n"
+			
+		txt += "Remaining MR: %d\n" % turns_remaining
 			
 		txt += "Speed: %d -> %d / Range: [%d, %d]\n" % [start_speed, current_path.size(), min_speed, max_speed]
 		
@@ -1309,6 +1375,14 @@ func _update_ui_state():
 		btn_turn_left.visible = false
 		btn_turn_right.visible = false
 		label_status.text = "Game Over"
+		
+	# TARGET UI UPDATE
+	if combat_target:
+		label_target.text = "CURRENT TARGET:\n%s (%s)\nHull: %d" % [combat_target.name, combat_target.ship_class, combat_target.hull]
+		label_target.modulate = Color(1, 0.3, 0.3) # Bright Red
+	else:
+		label_target.text = "CURRENT TARGET:\nNone"
+		label_target.modulate = Color(0.5, 0.5, 0.5) # Grey
 
 func _on_undo():
 	if current_path.size() > 0:
@@ -1424,6 +1498,14 @@ func _on_ms_toggled(pressed: bool):
 	_update_ui_state()
 
 func _on_commit_move():
+	# -----------------------------
+	# GHOST TRAIL LOGIC
+	# Store the path we just took for visualization next turn
+	var trail: Array[Vector3i] = [selected_ship.grid_position]
+	trail.append_array(current_path)
+	selected_ship.previous_path = trail
+	# -----------------------------
+
 	state_is_orbiting = false
 	
 	# Update Persistent Orbit State
@@ -1487,11 +1569,6 @@ func _on_commit_move():
 	ghost_ship.queue_free()
 	ghost_ship = null
 	
-	_update_ship_visuals() # Ensure we re-stack after movement
-	
-	ghost_ship.queue_free()
-	ghost_ship = null
-	
 	# DOCKING LOGIC (Post-Move)
 	# 1. Check for Auto-Docking
 	# "Any ship can dock at a space station by entering the same hex as the space station and stopping there."
@@ -1526,11 +1603,32 @@ func _on_commit_move():
 func _check_boundary(ship: Ship) -> bool:
 	var dist = HexGrid.hex_distance(Vector3i.ZERO, ship.grid_position)
 	if dist > map_radius:
+		# EVACUATION VICTORY CHECK
+		if ship.name == "Defiant":
+			if ship.evacuation_turns >= 3:
+				_trigger_game_over("Defenders Win! Defiant Escaped!")
+				return true
+			else:
+				log_message("[color=red]Defiant fled before evacuation complete! Attackers Win![/color]")
+				_trigger_game_over("Attackers Win!")
+				return true
+				
 		log_message("%s drifted into deep space and was lost." % ship.name)
 		_on_ship_destroyed(ship) # Handles list removal and victory check
 		ship.queue_free()
 		return true
 	return false
+
+func _find_ship_by_name(n: String) -> Ship:
+	for s in ships:
+		if s.name == n: return s
+	return null
+
+func _trigger_game_over(msg: String):
+	log_message("[color=yellow]%s[/color]" % msg)
+	label_winner.text = msg
+	panel_game_over.visible = true
+	current_phase = Phase.END
 
 
 
@@ -1544,6 +1642,19 @@ func _draw():
 			var hex = Vector3i(q, r, s)
 			draw_hex(hex)
 	
+	# GHOST TRAIL VISUALIZATION
+	for s in ships:
+		if s.previous_path.size() > 1 and not s.is_exploding:
+			var trail_points = PackedVector2Array()
+			for h in s.previous_path:
+				trail_points.append(HexGrid.hex_to_pixel(h))
+			
+			# Draw thin trail
+			draw_polyline(trail_points, Color(0.5, 0.5, 1, 0.3), 2.0)
+			
+			# Draw start point marker?
+			# draw_circle(trail_points[0], 3.0, Color(0.5, 0.5, 1, 0.5))
+	
 	if ghost_ship and current_path.size() > 0:
 		var points = PackedVector2Array()
 		points.append(HexGrid.hex_to_pixel(selected_ship.grid_position))
@@ -1554,14 +1665,28 @@ func _draw():
 	# Predictive Path Highlighting
 	if current_phase == Phase.MOVEMENT and ghost_ship:
 		var steps_taken = current_path.size()
-		var green_count = max(0, start_speed - steps_taken)
+		# Logic:
+		# Min Speed (Mandatory): indices [0, min_speed)
+		# Safe Speed (Maintain): indices [min_speed, start_speed)
+		# Max Speed (Accel): indices [start_speed, max_speed)
+		
+		var min_speed = max(0, start_speed - selected_ship.adf)
 		var max_dist = start_speed + selected_ship.adf
-		var yellow_count = max(0, max_dist - steps_taken - green_count)
+		
+		# Remaining counts needed for drawing
+		var mandatory_count = max(0, min_speed - steps_taken)
+		var green_count = max(0, start_speed - steps_taken - mandatory_count)
+		var yellow_count = max(0, max_dist - steps_taken - mandatory_count - green_count)
 		
 		var forward_vec = HexGrid.get_direction_vec(ghost_ship.facing)
 		var current_check_hex = ghost_ship.grid_position
 		
-		# Draw Green Hexes (Mandatory Momentum)
+		# Draw Orange Hexes (Mandatory Minimum)
+		for i in range(mandatory_count):
+			current_check_hex += forward_vec
+			_draw_hex_outline(current_check_hex, Color(1, 0.5, 0, 0.8), 4.0)
+			
+		# Draw Green Hexes (Standard / Maintain)
 		for i in range(green_count):
 			current_check_hex += forward_vec
 			_draw_hex_outline(current_check_hex, Color(0, 1, 0, 0.6), 4.0)
@@ -1817,6 +1942,10 @@ func _get_valid_targets(shooter: Ship) -> Array:
 	var valid = []
 	for s in ships:
 		if s.player_id != shooter.player_id and not s.is_exploding:
+			# DOCKING RULE: Targeting Immunity
+			if s.is_docked and s.ship_class in ["Fighter", "Assault Scout"]:
+				continue
+
 			# Check against ALL available weapons (or just current? usually any valid weapon means ship is active)
 			# Let's check if ANY weapon can hit the target
 			var can_hit = false
@@ -2057,23 +2186,38 @@ func _submit_icm_decision(count: int):
 	icm_decision_made.emit(count)
 
 func _on_ship_destroyed(ship: Ship):
-	ships.erase(ship)
+	if ships.has(ship):
+		ships.erase(ship)
+	
 	_update_ship_visuals() # Re-calc stacks
 	log_message("Ship destroyed: %s" % ship.name)
+
+	# EVACUATION SCENARIO CHECK
+	if ship.name == "Defiant":
+		_trigger_game_over("Attackers Win! Defiant Destroyed!")
+		return
+		
+	if ship.name == "Station Alpha":
+		log_message("[color=red]Station Alpha Critical Failure![/color]")
+		# If Defiant hasn't evacuated yet (3 turns), does it lose?
+		# Rules: "The frigate must spend 3 turns docked". If station gone, can't dock.
+		# So if evacuation_turns < 3, it's a loss.
+		var defiant = _find_ship_by_name("Defiant")
+		if defiant and defiant.evacuation_turns < 3:
+			_trigger_game_over("Attackers Win! Station destroyed before evacuation!")
+			return
+
+	# Standard Wipe Check (Optional, but scenario might continue if only escorts die)
+	# ... legacy check removed or kept as fallback? 
+	# Let's keep a generic check if one side is wiped out.
+	var p1_alive = ships.filter(func(s): return s.player_id == 1).size()
+	var p2_alive = ships.filter(func(s): return s.player_id == 2).size()
 	
-	# Check for Victory
-	var p1_count = 0
-	var p2_count = 0
-	for s in ships:
-		if s.player_id == 1: p1_count += 1
-		elif s.player_id == 2: p2_count += 1
-	
-	if p1_count == 0 and p2_count == 0:
-		show_game_over("Draw!")
-	elif p1_count == 0:
-		show_game_over("Winner: Player 2!")
-	elif p2_count == 0:
-		show_game_over("Winner: Player 1!")
+	if p1_alive == 0:
+		_trigger_game_over("Attackers Win! All Defenders Destroyed!")
+	elif p2_alive == 0:
+		# If attackers die, Defiant can freely evacuate.
+		_trigger_game_over("Defenders Win! Attackers Repelled!")
 
 func show_game_over(msg: String):
 	current_phase = Phase.END

@@ -23,6 +23,10 @@ var is_docked: bool = false
 var docked_host: Ship = null
 var docked_guests: Array[Ship] = []
 
+# Scenario Specific
+var evacuation_turns: int = 0
+var previous_path: Array[Vector3i] = []
+
 
 var grid_position: Vector3i = Vector3i.ZERO : set = _set_grid_position
 var facing: int = 0 : set = _set_facing # 0 to 5, direction index
@@ -684,4 +688,3 @@ func undock():
 	
 	is_docked = false
 	docked_host = null
-
