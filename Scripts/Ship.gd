@@ -11,6 +11,12 @@ var max_hull: int = 15
 var hull: int = 15
 var icm_max: int = 0
 var icm_current: int = 0
+var ms_max: int = 0
+var ms_current: int = 0
+var is_ms_active: bool = false : set = _set_ms_active
+var ms_orbit_start_hex: Vector3i = Vector3i.MAX # Sentinel for orbit MS logic
+
+var ms_particles: CPUParticles2D = null
 
 var grid_position: Vector3i = Vector3i.ZERO : set = _set_grid_position
 var facing: int = 0 : set = _set_facing # 0 to 5, direction index
@@ -39,6 +45,8 @@ func configure_fighter():
 	mr = 5
 	icm_max = 0
 	icm_current = 0
+	ms_max = 0
+	ms_current = 0
 	
 	weapons.clear()
 	# Assault Rockets: Range 4, Forward Firing (FF), Ammo 3, 2d10+4
@@ -62,6 +70,8 @@ func configure_assault_scout():
 	hull = max_hull
 	adf = 5
 	mr = 4
+	ms_max = 0
+	ms_current = 0
 	
 	weapons.clear()
 	# Laser Battery: Range 9, 360 Arc, 1d10
@@ -100,6 +110,8 @@ func configure_frigate():
 	mr = 3
 	icm_max = 4
 	icm_current = 4
+	ms_max = 1
+	ms_current = 1
 	
 	weapons.clear()
 	# Laser Battery: Range 10 (User said Laser Canon is 10, Battery usually 9? Keeping Battery as 9 for consistency or standard?)
@@ -169,6 +181,8 @@ func configure_destroyer():
 	mr = 2
 	icm_max = 4
 	icm_current = 4
+	ms_max = 2
+	ms_current = 2
 	
 	weapons.clear()
 	# Laser Battery: Range 10, 360 Arc, 1d10
@@ -236,6 +250,8 @@ func configure_heavy_cruiser():
 	mr = 1
 	icm_max = 8
 	icm_current = 8
+	ms_max = 1
+	ms_current = 1
 	
 	weapons.clear()
 	# Laser Batteries (x3 - Separate entries)
@@ -314,6 +330,13 @@ func configure_space_station(force_hull: int = -1):
 	icm_max = int(clamp(floor(hull / 25.0), 2, 8))
 	icm_current = icm_max
 	
+	# MS Scaling: 1-4. floor(H/50)?
+	# Prompt: "1 to 4".
+	# 20 -> 1. 200 -> 4.
+	# H/60? 20/60 = 0 -> 1. 200/60 = 3 -> 4.
+	ms_max = int(clamp(floor(hull / 50.0) + 1, 1, 4))
+	ms_current = ms_max
+	
 	weapons.clear()
 	
 	# Laser Batteries: floor(H / 60) + 1, clamp 1-3
@@ -378,10 +401,54 @@ func reset_weapons():
 	has_fired = false
 	for w in weapons:
 		w["fired"] = false
+		
+	# MS maintenance handled in GM (if constraints broken), but here we can just ensure persistence?
+	# "A masking screen remains in place once activated as long as the ship remains moving in a straight line at its current speed."
+	# So we don't reset it here manually unless we want to clear it on turn start?
+	# Actually, if it remains "once activated", we shouldn't clear it.
+	
 	queue_redraw()
 
 func _ready():
-	# hull = max_hull # Do NOT reset hull here, as configure() is called before add_child() -> _ready()
+	_setup_particles()
+	queue_redraw()
+
+func _setup_particles():
+	ms_particles = CPUParticles2D.new()
+	ms_particles.name = "MSParticles"
+	ms_particles.emitting = false
+	ms_particles.amount = 32
+	ms_particles.lifetime = 1.5
+	# Emission Shape: Sphere
+	ms_particles.emission_shape = CPUParticles2D.EMISSION_SHAPE_SPHERE
+	ms_particles.emission_sphere_radius = HexGrid.TILE_SIZE * 0.7
+	
+	# Physics
+	ms_particles.gravity = Vector2.ZERO
+	ms_particles.direction = Vector2(0, -1)
+	ms_particles.spread = 180.0
+	ms_particles.initial_velocity_min = 5.0
+	ms_particles.initial_velocity_max = 15.0
+	ms_particles.damping_min = 5.0
+	ms_particles.damping_max = 10.0
+	
+	# Visuals
+	ms_particles.scale_amount_min = 2.0
+	ms_particles.scale_amount_max = 4.0
+	ms_particles.color = Color(0.4, 0.7, 1.0, 0.6) # Light Blue Vapor
+	
+	add_child(ms_particles)
+	# Ensure it draws behind the ship? 
+	# Z-index is relative. Ship is parent. 
+	# To draw behind, we can specific z_index or just order?
+	# CanvasItems draw children on top.
+	# We want particles BEHIND? Then use show_behind_parent = true
+	ms_particles.show_behind_parent = true
+
+func _set_ms_active(val: bool):
+	is_ms_active = val
+	if ms_particles:
+		ms_particles.emitting = val
 	queue_redraw()
 
 func _set_facing(v: int):
@@ -402,11 +469,13 @@ func take_damage(amount: int):
 
 	if hull <= 0:
 		hull = 0
+		is_destroyed = true
 		ship_destroyed.emit()
 		trigger_explosion()
 
 var is_ghost: bool = false
 var is_exploding: bool = false
+var is_destroyed: bool = false
 var show_info: bool = true
 
 func set_ghost(val: bool):
@@ -425,6 +494,18 @@ func binding_pos_update():
 func _draw():
 	if is_exploding: return
 
+	# If Masking Screen active, we rely on particles now.
+	# But maybe a faint outline is still good?
+	if is_ms_active:
+		# Draw a very faint outline to define the "screen" boundary
+		draw_arc(Vector2.ZERO, HexGrid.TILE_SIZE * 0.8, 0, TAU, 32, Color(0.4, 0.7, 1.0, 0.3), 1.0)
+
+	var color_to_use = color
+	if is_exploding:
+		color_to_use = Color.ORANGE
+	elif is_destroyed:
+		color_to_use = Color.WEB_GRAY
+
 	# Draw simple representation based on class
 	var size = HexGrid.TILE_SIZE * 0.6
 	var points = PackedVector2Array()
@@ -432,7 +513,6 @@ func _draw():
 	match ship_class:
 		"Assault Scout":
 			# Heavier, multi-faceted shape (Bullet/Hex-like)
-			# Nose, Right Shoulder, Right Rear, Rear Center, Left Rear, Left Shoulder
 			points = PackedVector2Array([
 				Vector2(size, 0),
 				Vector2(size * 0.2, -size * 0.5),
@@ -442,45 +522,30 @@ func _draw():
 				Vector2(size * 0.2, size * 0.5)
 			])
 		"Frigate":
-			# Large Heavy Cruiser Shape
+			# Pentagon / Shield Shape
 			size = HexGrid.TILE_SIZE * 0.9
 			points = PackedVector2Array([
-				Vector2(size, 0), # Long Nose
-				Vector2(size * 0.3, -size * 0.3), # Shoulder R
-				Vector2(-size * 0.4, -size * 0.7), # Wing/Engine Pod R
-				Vector2(-size * 0.9, -size * 0.4), # Rear R
-				Vector2(-size * 0.7, 0), # Engine Exhaust Notch
-				Vector2(-size * 0.9, size * 0.4), # Rear L
-				Vector2(-size * 0.4, size * 0.7), # Wing/Engine Pod L
-				Vector2(size * 0.3, size * 0.3) # Shoulder L
+				Vector2(size, 0), # Nose
+				Vector2(size * 0.3, -size * 0.5), # R Shoulder
+				Vector2(-size * 0.6, -size * 0.5), # R Rear
+				Vector2(-size * 0.4, 0), # Rear Cut
+				Vector2(-size * 0.6, size * 0.5), # L Rear
+				Vector2(size * 0.3, size * 0.5) # L Shoulder
 			])
 		"Destroyer":
-			# Even Larger, elongated Battleship/Destroyer shape
-			size = HexGrid.TILE_SIZE * 0.95
-			# Long central spine with side pods
+			# Elongated Battleship / Needle
+			size = HexGrid.TILE_SIZE * 0.8 # Larger
 			points = PackedVector2Array([
-				Vector2(size, 0), # Nose tip
-				Vector2(size * 0.6, -size * 0.3), # Front R
-				Vector2(size * 0.2, -size * 0.3), # Mid R indent
-				Vector2(0, -size * 0.6), # Side pod R front
-				Vector2(-size * 0.6, -size * 0.6), # Side pod R rear
-				Vector2(-size * 0.4, -size * 0.2), # Rear fuselage R
-				Vector2(-size * 0.9, -size * 0.2), # Engine R
-				Vector2(-size * 0.8, 0), # Engine Center (exhaust)
-				Vector2(-size * 0.9, size * 0.2), # Engine L
-				Vector2(-size * 0.4, size * 0.2), # Rear fuselage L
-				Vector2(-size * 0.6, size * 0.6), # Side pod L rear
-				Vector2(0, size * 0.6), # Side pod L front
-				Vector2(size * 0.2, size * 0.3), # Mid L indent
-				Vector2(size * 0.6, size * 0.3) # Front L
-			
+				Vector2(size, 0), # Nose
+				Vector2(size * 0.2, -size * 0.3), 
+				Vector2(-size * 0.8, -size * 0.3), # R Rear
+				Vector2(-size * 0.9, 0), # Rear engine
+				Vector2(-size * 0.8, size * 0.3), # L Rear
+				Vector2(size * 0.2, size * 0.3)
 			])
 		"Heavy Cruiser":
-			# Massive Dreadnought Shape
-			size = HexGrid.TILE_SIZE * 1.1 # Slightly overfill tile? 
-			# Or just full tile
-			
-			# Broad Arrow / Star Destroyer-ish but bulkier
+			# Massive Triangle / Dreadnought
+			size = HexGrid.TILE_SIZE * 0.9
 			points = PackedVector2Array([
 				Vector2(size, 0), # Nose
 				Vector2(size * 0.4, -size * 0.4), # R Shoulder
@@ -558,6 +623,7 @@ func _draw():
 		draw_rect(fill_rect, health_color, true)
 
 func trigger_explosion():
+	is_ms_active = false # Kill systems
 	is_exploding = true
 	queue_redraw()
 	

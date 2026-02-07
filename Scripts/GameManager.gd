@@ -39,6 +39,7 @@ var btn_turn_left: Button
 var btn_turn_right: Button
 var btn_orbit_cw: Button
 var btn_orbit_ccw: Button
+var btn_ms_toggle: CheckBox
 
 # Movement State
 var ghost_ship: Ship = null
@@ -47,6 +48,7 @@ var turns_remaining: int = 0
 var start_speed: int = 0
 var can_turn_this_step: bool = false # "Use it or lose it" flag
 var combat_action_taken: bool = false # Lock to prevent click spam
+var start_ms_active: bool = false # Track initial state for cost logic
 
 # Combat State
 var queued_attacks: Array = [] # Objects: {source, target, weapon_idx}
@@ -145,6 +147,13 @@ func _setup_ui():
 	btn_orbit_ccw.pressed.connect(func(): _on_orbit(-1))
 	btn_orbit_ccw.visible = false
 	orbit_box.add_child(btn_orbit_ccw)
+	
+	# MS Toggle
+	btn_ms_toggle = CheckBox.new()
+	btn_ms_toggle.text = "Deploy Screen"
+	btn_ms_toggle.toggled.connect(_on_ms_toggled)
+	btn_ms_toggle.visible = false
+	vbox.add_child(btn_ms_toggle)
 	
 	# Planning UI (Right Side)
 	panel_planning = PanelContainer.new()
@@ -617,7 +626,7 @@ func _process_next_attack():
 	var w_type = weapon.get("type")
 	if target.icm_current > 0 and w_type in ["Torpedo", "Rocket", "Rocket Battery"]:
 		# Calculate hit chance to show player
-		var raw_chance = Combat.calculate_hit_chance(d, weapon, target, is_head_on, 0)
+		var raw_chance = Combat.calculate_hit_chance(d, weapon, target, is_head_on, 0, source)
 		
 		# Prompt UI
 		_trigger_icm_decision(source.name, weapon["name"], w_type, raw_chance, target)
@@ -633,7 +642,7 @@ func _process_next_attack():
 			await get_tree().create_timer(1.0).timeout # Wait for counter-fire FX
 	
 	# Determine if hit (Pass ICM count)
-	var hit = Combat.roll_for_hit(d, weapon, target, is_head_on, icm_used)
+	var hit = Combat.roll_for_hit(d, weapon, target, is_head_on, icm_used, source)
 	
 	# Spawn Attack FX (Launch concurrently with ICMs)
 	var travel_time = _spawn_attack_fx(start_pos, target_pos, weapon.get("type", "Laser"))
@@ -647,6 +656,15 @@ func _process_next_attack():
 	if hit:
 		var dmg_str = "%s+%d" % [weapon["damage_dice"], weapon["damage_bonus"]]
 		var dmg = Combat.roll_damage(dmg_str)
+		
+		# Masking Screen Damage Reduction (Halved)
+		# Applies if Target OR Source has MS active, and weapon is Laser/Canon
+		var target_ms = target.get("is_ms_active")
+		var source_ms = source.get("is_ms_active")
+		if (target_ms or source_ms) and w_type in ["Laser", "Laser Canon"]:
+			dmg = floor(dmg / 2)
+			log_message("Masking Screen reduces damage!")
+			
 		log_message("[color=green]HIT![/color] Dmg: %d" % dmg)
 		
 		# Delay damage for FX arrival
@@ -816,8 +834,10 @@ func _cycle_selection():
 		# Reset plotting
 		current_path = []
 		turns_remaining = selected_ship.mr
+		turns_remaining = selected_ship.mr
 		can_turn_this_step = false
 		start_speed = selected_ship.speed
+		start_ms_active = selected_ship.is_ms_active
 		
 		if audio_ship_select and audio_ship_select.stream: audio_ship_select.play()
 		_spawn_ghost()
@@ -937,6 +957,7 @@ func start_movement_phase():
 	can_turn_this_step = false
 	state_is_orbiting = false
 	current_orbit_direction = 0
+	start_ms_active = selected_ship.is_ms_active
 	
 	# Check for Persistent Orbit
 	if selected_ship.orbit_direction != 0:
@@ -1132,6 +1153,53 @@ func _update_ui_state():
 		btn_orbit_cw.visible = can_orbit
 		btn_orbit_ccw.visible = can_orbit
 		
+		# MS Toggle Check
+		# Visible if ship has Max MS > 0
+		if selected_ship.ms_max > 0:
+			btn_ms_toggle.visible = true
+			btn_ms_toggle.set_pressed_no_signal(selected_ship.is_ms_active)
+			btn_ms_toggle.text = "Deploy Screen (%d)" % selected_ship.ms_current
+			
+			# Constraint Check: Maintain Speed and Heading
+			# Logic:
+			# 1. Calculate validity of current plot for MS (Speed == Start Speed AND Heading == Start Heading)
+			#    BUT: Orbit works differently (always valid if orbiting)
+			
+			var ms_valid_move = false
+			if state_is_orbiting:
+				ms_valid_move = true
+			else:
+				var speed_ok = false
+				if selected_ship.is_ms_active:
+					# Relaxed Persistence Check:
+					# Valid if Path <= Start Speed (Partial) AND Heading Matches
+					# We only INVALIDATE if Path > Start Speed or Heading Mismatch
+					speed_ok = (current_path.size() <= start_speed)
+				else:
+					# Strict Activation Check:
+					# must EXACTLY match to activate fresh
+					speed_ok = (current_path.size() == start_speed)
+					
+				var heading_ok = (ghost_ship.facing == selected_ship.facing)
+				ms_valid_move = (speed_ok and heading_ok)
+			
+			if selected_ship.is_ms_active:
+				# If already active, check if we need to DROP it
+				if not ms_valid_move:
+					_on_ms_toggled(false) # Auto-drop
+					log_message("Maneuver Dropped Screen")
+			else:
+				# If not active, can we Activate it?
+				# Only if move is valid (Straight line) OR if we haven't moved yet (Stationary start is valid?)
+				# Actually, user plans move then activates. If plot is invalid, disable button.
+				btn_ms_toggle.disabled = not ms_valid_move
+				if not ms_valid_move:
+					btn_ms_toggle.tooltip_text = "Must maintain Speed and Heading to deploy"
+				else:
+					btn_ms_toggle.tooltip_text = "Deploy Masking Screen (Cost: 1)"
+		else:
+			btn_ms_toggle.visible = false
+		
 		var txt = "Player %d Plotting\n" % selected_ship.player_id
 		txt += "Ship: %s (%s)\n" % [selected_ship.name, selected_ship.ship_class]
 		txt += "Hull: %d\n" % selected_ship.hull
@@ -1144,6 +1212,9 @@ func _update_ui_state():
 			txt += "Remaining MR: %d\n" % turns_remaining
 			
 		txt += "Speed: %d -> %d / Range: [%d, %d]\n" % [start_speed, current_path.size(), min_speed, max_speed]
+		
+		if selected_ship.is_ms_active:
+			txt += "[COLOR=blue]Masking Screen ACTIVE[/COLOR]\n"
 		
 		txt += "Weapons:\n"
 		for w in selected_ship.weapons:
@@ -1267,6 +1338,43 @@ func _on_orbit(direction: int):
 
 var current_orbit_direction: int = 0
 
+func _on_ms_toggled(pressed: bool):
+	if not selected_ship: return
+	
+	if pressed:
+		# Activate
+		if start_ms_active:
+			# Was already active, just restoring maintenance (Cost 0)
+			selected_ship.is_ms_active = true
+		else:
+			# New Activation (Cost 1)
+			if selected_ship.ms_current > 0:
+				selected_ship.is_ms_active = true
+				selected_ship.ms_current -= 1
+				# Orbit Exception: Capture start
+				if state_is_orbiting:
+					selected_ship.ms_orbit_start_hex = selected_ship.grid_position
+				else:
+					selected_ship.ms_orbit_start_hex = Vector3i.MAX
+					
+				log_message("Masking Screen Deployed")
+			else:
+				# Failed
+				btn_ms_toggle.set_pressed_no_signal(false)
+				log_message("No Charges for Screen")
+	else:
+		# Deactivate
+		selected_ship.is_ms_active = false
+		if not start_ms_active:
+			# Refund if it was a new activation this turn
+			selected_ship.ms_current += 1
+			log_message("Screen Deployment Cancelled")
+		else:
+			log_message("Screen Dropped")
+			
+	selected_ship.queue_redraw()
+	_update_ui_state()
+
 func _on_commit_move():
 	state_is_orbiting = false
 	
@@ -1289,10 +1397,15 @@ func _on_commit_move():
 	# selected_ship.facing = ghost_ship.facing
 	# selected_ship.speed = current_path.size()
 	
-	# Logic:
 	# 1. Update facing effectively immediately (for the whole move? Or should we simulate steps?)
 	# 2. Update speed.
 	# 3. Simulate movement step by step for collision check.
+	
+	# Final MS Constraint Check (Duration/Commit)
+	if selected_ship.is_ms_active and not state_is_orbiting:
+		if current_path.size() != start_speed:
+			_on_ms_toggled(false) # Drop
+			log_message("Screen Dropped: Speed Changed")
 	
 	selected_ship.facing = ghost_ship.facing
 	selected_ship.speed = current_path.size()
@@ -1661,8 +1774,10 @@ func handle_click(hex: Vector3i):
 			# Reset plot
 			start_speed = selected_ship.speed
 			current_path = []
+			current_path = []
 			turns_remaining = selected_ship.mr
 			can_turn_this_step = false
+			start_ms_active = selected_ship.is_ms_active
 			
 			if audio_ship_select and audio_ship_select.stream: audio_ship_select.play()
 			_spawn_ghost()
@@ -1875,7 +1990,18 @@ func end_turn():
 		audio_action_complete.play()
 	
 	if current_phase == Phase.MOVEMENT:
-		if selected_ship: selected_ship.has_moved = true
+		if selected_ship: 
+			selected_ship.has_moved = true
+			
+			# Orbit MS Check: Did we complete the loop?
+			# If MS active AND Orbiting AND Position == Start Hex
+			if selected_ship.is_ms_active and selected_ship.orbit_direction != 0:
+				if selected_ship.ms_orbit_start_hex != Vector3i.MAX:
+					if selected_ship.grid_position == selected_ship.ms_orbit_start_hex:
+						selected_ship.is_ms_active = false
+						selected_ship.ms_orbit_start_hex = Vector3i.MAX
+						log_message("%s completes orbit; Screen drops." % selected_ship.name)
+					
 		start_movement_phase() # Loop to next ship
 		
 	elif current_phase == Phase.COMBAT:

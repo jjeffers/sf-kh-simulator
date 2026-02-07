@@ -22,7 +22,7 @@ static func calculate_icm_reduction(weapon_type: String, icm_count: int) -> int:
 		
 	return icm_count * reduction_per_missile
 
-static func calculate_hit_chance(dist: int, weapon: Dictionary = {}, target: Ship = null, is_head_on: bool = false, icm_count: int = 0) -> int:
+static func calculate_hit_chance(dist: int, weapon: Dictionary = {}, target: Ship = null, is_head_on: bool = false, icm_count: int = 0, source: Ship = null) -> int:
 	if dist > MAX_RANGE:
 		return 0
 		
@@ -53,12 +53,25 @@ static func calculate_hit_chance(dist: int, weapon: Dictionary = {}, target: Shi
 	# Base Chance Calculation
 	var base = BASE_HIT_CHANCE # 80
 	
-	# Special Rule: Laser vs Reflective Hull (RH)
-	if target and target.defense == "RH":
-		if weapon.get("type") == "Laser":
-			base = 50
-		elif weapon.get("type") == "Laser Canon":
-			base = 60 # "60% chance to hit a target with a reflective hull"
+	# Masking Screen Logic (Defense & Reciprocal)
+	var target_has_ms = (target and target.get("is_ms_active"))
+	var source_has_ms = (source and source.get("is_ms_active"))
+	
+	if (target_has_ms or source_has_ms) and (weapon.get("type") == "Laser" or weapon.get("type") == "Laser Canon"):
+		# Override Base for Laser weapons
+		if weapon.get("type") == "Laser Canon":
+			base = 20
+		else:
+			base = 10 # Battery
+	else:
+		# Standard Laser vs Reflective Hull (RH) only if NO Screen (Screen overrides RH?)
+		# Usually defensive systems don't stack poorly, but Prompt says "reduce the base chance... to 20%".
+		# This strongly implies replacement.
+		if target and target.defense == "RH":
+			if weapon.get("type") == "Laser":
+				base = 50
+			elif weapon.get("type") == "Laser Canon":
+				base = 60 # "60% chance to hit a target with a reflective hull"
 
 	
 	# Standard / Laser / Laser Canon Rule: Range Diffusion (RD)
@@ -68,8 +81,8 @@ static func calculate_hit_chance(dist: int, weapon: Dictionary = {}, target: Shi
 	return max(0, chance)
 
 # Returns true if hit
-static func roll_for_hit(dist: int, weapon: Dictionary = {}, target: Ship = null, is_head_on: bool = false, icm_count: int = 0) -> bool:
-	var chance = calculate_hit_chance(dist, weapon, target, is_head_on, icm_count)
+static func roll_for_hit(dist: int, weapon: Dictionary = {}, target: Ship = null, is_head_on: bool = false, icm_count: int = 0, source: Ship = null) -> bool:
+	var chance = calculate_hit_chance(dist, weapon, target, is_head_on, icm_count, source)
 	var roll = randi() % 100 + 1 # 1-100
 	print("Combat Roll: Distance %d, Chance %d%%, Rolled %d" % [dist, chance, roll])
 	return roll <= chance
