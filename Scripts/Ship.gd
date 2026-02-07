@@ -18,6 +18,12 @@ var ms_orbit_start_hex: Vector3i = Vector3i.MAX # Sentinel for orbit MS logic
 
 var ms_particles: CPUParticles2D = null
 
+# Docking State
+var is_docked: bool = false
+var docked_host: Ship = null
+var docked_guests: Array[Ship] = []
+
+
 var grid_position: Vector3i = Vector3i.ZERO : set = _set_grid_position
 var facing: int = 0 : set = _set_facing # 0 to 5, direction index
 var speed: int = 0
@@ -658,3 +664,24 @@ func reset_turn_state():
 	has_moved = false
 	has_fired = false
 	reset_weapons()
+
+func dock_at(station: Ship):
+	if is_instance_valid(station) and station != self:
+		is_docked = true
+		docked_host = station
+		if not station.docked_guests.has(self):
+			station.docked_guests.append(self)
+		
+		# Align position purely for visuals/logic consistency
+		grid_position = station.grid_position
+		# Visual tweak: maybe slight offset or smaller scale? 
+		# For now, just sharing the hex is enough. z_index handles visibility.
+		# Ships are drawn in tree order. Active player ships usually last.
+		
+func undock():
+	if is_instance_valid(docked_host):
+		docked_host.docked_guests.erase(self)
+	
+	is_docked = false
+	docked_host = null
+

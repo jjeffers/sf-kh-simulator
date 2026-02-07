@@ -316,9 +316,17 @@ func _handle_combat_click(hex: Vector3i):
 	if is_click_on_target:
 		var s = combat_target
 		
+		
 		# Validation
 		var weapon = selected_ship.weapons[selected_ship.current_weapon_index]
 		
+		# DOCKING RULE: Targeting Immunity
+		# "Any docked ships except fighters and assault scouts can be attacked while docked."
+		# = Fighters/Scouts CANNOT be attacked while docked.
+		if s.is_docked and s.ship_class in ["Fighter", "Assault Scout"]:
+			log_message("[color=red]Target is docked and cannot be engaged![/color]")
+			return
+
 		# Availability Check (Phase Rule)
 		if not _is_weapon_available_in_phase(weapon, selected_ship):
 			log_message("[color=red]Cannot fire %s in Passive Turn![/color]" % weapon["name"])
@@ -603,6 +611,16 @@ func _process_next_attack():
 		_process_next_attack()
 		return
 
+		return
+
+	# DOCKING RULE: Targeting Immunity Check AGAIN (Safety)
+	if target.is_docked and target.ship_class in ["Fighter", "Assault Scout"]:
+		log_message("%s target is docked and invalid! Attack fizzles." % source.name)
+		source.weapons[weapon_idx]["ammo"] -= 1 # Wasted shot rule? Or refund? Let's burn ammo to be safe.
+		await get_tree().create_timer(1.0).timeout
+		_process_next_attack()
+		return
+
 	# Execute Fire Logic
 	log_message("%s firing %s at %s" % [source.name, weapon["name"], target.name])
 	
@@ -624,7 +642,12 @@ func _process_next_attack():
 	# ICM INTERRUPT
 	var icm_used = 0
 	var w_type = weapon.get("type")
-	if target.icm_current > 0 and w_type in ["Torpedo", "Rocket", "Rocket Battery"]:
+	
+	# DOCKING RULE: Docked Ships cannot use ICMs
+	var can_use_icm = (target.icm_current > 0)
+	if target.is_docked: can_use_icm = false
+
+	if can_use_icm and w_type in ["Torpedo", "Rocket", "Rocket Battery"]:
 		# Calculate hit chance to show player
 		var raw_chance = Combat.calculate_hit_chance(d, weapon, target, is_head_on, 0, source)
 		
@@ -640,6 +663,7 @@ func _process_next_attack():
 			log_message("%s launches %d ICMs!" % [target.name, icm_used])
 			_spawn_icm_fx(target, source.position)
 			await get_tree().create_timer(1.0).timeout # Wait for counter-fire FX
+	
 	
 	# Determine if hit (Pass ICM count)
 	var hit = Combat.roll_for_hit(d, weapon, target, is_head_on, icm_used, source)
@@ -784,6 +808,29 @@ func spawn_ships():
 		if i == 2: s.grid_position = Vector3i(-4, 1, 3) 
 		
 		s.binding_pos_update() # Call helper to set initial position immediately
+		
+		s.binding_pos_update() # Call helper to set initial position immediately
+		
+		# Collateral Damage Logic
+		if s.is_docked:
+			# If guest destroyed, host takes damage
+			if is_instance_valid(s.docked_host):
+				var host = s.docked_host
+				var dmg = floor(s.max_hull / 2.0)
+				log_message("[color=red]COLLATERAL DAMAGE: Dock exploson hits %s for %d![/color]" % [host.name, dmg])
+				host.take_damage(dmg)
+				s.undock() # Cleanup
+		
+		# If s was a station with guests? 
+		# Space Station logic is generic "Ship", so we check docked_guests
+		if s.docked_guests.size() > 0:
+			var impact_dmg = floor(s.max_hull / 2.0)
+			log_message("[color=red]STATION DESTROYED! Docked ships take %d damage![/color]" % impact_dmg)
+			# Iterate backwards safely? Or duplicate
+			var guests = s.docked_guests.duplicate()
+			for g in guests:
+				g.undock() # Sever link first
+				g.take_damage(impact_dmg) # Apply damage
 		
 		s.ship_destroyed.connect(func(): _on_ship_destroyed(s))
 		add_child(s)
@@ -1440,6 +1487,40 @@ func _on_commit_move():
 	ghost_ship.queue_free()
 	ghost_ship = null
 	
+	_update_ship_visuals() # Ensure we re-stack after movement
+	
+	ghost_ship.queue_free()
+	ghost_ship = null
+	
+	# DOCKING LOGIC (Post-Move)
+	# 1. Check for Auto-Docking
+	# "Any ship can dock at a space station by entering the same hex as the space station and stopping there."
+	var potential_hosts = ships.filter(func(s): return s.player_id == selected_ship.player_id and s != selected_ship and s.ship_class == "Space Station" and s.grid_position == selected_ship.grid_position)
+	if potential_hosts.size() > 0:
+		var host = potential_hosts[0]
+		if not selected_ship.is_docked: # Only if not already docked (redundant check but safe)
+			selected_ship.dock_at(host)
+			log_message("%s docked at %s." % [selected_ship.name, host.name])
+	else:
+		# Check Undock?
+		# "Once docked it will remain docked until it moves away..."
+		# If we are docked, and we are NOT at our host's position (we moved away), we break link.
+		# Note: logic says "moves away", but if we just moved to same hex (speed 0), we stay docked.
+		if selected_ship.is_docked:
+			if selected_ship.grid_position != selected_ship.docked_host.grid_position:
+				log_message("%s undocking from %s." % [selected_ship.name, selected_ship.docked_host.name])
+				selected_ship.undock()
+	
+	# 2. Sync Guests if WE are the host
+	if selected_ship.docked_guests.size() > 0:
+		for guest in selected_ship.docked_guests:
+			guest.grid_position = selected_ship.grid_position
+			guest.facing = selected_ship.facing # Rotate with station? Usually stations rotate?
+			# "Docked ships move with the station"
+			# Orbital movement implies rotation + translation.
+			# Let's keep them synced.
+			
+	
 	end_turn()
 
 func _check_boundary(ship: Ship) -> bool:
@@ -1595,7 +1676,7 @@ func _unhandled_input(event):
 		var hex_clicked = HexGrid.pixel_to_hex(local_mouse)
 		handle_click(hex_clicked)
 	
-	if event is InputEventKey and event.pressed and event.keycode == KEY_W:
+	if event is InputEventKey and event.pressed and event.keycode == KEY_Q:
 		# Cycle Weapon
 		if current_phase == Phase.COMBAT and selected_ship and selected_ship.weapons.size() > 1:
 			var idx = selected_ship.current_weapon_index
@@ -1627,7 +1708,27 @@ func _is_weapon_available_in_phase(weapon: Dictionary, ship: Ship = null) -> boo
 	if is_propelled_movement_restricted:
 		if firing_player_id != current_player_id:
 			return false
-			
+
+	# DOCKING RULE: Weapon Restrictions
+	# "A docked ship can use it's laser and rocket battery weapons. A docked ship cannot use it's forward firing weapons, torpedoes, or ICMs."
+	if ship and ship.is_docked:
+		# Allowed: "Laser" (Battery), "Rocket Battery"
+		# Disallowed: "Rocket" (Assault), "Torpedo", "Laser Canon" (FF)
+		# ICM is handled in ICM logic elsewhere (defense).
+		
+		# Logic:
+		# - Laser Battery (Type="Laser", Arc="360") -> OK
+		# - Rocket Battery (Type="Rocket Battery") -> OK
+		# - Laser Canon (Type="Laser Canon", Arc="FF") -> NO
+		# - Assault Rocket (Type="Rocket", Arc="FF") -> NO
+		# - Torpedo (Type="Torpedo") -> NO
+		
+		if w_type == "Laser": return true # Battery
+		if w_type == "Rocket Battery": return true
+		
+		# All others rejected
+		return false
+
 	# Rule 2: Limit 1 per Phase for certain types (Rocket Battery, Torpedo, Rocket)
 	# User Request: "a ship may only fire 1 rocket battery per combat phase" (and "just like torpedoes")
 	# We interpret this as: Unique Weapon Type Usage Limit = 1 per ship per phase.
