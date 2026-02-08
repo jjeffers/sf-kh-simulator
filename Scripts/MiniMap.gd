@@ -75,10 +75,11 @@ func _draw():
 	# World View Center = -game_manager.position
 	# View Size = get_viewport_rect().size
 	var viewport_size = get_viewport_rect().size
-	var view_pos_world = -game_manager.position
-	
 	# Top-Left of view in world space
-	var view_tl_world = view_pos_world - (viewport_size / 2.0)
+	# Node2D position is the offset of (0,0) from Top-Left.
+	# So World(0,0) is at Screen(position).
+	# Screen(0,0) is at World(-position).
+	var view_tl_world = - game_manager.position
 	var view_rect_size_world = viewport_size
 	
 	var map_view_tl = (view_tl_world * scale_factor) + center_offset

@@ -39,7 +39,7 @@ static func calculate_hit_chance(dist: int, weapon: Dictionary = {}, target: Shi
 	# "70% chance to hit any target"
 	if weapon.get("type") == "Torpedo":
 		chance = 70
-		if is_head_on: chance += 10 
+		if is_head_on: chance += 10
 		if icm_count > 0: chance -= calculate_icm_reduction("Torpedo", icm_count)
 		return max(0, chance)
 	
@@ -78,6 +78,11 @@ static func calculate_hit_chance(dist: int, weapon: Dictionary = {}, target: Shi
 	# -5% per hex
 	chance = base - (dist * RANGE_PENALTY)
 	if is_head_on: chance += 10
+	
+	# Apply ICM reduction for any falling-through weapons (e.g. Assault Rocket vs non-RH)
+	if icm_count > 0:
+		chance -= calculate_icm_reduction(weapon.get("type", ""), icm_count)
+		
 	return max(0, chance)
 
 # Returns true if hit
