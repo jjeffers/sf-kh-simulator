@@ -446,6 +446,7 @@ func _setup_particles():
 	ms_particles.scale_amount_min = 2.0
 	ms_particles.scale_amount_max = 4.0
 	ms_particles.color = Color(0.4, 0.7, 1.0, 0.6) # Light Blue Vapor
+	ms_particles.local_coords = true # Ensure they stick to the ship during "camera" (GameManager) movement
 	
 	add_child(ms_particles)
 	# Ensure it draws behind the ship? 
