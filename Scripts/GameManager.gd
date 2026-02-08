@@ -433,6 +433,7 @@ func _handle_combat_click(hex: Vector3i):
 		log_message("Planned: %s -> %s (%s)" % [selected_ship.name, s.name, weapon["name"]])
 		
 		_update_planning_ui_list()
+		_update_ui_state()
 		queue_redraw()
 
 	else:
@@ -1156,6 +1157,78 @@ func _start_combat_planning():
 	_update_ui_state()
 	_update_planning_ui_list()
 	queue_redraw()
+	
+	# Auto-Skip Check
+	var has_targets = _check_for_valid_combat_targets()
+	if not has_targets:
+		_trigger_auto_skip_combat()
+
+func _check_for_valid_combat_targets() -> bool:
+	# Iterate all ships owned by firing_player_id
+	var my_ships = ships.filter(func(s): return s.player_id == firing_player_id and not s.is_exploding and not s.is_docked) # Docked ships cant fire? Usually true.
+	
+	for s in my_ships:
+		# Check each weapon
+		for w in s.weapons:
+			if w.get("fired", false): continue
+			
+			# Check for ANY target in range/arc
+			var valid_targets = _get_valid_targets_for_weapon(s, w)
+			if valid_targets.size() > 0:
+				return true
+				
+	return false
+
+func _get_valid_targets_for_weapon(shooter: Ship, weapon: Dictionary) -> Array[Ship]:
+	var valid: Array[Ship] = []
+	var targets = ships.filter(func(s): return s != shooter and not s.is_exploding and s.player_id != shooter.player_id and not s.is_docked)
+	
+	for t in targets:
+		var dist = HexGrid.hex_distance(shooter.grid_position, t.grid_position)
+		if dist > weapon["range"]: continue
+		
+		# Arc Check5
+		var in_arc = false
+		if weapon["arc"] == "360":
+			in_arc = true
+		elif weapon["arc"] == "FF":
+			var dir_to_target = HexGrid.get_hex_direction(shooter.grid_position, t.grid_position)
+			if dir_to_target == shooter.facing:
+				in_arc = true
+				
+		if in_arc:
+			valid.append(t)
+			
+	return valid
+
+func _trigger_auto_skip_combat():
+	var p_name = "PLAYER %d" % firing_player_id
+	log_message("%s - NO TARGETS AVAILABLE - SKIPPING" % p_name)
+	
+	# Overlay UI
+	var overlay = Label.new()
+	overlay.text = "%s\nNO TARGETS AVAILABLE\nSKIPPING ATTACK PLANNING" % p_name
+	overlay.label_settings = LabelSettings.new()
+	overlay.label_settings.font_size = 32
+	overlay.label_settings.font_color = Color.RED
+	overlay.label_settings.outline_size = 4
+	overlay.label_settings.outline_color = Color.BLACK
+	overlay.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	overlay.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+	overlay.position = (get_viewport_rect().size / 2) - Vector2(200, 50)
+	overlay.z_index = 200
+	ui_layer.add_child(overlay)
+	
+	# Fade out
+	var tween = create_tween()
+	tween.tween_property(overlay, "modulate:a", 0.0, 2.0).set_delay(1.0)
+	tween.tween_callback(overlay.queue_free)
+	
+	# Auto-commit after delay
+	await get_tree().create_timer(2.0).timeout
+	
+	if current_combat_state == CombatState.PLANNING:
+		_on_trigger_commit_combat()
 
 func _update_planning_ui_list():
 	# Clear existing
@@ -1399,8 +1472,18 @@ func _update_ui_state():
 			txt += "[COLOR=blue]Masking Screen ACTIVE[/COLOR]\n"
 		
 		txt += "Weapons:\n"
-		for w in selected_ship.weapons:
-			txt += "- %s (Ammo: %d)\n" % [w["name"], w["ammo"]]
+		for i in range(selected_ship.weapons.size()):
+			var w = selected_ship.weapons[i]
+			var status = ""
+			
+			# Check for committed attack
+			for atk in queued_attacks:
+				if atk["source"] == selected_ship and atk["weapon_idx"] == i:
+					var chance = Combat.calculate_hit_chance(HexGrid.hex_distance(selected_ship.grid_position, atk["target"].grid_position), w, atk["target"], false, 0, selected_ship)
+					status = " -> %s (%d%%)" % [atk["target"].name, chance]
+					break
+			
+			txt += "- %s (Ammo: %d)%s\n" % [w["name"], w["ammo"], status]
 
 		if not is_valid and not state_is_orbiting: # Orbit is always valid move of 1
 			# Special case: Orbit move is size 1. Does it respect ADF?
@@ -1429,12 +1512,26 @@ func _update_ui_state():
 		
 		if selected_ship:
 			txt += "\nShip: %s" % selected_ship.name
-			if selected_ship.weapons.size() > 0:
-				var w = selected_ship.weapons[selected_ship.current_weapon_index]
-				txt += "\nWeapon: %s" % w["name"]
-				txt += "\nAmmo: %d | Rng: %d | Arc: %s" % [w["ammo"], w["range"], w["arc"]]
-				if w.get("fired", false):
-					txt += " (FIRED)"
+			txt += "\nShip: %s" % selected_ship.name
+			
+			txt += "\nWeapons:\n"
+			for i in range(selected_ship.weapons.size()):
+				var w = selected_ship.weapons[i]
+				var status = ""
+				
+				# Check for committed attack
+				for atk in queued_attacks:
+					if atk["source"] == selected_ship and atk["weapon_idx"] == i:
+						var chance = Combat.calculate_hit_chance(HexGrid.hex_distance(selected_ship.grid_position, atk["target"].grid_position), w, atk["target"], false, 0, selected_ship)
+						status = " -> %s (%d%%)" % [atk["target"].name, chance]
+						break
+				
+				# Highlight selected weapon
+				var prefix = "- "
+				if i == selected_ship.current_weapon_index:
+					prefix = "> "
+					
+				txt += "%s%s (Ammo: %d)%s\n" % [prefix, w["name"], w["ammo"], status]
 		
 		label_status.text = txt
 	elif current_phase == Phase.END:

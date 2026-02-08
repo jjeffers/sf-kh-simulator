@@ -27,6 +27,16 @@ static func get_neighbors(hex: Vector3i) -> Array[Vector3i]:
 		results.append(hex + d)
 	return results
 
+static func get_hex_direction(from_hex: Vector3i, to_hex: Vector3i) -> int:
+	var diff = to_hex - from_hex
+	var dist = hex_distance(from_hex, to_hex)
+	if dist == 0: return 0
+	
+	for i in range(directions.size()):
+		if diff == directions[i] * dist:
+			return i
+	return -1
+
 # Calculate Manhatten distance on hex grid
 static func hex_distance(a: Vector3i, b: Vector3i) -> int:
 	var vec = a - b
