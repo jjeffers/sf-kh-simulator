@@ -39,6 +39,7 @@ static func generate_scenario(key: String, rng_seed: int) -> Dictionary:
 		var station = {
 			"name": "Station Alpha",
 			"class": "Station",
+			"faction": "UPF",
 			"side_index": 0,
 			"position": station_pos,
 			"orbit_direction": station_orbit_dir,
@@ -49,7 +50,7 @@ static func generate_scenario(key: String, rng_seed: int) -> Dictionary:
 				"weapons": [ {
 					"name": "Laser Battery",
 					"type": "Laser",
-					"range": 10,
+					"range": 9,
 					"arc": "360",
 					"ammo": 999,
 					"max_ammo": 999,
@@ -65,6 +66,7 @@ static func generate_scenario(key: String, rng_seed: int) -> Dictionary:
 		ships.append({
 			"name": "Defiant",
 			"class": "Frigate",
+			"faction": "UPF",
 			"side_index": 0,
 			"position": station_pos,
 			"docked_at": "Station Alpha",
@@ -74,6 +76,7 @@ static func generate_scenario(key: String, rng_seed: int) -> Dictionary:
 		ships.append({
 			"name": "Stiletto",
 			"class": "Assault Scout",
+			"faction": "UPF",
 			"side_index": 0,
 			"position": station_pos,
 			"docked_at": "Station Alpha",
@@ -123,6 +126,7 @@ static func generate_scenario(key: String, rng_seed: int) -> Dictionary:
 		ships.append({
 			"name": "Venemous",
 			"class": "Destroyer",
+			"faction": "Sathar",
 			"side_index": 1,
 			"position": venemous_pos,
 			"facing": attack_facing,
@@ -132,6 +136,7 @@ static func generate_scenario(key: String, rng_seed: int) -> Dictionary:
 		ships.append({
 			"name": "Perdition",
 			"class": "Heavy Cruiser",
+			"faction": "Sathar",
 			"side_index": 1,
 			"position": perdition_pos,
 			"facing": attack_facing,

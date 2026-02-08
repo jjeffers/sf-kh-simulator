@@ -7,13 +7,22 @@ extends Node2D
 @export var mr: int = 3
 @export var color: Color = Color.WHITE
 
+var texture_fighter = preload("res://Assets/upf_fighter.png")
+var texture_assault_scout = preload("res://Assets/upf_assault_scout.png")
+var texture_frigate = preload("res://Assets/upf_frigate.png")
+var texture_space_station = preload("res://Assets/upf_space_station.png")
+var texture_sathar_destroyer = preload("res://Assets/sathar_destroyer.png")
+var texture_sathar_heavy_cruiser = preload("res://Assets/sathar_heavy_cruiser.png")
+
+var faction: String = "UPF"
+
 var max_hull: int = 15
 var hull: int = 15
 var icm_max: int = 0
 var icm_current: int = 0
 var ms_max: int = 0
 var ms_current: int = 0
-var is_ms_active: bool = false : set = _set_ms_active
+var is_ms_active: bool = false: set = _set_ms_active
 var ms_orbit_start_hex: Vector3i = Vector3i.MAX # Sentinel for orbit MS logic
 
 var ms_particles: CPUParticles2D = null
@@ -28,8 +37,8 @@ var evacuation_turns: int = 0
 var previous_path: Array[Vector3i] = []
 
 
-var grid_position: Vector3i = Vector3i.ZERO : set = _set_grid_position
-var facing: int = 0 : set = _set_facing # 0 to 5, direction index
+var grid_position: Vector3i = Vector3i.ZERO: set = _set_grid_position
+var facing: int = 0: set = _set_facing # 0 to 5, direction index
 var speed: int = 0
 var has_moved: bool = false
 var has_fired: bool = false
@@ -39,7 +48,7 @@ var orbit_direction: int = 0 # 0=None, 1=CW, -1=CCW
 var ship_class: String = "Scout"
 var defense: String = "None"
 # Weapon Dictionary: {name, type, range, arc, ammo, max_ammo, damage_dice, damage_bonus}
-var weapons: Array = [] 
+var weapons: Array = []
 var current_weapon_index: int = 0
 
 signal ship_moved(new_pos)
@@ -124,14 +133,11 @@ func configure_frigate():
 	ms_current = 1
 	
 	weapons.clear()
-	# Laser Battery: Range 10 (User said Laser Canon is 10, Battery usually 9? Keeping Battery as 9 for consistency or standard?)
-	# User: "laser battery, 4 assault rockets, and 2 new weapons - a laser canon and 2 torpedoes"
-	# Standard Laser Battery (from Scout):
+	# Laser Battery: Range 9
 	weapons.append({
 		"name": "Laser Battery",
 		"type": "Laser",
-		"range": 10, # User might have meant Canon is 10? Standard Battery is 10? Code has 9 usually.
-		# Let's assume Standard Battery (Range 10 is common in Star Frontiers).
+		"range": 9,
 		"arc": "360",
 		"ammo": 999,
 		"max_ammo": 999,
@@ -157,10 +163,10 @@ func configure_frigate():
 	# Consolidated into one entry for UI clarity and "1 per turn" enforcement.
 	weapons.append({
 		"name": "Rocket Batteries",
-		"type": "Rocket Battery", 
+		"type": "Rocket Battery",
 		"range": 3,
 		"arc": "360",
-		"ammo": 4, 
+		"ammo": 4,
 		"max_ammo": 4,
 		"damage_dice": "2d10",
 		"damage_bonus": 0,
@@ -195,11 +201,11 @@ func configure_destroyer():
 	ms_current = 2
 	
 	weapons.clear()
-	# Laser Battery: Range 10, 360 Arc, 1d10
+	# Laser Battery: Range 9, 360 Arc, 1d10
 	weapons.append({
 		"name": "Laser Battery",
 		"type": "Laser",
-		"range": 10,
+		"range": 9,
 		"arc": "360",
 		"ammo": 999,
 		"max_ammo": 999,
@@ -228,8 +234,8 @@ func configure_destroyer():
 		"type": "Rocket Battery",
 		"range": 3,
 		"arc": "360",
-		"ammo": 6, 
-		"max_ammo": 6, 
+		"ammo": 6,
+		"max_ammo": 6,
 		"damage_dice": "2d10",
 		"damage_bonus": 0,
 		"fired": false
@@ -267,9 +273,9 @@ func configure_heavy_cruiser():
 	# Laser Batteries (x3 - Separate entries)
 	for i in range(3):
 		weapons.append({
-			"name": "Laser Battery %d" % (i+1),
+			"name": "Laser Battery %d" % (i + 1),
 			"type": "Laser",
-			"range": 10,
+			"range": 9,
 			"arc": "360",
 			"ammo": 999,
 			"max_ammo": 999,
@@ -319,6 +325,75 @@ func configure_heavy_cruiser():
 	
 	current_weapon_index = 0
 	
+func configure_battleship():
+	ship_class = "Battleship"
+	defense = "RH"
+	max_hull = 120
+	hull = max_hull
+	adf = 2
+	mr = 2
+	icm_max = 20
+	icm_current = 20
+	ms_max = 4
+	ms_current = 4
+	
+	weapons.clear()
+	# Laser Canons (x2)
+	for i in range(2):
+		weapons.append({
+			"name": "Laser Canon %d" % (i + 1),
+			"type": "Laser Canon",
+			"range": 10,
+			"arc": "FF",
+			"ammo": 999,
+			"max_ammo": 999,
+			"damage_dice": "2d10",
+			"damage_bonus": 0,
+			"fired": false
+		})
+		
+	# Laser Batteries (x4)
+	for i in range(4):
+		weapons.append({
+			"name": "Laser Battery %d" % (i + 1),
+			"type": "Laser",
+			"range": 9,
+			"arc": "360",
+			"ammo": 999,
+			"max_ammo": 999,
+			"damage_dice": "1d10",
+			"damage_bonus": 0,
+			"fired": false
+		})
+		
+	# Rocket Batteries (x10)
+	weapons.append({
+		"name": "Rocket Batteries",
+		"type": "Rocket Battery",
+		"range": 3,
+		"arc": "360",
+		"ammo": 10,
+		"max_ammo": 10,
+		"damage_dice": "2d10",
+		"damage_bonus": 0,
+		"fired": false
+	})
+	
+	# Torpedoes (x8)
+	weapons.append({
+		"name": "Torpedoes",
+		"type": "Torpedo",
+		"range": 4, # Standard Range?
+		"arc": "360",
+		"ammo": 8,
+		"max_ammo": 8,
+		"damage_dice": "4d10",
+		"damage_bonus": 0,
+		"fired": false
+	})
+	
+	current_weapon_index = 0
+
 func configure_space_station(force_hull: int = -1):
 	ship_class = "Space Station"
 	defense = "RH"
@@ -353,9 +428,9 @@ func configure_space_station(force_hull: int = -1):
 	var lb_count = int(clamp(floor(hull / 60.0) + 1, 1, 3))
 	for i in range(lb_count):
 		weapons.append({
-			"name": "Laser Battery %d" % (i+1),
+			"name": "Laser Battery %d" % (i + 1),
 			"type": "Laser",
-			"range": 10, # Station batteries might have better range? keeping standard 10
+			"range": 9, # Station batteries might have better range? keeping standard 10 -> Now 9
 			"arc": "360",
 			"ammo": 999,
 			"max_ammo": 999,
@@ -523,91 +598,203 @@ func _draw():
 	
 	match ship_class:
 		"Assault Scout":
-			# Heavier, multi-faceted shape (Bullet/Hex-like)
-			points = PackedVector2Array([
-				Vector2(size, 0),
-				Vector2(size * 0.2, -size * 0.5),
-				Vector2(-size * 0.5, -size * 0.5),
-				Vector2(-size * 0.3, 0), # Engine notch
-				Vector2(-size * 0.5, size * 0.5),
-				Vector2(size * 0.2, size * 0.5)
-			])
+			# Sprite Rendering
+			var target_size = HexGrid.TILE_SIZE * 1.0 # Slightly larger than Fighter (0.8)
+			
+			var ref_size = max(texture_assault_scout.get_width(), texture_assault_scout.get_height())
+			var scale_factor = target_size / ref_size
+			
+			var draw_angle = facing * (PI / 3.0) + (PI / 2.0)
+			
+			draw_set_transform(Vector2.ZERO, draw_angle, Vector2(scale_factor, scale_factor))
+			
+			var tex_size = texture_assault_scout.get_size()
+			var rect = Rect2(-tex_size / 2, tex_size)
+			
+			draw_texture_rect(texture_assault_scout, rect, false, Color.WHITE)
+			
+			draw_set_transform(Vector2.ZERO, 0, Vector2(1, 1))
+			
+			points = PackedVector2Array()
 		"Frigate":
-			# Pentagon / Shield Shape
-			size = HexGrid.TILE_SIZE * 0.9
-			points = PackedVector2Array([
-				Vector2(size, 0), # Nose
-				Vector2(size * 0.3, -size * 0.5), # R Shoulder
-				Vector2(-size * 0.6, -size * 0.5), # R Rear
-				Vector2(-size * 0.4, 0), # Rear Cut
-				Vector2(-size * 0.6, size * 0.5), # L Rear
-				Vector2(size * 0.3, size * 0.5) # L Shoulder
-			])
+			# Sprite Rendering
+			var target_size = HexGrid.TILE_SIZE * 1.4 # Larger than Assault Scout (1.0)
+			
+			var ref_size = max(texture_frigate.get_width(), texture_frigate.get_height())
+			var scale_factor = target_size / ref_size
+			
+			var draw_angle = facing * (PI / 3.0) + (PI / 2.0)
+			
+			draw_set_transform(Vector2.ZERO, draw_angle, Vector2(scale_factor, scale_factor))
+			
+			var tex_size = texture_frigate.get_size()
+			var rect = Rect2(-tex_size / 2, tex_size)
+			
+			draw_texture_rect(texture_frigate, rect, false, Color.WHITE)
+			
+			draw_set_transform(Vector2.ZERO, 0, Vector2(1, 1))
+			
+			points = PackedVector2Array()
 		"Destroyer":
-			# Elongated Battleship / Needle
-			size = HexGrid.TILE_SIZE * 0.8 # Larger
-			points = PackedVector2Array([
-				Vector2(size, 0), # Nose
-				Vector2(size * 0.2, -size * 0.3), 
-				Vector2(-size * 0.8, -size * 0.3), # R Rear
-				Vector2(-size * 0.9, 0), # Rear engine
-				Vector2(-size * 0.8, size * 0.3), # L Rear
-				Vector2(size * 0.2, size * 0.3)
-			])
+			if faction == "Sathar":
+				# Sathar Destroyer Sprite
+				var target_size = HexGrid.TILE_SIZE * 1.8 # Larger than Frigate (1.4)
+				var ref_size = max(texture_sathar_destroyer.get_width(), texture_sathar_destroyer.get_height())
+				var scale_factor = target_size / ref_size
+				
+				var draw_angle = facing * (PI / 3.0) + (PI / 2.0)
+				draw_set_transform(Vector2.ZERO, draw_angle, Vector2(scale_factor, scale_factor))
+				
+				var tex_size = texture_sathar_destroyer.get_size()
+				var rect = Rect2(-tex_size / 2, tex_size)
+				
+				draw_texture_rect(texture_sathar_destroyer, rect, false, Color.WHITE)
+				draw_set_transform(Vector2.ZERO, 0, Vector2(1, 1))
+				points = PackedVector2Array()
+			else:
+				# Elongated Battleship / Needle (Default/UPF)
+				size = HexGrid.TILE_SIZE * 0.8 # Larger
+				points = PackedVector2Array([
+					Vector2(size, 0), # Nose
+					Vector2(size * 0.2, -size * 0.3),
+					Vector2(-size * 0.8, -size * 0.3), # R Rear
+					Vector2(-size * 0.9, 0), # Rear engine
+					Vector2(-size * 0.8, size * 0.3), # L Rear
+					Vector2(size * 0.2, size * 0.3)
+				])
 		"Heavy Cruiser":
-			# Massive Triangle / Dreadnought
-			size = HexGrid.TILE_SIZE * 0.9
+			if faction == "Sathar":
+				# Sathar Heavy Cruiser Sprite
+				var target_size = HexGrid.TILE_SIZE * 2.0 # Significant size
+				var ref_size = max(texture_sathar_heavy_cruiser.get_width(), texture_sathar_heavy_cruiser.get_height())
+				var scale_factor = target_size / ref_size
+				
+				var draw_angle = facing * (PI / 3.0) + (PI / 2.0)
+				draw_set_transform(Vector2.ZERO, draw_angle, Vector2(scale_factor, scale_factor))
+				
+				var tex_size = texture_sathar_heavy_cruiser.get_size()
+				var rect = Rect2(-tex_size / 2, tex_size)
+				
+				draw_texture_rect(texture_sathar_heavy_cruiser, rect, false, Color.WHITE)
+				draw_set_transform(Vector2.ZERO, 0, Vector2(1, 1))
+				points = PackedVector2Array()
+			else:
+				# Massive Triangle / Dreadnought (Default/UPF)
+				size = HexGrid.TILE_SIZE * 0.9
+				points = PackedVector2Array([
+					Vector2(size, 0), # Nose
+					Vector2(size * 0.4, -size * 0.4), # R Shoulder
+					Vector2(size * 0.2, -size * 0.7), # R Wingtip Fwd
+					Vector2(-size * 0.6, -size * 0.8), # R Wingtip Rear
+					Vector2(-size * 0.4, -size * 0.3), # R Cutout
+					Vector2(-size * 0.8, -size * 0.3), # R Engine Outer
+					Vector2(-size * 0.9, 0), # Rear Center
+					Vector2(-size * 0.8, size * 0.3), # L Engine Outer
+					Vector2(-size * 0.4, size * 0.3), # L Cutout
+					Vector2(-size * 0.6, size * 0.8), # L Wingtip Rear
+					Vector2(size * 0.2, size * 0.7), # L Wingtip Fwd
+					Vector2(size * 0.4, size * 0.4) # L Shoulder
+				])
+		"Battleship":
+			# Massive Dreadnought / Dual Hull
+			size = HexGrid.TILE_SIZE * 0.95
 			points = PackedVector2Array([
-				Vector2(size, 0), # Nose
-				Vector2(size * 0.4, -size * 0.4), # R Shoulder
-				Vector2(size * 0.2, -size * 0.7), # R Wingtip Fwd
-				Vector2(-size * 0.6, -size * 0.8), # R Wingtip Rear
-				Vector2(-size * 0.4, -size * 0.3), # R Cutout
-				Vector2(-size * 0.8, -size * 0.3), # R Engine Outer
-				Vector2(-size * 0.9, 0), # Rear Center
-				Vector2(-size * 0.8, size * 0.3), # L Engine Outer
-				Vector2(-size * 0.4, size * 0.3), # L Cutout
-				Vector2(-size * 0.6, size * 0.8), # L Wingtip Rear
-				Vector2(size * 0.2, size * 0.7), # L Wingtip Fwd
-				Vector2(size * 0.4, size * 0.4) # L Shoulder
+				Vector2(size, 0), # Nose Center
+				Vector2(size * 0.8, -size * 0.2), # R Nose
+				Vector2(size * 0.6, -size * 0.2), # R Inner
+				Vector2(size * 0.4, -size * 0.5), # R Shoulder
+				Vector2(-size * 0.6, -size * 0.6), # R Rear Side
+				Vector2(-size * 0.8, -size * 0.3), # R Engine
+				Vector2(-size * 0.6, 0), # Rear Center Indent
+				Vector2(-size * 0.8, size * 0.3), # L Engine
+				Vector2(-size * 0.6, size * 0.6), # L Rear Side
+				Vector2(size * 0.4, size * 0.5), # L Shoulder
+				Vector2(size * 0.6, size * 0.2), # L Inner
+				Vector2(size * 0.8, size * 0.2) # L Nose
 			])
 		"Space Station":
-			# Hexagonal Fortress with Spokes
-			size = HexGrid.TILE_SIZE * 0.8
-			points = PackedVector2Array()
-			# Central Hexagon
-			for i in range(6):
-				var angle = i * PI / 3.0
-				points.append(Vector2(cos(angle), sin(angle)) * size * 0.6)
+			# Sprite Rendering
+			# Scale based on Hull Points: 1.0 + (max_hull / 100.0)
+			# Examples: 20 HP -> 1.2x, 100 HP -> 2.0x, 200 HP -> 3.0x relative to Tile Size
+			var hp_scale_bonus = float(max_hull) / 100.0
+			var target_size = HexGrid.TILE_SIZE * (1.0 + hp_scale_bonus)
 			
-			# Outer Spokes (Add as separate lines? Polygon needs loop)
-			# Let's make a star shape
+			var ref_size = max(texture_space_station.get_width(), texture_space_station.get_height())
+			var scale_factor = target_size / ref_size
+			
+			# Rotation: Stations might rotate or be fixed. 
+			# Let's align with facing for now (it has a facing index).
+			var draw_angle = facing * (PI / 3.0) + (PI / 2.0)
+			
+			draw_set_transform(Vector2.ZERO, draw_angle, Vector2(scale_factor, scale_factor))
+			
+			var tex_size = texture_space_station.get_size()
+			var rect = Rect2(-tex_size / 2, tex_size)
+			
+			draw_texture_rect(texture_space_station, rect, false, Color.WHITE)
+			
+			draw_set_transform(Vector2.ZERO, 0, Vector2(1, 1))
+			
 			points = PackedVector2Array()
-			for i in range(12):
-				var angle = i * PI / 6.0
-				# Alt between Long and Short
-				var r = size if (i % 2 == 0) else size * 0.4
-				points.append(Vector2(cos(angle), sin(angle)) * r)
-		"Fighter", _:
-			# Sleek Delta / Dart
-			# Nose, Right Wing, Rear Notch, Left Wing
+		"Fighter":
+			# Sprite Rendering
+			var target_size = HexGrid.TILE_SIZE * 0.8 # Diameter approx (Scale ~0.4 tile relative)
+			# But user asked for "Small". Tile Size is radius. 
+			# Let's say diameter is 0.8 * RADIUS? Or 0.8 * TILE_SIZE?
+			# Tile Size in code usually = Radius (approx 32-64).
+			# Let's align with user request "smaller than assault scout".
+			# AS is size * 0.6. 
+			# Let's use size * 0.4 for radius equivalent?
+			# target_size = HexGrid.TILE_SIZE * 0.8 (Diameter) -> Radius 0.4.
+			
+			var ref_size = max(texture_fighter.get_width(), texture_fighter.get_height())
+			var scale_factor = target_size / ref_size
+			
+			# Rotation: Facing 0 = East?
+			# If Sprite points UP (-Y), we need +90 deg to face East (0).
+			# hex angle = facing * 60 deg.
+			var draw_angle = facing * (PI / 3.0) + (PI / 2.0)
+			
+			draw_set_transform(Vector2.ZERO, draw_angle, Vector2(scale_factor, scale_factor))
+			
+			# Draw centered
+			var tex_size = texture_fighter.get_size()
+			var rect = Rect2(-tex_size / 2, tex_size)
+			
+			# Draw with color modulation? 
+			# User didn't specify, but usually team color is good.
+			# Or keep original? white modulation = original colors.
+			# Let's use slight tint of team color + white? 
+			# Or just color?
+			# If sprite is colored, modulate mixes.
+			# Let's assume white sprite or user wants team color.
+			draw_texture_rect(texture_fighter, rect, false, Color.WHITE)
+			
+			# Reset transform
+			draw_set_transform(Vector2.ZERO, 0, Vector2(1, 1))
+			
+			# Skip polygon
+			points = PackedVector2Array()
+		_:
+			# Default / Fallback (Sleek Delta / Dart)
 			points = PackedVector2Array([
 				Vector2(size, 0),
 				Vector2(-size * 0.5, -size * 0.5),
-				Vector2(-size * 0.2, 0), # Rear Notch
+				Vector2(-size * 0.2, 0),
 				Vector2(-size * 0.5, size * 0.5)
 			])
 	# Rotate points based on facing (each facing is 60 degrees = PI/3)
-	var angle = facing * (PI / 3.0)
-	var rotated_points = PackedVector2Array()
-	for p in points:
-		rotated_points.append(p.rotated(angle))
-		
-	draw_colored_polygon(rotated_points, color)
-	# Draw outline
-	var outline = rotated_points.duplicate()
-	outline.append(rotated_points[0]) # Close the loop
-	draw_polyline(outline, Color.BLACK, 2.0)
+	if not points.is_empty():
+		var angle = facing * (PI / 3.0)
+		var rotated_points = PackedVector2Array()
+		for p in points:
+			rotated_points.append(p.rotated(angle))
+			
+		draw_colored_polygon(rotated_points, color)
+		# Draw outline
+		var outline = rotated_points.duplicate()
+		outline.append(rotated_points[0]) # Close the loop
+		draw_polyline(outline, Color.BLACK, 2.0)
 	
 	# Draw Info (Name and Health) - Only for real ships AND if show_info is true
 	if not is_ghost and show_info:
@@ -620,7 +807,7 @@ func _draw():
 		# Draw Health Bar
 		var bar_width = HexGrid.TILE_SIZE * 0.8
 		var bar_height = 6.0
-		var bar_pos = Vector2(-bar_width / 2, size/2 + 10)
+		var bar_pos = Vector2(-bar_width / 2, size / 2 + 10)
 		
 		# Background/Border (Black)
 		var bg_rect = Rect2(bar_pos, Vector2(bar_width, bar_height))

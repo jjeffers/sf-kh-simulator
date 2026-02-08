@@ -193,7 +193,7 @@ func _setup_ui():
 	panel_planning.anchor_left = 0.8
 	panel_planning.anchor_right = 1.0
 	panel_planning.anchor_top = 0.0
-	panel_planning.anchor_bottom = 0.75
+	# panel_planning.anchor_bottom = 0.75 # Allow auto-sizing
 	panel_planning.visible = false
 	ui_layer.add_child(panel_planning)
 	
@@ -311,7 +311,10 @@ func _setup_ui():
 	# MiniMap
 	# Add last to be on top? Or managing layout?
 	# Top Right, fixed size
-	var mini_map = MiniMap.new()
+	# MiniMap
+	# Add last to be on top? Or managing layout?
+	# Top Right, fixed size
+	mini_map = MiniMap.new()
 	mini_map.game_manager = self
 	mini_map.custom_minimum_size = Vector2(200, 200)
 	# Position Top Right with margin
@@ -327,6 +330,7 @@ var audio_beep: AudioStreamPlayer
 var audio_action_complete: AudioStreamPlayer
 var audio_phase_change: AudioStreamPlayer
 var audio_ship_select: AudioStreamPlayer
+var mini_map: MiniMap
 
 var combat_log: RichTextLabel
 
@@ -940,6 +944,7 @@ func load_scenario(key: String):
 			
 		# Apply Properties
 		s.name = data.get("name", "Ship")
+		s.faction = data.get("faction", "UPF")
 		s.player_id = data.get("side_index", 0) + 1 # 0->1, 1->2
 		
 		var side_info = scen_data["sides"].get(data["side_index"], {})
@@ -1273,8 +1278,19 @@ func _update_planning_ui_list():
 	
 	# Only show planning panel if it's THIS player's turn to fire
 	var is_my_planning_phase = (firing_player_id == my_local_player_id) or (my_local_player_id == 0)
-	panel_planning.visible = (current_phase == Phase.COMBAT and current_combat_state == CombatState.PLANNING and is_my_planning_phase)
+	var show_planning = (current_phase == Phase.COMBAT and current_combat_state == CombatState.PLANNING and is_my_planning_phase)
+	panel_planning.visible = show_planning
 	
+	if show_planning:
+		# Reposition Minimap below the planning panel
+		call_deferred("_update_minimap_position")
+	else:
+		# Reset Minimap
+		if mini_map:
+			mini_map.anchors_preset = Control.PRESET_TOP_RIGHT
+			mini_map.position = Vector2(get_viewport_rect().size.x - 220, 20)
+			# mini_map.set_anchors_and_offsets_preset(Control.PRESET_TOP_RIGHT, Control.PRESET_MODE_KEEP_SIZE, 20)
+
 	if not is_my_planning_phase and current_phase == Phase.COMBAT and current_combat_state == CombatState.PLANNING:
 		label_status.text += "\n\n(Waiting for Player %d to plan attacks...)" % firing_player_id
 
@@ -1306,6 +1322,7 @@ func _spawn_ghost():
 	ghost_ship.name = "GhostShip"
 	ghost_ship.player_id = selected_ship.player_id
 	ghost_ship.ship_class = selected_ship.ship_class # Copy visual class
+	ghost_ship.faction = selected_ship.faction # Copy faction for sprite selection
 	ghost_ship.color = selected_ship.color
 	ghost_ship.grid_position = selected_ship.grid_position
 	ghost_ship.facing = selected_ship.facing
@@ -2369,6 +2386,7 @@ func end_turn():
 		_update_planning_ui_list()
 
 func _spawn_planets():
+	# seed(seed_val) # Reverted to no-arg
 	for hex in planet_hexes:
 		var pos = HexGrid.hex_to_pixel(hex)
 		
@@ -2418,7 +2436,7 @@ func _check_planet_collision(ship: Ship):
 		
 		# Trigger visual explosion (Ship handles self-queue_free after particles)
 		ship.trigger_explosion()
-		
+
 		# Play Sound
 		if audio_hit.stream: audio_hit.play()
 		
@@ -2428,3 +2446,14 @@ func _check_planet_collision(ship: Ship):
 		# Stop movement path if this happened mid-move
 		return true
 	return false
+
+func _update_minimap_position():
+	if panel_planning and panel_planning.visible and mini_map:
+		var pp_rect = panel_planning.get_global_rect()
+		var new_y = pp_rect.end.y + 20
+		# Clamp to screen?
+		var screen_h = get_viewport_rect().size.y
+		if new_y + 200 > screen_h:
+			new_y = screen_h - 220
+			
+		mini_map.position = Vector2(get_viewport_rect().size.x - 220, new_y)
