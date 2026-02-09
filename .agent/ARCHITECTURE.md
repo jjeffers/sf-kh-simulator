@@ -47,6 +47,102 @@ The primary game entity.
   - `trigger_explosion()`: Visual effects for destruction.
   - **Scaling:** Dynamically sizes sprites relative to `HexGrid.TILE_SIZE`.
 
+## Ship Register
+
+Detailed specifications for all ship classes currently implemented.
+
+| Class | Hull | ADF | MR | Defense | ICM | MS | Weapons |
+| :--- | :--- | :--- | :--- | :--- | :--- | :--- | :--- |
+| **Fighter** | 8 | 5 | 5 | RH | 0 | 0 | Assault Rockets (x3) |
+| **Assault Scout** | 15 | 5 | 4 | RH | 0 | 0 | Laser Battery, Assault Rockets (x4) |
+| **Frigate** | 40 | 3 | 3 | RH | 4 | 1 | Laser Battery, Laser Canon, Rocket Battery (x4), Torpedo (x2) |
+| **Destroyer** | 50 | 3 | 2 | RH | 4 | 2 | Laser Battery, Laser Canon, Rocket Battery (x6), Torpedo (x2) |
+| **Heavy Cruiser** | 80 | 1 | 1 | RH | 8 | 1 | Laser Battery (x3), Laser Canon, Rocket Battery (x8), Torpedo (x4) |
+| **Battleship** | 120 | 2 | 2 | RH | 20 | 4 | Laser Canon (x2), Laser Battery (x4), Rocket Battery (x10), Torpedo (x8) |
+| **Space Station** | 20-200 | 0 | 0 | RH | 2-8 | 1-4 | Laser Battery (1-3), Rocket Battery (2-12) |
+
+*Note: Space Station stats scale based on Hull points (Randomly generated).*
+
+## Weapon Systems
+
+Combat mechanics and specifications for all weapon types.
+**Global Modifiers:**
+- **Range:** -5% Hit Chance per hex.
+- **Head-On Attack:** +10% Hit Chance.
+- **Max Range:** 10 Hexes (Hard cap).
+
+| Weapon | Type | Range | Arc | Damage | Base Chance | Special Rules |
+| :--- | :--- | :--- | :--- | :--- | :--- | :--- |
+| **Laser Battery** | Laser | 9 | 360 | 1d10 | 80% | - Reduced to 50% vs RH<br>- Reduced to 10% if Screen active |
+| **Laser Canon** | Laser | 10 | FF | 2d10 | 80% | - Reduced to 60% vs RH<br>- Reduced to 20% if Screen active |
+| **Assault Rocket** | Rocket | 4 | FF | 2d10+4 | 80% | - Reduced to 60% vs RH<br>- Subject to ICM (-5% per) |
+| **Rocket Battery** | Rocket | 3 | 360 | 2d10 | 40% (Flat) | - Flat Base Chance (Distance still applies?)<br>- Subject to ICM (-3% per) |
+| **Torpedo** | Torpedo | 4 | 360 | 4d10 | 70% (Flat) | - Flat Base Chance<br>- Subject to ICM (-10% per) |
+
+*Note: "Flat" chances usually ignore Range penalties in some systems, but code implies `Chance = Base - (Dist * 5)`. The "Flat" designation in `Combat.gd` overrides the 80% default base, but the Range logic at line 79 applies to ALL weapons. (Verification needed: `Combat.gd` lines 38-51 return EARLY for Torpedo/RB, skipping line 79?? Yes, they verify `return max(0, chance)`. So Torpedoes/Available Rockets **IGNORE RANGE PENALTY**).*
+
+## Defensive Systems
+
+Mechanics for damage mitigation and avoidance.
+
+### Reflective Hull (RH)
+- **Effect:** Permanent passive defense.
+- **Laser Battery:** Base hit chance reduced from 80% -> 50%.
+- **Laser Canon:** Base hit chance reduced from 80% -> 60%.
+- **Assault Rockets:** Base hit chance reduced from 80% -> 60%.
+- **Notes:** Does not affect Torpedoes or Rocket Batteries.
+
+### Masking Screen (MS)
+- **Effect:** Active defense. Creates a cloud of obscuring particles.
+- **Cost:** CONSUMES 1 MS charge per activation.
+- **Persistence:** Remains active as long as the ship maintains course and speed (or orbits).
+- **Reciprocal:** Affects both incoming AND outgoing fire.
+- **Laser Battery:** Base hit chance reduced to 10%.
+- **Laser Canon:** Base hit chance reduced to 20%.
+- **Notes:** Supersedes Reflective Hull effects when active.
+
+### Inter-Counter-Missiles (ICM)
+- **Effect:** Automated point-defense system against ballistic projectiles.
+- **Usage:** Passive/Automatic reduction of incoming hit chance.
+- **Modifiers:**
+  - **vs Torpedo:** -10% Hit Chance per ICM point.
+  - **vs Assault Rocket:** -5% Hit Chance per ICM point.
+  - **vs Rocket Battery:** -3% Hit Chance per ICM point.
+
+## Scenarios
+
+Available game scenarios and their configurations.
+
+### Surprise Attack!
+**Description:** Attackers ambush Station Alpha. The Defiant must escape.
+
+**Defenders (Side A):**
+- **Station Alpha** (Space Station)
+  - Location: Random hex adjacent to Center (0, 0, 0).
+  - Orbit: Clockwise or Counter-Clockwise (Random).
+  - Faction: UPF.
+- **Defiant** (Frigate)
+  - Location: Docked at Station Alpha.
+  - Faction: UPF.
+- **Stiletto** (Assault Scout)
+  - Location: Docked at Station Alpha.
+  - Faction: UPF.
+
+**Attackers (Side B):**
+- **Spawn:** Random map edge (Distance 24).
+- **Venemous** (Destroyer)
+  - Location: Edge hex.
+  - Heading: Facing inward.
+  - Faction: Sathar.
+- **Perdition** (Heavy Cruiser)
+  - Location: Adjacent to Venemous (Diagonal formation).
+  - Heading: Facing inward.
+  - Faction: Sathar.
+
+**Objectives:**
+- **UPF:** Dock the frigate at the station for 3 turns, then leave the playig area.
+- **Sathar:** Prevent the frigate from evacuating the station or leaving the play area after evacuating the station.
+
 ## Game Infrastructure
 
 ### Scenes

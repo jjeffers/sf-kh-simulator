@@ -13,6 +13,14 @@ var texture_frigate = preload("res://Assets/upf_frigate.png")
 var texture_space_station = preload("res://Assets/upf_space_station.png")
 var texture_sathar_destroyer = preload("res://Assets/sathar_destroyer.png")
 var texture_sathar_heavy_cruiser = preload("res://Assets/sathar_heavy_cruiser.png")
+var texture_sathar_frigate = preload("res://Assets/sathar_frigate.png")
+var texture_sathar_fighter = preload("res://Assets/sathar_fighter.png")
+var texture_sathar_assault_carrier = preload("res://Assets/sathar_assault_carrier.png")
+
+var texture_upf_destroyer = preload("res://Assets/upf_destroyer.png")
+var texture_upf_heavy_cruiser = preload("res://Assets/upf_heavy_cruiser.png")
+var texture_upf_battleship = preload("res://Assets/upf_battleship.png")
+var texture_upf_assault_carrier = preload("res://Assets/upf_assault_carrier.png")
 
 var faction: String = "UPF"
 
@@ -616,21 +624,27 @@ func _draw():
 			draw_set_transform(Vector2.ZERO, 0, Vector2(1, 1))
 			
 			points = PackedVector2Array()
+			points = PackedVector2Array()
 		"Frigate":
 			# Sprite Rendering
-			var target_size = HexGrid.TILE_SIZE * 0.9 # 0.9x Tile Size (36px)
+			var target_size = HexGrid.TILE_SIZE * 0.9
 			
-			var ref_size = max(texture_frigate.get_width(), texture_frigate.get_height())
+			var tex = texture_frigate # UPF Default
+			if faction == "Sathar":
+				tex = texture_sathar_frigate
+				target_size = HexGrid.TILE_SIZE * 0.9 # Adjust if needed
+			
+			var ref_size = max(tex.get_width(), tex.get_height())
 			var scale_factor = target_size / ref_size
 			
 			var draw_angle = facing * (PI / 3.0) + (PI / 2.0)
 			
 			draw_set_transform(Vector2.ZERO, draw_angle, Vector2(scale_factor, scale_factor))
 			
-			var tex_size = texture_frigate.get_size()
+			var tex_size = tex.get_size()
 			var rect = Rect2(-tex_size / 2, tex_size)
 			
-			draw_texture_rect(texture_frigate, rect, false, Color.WHITE)
+			draw_texture_rect(tex, rect, false, Color.WHITE)
 			
 			draw_set_transform(Vector2.ZERO, 0, Vector2(1, 1))
 			
@@ -652,16 +666,20 @@ func _draw():
 				draw_set_transform(Vector2.ZERO, 0, Vector2(1, 1))
 				points = PackedVector2Array()
 			else:
-				# Elongated Battleship / Needle (Default/UPF)
-				size = HexGrid.TILE_SIZE * 0.55 # 1.1x Diameter -> 0.55 Radius
-				points = PackedVector2Array([
-					Vector2(size, 0), # Nose
-					Vector2(size * 0.2, -size * 0.3),
-					Vector2(-size * 0.8, -size * 0.3), # R Rear
-					Vector2(-size * 0.9, 0), # Rear engine
-					Vector2(-size * 0.8, size * 0.3), # L Rear
-					Vector2(size * 0.2, size * 0.3)
-				])
+				# UPF Destroyer Sprite
+				var target_size = HexGrid.TILE_SIZE * 1.1
+				var ref_size = max(texture_upf_destroyer.get_width(), texture_upf_destroyer.get_height())
+				var scale_factor = target_size / ref_size
+				
+				var draw_angle = facing * (PI / 3.0) + (PI / 2.0)
+				draw_set_transform(Vector2.ZERO, draw_angle, Vector2(scale_factor, scale_factor))
+				
+				var tex_size = texture_upf_destroyer.get_size()
+				var rect = Rect2(-tex_size / 2, tex_size)
+				
+				draw_texture_rect(texture_upf_destroyer, rect, false, Color.WHITE)
+				draw_set_transform(Vector2.ZERO, 0, Vector2(1, 1))
+				points = PackedVector2Array()
 		"Heavy Cruiser":
 			if faction == "Sathar":
 				# Sathar Heavy Cruiser Sprite
@@ -679,39 +697,45 @@ func _draw():
 				draw_set_transform(Vector2.ZERO, 0, Vector2(1, 1))
 				points = PackedVector2Array()
 			else:
-				# Massive Triangle / Dreadnought (Default/UPF)
-				size = HexGrid.TILE_SIZE * 0.7 # 1.4x Diameter -> 0.7 Radius
-				points = PackedVector2Array([
-					Vector2(size, 0), # Nose
-					Vector2(size * 0.4, -size * 0.4), # R Shoulder
-					Vector2(size * 0.2, -size * 0.7), # R Wingtip Fwd
-					Vector2(-size * 0.6, -size * 0.8), # R Wingtip Rear
-					Vector2(-size * 0.4, -size * 0.3), # R Cutout
-					Vector2(-size * 0.8, -size * 0.3), # R Engine Outer
-					Vector2(-size * 0.9, 0), # Rear Center
-					Vector2(-size * 0.8, size * 0.3), # L Engine Outer
-					Vector2(-size * 0.4, size * 0.3), # L Cutout
-					Vector2(-size * 0.6, size * 0.8), # L Wingtip Rear
-					Vector2(size * 0.2, size * 0.7), # L Wingtip Fwd
-					Vector2(size * 0.4, size * 0.4) # L Shoulder
-				])
+				# UPF Heavy Cruiser Sprite
+				var target_size = HexGrid.TILE_SIZE * 1.4
+				var ref_size = max(texture_upf_heavy_cruiser.get_width(), texture_upf_heavy_cruiser.get_height())
+				var scale_factor = target_size / ref_size
+				
+				var draw_angle = facing * (PI / 3.0) + (PI / 2.0)
+				draw_set_transform(Vector2.ZERO, draw_angle, Vector2(scale_factor, scale_factor))
+				
+				var tex_size = texture_upf_heavy_cruiser.get_size()
+				var rect = Rect2(-tex_size / 2, tex_size)
+				
+				draw_texture_rect(texture_upf_heavy_cruiser, rect, false, Color.WHITE)
+				draw_set_transform(Vector2.ZERO, 0, Vector2(1, 1))
+				points = PackedVector2Array()
 		"Battleship":
-			# Massive Dreadnought / Dual Hull
-			size = HexGrid.TILE_SIZE * 0.85 # 1.7x Diameter -> 0.85 Radius
-			points = PackedVector2Array([
-				Vector2(size, 0), # Nose Center
-				Vector2(size * 0.8, -size * 0.2), # R Nose
-				Vector2(size * 0.6, -size * 0.2), # R Inner
-				Vector2(size * 0.4, -size * 0.5), # R Shoulder
-				Vector2(-size * 0.6, -size * 0.6), # R Rear Side
-				Vector2(-size * 0.8, -size * 0.3), # R Engine
-				Vector2(-size * 0.6, 0), # Rear Center Indent
-				Vector2(-size * 0.8, size * 0.3), # L Engine
-				Vector2(-size * 0.6, size * 0.6), # L Rear Side
-				Vector2(size * 0.4, size * 0.5), # L Shoulder
-				Vector2(size * 0.6, size * 0.2), # L Inner
-				Vector2(size * 0.8, size * 0.2) # L Nose
-			])
+			if faction == "Sathar":
+				# No Sathar BB asset? Use fallback vector for now.
+				size = HexGrid.TILE_SIZE * 0.85
+				points = PackedVector2Array([
+					Vector2(size, 0),
+					Vector2(-size * 0.8, -size * 0.4),
+					Vector2(-size * 0.5, 0),
+					Vector2(-size * 0.8, size * 0.4)
+				])
+			else:
+				# UPF Battleship Sprite
+				var target_size = HexGrid.TILE_SIZE * 1.7 # Massive
+				var ref_size = max(texture_upf_battleship.get_width(), texture_upf_battleship.get_height())
+				var scale_factor = target_size / ref_size
+				
+				var draw_angle = facing * (PI / 3.0) + (PI / 2.0)
+				draw_set_transform(Vector2.ZERO, draw_angle, Vector2(scale_factor, scale_factor))
+				
+				var tex_size = texture_upf_battleship.get_size()
+				var rect = Rect2(-tex_size / 2, tex_size)
+				
+				draw_texture_rect(texture_upf_battleship, rect, false, Color.WHITE)
+				draw_set_transform(Vector2.ZERO, 0, Vector2(1, 1))
+				points = PackedVector2Array()
 		"Space Station":
 			# Sprite Rendering
 			# Scale based on Hull Points: 1.0 + (max_hull / 200.0) -> Max ~2.0x
@@ -735,19 +759,40 @@ func _draw():
 			
 			draw_set_transform(Vector2.ZERO, 0, Vector2(1, 1))
 			
+			draw_set_transform(Vector2.ZERO, 0, Vector2(1, 1))
+			
+			points = PackedVector2Array()
+		"Assault Carrier":
+			var target_size = HexGrid.TILE_SIZE * 2.0 # Huge
+			
+			var tex = texture_upf_assault_carrier # Default
+			if faction == "Sathar":
+				tex = texture_sathar_assault_carrier
+				
+			var ref_size = max(tex.get_width(), tex.get_height())
+			var scale_factor = target_size / ref_size
+			
+			var draw_angle = facing * (PI / 3.0) + (PI / 2.0)
+			
+			draw_set_transform(Vector2.ZERO, draw_angle, Vector2(scale_factor, scale_factor))
+			
+			var tex_size = tex.get_size()
+			var rect = Rect2(-tex_size / 2, tex_size)
+			
+			draw_texture_rect(tex, rect, false, Color.WHITE)
+			
+			draw_set_transform(Vector2.ZERO, 0, Vector2(1, 1))
+			
 			points = PackedVector2Array()
 		"Fighter":
 			# Sprite Rendering
 			var target_size = HexGrid.TILE_SIZE * 0.5 # 0.5x Tile Size (20px)
-			# But user asked for "Small". Tile Size is radius. 
-			# Let's say diameter is 0.8 * RADIUS? Or 0.8 * TILE_SIZE?
-			# Tile Size in code usually = Radius (approx 32-64).
-			# Let's align with user request "smaller than assault scout".
-			# AS is size * 0.6. 
-			# Let's use size * 0.4 for radius equivalent?
-			# target_size = HexGrid.TILE_SIZE * 0.8 (Diameter) -> Radius 0.4.
 			
-			var ref_size = max(texture_fighter.get_width(), texture_fighter.get_height())
+			var tex = texture_fighter # Default UPF
+			if faction == "Sathar":
+				tex = texture_sathar_fighter
+			
+			var ref_size = max(tex.get_width(), tex.get_height())
 			var scale_factor = target_size / ref_size
 			
 			# Rotation: Facing 0 = East?
@@ -768,7 +813,8 @@ func _draw():
 			# Or just color?
 			# If sprite is colored, modulate mixes.
 			# Let's assume white sprite or user wants team color.
-			draw_texture_rect(texture_fighter, rect, false, Color.WHITE)
+			# Let's assume white sprite or user wants team color.
+			draw_texture_rect(tex, rect, false, Color.WHITE)
 			
 			# Reset transform
 			draw_set_transform(Vector2.ZERO, 0, Vector2(1, 1))
