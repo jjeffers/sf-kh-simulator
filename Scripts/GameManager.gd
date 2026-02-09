@@ -94,9 +94,6 @@ func _ready():
 		my_local_player_id = -1 # Default to Spectator if network data missing
 		log_message("Network: Offline/Debug Mode (Spectator)")
 		
-	if label_debug:
-		label_debug.text = "Local ID: %d" % my_local_player_id
-		
 	if multiplayer.is_server():
 		# Host: Generate random seed and broadcast
 		var seed_val = randi()
@@ -141,12 +138,6 @@ func _setup_ui():
 	label_status = Label.new()
 	label_status.text = "Initializing..."
 	vbox.add_child(label_status)
-	
-	# Debug Label
-	label_debug = Label.new()
-	label_debug.text = "ID: ?"
-	label_debug.modulate = Color.YELLOW
-	vbox.add_child(label_debug)
 	
 	var hbox = HBoxContainer.new()
 	vbox.add_child(hbox)
@@ -350,7 +341,6 @@ var label_winner: Label
 var btn_restart: Button
 
 var label_center_message: Label
-var label_debug: Label
 
 func log_message(msg: String):
 	combat_log.append_text(msg + "\n")
