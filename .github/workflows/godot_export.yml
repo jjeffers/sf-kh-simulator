@@ -26,11 +26,11 @@ jobs:
       - name: Upload Windows
         uses: actions/upload-artifact@v4
         with:
-          name: Windows Build
-          path: ./*.zip
+          name: Windows 
+          path: ./Windows Desktop/kh.exe
 
       - name: Upload Linux
         uses: actions/upload-artifact@v4
         with:
           name: Linux Build
-          path: ./Linux/*
+          path: ./Linux/kh.x86_64
