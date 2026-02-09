@@ -100,7 +100,7 @@ static func generate_scenario(key: String, rng_seed: int) -> Dictionary:
 		
 		var edge_dir_idx = randi() % 6
 		var edge_vec = directions[edge_dir_idx]
-		var start_dist = 20
+		var start_dist = 24 # Moved to edge (Map Radius 25)
 		
 		var venemous_pos = edge_vec * start_dist
 		# Facing towards center? Center is 0,0,0.

@@ -599,7 +599,7 @@ func _draw():
 	match ship_class:
 		"Assault Scout":
 			# Sprite Rendering
-			var target_size = HexGrid.TILE_SIZE * 1.0 # Slightly larger than Fighter (0.8)
+			var target_size = HexGrid.TILE_SIZE * 0.7 # 0.7x Tile Size (28px)
 			
 			var ref_size = max(texture_assault_scout.get_width(), texture_assault_scout.get_height())
 			var scale_factor = target_size / ref_size
@@ -618,7 +618,7 @@ func _draw():
 			points = PackedVector2Array()
 		"Frigate":
 			# Sprite Rendering
-			var target_size = HexGrid.TILE_SIZE * 1.4 # Larger than Assault Scout (1.0)
+			var target_size = HexGrid.TILE_SIZE * 0.9 # 0.9x Tile Size (36px)
 			
 			var ref_size = max(texture_frigate.get_width(), texture_frigate.get_height())
 			var scale_factor = target_size / ref_size
@@ -638,7 +638,7 @@ func _draw():
 		"Destroyer":
 			if faction == "Sathar":
 				# Sathar Destroyer Sprite
-				var target_size = HexGrid.TILE_SIZE * 1.8 # Larger than Frigate (1.4)
+				var target_size = HexGrid.TILE_SIZE * 1.1 # 1.1x Tile Size (44px)
 				var ref_size = max(texture_sathar_destroyer.get_width(), texture_sathar_destroyer.get_height())
 				var scale_factor = target_size / ref_size
 				
@@ -653,7 +653,7 @@ func _draw():
 				points = PackedVector2Array()
 			else:
 				# Elongated Battleship / Needle (Default/UPF)
-				size = HexGrid.TILE_SIZE * 0.8 # Larger
+				size = HexGrid.TILE_SIZE * 0.55 # 1.1x Diameter -> 0.55 Radius
 				points = PackedVector2Array([
 					Vector2(size, 0), # Nose
 					Vector2(size * 0.2, -size * 0.3),
@@ -665,7 +665,7 @@ func _draw():
 		"Heavy Cruiser":
 			if faction == "Sathar":
 				# Sathar Heavy Cruiser Sprite
-				var target_size = HexGrid.TILE_SIZE * 2.0 # Significant size
+				var target_size = HexGrid.TILE_SIZE * 1.4 # 1.4x Tile Size (56px)
 				var ref_size = max(texture_sathar_heavy_cruiser.get_width(), texture_sathar_heavy_cruiser.get_height())
 				var scale_factor = target_size / ref_size
 				
@@ -680,7 +680,7 @@ func _draw():
 				points = PackedVector2Array()
 			else:
 				# Massive Triangle / Dreadnought (Default/UPF)
-				size = HexGrid.TILE_SIZE * 0.9
+				size = HexGrid.TILE_SIZE * 0.7 # 1.4x Diameter -> 0.7 Radius
 				points = PackedVector2Array([
 					Vector2(size, 0), # Nose
 					Vector2(size * 0.4, -size * 0.4), # R Shoulder
@@ -697,7 +697,7 @@ func _draw():
 				])
 		"Battleship":
 			# Massive Dreadnought / Dual Hull
-			size = HexGrid.TILE_SIZE * 0.95
+			size = HexGrid.TILE_SIZE * 0.85 # 1.7x Diameter -> 0.85 Radius
 			points = PackedVector2Array([
 				Vector2(size, 0), # Nose Center
 				Vector2(size * 0.8, -size * 0.2), # R Nose
@@ -714,9 +714,9 @@ func _draw():
 			])
 		"Space Station":
 			# Sprite Rendering
-			# Scale based on Hull Points: 1.0 + (max_hull / 100.0)
-			# Examples: 20 HP -> 1.2x, 100 HP -> 2.0x, 200 HP -> 3.0x relative to Tile Size
-			var hp_scale_bonus = float(max_hull) / 100.0
+			# Scale based on Hull Points: 1.0 + (max_hull / 200.0) -> Max ~2.0x
+			# Examples: 100 HP -> 1.5x, 200 HP -> 2.0x relative to Tile Size
+			var hp_scale_bonus = float(max_hull) / 200.0
 			var target_size = HexGrid.TILE_SIZE * (1.0 + hp_scale_bonus)
 			
 			var ref_size = max(texture_space_station.get_width(), texture_space_station.get_height())
@@ -738,7 +738,7 @@ func _draw():
 			points = PackedVector2Array()
 		"Fighter":
 			# Sprite Rendering
-			var target_size = HexGrid.TILE_SIZE * 0.8 # Diameter approx (Scale ~0.4 tile relative)
+			var target_size = HexGrid.TILE_SIZE * 0.5 # 0.5x Tile Size (20px)
 			# But user asked for "Small". Tile Size is radius. 
 			# Let's say diameter is 0.8 * RADIUS? Or 0.8 * TILE_SIZE?
 			# Tile Size in code usually = Radius (approx 32-64).

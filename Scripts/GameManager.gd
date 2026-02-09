@@ -97,7 +97,17 @@ func _ready():
 	if label_debug:
 		label_debug.text = "Local ID: %d" % my_local_player_id
 		
-	load_scenario(scen_key)
+	if multiplayer.is_server():
+		# Host: Generate random seed and broadcast
+		var seed_val = randi()
+		setup_game.rpc(seed_val, scen_key)
+	else:
+		log_message("Waiting for Game Setup from Host...")
+
+@rpc("authority", "call_local", "reliable")
+func setup_game(seed_val: int, scen_key: String):
+	log_message("Game Setup Received: Seed %d" % seed_val)
+	load_scenario(scen_key, seed_val)
 	start_turn_cycle()
 
 func _process(delta):
@@ -909,10 +919,10 @@ func _spawn_hit_text(pos: Vector2, damage: int):
 	tween.tween_property(lbl, "modulate:a", 0.0, 3.0)
 	tween.chain().tween_callback(lbl.queue_free)
 
-func load_scenario(key: String):
+func load_scenario(key: String, seed_val: int = 12345):
 	# FIX: Use fixed seed for consistency across clients
 	# In a real networked game, this seed should come from the Host/Lobby
-	var shared_seed = 12345
+	var shared_seed = seed_val
 	var scen_data = ScenarioManager.generate_scenario(key, shared_seed)
 	if scen_data.is_empty():
 		log_message("Error: Scenario %s not found!" % key)

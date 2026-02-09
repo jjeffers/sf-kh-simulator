@@ -3,18 +3,18 @@ extends Node
 
 # Pointy-top orientation
 # Size is the distance from center to corner
-const TILE_SIZE := 40.0 
+const TILE_SIZE := 80.0
 
 # Cube coordinates: q + r + s = 0
 
 # Clockwise starting from East (0)
 static var directions = [
-	Vector3i(1, 0, -1),  # 0: East
-	Vector3i(0, 1, -1),  # 1: South-East
-	Vector3i(-1, 1, 0),  # 2: South-West
-	Vector3i(-1, 0, 1),  # 3: West
-	Vector3i(0, -1, 1),  # 4: North-West
-	Vector3i(1, -1, 0)   # 5: North-East
+	Vector3i(1, 0, -1), # 0: East
+	Vector3i(0, 1, -1), # 1: South-East
+	Vector3i(-1, 1, 0), # 2: South-West
+	Vector3i(-1, 0, 1), # 3: West
+	Vector3i(0, -1, 1), # 4: North-West
+	Vector3i(1, -1, 0) # 5: North-East
 ]
 
 static func get_direction_vec(facing_index: int) -> Vector3i:
@@ -44,15 +44,15 @@ static func hex_distance(a: Vector3i, b: Vector3i) -> int:
 
 # Convert hex coordinates to local pixel position (Pointy Top)
 static func hex_to_pixel(hex: Vector3i) -> Vector2:
-	var x = TILE_SIZE * (sqrt(3) * hex.x + sqrt(3)/2 * hex.y)
+	var x = TILE_SIZE * (sqrt(3) * hex.x + sqrt(3) / 2 * hex.y)
 	var y = TILE_SIZE * (1.5 * hex.y)
 	return Vector2(x, y)
 
 # Convert pixel position to hex coordinates
 static func pixel_to_hex(local_pos: Vector2) -> Vector3i:
-	var q = (sqrt(3)/3 * local_pos.x - 1.0/3 * local_pos.y) / TILE_SIZE
-	var r = (2.0/3 * local_pos.y) / TILE_SIZE
-	return cube_round(Vector3(q, r, -q-r))
+	var q = (sqrt(3) / 3 * local_pos.x - 1.0 / 3 * local_pos.y) / TILE_SIZE
+	var r = (2.0 / 3 * local_pos.y) / TILE_SIZE
+	return cube_round(Vector3(q, r, -q - r))
 
 # Round floating point cube coordinates to nearest integer hex
 static func cube_round(frac: Vector3) -> Vector3i:
