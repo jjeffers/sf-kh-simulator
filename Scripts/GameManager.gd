@@ -58,6 +58,9 @@ var pending_resolutions: Array = []
 # Environment
 var planet_hexes: Array[Vector3i] = [Vector3i(0, 0, 0)] # Center hex
 
+# Scenario Rules
+var current_scenario_rules: Array = []
+
 # Planning UI
 var panel_planning: PanelContainer
 var container_ships: VBoxContainer
@@ -753,7 +756,11 @@ func _process_next_attack():
 	else:
 		combat_target = null
 		
-	_update_camera()
+	# Focus camera on TARGET if available, otherwise Source
+	if is_instance_valid(target):
+		_update_camera(target)
+	else:
+		_update_camera()
 
 	var weapon = source.weapons[weapon_idx]
 	# Strict Ammo Consumption (happens now at resolution)
@@ -914,6 +921,8 @@ func load_scenario(key: String, seed_val: int = 12345):
 	# In a real networked game, this seed should come from the Host/Lobby
 	var shared_seed = seed_val
 	var scen_data = ScenarioManager.generate_scenario(key, shared_seed)
+	current_scenario_rules = scen_data.get("special_rules", [])
+	
 	if scen_data.is_empty():
 		log_message("Error: Scenario %s not found!" % key)
 		return
@@ -1104,6 +1113,11 @@ func _update_ship_visuals():
 	_update_camera()
 
 func start_turn_cycle():
+	# Failsafe Cleanup
+	if panel_icm:
+		panel_icm.queue_free()
+		panel_icm = null
+
 	for s in ships:
 		s.reset_weapons()
 	start_movement_phase()
@@ -1113,6 +1127,7 @@ func start_movement_phase():
 	current_phase = Phase.MOVEMENT
 	combat_subphase = 0
 	firing_player_id = 0
+	combat_action_taken = false # Reset lock
 	
 	# Find un-moved ships for ACTIVE player
 	var available = ships.filter(func(s): return s.player_id == current_player_id and not s.has_moved)
@@ -1298,6 +1313,33 @@ func _update_planning_ui_list():
 
 
 func end_turn_cycle():
+	# Scenario Objective Check: Surprise Attack (Defiant Evacuation)
+	# Check before switching player, or after? 
+	# "Turns docked" -> implied "Full Turns" or "Turn Cycles"?
+	# Let's count at the end of the Cycle (when both players have acted).
+	if multiplayer.is_server():
+		# Process Special Rules
+		for rule in current_scenario_rules:
+			if rule["type"] == "docked_turn_counter":
+				var t_name = rule["target_name"]
+				var prop = rule["counter_property"]
+				var log_tmpl = rule["log_template"]
+				
+				# Find target
+				var target_ship = null
+				for s in ships:
+					if s.name == t_name:
+						target_ship = s
+						break
+				
+				if target_ship and target_ship.is_docked:
+					# Use dynamic property access
+					var current_val = target_ship.get(prop)
+					if current_val != null:
+						target_ship.set(prop, current_val + 1)
+						var msg = log_tmpl % (current_val + 1)
+						log_message(msg)
+			
 	log_message("Turn Complete. Switching Active Player.")
 	current_player_id = 3 - current_player_id
 	
@@ -1307,10 +1349,20 @@ func end_turn_cycle():
 		
 	start_movement_phase()
 
-func _update_camera():
-	if not selected_ship: return
+func _update_camera(focus_target_override = null):
+	var target_pos = Vector2.ZERO
+	
+	if focus_target_override:
+		if focus_target_override is Node2D:
+			target_pos = focus_target_override.position
+		elif focus_target_override is Vector2:
+			target_pos = focus_target_override
+	elif selected_ship:
+		target_pos = HexGrid.hex_to_pixel(selected_ship.grid_position)
+	else:
+		return
+
 	var center = get_viewport_rect().size / 2
-	var target_pos = HexGrid.hex_to_pixel(selected_ship.grid_position)
 	# Center ship on screen
 	position = center - target_pos
 
@@ -1926,6 +1978,7 @@ func _unhandled_input(event):
 			active_id = firing_player_id
 			
 		if active_id != my_local_player_id:
+			# print("Input Rejected: Active %d vs Local %d" % [active_id, my_local_player_id])
 			return # Ignore input for other players
 			
 	if event is InputEventMouseButton and event.pressed and event.button_index == MOUSE_BUTTON_LEFT:

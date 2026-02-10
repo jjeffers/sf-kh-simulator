@@ -3,7 +3,7 @@ extends Node
 
 # Pointy-top orientation
 # Size is the distance from center to corner
-const TILE_SIZE := 80.0
+const TILE_SIZE = 65.0
 
 # Cube coordinates: q + r + s = 0
 

@@ -8,7 +8,15 @@ const SCENARIOS = {
 			0: {"name": "Defenders (Side A)", "color": Color.GREEN},
 			1: {"name": "Attackers (Side B)", "color": Color.RED}
 		},
-		"ships": [] # Template, filled by generator
+		"ships": [], # Template, filled by generator
+		"special_rules": [
+			{
+				"type": "docked_turn_counter",
+				"target_name": "Defiant",
+				"counter_property": "evacuation_turns",
+				"log_template": "Defiant Evacuation Progress: Turn %d"
+			}
+		]
 	}
 }
 

@@ -133,10 +133,12 @@ Available game scenarios and their configurations.
 - **Venemous** (Destroyer)
   - Location: Edge hex.
   - Heading: Facing inward.
+  - Starting Speed: 10
   - Faction: Sathar.
 - **Perdition** (Heavy Cruiser)
   - Location: Adjacent to Venemous (Diagonal formation).
   - Heading: Facing inward.
+  - Starting Speed: 10
   - Faction: Sathar.
 
 **Objectives:**
