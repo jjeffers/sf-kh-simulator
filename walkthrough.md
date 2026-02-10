@@ -1,31 +1,45 @@
-# Walkthrough - Surprise Attack Scenario Fix
+# Walkthrough - New Scenario: The Last Stand
 
-I have replaced the hardcoded test ships with a dynamic scenario loader. The game now correctly loads the "Surprise Attack" scenario from `ScenarioManager.gd`.
+## Overview
+Added a new scenario "The Last Stand" featuring a massive Sathar fleet attacking Fortress K'zdit.
 
-## Changes
-- **GameManager.gd**:
-    - Removed `spawn_ships()` and `spawn_station()`.
-    - Added `load_scenario(key: String)`.
-    - Updated `_ready()` to call `load_scenario("surprise_attack")`.
-- **Infrastructure**:
-    - Added **GitHub Actions** workflow (`.github/workflows/godot_export.yml`) to automatically build and export the game for Windows and Linux on every push to `main`.
+## Features
+- **Scenarios**: "The Last Stand" and "Surprise Attack".
+- **Dynamic Loading**: `GameManager.gd` now supports `load_scenario(key)` with full object instantiation.
+- **Overrides**: Scenarios can now override default ship stats (e.g., custom hull/weapons for Fortress K'zdit).
+- **Assault Carrier**: Added configuration for the Sathar Assault Carrier (75 Hull, Launch Fighters).
+- **Debuffs**: Implemented `linked_state_debuff` support (Station evacuation disables weapons).
 
-## Verification Results
+## How to Play "The Last Stand"
+- The scenario is currently set as the **default** in `GameManager.gd`.
+- Just launch the game.
+- **Objective**: UPF must defend Fortress K'zdit against the Sathar invasion fleet.
+- **Randomization**:
+    - **Fortress K'zdit**: Spawns in a random orbit around the center planet.
+    - **Sathar Fleet**: Spawns at a random map edge, attacking inward.
 
-### Automated Check
-The game launches successfully and initializes the scenario.
-- **Log Output**: `Station Alpha orbits to (0, 1, -1).`
-- **Confirmation**: "Station Alpha" is present, confirming the scenario data is being read (since the old function was removed).
-- **Game State**: `Movement Phase: Player 1` active.
+## UI Updates
+- **Ship Names**: Ships now display their class abbreviation (e.g., "DD Vicious", "F Fighter") on the map and in logs.
+    - F: Fighter
+    - FG: Frigate
+    - DD: Destroyer
+    - C: Heavy Cruiser
+    - BB: Battleship
+    - SS: Space Station
+    - AS: Assault Scout
+    - AC: Assault Carrier
 
-### Validated Scenario Data
- The following ships should now appear:
-- **Defenders**: Station Alpha, Defiant, Stiletto.
-- **Attackers**: Venemous, Perdition.
+## Ship Roster (The Last Stand)
+**UPF (Defenders)**:
+- Fortress K'zdit (Custom Station)
+- Valiant (Battleship)
+- Allison May (Destroyer)
+- Daridia (Frigate)
+- Dauntless & Razor (Assault Scouts)
+- 2 Fighters
 
-### CI/CD Pipeline
-- **Workflow**: `Godot Export`
-- **Triggers**: Push to `master` / `main`.
-- **Outputs**:
-    - `Windows Build` (Artifact, ZIP Archive)
-    - `Linux Build` (Artifact, ZIP Archive)
+**Sathar (Invaders)**:
+- Infamous (Assault Carrier) with 2 docked Fighters
+- Star Scourge (Heavy Cruiser)
+- Vicious, Pestilence, Doomfist (Destroyers)
+- Stinger (Frigate)

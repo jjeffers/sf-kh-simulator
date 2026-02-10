@@ -114,7 +114,7 @@ Mechanics for damage mitigation and avoidance.
 Available game scenarios and their configurations.
 
 ### Surprise Attack!
-**Description:** Attackers ambush Station Alpha. The Defiant must escape.
+**Description:** Attackers ambush Station Alpha. The Defiant must evacuate the station and then escape.
 
 **Defenders (Side A):**
 - **Station Alpha** (Space Station)
@@ -141,9 +141,34 @@ Available game scenarios and their configurations.
   - Starting Speed: 10
   - Faction: Sathar.
 
+**Special Rules**
+ - The UPF frigate Defiant must dock for 3 turns to complete evacuation.
+ - Once evacuated the station may no longer fire weapons or activate screens.
+
 **Objectives:**
-- **UPF:** Dock the frigate at the station for 3 turns, then leave the playig area.
+- **UPF:** Dock the frigate Defiant at the station for 3 turns, then leave the playig area.
 - **Sathar:** Prevent the frigate from evacuating the station or leaving the play area after evacuating the station.
+
+### The Last Stand
+**Description:** A massive Sathar fleet assaults Fortress K'zdit. UPF must hold the line.
+
+**UPF (Defenders):**
+- **Fortress K'zdit** (Space Station - Custom)
+  - Stats: 100 Hull, 8 ICM, 2 MS.
+  - Weapons: 3x Laser Battery, 1x Rocket Battery Swarm (12 shots).
+- **Valiant** (Battleship)
+- **Allison May** (Destroyer)
+- **Daridia** (Frigate)
+- **Dauntless, Razor** (Assault Scouts)
+- **Fighters** (2 wings)
+
+**Sathar (Invaders):
+- **Infamous** (Assault Carrier)
+  - Carries: 2 Fighter wings.
+- **Star Scourge** (Heavy Cruiser)
+- **Vicious, Pestilence, Doomfist** (Destroyers)
+- **Stinger** (Frigate)
+- **Fighters** (2 wings, independent)
 
 ## Game Infrastructure
 

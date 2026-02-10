@@ -77,10 +77,10 @@ func _ready():
 	
 	# Network Setup
 	var setup = NetworkManager.game_setup_data
-	var scen_key = "surprise_attack"
+	var scen_key = "the_last_stand"
 	
 	if setup and not setup.is_empty():
-		scen_key = setup.get("scenario", "surprise_attack")
+		scen_key = setup.get("scenario", "the_last_stand")
 		var h_side = setup.get("host_side", 0)
 		var h_pid = h_side + 1
 		
@@ -366,7 +366,7 @@ func _handle_combat_click(hex: Vector3i):
 				queue_redraw()
 				_update_ship_visuals() # Re-sort stack
 				_update_ui_state()
-				log_message("Switched to %s" % selected_ship.name)
+				log_message("Switched to %s" % selected_ship.get_display_name())
 				return
 	
 	# if not combat_target: return # REMOVED: Prevent blocking target selection
@@ -447,7 +447,7 @@ func _handle_combat_click(hex: Vector3i):
 			"weapon_name": weapon["name"]
 		})
 		
-		log_message("Planned: %s -> %s (%s)" % [selected_ship.name, s.name, weapon["name"]])
+		log_message("Planned: %s -> %s (%s)" % [selected_ship.get_display_name(), s.get_display_name(), weapon["name"]])
 		
 		_update_planning_ui_list()
 		queue_redraw()
@@ -460,7 +460,7 @@ func _handle_combat_click(hex: Vector3i):
 				if d <= Combat.MAX_RANGE:
 					combat_target = s
 					queue_redraw()
-					log_message("Targeting: %s" % s.name)
+					log_message("Targeting: %s" % s.get_display_name())
 					_update_ship_visuals() # Ensure target pops to top
 					break
 
@@ -741,7 +741,7 @@ func _process_next_attack():
 
 	# If ship exists but is technically dead/dying (hull <= 0)
 	if source.hull <= 0:
-		log_message("%s destroyed before firing! Attack fizzles." % source.name)
+		log_message("%s destroyed before firing! Attack fizzles." % source.get_display_name())
 		source.weapons[weapon_idx]["ammo"] -= 1
 		await get_tree().create_timer(1.0).timeout
 		_process_next_attack()
@@ -774,7 +774,7 @@ func _process_next_attack():
 		target_pos = target.position
 
 	if not is_instance_valid(target) or target.hull <= 0:
-		log_message("%s firing at WRECK of %s! (Wasted)" % [source.name, target.name if is_instance_valid(target) else "Unknown"])
+		log_message("%s firing at WRECK of %s! (Wasted)" % [source.get_display_name(), target.get_display_name() if is_instance_valid(target) else "Unknown"])
 		_spawn_attack_fx(start_pos, target_pos, weapon.get("type"))
 		await get_tree().create_timer(1.5).timeout
 		_process_next_attack()
@@ -784,14 +784,14 @@ func _process_next_attack():
 
 	# DOCKING RULE: Targeting Immunity Check AGAIN (Safety)
 	if target.is_docked and target.ship_class in ["Fighter", "Assault Scout"]:
-		log_message("%s target is docked and invalid! Attack fizzles." % source.name)
+		log_message("%s target is docked and invalid! Attack fizzles." % source.get_display_name())
 		source.weapons[weapon_idx]["ammo"] -= 1 # Wasted shot rule? Or refund? Let's burn ammo to be safe.
 		await get_tree().create_timer(1.0).timeout
 		_process_next_attack()
 		return
 
 	# Execute Fire Logic
-	log_message("%s firing %s at %s" % [source.name, weapon["name"], target.name])
+	log_message("%s firing %s at %s" % [source.get_display_name(), weapon["name"], target.get_display_name()])
 	
 	# Hit Calc Setup
 	var d = HexGrid.hex_distance(source.grid_position, target.grid_position)
@@ -916,98 +916,6 @@ func _spawn_hit_text(pos: Vector2, damage: int):
 	tween.tween_property(lbl, "modulate:a", 0.0, 3.0)
 	tween.chain().tween_callback(lbl.queue_free)
 
-func load_scenario(key: String, seed_val: int = 12345):
-	# FIX: Use fixed seed for consistency across clients
-	# In a real networked game, this seed should come from the Host/Lobby
-	var shared_seed = seed_val
-	var scen_data = ScenarioManager.generate_scenario(key, shared_seed)
-	current_scenario_rules = scen_data.get("special_rules", [])
-	
-	if scen_data.is_empty():
-		log_message("Error: Scenario %s not found!" % key)
-		return
-		
-	log_message("Loading Scenario: %s" % scen_data.get("name", "Unknown"))
-	
-	ships.clear()
-	# Clear existing ship nodes if any (though _ready usually starts empty)
-	# If reloading, we'd need to queue_free existing.
-	
-	var ship_list = scen_data.get("ships", [])
-	
-	# Pass 1: Instantiate
-	for data in ship_list:
-		var s = Ship.new()
-		add_child(s)
-		
-		# Configure Class
-		var cls = data.get("class", "Fighter")
-		match cls:
-			"Station", "Space Station": s.configure_space_station()
-			"Fighter": s.configure_fighter()
-			"Assault Scout": s.configure_assault_scout()
-			"Frigate": s.configure_frigate()
-			"Destroyer": s.configure_destroyer()
-			"Heavy Cruiser": s.configure_heavy_cruiser()
-			_: log_message("Unknown class %s, defaulting to Scout" % cls)
-			
-		# Apply Properties
-		s.name = data.get("name", "Ship")
-		s.faction = data.get("faction", "UPF")
-		s.player_id = data.get("side_index", 0) + 1 # 0->1, 1->2
-		
-		var side_info = scen_data["sides"].get(data["side_index"], {})
-		s.color = side_info.get("color", Color.WHITE)
-		if data.has("color"): s.color = data["color"]
-		
-		s.grid_position = data.get("position", Vector3i.ZERO)
-		s.facing = data.get("facing", 0)
-		s.orbit_direction = data.get("orbit_direction", 0)
-		s.speed = data.get("start_speed", 0)
-		if s.speed > 0: s.has_moved = true # Scenarios often start mid-flight? Or start of turn? match rules.
-		
-		# Stats Overrides
-		# If "stats" dict exists, apply values
-		if data.has("stats"):
-			var stats = data["stats"]
-			if stats.has("max_hull"):
-				s.max_hull = stats["max_hull"]
-				s.hull = s.max_hull
-			if stats.has("icm_max"):
-				s.icm_max = stats["icm_max"]
-				s.icm_current = s.icm_max
-			if stats.has("weapons"):
-				s.weapons = stats["weapons"].duplicate(true)
-				
-		s.binding_pos_update()
-		s.ship_destroyed.connect(func(): _on_ship_destroyed(s))
-		ships.append(s)
-		
-	# Pass 2: Docking and Linking
-	for data in ship_list:
-		if data.has("docked_at"):
-			var host_name = data["docked_at"]
-			# Find host
-			var host = null
-			for cand in ships:
-				if cand.name == host_name:
-					host = cand
-					break
-			
-			if host:
-				# Find the ship instance we just made
-				var s_name = data["name"]
-				var s = null
-				for cand in ships:
-					if cand.name == s_name:
-						s = cand
-						break
-				
-				if s and host:
-					s.dock_at(host)
-					log_message("%s docked at %s" % [s.name, host.name])
-
-	_update_ship_visuals()
 
 func _cycle_selection():
 	if current_phase == Phase.MOVEMENT:
@@ -1521,7 +1429,7 @@ func _update_ui_state():
 		var txt = "Combat (%s Fire)\nPlayer %d Firing" % [phase_name, firing_player_id]
 		
 		if selected_ship:
-			txt += "\nShip: %s" % selected_ship.name
+			txt += "\nShip: %s" % selected_ship.get_display_name()
 			if selected_ship.weapons.size() > 0:
 				var w = selected_ship.weapons[selected_ship.current_weapon_index]
 				txt += "\nWeapon: %s" % w["name"]
@@ -1530,7 +1438,7 @@ func _update_ui_state():
 					txt += " (FIRED)"
 					
 			if combat_target:
-				txt += "\nTarget: %s" % combat_target.name
+				txt += "\nTarget: %s" % combat_target.get_display_name()
 				# Show Hit Chance
 				if selected_ship and selected_ship.weapons.size() > 0:
 					var w = selected_ship.weapons[selected_ship.current_weapon_index]
@@ -1556,7 +1464,7 @@ func _update_ui_state():
 					var w = s.weapons[w_idx]
 					var chance = Combat.calculate_hit_chance(dist, w, t, false, 0, s)
 					
-					txt += "\n%s -> %s: %s (%d%%)" % [s.name, t.name, w_name, chance]
+					txt += "\n%s -> %s: %s (%d%%)" % [s.get_display_name(), t.get_display_name(), w_name, chance]
 		
 		label_status.text = txt
 	elif current_phase == Phase.END:
@@ -1781,12 +1689,23 @@ func execute_commit_move(ship_name: String, path: Array, final_facing: int, orbi
 
 func _handle_docking_states(ship: Ship):
 	# 1. Check for Auto-Docking
-	var potential_hosts = ships.filter(func(s): return s.player_id == ship.player_id and s != ship and s.ship_class == "Space Station" and s.grid_position == ship.grid_position)
+	var potential_hosts = ships.filter(func(s): return s.player_id == ship.player_id and s != ship and s.grid_position == ship.grid_position)
+	# Filter for valid hosts
+	potential_hosts = potential_hosts.filter(func(s): return s.ship_class in ["Space Station", "Assault Carrier"])
+	
 	if potential_hosts.size() > 0:
 		var host = potential_hosts[0]
 		if not ship.is_docked:
-			ship.dock_at(host)
-			log_message("%s docked at %s." % [ship.name, host.name])
+			if ship.dock_at(host):
+				log_message("%s docked at %s." % [ship.name, host.name])
+				if ship.ship_class == "Fighter" and host.ship_class == "Assault Carrier":
+					log_message("%s re-armed/refueled." % ship.name)
+			else:
+				# Failed (Capacity?)
+				# Only log if we *just* arrived to avoid spam?
+				# Actually this runs every move commit. 
+				# If we are effectively "on top" but can't dock, we just stay sharing the hex.
+				pass
 	else:
 		if ship.is_docked:
 			if ship.grid_position != ship.docked_host.grid_position:
@@ -2515,3 +2434,134 @@ func _update_minimap_position():
 			new_y = screen_h - 220
 			
 		mini_map.position = Vector2(get_viewport_rect().size.x - 220, new_y)
+
+func load_scenario(key: String, seed_val: int = 12345):
+	# Retrieve Scenario Data
+	var scen_dataset = ScenarioManager.generate_scenario(key, seed_val)
+	# Handle case where generate_scenario returns empty but SCENARIOS has it (static)
+	if scen_dataset.is_empty():
+		scen_dataset = ScenarioManager.get_scenario(key)
+		
+	if scen_dataset.is_empty():
+		log_message("Error: Scenario %s not found!" % key)
+		return
+		
+	log_message("Loading Scenario: %s" % scen_dataset.get("name", "Unknown"))
+	current_scenario_rules = scen_dataset.get("special_rules", [])
+	
+	# Clear Existing Ships
+	for s in ships:
+		if is_instance_valid(s):
+			s.queue_free()
+	ships.clear()
+	
+	# Instantiate Ships (Pass 1)
+	var ship_list = scen_dataset.get("ships", [])
+	for data in ship_list:
+		var s = Ship.new()
+		add_child(s)
+		
+		# Configure Class
+		var cls = data.get("class", "Fighter")
+		match cls:
+			"Station", "Space Station": s.configure_space_station()
+			"Fighter": s.configure_fighter()
+			"Assault Scout": s.configure_assault_scout()
+			"Frigate": s.configure_frigate()
+			"Destroyer": s.configure_destroyer()
+			"Heavy Cruiser": s.configure_heavy_cruiser()
+			"Battleship": s.configure_battleship()
+			"Assault Carrier": s.configure_assault_carrier()
+			_:
+				log_message("Unknown class %s, defaulting to Scout" % cls)
+				s.configure_assault_scout()
+		
+		# Base Properties
+		s.name = data.get("name", "Ship")
+		s.faction = data.get("faction", "UPF")
+		# Handle side/side_index variance
+		var s_idx = data.get("side", data.get("side_index", 0))
+		s.player_id = s_idx + 1 # 0->1, 1->2
+		
+		var side_info = scen_dataset.get("sides", {}).get(s_idx, {})
+		s.color = side_info.get("color", Color.WHITE)
+		if data.has("color"): s.color = data["color"]
+		
+		# Handle pos/position variance
+		s.grid_position = data.get("position", data.get("pos", Vector3i.ZERO))
+		s.facing = data.get("facing", 0)
+		s.orbit_direction = data.get("orbit_direction", 0)
+		s.speed = data.get("start_speed", 0)
+		if s.speed > 0: s.has_moved = true
+		
+		# Stats Overrides (Crucial for Fortress K'zdit)
+		if data.has("overrides"):
+			var ov = data["overrides"]
+			# Special handling for nested 'weapons' override if needed, 
+			# but Ship.gd doesn't auto-merge deep dicts by default.
+			# If 'weapons' is in override, we replace the whole list?
+			# Yes, set() usually replaces.
+			# But for 'weapons', we need to duplicate?
+			for k in ov:
+				var val = ov[k]
+				if val is Array or val is Dictionary:
+					s.set(k, val.duplicate(true))
+				else:
+					s.set(k, val)
+				
+		s.binding_pos_update()
+		s.ship_destroyed.connect(func(ship): _on_ship_destroyed(ship))
+		ships.append(s)
+		
+	# Docking (Pass 2)
+	for data in ship_list:
+		if data.has("docked_at"):
+			var host_name = data["docked_at"]
+			var host = null
+			for cand in ships:
+				if cand.name == host_name:
+					host = cand
+					break
+			
+			if host:
+				var s_name = data["name"]
+				var s = null
+				for cand in ships:
+					if cand.name == s_name:
+						s = cand
+						break
+				
+				if s:
+					s.dock_at(host)
+					log_message("%s docked at %s" % [s.name, host.name])
+
+	_update_ship_visuals()
+
+func _check_scenario_debuffs(ship: Ship, action: String) -> bool:
+	if not is_instance_valid(ship): return false
+	
+	for rule in current_scenario_rules:
+		if rule["type"] == "linked_state_debuff":
+			if rule["target_name"] == ship.name:
+				# Check debuff list
+				if action in rule["debuffs"]:
+					# Check Trigger
+					var trigger = null
+					for s in ships:
+						if s.name == rule["trigger_name"]:
+							trigger = s
+							break
+					
+					if trigger:
+						var condition = rule["trigger_condition"]
+						var active = false
+						if condition == "undocked":
+							active = not trigger.is_docked
+						elif condition == "docked":
+							active = trigger.is_docked
+							
+						if active:
+							log_message("Action '%s' blocked by scenario rule!" % action)
+							return true # Debuff IS active, so action is blocked
+	
+	return false

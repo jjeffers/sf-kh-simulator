@@ -24,6 +24,18 @@ const SCENARIOS = {
 				"debuffs": ["no_fire", "no_ms"]
 			}
 		]
+	},
+	"the_last_stand": {
+		"name": "The Last Stand",
+		"description": "A massive Sathar fleet assaults Fortress K'zdit. UPF must hold the line.",
+		"sides": {
+			0: {"name": "UPF (Defenders)", "color": Color.GREEN},
+			1: {"name": "Sathar (Invaders)", "color": Color.RED}
+		},
+		"ships": [
+			# Ships are generated procedurally in generate_scenario()
+		],
+		"special_rules": []
 	}
 }
 
@@ -158,6 +170,102 @@ static func generate_scenario(key: String, rng_seed: int) -> Dictionary:
 			"start_speed": 8
 		})
 		
+		scen["ships"] = ships
+		
+	elif key == "the_last_stand":
+		# UPF SETUP
+		# 1. Fortress K'zdit - Random Orbit
+		var center_neighbors = [
+			Vector3i(1, 0, -1), Vector3i(1, -1, 0), Vector3i(0, -1, 1),
+			Vector3i(-1, 0, 1), Vector3i(-1, 1, 0), Vector3i(0, 1, -1)
+		]
+		var station_pos = center_neighbors[randi() % center_neighbors.size()]
+		var station_orbit_dir = 1 if randf() > 0.5 else -1
+		
+		ships.append({
+			"name": "Fortress K'zdit", "class": "Space Station", "side": 0,
+			"position": station_pos, "facing": 0,
+			"orbit_direction": station_orbit_dir,
+			"overrides": {
+				"hull": 100, "max_hull": 100, "icm_max": 8, "icm_current": 8, "ms_max": 2, "ms_current": 2,
+				"weapons": [
+					{"name": "Laser Battery 1", "type": "Laser", "range": 9, "arc": "360", "ammo": 999, "max_ammo": 999, "damage_dice": "1d10", "damage_bonus": 0, "fired": false},
+					{"name": "Laser Battery 2", "type": "Laser", "range": 9, "arc": "360", "ammo": 999, "max_ammo": 999, "damage_dice": "1d10", "damage_bonus": 0, "fired": false},
+					{"name": "Laser Battery 3", "type": "Laser", "range": 9, "arc": "360", "ammo": 999, "max_ammo": 999, "damage_dice": "1d10", "damage_bonus": 0, "fired": false},
+					{"name": "Rocket Battery Swarm", "type": "Rocket Battery", "range": 3, "arc": "360", "ammo": 12, "max_ammo": 12, "damage_dice": "2d10", "damage_bonus": 0, "fired": false}
+				]
+			}
+		})
+		
+		# 2. UPF Fleet - Defensive Cluster near Center (avoiding Station)
+		var upf_roster = [
+			{"name": "Valiant", "class": "Battleship", "pos": Vector3i(0, 0, 0), "facing": 0}, # Center
+			{"name": "Allison May", "class": "Destroyer", "pos": Vector3i(0, -2, 2), "facing": 1},
+			{"name": "Daridia", "class": "Frigate", "pos": Vector3i(-1, 1, 0), "facing": 5},
+			{"name": "Dauntless", "class": "Assault Scout", "pos": Vector3i(1, 1, -2), "facing": 0},
+			{"name": "Razor", "class": "Assault Scout", "pos": Vector3i(-1, -1, 2), "facing": 3},
+			{"name": "Fighter a", "class": "Fighter", "pos": Vector3i(0, 2, -2), "facing": 0},
+			{"name": "Fighter b", "class": "Fighter", "pos": Vector3i(0, 3, -3), "facing": 0}
+		]
+		
+		for template in upf_roster:
+			# Simple overlap check: If a ship spawns on the station, shift it slightly
+			if template["pos"] == station_pos:
+				template["pos"] = template["pos"] + Vector3i(1, 0, -1) # Shift East
+			
+			ships.append({
+				"name": template["name"], "class": template["class"], "side": 0,
+				"position": template["pos"], "facing": template["facing"]
+			})
+			
+		# SATHAR SETUP
+		# Random Edge Direction
+		var directions = [
+			Vector3i(1, 0, -1), Vector3i(1, -1, 0), Vector3i(0, -1, 1),
+			Vector3i(-1, 0, 1), Vector3i(-1, 1, 0), Vector3i(0, 1, -1)
+		]
+		var edge_dir_idx = randi() % 6
+		var edge_vec = directions[edge_dir_idx]
+		var center_dist = 22 # Slightly inside max radius
+		
+		# Anchor point for the fleet
+		var anchor_pos = edge_vec * center_dist
+		var attack_facing = (edge_dir_idx + 3) % 6 # Facing Center
+		
+		# Fleet Formation relative to Anchor
+		# We define offsets in Hex coordinates relative to a "Forward" facing of 0 (East)
+		# Then we rotate these offsets to match the actual attack_facing?
+		# Or just use simple manual offsets and hope they don't look too weird when rotated.
+		# Actually, simple static cluster around anchor is fine.
+		
+		var sathar_roster = [
+			{"name": "Infamous", "class": "Assault Carrier", "offset": Vector3i(0, 0, 0)},
+			{"name": "Star Scourge", "class": "Heavy Cruiser", "offset": Vector3i(1, -1, 0)},
+			{"name": "Vicious", "class": "Destroyer", "offset": Vector3i(-1, 0, 1)},
+			{"name": "Pestilence", "class": "Destroyer", "offset": Vector3i(0, 1, -1)},
+			{"name": "Doomfist", "class": "Destroyer", "offset": Vector3i(0, -1, 1)},
+			{"name": "Stinger", "class": "Frigate", "offset": Vector3i(2, -1, -1)},
+			# Docked Fighters don't need position
+		]
+		
+		for s_data in sathar_roster:
+			ships.append({
+				"name": s_data["name"], "class": s_data["class"], "side": 1, "faction": "Sathar",
+				"position": anchor_pos + s_data["offset"], # Note: Simple offset, doesn't rotate with edge. Good enough.
+				"facing": attack_facing,
+				"start_speed": 6
+			})
+			
+		# Docked Fighters for Infamous
+		ships.append({
+			"name": "Fighter A", "class": "Fighter", "side": 1, "faction": "Sathar",
+			"position": anchor_pos, "docked_at": "Infamous"
+		})
+		ships.append({
+			"name": "Fighter B", "class": "Fighter", "side": 1, "faction": "Sathar",
+			"position": anchor_pos, "docked_at": "Infamous"
+		})
+
 		scen["ships"] = ships
 		
 	return scen

@@ -401,6 +401,48 @@ func configure_battleship():
 	})
 	
 	current_weapon_index = 0
+	
+func configure_assault_carrier():
+	ship_class = "Assault Carrier"
+	defense = "RH"
+	max_hull = 75
+	hull = max_hull
+	adf = 2
+	mr = 1
+	icm_max = 8
+	icm_current = 8
+	ms_max = 1
+	ms_current = 1
+	
+	weapons.clear()
+	# Laser Batteries (x2)
+	for i in range(2):
+		weapons.append({
+			"name": "Laser Battery %d" % (i + 1),
+			"type": "Laser",
+			"range": 9,
+			"arc": "360",
+			"ammo": 999,
+			"max_ammo": 999,
+			"damage_dice": "1d10",
+			"damage_bonus": 0,
+			"fired": false
+		})
+		
+	# Rocket Batteries (x6)
+	weapons.append({
+		"name": "Rocket Batteries",
+		"type": "Rocket Battery",
+		"range": 3,
+		"arc": "360",
+		"ammo": 6,
+		"max_ammo": 6,
+		"damage_dice": "2d10",
+		"damage_bonus": 0,
+		"fired": false
+	})
+	
+	current_weapon_index = 0
 
 func configure_space_station(force_hull: int = -1):
 	ship_class = "Space Station"
@@ -848,7 +890,7 @@ func _draw():
 		var default_font = ThemeDB.fallback_font
 		var font_size = 14
 		var name_pos = Vector2(-size, -size - 10)
-		draw_string(default_font, name_pos, name, HORIZONTAL_ALIGNMENT_CENTER, -1, font_size, Color.WHITE)
+		draw_string(default_font, name_pos, get_display_name(), HORIZONTAL_ALIGNMENT_CENTER, -1, font_size, Color.WHITE)
 		
 		# Draw Health Bar
 		var bar_width = HexGrid.TILE_SIZE * 0.8
@@ -903,18 +945,55 @@ func reset_turn_state():
 	has_fired = false
 	reset_weapons()
 
-func dock_at(station: Ship):
+func get_docking_capacity() -> int:
+	if ship_class == "Space Station": return 999
+	if ship_class == "Assault Carrier": return 10
+	return 0
+
+func replenish_ammo():
+	for w in weapons:
+		w["ammo"] = w["max_ammo"]
+	# Also refill ICM/MS? Prompt says "replenishment of ammuniation". 
+	# Usually implies weapons. Let's stick to weapons for now.
+
+
+func get_display_name() -> String:
+	var abbrev = ""
+	match ship_class:
+		"Fighter": abbrev = "F"
+		"Frigate": abbrev = "FG"
+		"Destroyer": abbrev = "DD"
+		"Heavy Cruiser": abbrev = "C"
+		"Battleship": abbrev = "BB"
+		"Space Station": abbrev = "SS"
+		"Assault Scout": abbrev = "AS"
+		"Assault Carrier": abbrev = "AC"
+		_: abbrev = "?"
+	
+	return "%s %s" % [abbrev, name]
+
+func dock_at(station: Ship) -> bool:
 	if is_instance_valid(station) and station != self:
+		# Capacity Check
+		if station.docked_guests.size() >= station.get_docking_capacity():
+			return false
+			
 		is_docked = true
 		docked_host = station
 		if not station.docked_guests.has(self):
 			station.docked_guests.append(self)
+		
+		# Re-arm Logic
+		if ship_class == "Fighter" and station.ship_class in ["Assault Carrier", "Space Station"]:
+			replenish_ammo()
 		
 		# Align position purely for visuals/logic consistency
 		grid_position = station.grid_position
 		# Visual tweak: maybe slight offset or smaller scale? 
 		# For now, just sharing the hex is enough. z_index handles visibility.
 		# Ships are drawn in tree order. Active player ships usually last.
+		return true
+	return false
 		
 func undock():
 	if is_instance_valid(docked_host):
