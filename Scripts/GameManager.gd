@@ -2019,6 +2019,11 @@ func _is_weapon_available_in_phase(weapon: Dictionary, ship: Ship = null) -> boo
 		if firing_player_id != current_player_id:
 			return false
 
+	# Scenario Debuff Check
+	if _check_scenario_debuffs(ship, "no_fire"):
+		# We can't log here easily without spamming, but we can return false.
+		return false
+
 	# DOCKING RULE: Weapon Restrictions
 	# "A docked ship can use it's laser and rocket battery weapons. A docked ship cannot use it's forward firing weapons, torpedoes, or ICMs."
 	if ship and ship.is_docked:

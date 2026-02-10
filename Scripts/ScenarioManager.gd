@@ -15,6 +15,13 @@ const SCENARIOS = {
 				"target_name": "Defiant",
 				"counter_property": "evacuation_turns",
 				"log_template": "Defiant Evacuation Progress: Turn %d"
+			},
+			{
+				"type": "linked_state_debuff",
+				"target_name": "Station Alpha",
+				"trigger_name": "Defiant",
+				"trigger_condition": "undocked", # When Defiant is NOT docked
+				"debuffs": ["no_fire", "no_ms"]
 			}
 		]
 	}
