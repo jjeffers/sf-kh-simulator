@@ -13,6 +13,12 @@ var combat_target: Ship = null
 
 @export var camera_speed: float = 500.0
 
+var camera: Camera2D = null
+var target_zoom: Vector2 = Vector2.ONE
+const ZOOM_MIN = Vector2(0.2, 0.2)
+const ZOOM_MAX = Vector2(2.0, 2.0)
+const ZOOM_SPEED = 0.1
+
 # Phase Enum
 enum Phase {START, MOVEMENT, COMBAT, END}
 # Combat State Enum
@@ -73,6 +79,12 @@ var panel_icm: PanelContainer
 
 func _ready():
 	_init_log_file()
+	# Camera Setup
+	camera = Camera2D.new()
+	camera.name = "MainCamera"
+	add_child(camera)
+	camera.make_current()
+	
 	_setup_ui()
 	queue_redraw()
 	_spawn_planets()
@@ -124,8 +136,11 @@ func _process(delta):
 		move_vec.x -= 1
 	
 	if move_vec != Vector2.ZERO:
-		position += move_vec.normalized() * camera_speed * delta
+		camera.position += move_vec.normalized() * camera_speed * delta / camera.zoom.x
 		
+	# Smooth Zoom
+	camera.zoom = camera.zoom.lerp(target_zoom, 0.1)
+
 	if Input.is_key_pressed(KEY_SPACE):
 		_update_camera()
 
@@ -473,7 +488,7 @@ func _handle_combat_click(hex: Vector3i):
 
 func _check_for_valid_combat_targets() -> bool:
 	# Iterate all ships owned by firing_player_id
-	var my_ships = ships.filter(func(s): return s.player_id == firing_player_id and not s.is_exploding and not s.is_docked) # Docked ships cant fire? Usually true.
+	var my_ships = ships.filter(func(s): return is_instance_valid(s) and s.player_id == firing_player_id and not s.is_exploding and not s.is_docked) # Docked ships cant fire? Usually true.
 	
 	print("[DEBUG] TARGET CHECK P%d. Ships: %d" % [firing_player_id, my_ships.size()])
 	
@@ -497,7 +512,7 @@ func _check_for_valid_combat_targets() -> bool:
 
 func _get_valid_targets_for_weapon(shooter: Ship, weapon: Dictionary) -> Array[Ship]:
 	var valid: Array[Ship] = []
-	var targets = ships.filter(func(s): return s != shooter and not s.is_exploding and s.player_id != shooter.player_id and not s.is_docked)
+	var targets = ships.filter(func(s): return is_instance_valid(s) and s != shooter and not s.is_exploding and s.player_id != shooter.player_id and not s.is_docked)
 	
 	for t in targets:
 		var dist = HexGrid.hex_distance(shooter.grid_position, t.grid_position)
@@ -1013,7 +1028,7 @@ func _cycle_selection():
 func _update_ship_visuals():
 	var grid_counts = {}
 	for s in ships:
-		if s.is_exploding: continue
+		if not is_instance_valid(s) or s.is_exploding: continue
 		if not grid_counts.has(s.grid_position):
 			grid_counts[s.grid_position] = []
 		grid_counts[s.grid_position].append(s)
@@ -1180,7 +1195,7 @@ func _update_planning_ui_list():
 		c.queue_free()
 		
 	# Find ships for firing player
-	var my_ships = ships.filter(func(s): return s.player_id == firing_player_id and not s.is_exploding)
+	var my_ships = ships.filter(func(s): return is_instance_valid(s) and s.player_id == firing_player_id and not s.is_exploding)
 	
 	for s in my_ships:
 		var btn = Button.new()
@@ -1314,9 +1329,9 @@ func _update_camera(focus_target_override = null):
 	else:
 		return
 
-	var center = get_viewport_rect().size / 2
-	# Center ship on screen
-	position = center - target_pos
+	# Camera moves to target; no need to calculate center offset manually with Camera2D
+	camera.position = target_pos
+
 
 func _spawn_ghost():
 	if ghost_ship:
@@ -1681,6 +1696,7 @@ func execute_commit_move(ship_name: String, path: Array, final_facing: int, orbi
 	# Apply Move
 	ship.facing = final_facing
 	ship.speed = path.size()
+	ship.previous_path = path.duplicate() # Save for trails
 	
 	# Current Path for this client (for visual/logic if needed, though we just teleport usually)
 	# NOTE: collision checks happened on planner side. We assume valid if sent?
@@ -1785,12 +1801,62 @@ func _draw():
 			var hex = Vector3i(q, r, s)
 			draw_hex(hex)
 	
-	if ghost_ship and current_path.size() > 0:
+	# Draw Previous Turn Trails (Faint Gray)
+	for s in ships:
+		if is_instance_valid(s) and s.previous_path.size() > 0:
+			var points = PackedVector2Array()
+			points.append(HexGrid.hex_to_pixel(s.grid_position - HexGrid.get_direction_vec(s.facing) * s.previous_path.size())) # Rough start calc?
+			# Actually, s.grid_position is the END of the path.
+			# So we can't easily reconstruct the start without reversing the path or storing it.
+			# But wait, previous_path is just the list of hexes *visited*.
+			# The stored path in execute_commit_move is the list of hexes *after* the start.
+			# So we can just draw lines connecting them.
+			# But where did it start?
+			# The first hex in 'path' is the first step. The start was the hex BEFORE that.
+			# We don't strictly know the start hex unless we store it or deduce it.
+			# However, we can just draw the path segments we have.
+			
+			# Let's try drawing the path hexes themselves.
+			# Issue: The path array contains the hexes moved INTO.
+			# It does not contain the starting hex.
+			# Does it matter? We can draw the trail of where they went.
+			# But to look connected, we need the start?
+			# Actually, if we just draw lines between the hexes in previous_path, it shows the "tail".
+			# It won't connect to the *current* position if they moved again? 
+			# 'previous_path' is from the *last* move.
+			# If they haven't moved yet this turn, their current position IS the end of previous_path.
+			# If they *have* moved this turn, they are somewhere new.
+			
+			# Let's just draw the polyline of the hexes in previous_path.
+			# We might miss the segment from Start -> First Hex.
+			# Is that acceptable? It's better than nothing.
+			# Creating a proper trail would require saving the Start Hex too.
+			
+			var trail_points = PackedVector2Array()
+			# Issue: We need the start point to draw the first segment.
+			# If we don't have it, we skip the first segment.
+			# Let's verify if we can get it easily.
+			# execute_commit_move doesn't save start.
+			# But we can reconstruct it if we assume contiguous?
+			# No, we can't easily.
+			# Let's just draw what we have for now.
+			
+			for h in s.previous_path:
+				trail_points.append(HexGrid.hex_to_pixel(h))
+			
+			if trail_points.size() > 1:
+				draw_polyline(trail_points, Color(0.5, 0.5, 0.5, 0.4), 2.0)
+			elif trail_points.size() == 1:
+				# Just a dot? Or finding neighbor?
+				pass
+	
+	if is_instance_valid(ghost_ship) and current_path.size() > 0 and is_instance_valid(selected_ship):
 		var points = PackedVector2Array()
 		points.append(HexGrid.hex_to_pixel(selected_ship.grid_position))
 		for h in current_path:
 			points.append(HexGrid.hex_to_pixel(h))
-		draw_polyline(points, Color(1, 1, 1, 0.5), 3.0)
+		# Increased width and opacity for better visibility
+		draw_polyline(points, Color(1, 1, 1, 0.8), 5.0)
 		
 	# Predictive Path Highlighting
 	# FIX: Ensure we have a ghost ship AND are in movement phase
@@ -1948,6 +2014,16 @@ func draw_hex(hex: Vector3i):
 
 
 func _unhandled_input(event):
+	# Client-Side View Controls (Always Allowed)
+	if event is InputEventMouseButton and event.pressed:
+		# Zoom Handling
+		if event.button_index == MOUSE_BUTTON_WHEEL_UP:
+			target_zoom = (target_zoom + Vector2(ZOOM_SPEED, ZOOM_SPEED)).clamp(ZOOM_MIN, ZOOM_MAX)
+			return # Consume Input
+		elif event.button_index == MOUSE_BUTTON_WHEEL_DOWN:
+			target_zoom = (target_zoom - Vector2(ZOOM_SPEED, ZOOM_SPEED)).clamp(ZOOM_MIN, ZOOM_MAX)
+			return # Consume Input
+
 	# Authority Check
 	if my_local_player_id != 0:
 		# If it's not my turn (Movement) OR not my firing phase (Combat)
@@ -1961,10 +2037,22 @@ func _unhandled_input(event):
 			# print("Input Rejected: Active %d vs Local %d" % [active_id, my_local_player_id])
 			return # Ignore input for other players
 			
-	if event is InputEventMouseButton and event.pressed and event.button_index == MOUSE_BUTTON_LEFT:
-		var local_mouse = get_local_mouse_position()
-		var hex_clicked = HexGrid.pixel_to_hex(local_mouse)
-		handle_click(hex_clicked)
+	if event is InputEventMouseButton and event.pressed:
+		if event.button_index == MOUSE_BUTTON_LEFT:
+			var local_mouse = get_local_mouse_position()
+			var hex_clicked = HexGrid.pixel_to_hex(local_mouse)
+			
+			if current_phase == Phase.COMBAT:
+				_handle_combat_click(hex_clicked)
+			elif current_phase == Phase.MOVEMENT:
+				_handle_movement_click(hex_clicked)
+				
+	if event is InputEventKey and event.pressed:
+		if event.keycode == KEY_EQUAL: # Plus key
+			target_zoom = (target_zoom + Vector2(ZOOM_SPEED, ZOOM_SPEED)).clamp(ZOOM_MIN, ZOOM_MAX)
+		elif event.keycode == KEY_MINUS: # Minus key
+			target_zoom = (target_zoom - Vector2(ZOOM_SPEED, ZOOM_SPEED)).clamp(ZOOM_MIN, ZOOM_MAX)
+
 	
 	if event is InputEventKey and event.pressed and event.keycode == KEY_Q:
 		# Cycle Weapon
@@ -2180,6 +2268,29 @@ func handle_click(hex: Vector3i):
 		_handle_ghost_input(hex)
 	elif current_phase == Phase.COMBAT:
 		_handle_combat_click(hex)
+
+func _handle_movement_click(hex: Vector3i):
+	# Check if clicked on a friendly available ship (CHANGE SELECTION)
+	var clicked_ship = null
+	for s in ships:
+		if s.grid_position == hex and s.player_id == current_player_id and not s.has_moved:
+			clicked_ship = s
+			break
+	
+	if clicked_ship and clicked_ship != selected_ship:
+		selected_ship = clicked_ship
+		# Reset plot
+		_reset_plotting_state()
+		
+		if audio_ship_select and audio_ship_select.stream: audio_ship_select.play()
+		_spawn_ghost()
+		_update_camera()
+		_update_ship_visuals() # Re-sort stack
+		_update_ui_state()
+		log_message("Selected %s" % selected_ship.name)
+		return
+
+	_handle_ghost_input(hex)
 
 func _handle_ghost_input(hex: Vector3i):
 	if not ghost_ship: return

@@ -36,6 +36,8 @@ func test_turn_cycle_switch():
 	s2.player_id = 2
 	s2.has_moved = false
 	_gm.ships.append(s2)
+	autofree(s1)
+	autofree(s2)
 	
 	_gm.current_player_id = 1
 	_gm.start_movement_phase()
