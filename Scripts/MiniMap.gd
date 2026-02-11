@@ -50,7 +50,7 @@ func _draw():
 		
 	# 2. Draw Ships
 	for s in game_manager.ships:
-		if s.is_exploding: continue
+		if not is_instance_valid(s) or s.is_exploding: continue
 		
 		var world_pos = s.position # Use visual position
 		var map_pos = (world_pos * scale_factor) + center_offset
