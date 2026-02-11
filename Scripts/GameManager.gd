@@ -1680,7 +1680,7 @@ func execute_commit_move(ship_name: String, path: Array, final_facing: int, orbi
 	# Find Ship
 	var ship: Ship = null
 	for s in ships:
-		if s.name == ship_name:
+		if is_instance_valid(s) and s.name == ship_name:
 			ship = s
 			break
 			
@@ -2248,7 +2248,7 @@ func handle_click(hex: Vector3i):
 		# Check if clicked on a friendly available ship (CHANGE SELECTION)
 		var clicked_ship = null
 		for s in ships:
-			if s.grid_position == hex and s.player_id == current_player_id and not s.has_moved:
+			if is_instance_valid(s) and s.grid_position == hex and s.player_id == current_player_id and not s.has_moved:
 				clicked_ship = s
 				break
 		
@@ -2273,7 +2273,7 @@ func _handle_movement_click(hex: Vector3i):
 	# Check if clicked on a friendly available ship (CHANGE SELECTION)
 	var clicked_ship = null
 	for s in ships:
-		if s.grid_position == hex and s.player_id == current_player_id and not s.has_moved:
+		if is_instance_valid(s) and s.grid_position == hex and s.player_id == current_player_id and not s.has_moved:
 			clicked_ship = s
 			break
 	
