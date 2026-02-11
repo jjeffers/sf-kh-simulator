@@ -1077,7 +1077,8 @@ func start_movement_phase():
 	
 	# Find un-moved ships for ACTIVE player
 	# Allow docked ships to be selected (so they can undock)
-	var available = ships.filter(func(s): return s.player_id == current_player_id and not s.is_exploding and not s.has_moved)
+	# Added safety check for instance validity
+	var available = ships.filter(func(s): return is_instance_valid(s) and s.player_id == current_player_id and not s.is_exploding and not s.has_moved)
 	
 	print("[DEBUG] start_movement_phase: Player %d. Available Ships: %d" % [current_player_id, available.size()])
 	
@@ -1294,8 +1295,10 @@ func end_turn_cycle():
 	
 	# Reset ALL ships
 	for s in ships:
-		s.reset_turn_state()
+		if is_instance_valid(s):
+			s.reset_turn_state()
 		
+	print("[DEBUG] Calling start_movement_phase from end_turn_cycle")
 	start_movement_phase()
 
 func _update_camera(focus_target_override = null):
