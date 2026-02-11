@@ -85,12 +85,21 @@ static func calculate_hit_chance(dist: int, weapon: Dictionary = {}, target: Shi
 		
 	return max(0, chance)
 
-# Returns true if hit
-static func roll_for_hit(dist: int, weapon: Dictionary = {}, target: Ship = null, is_head_on: bool = false, icm_count: int = 0, source: Ship = null) -> bool:
+# Returns result dict: {success: bool, chance: int, roll: int}
+static func get_hit_roll_details(dist: int, weapon: Dictionary = {}, target: Ship = null, is_head_on: bool = false, icm_count: int = 0, source: Ship = null) -> Dictionary:
 	var chance = calculate_hit_chance(dist, weapon, target, is_head_on, icm_count, source)
 	var roll = randi() % 100 + 1 # 1-100
 	print("Combat Roll: Distance %d, Chance %d%%, Rolled %d" % [dist, chance, roll])
-	return roll <= chance
+	return {
+		"success": roll <= chance,
+		"chance": chance,
+		"roll": roll
+	}
+
+# Returns true if hit (Legacy wrapper)
+static func roll_for_hit(dist: int, weapon: Dictionary = {}, target: Ship = null, is_head_on: bool = false, icm_count: int = 0, source: Ship = null) -> bool:
+	var res = get_hit_roll_details(dist, weapon, target, is_head_on, icm_count, source)
+	return res["success"]
 
 # Returns damage amount from string "2d10+4" or simple int
 static func roll_damage(damage_str: Variant = "1d10") -> int:

@@ -25,8 +25,8 @@ NetworkManager="*res://Scripts/NetworkManager.gd"
 
 [display]
 
-window/size/viewport_width=1408
-window/size/viewport_height=950
+window/size/viewport_width=1880
+window/size/viewport_height=1140
 
 [rendering]
 

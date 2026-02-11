@@ -4,6 +4,7 @@ extends Node2D
 @export var map_radius: int = 25
 
 var ships: Array[Ship] = []
+const LOG_FILE = "user://game_log.txt"
 var current_player_id: int = 1 # The "Active" moving player
 var firing_player_id: int = 0 # The player currently firing in Combat Phase
 var my_local_player_id: int = 0 # 0 = All/Debug, otherwise specific ID
@@ -71,6 +72,7 @@ var panel_icm: PanelContainer
 
 
 func _ready():
+	_init_log_file()
 	_setup_ui()
 	queue_redraw()
 	_spawn_planets()
@@ -279,37 +281,28 @@ func _setup_ui():
 	add_child(audio_node)
 	
 	audio_laser = AudioStreamPlayer.new()
-	if FileAccess.file_exists("res://Assets/Audio/laser.wav"):
-		audio_laser.stream = load("res://Assets/Audio/laser.wav")
-	elif FileAccess.file_exists("res://Assets/Audio/laser.mp3"):
-		audio_laser.stream = load("res://Assets/Audio/laser.mp3")
+	audio_laser.stream = load("res://Assets/Audio/laser.mp3")
 	add_child(audio_laser)
 	
 	audio_hit = AudioStreamPlayer.new()
-	if FileAccess.file_exists("res://Assets/Audio/hit.wav"):
-		audio_hit.stream = load("res://Assets/Audio/hit.wav")
-	elif FileAccess.file_exists("res://Assets/Audio/hit.mp3"):
-		audio_hit.stream = load("res://Assets/Audio/hit.mp3")
+	audio_hit.stream = load("res://Assets/Audio/hit.mp3")
 	add_child(audio_hit)
 
 	audio_beep = AudioStreamPlayer.new()
-	if FileAccess.file_exists("res://Assets/Audio/short-low-beep.mp3"):
-		audio_beep.stream = load("res://Assets/Audio/short-low-beep.mp3")
+	audio_beep.stream = load("res://Assets/Audio/short-low-beep.mp3")
 	add_child(audio_beep)
 
 	audio_action_complete = AudioStreamPlayer.new()
-	if FileAccess.file_exists("res://Assets/Audio/short-next-selection.mp3"):
-		audio_action_complete.stream = load("res://Assets/Audio/short-next-selection.mp3")
+	audio_action_complete.stream = load("res://Assets/Audio/short-next-selection.mp3")
 	add_child(audio_action_complete)
 	
 	audio_phase_change = AudioStreamPlayer.new()
-	if FileAccess.file_exists("res://Assets/Audio/short-sound.mp3"):
-		audio_phase_change.stream = load("res://Assets/Audio/short-sound.mp3")
+	# 'short-sound.mp3' was missing, using 'short-computer.mp3'
+	audio_phase_change.stream = load("res://Assets/Audio/short-computer.mp3")
 	add_child(audio_phase_change)
 
 	audio_ship_select = AudioStreamPlayer.new()
-	if FileAccess.file_exists("res://Assets/Audio/short-departure.mp3"):
-		audio_ship_select.stream = load("res://Assets/Audio/short-departure.mp3")
+	audio_ship_select.stream = load("res://Assets/Audio/short-departure.mp3")
 	add_child(audio_ship_select)
 
 	# MiniMap
@@ -348,6 +341,20 @@ var label_center_message: Label
 func log_message(msg: String):
 	combat_log.append_text(msg + "\n")
 	print(msg)
+	_log_to_file(msg)
+	
+func _init_log_file():
+	var f = FileAccess.open(LOG_FILE, FileAccess.WRITE)
+	if f:
+		f.store_line("=== Game Session Started: %s ===" % Time.get_datetime_string_from_system())
+		f.close()
+		
+func _log_to_file(msg: String):
+	var f = FileAccess.open(LOG_FILE, FileAccess.READ_WRITE)
+	if f:
+		f.seek_end()
+		f.store_line("[%s] %s" % [Time.get_time_string_from_system(), msg])
+		f.close()
 
 func _handle_combat_click(hex: Vector3i):
 	if combat_action_taken: return
@@ -475,6 +482,9 @@ func _check_for_valid_combat_targets() -> bool:
 		for w in s.weapons:
 			if w.get("fired", false): continue
 			
+			# Check availability (e.g. Phase/Debuff)
+			if not _is_weapon_available_in_phase(w, s): continue
+			
 			# Check for ANY target in range/arc
 			var valid_targets = _get_valid_targets_for_weapon(s, w)
 			
@@ -509,6 +519,18 @@ func _get_valid_targets_for_weapon(shooter: Ship, weapon: Dictionary) -> Array[S
 				if t.grid_position in valid_hexes:
 					in_arc = true
 		
+		# Planet Masking Check
+		var line = HexGrid.get_line_coords(shooter.grid_position, t.grid_position)
+		var is_masked = false
+		for hex in line:
+			if hex in planet_hexes:
+				is_masked = true
+				break
+		
+		if is_masked:
+			# print("[DEBUG] Masked by Planet: %s -> %s" % [shooter.name, t.name])
+			continue
+
 		if in_arc:
 			valid.append(t)
 			
@@ -667,7 +689,7 @@ func _spawn_attack_fx(start: Vector2, end: Vector2, type: String) -> float:
 
 func _on_combat_commit():
 	# Authority Check
-	if my_local_player_id != 0 and firing_player_id != my_local_player_id:
+	if my_local_player_id > 0 and firing_player_id != my_local_player_id:
 		log_message("Not your turn to fire!")
 		return
 		
@@ -835,7 +857,11 @@ func _process_next_attack():
 	
 	
 	# Determine if hit (Pass ICM count)
-	var hit = Combat.roll_for_hit(d, weapon, target, is_head_on, icm_used, source)
+	var result = Combat.get_hit_roll_details(d, weapon, target, is_head_on, icm_used, source)
+	var hit = result["success"]
+	
+	var hit_str = "HIT" if hit else "MISS"
+	log_message("Rolled %d vs %d%% -> %s" % [result["roll"], result["chance"], hit_str])
 	
 	# Spawn Attack FX (Launch concurrently with ICMs)
 	var travel_time = _spawn_attack_fx(start_pos, target_pos, weapon.get("type", "Laser"))
@@ -878,7 +904,7 @@ func _process_next_attack():
 	if total_wait < 2.0: total_wait = 2.0
 	
 	await get_tree().create_timer(total_wait).timeout
-	_process_next_attack()
+	call_deferred("_process_next_attack")
 
 func _on_resolution_complete():
 	log_message("Resolution Phase Complete.")
@@ -917,6 +943,23 @@ func _spawn_hit_text(pos: Vector2, damage: int):
 	tween.chain().tween_callback(lbl.queue_free)
 
 
+# Helper to clear plotting state when switching ships
+func _reset_plotting_state():
+	current_path = []
+	if selected_ship:
+		turns_remaining = selected_ship.mr
+		start_speed = selected_ship.speed
+		start_ms_active = selected_ship.is_ms_active
+	else:
+		turns_remaining = 0
+		start_speed = 0
+		start_ms_active = false
+		
+	can_turn_this_step = false
+	current_orbit_direction = 0
+	state_is_orbiting = false
+	combat_action_taken = false
+
 func _cycle_selection():
 	if current_phase == Phase.MOVEMENT:
 		# Filter: Active Player, !has_moved
@@ -928,12 +971,7 @@ func _cycle_selection():
 		selected_ship = available[next_idx]
 		
 		# Reset plotting
-		current_path = []
-		turns_remaining = selected_ship.mr
-		turns_remaining = selected_ship.mr
-		can_turn_this_step = false
-		start_speed = selected_ship.speed
-		start_ms_active = selected_ship.is_ms_active
+		_reset_plotting_state()
 		
 		if audio_ship_select and audio_ship_select.stream: audio_ship_select.play()
 		_spawn_ghost()
@@ -1038,9 +1076,13 @@ func start_movement_phase():
 	combat_action_taken = false # Reset lock
 	
 	# Find un-moved ships for ACTIVE player
-	var available = ships.filter(func(s): return s.player_id == current_player_id and not s.has_moved)
+	# Allow docked ships to be selected (so they can undock)
+	var available = ships.filter(func(s): return s.player_id == current_player_id and not s.is_exploding and not s.has_moved)
+	
+	print("[DEBUG] start_movement_phase: Player %d. Available Ships: %d" % [current_player_id, available.size()])
 	
 	if available.size() == 0:
+		print("[DEBUG] No ships to move. Starting Passive Combat.")
 		start_combat_passive()
 		return
 
@@ -1051,13 +1093,7 @@ func start_movement_phase():
 		audio_ship_select.play()
 	
 	_spawn_ghost()
-	current_path = []
-	start_speed = selected_ship.speed
-	turns_remaining = selected_ship.mr
-	can_turn_this_step = false
-	state_is_orbiting = false
-	current_orbit_direction = 0
-	start_ms_active = selected_ship.is_ms_active
+	_reset_plotting_state()
 	
 	# Check for Persistent Orbit
 	if selected_ship.orbit_direction != 0:
@@ -1065,6 +1101,9 @@ func start_movement_phase():
 		# This effectively pre-plans the move.
 		# User can then just hit Engage.
 		log_message("Auto-plotting Orbit...")
+		print("[DEBUG] Orbit plotted for %s" % selected_ship.name)
+	else:
+		print("[DEBUG] Standard move start for %s" % selected_ship.name)
 	
 	_update_camera()
 	
@@ -1081,6 +1120,8 @@ func start_combat_passive():
 	current_phase = Phase.COMBAT
 	combat_subphase = 1 # Passive First
 	firing_player_id = 3 - current_player_id # The Non-Active Player
+	
+	print("[DEBUG] start_combat_passive: P%d firing (Passive)" % firing_player_id)
 	
 	if audio_phase_change and audio_phase_change.stream:
 		audio_phase_change.play()
@@ -1488,7 +1529,7 @@ func _on_undo():
 
 func _on_turn(direction: int):
 	# Authority Check
-	if my_local_player_id != 0 and current_player_id != my_local_player_id:
+	if my_local_player_id > 0 and current_player_id != my_local_player_id:
 		return
 		
 	# direction: -1 (left), 1 (right)
@@ -1511,7 +1552,7 @@ var state_is_orbiting: bool = false # Temp state for UI
 
 func _on_orbit(direction: int):
 	# Authority Check
-	if my_local_player_id != 0 and current_player_id != my_local_player_id:
+	if my_local_player_id > 0 and current_player_id != my_local_player_id:
 		return
 		
 	# direction: 1 (CW), -1 (CCW)
@@ -1526,13 +1567,17 @@ func _on_orbit(direction: int):
 			found = true
 			break
 	
-	if not found: return
+	if not found:
+		print("[DEBUG] _on_orbit: No planet found adjacent to %s at %s" % [selected_ship.name, selected_ship.grid_position])
+		return
 	
 	# Calculate move
 	var neighbors = HexGrid.get_neighbors(planet_hex)
 	var my_idx = neighbors.find(selected_ship.grid_position)
 	
-	if my_idx == -1: return # Should not happen if distance is 1
+	if my_idx == -1:
+		print("[DEBUG] _on_orbit: Ship position not in neighbors list (Geometry Error)")
+		return # Should not happen if distance is 1
 	
 	# HexGrid.directions are ordered East, SE, SW, W, NW, NE (Clockwise!)
 	# So if we find our index, +1 is CW, -1 is CCW.
@@ -1559,7 +1604,7 @@ var current_orbit_direction: int = 0
 
 func _on_ms_toggled(pressed: bool):
 	# Authority Check
-	if my_local_player_id != 0 and current_player_id != my_local_player_id:
+	if my_local_player_id > 0 and current_player_id != my_local_player_id:
 		return
 		
 	if not selected_ship: return
@@ -1770,19 +1815,32 @@ func _draw():
 		# It draws 3 green hexes forward.
 		# This implies "If I don't change speed, I go here".
 		
-		var green_count = max(0, start_speed - steps_taken)
-		var max_dist = start_speed + selected_ship.adf
-		var yellow_count = max(0, max_dist - steps_taken - green_count)
+		# 3-State Highlighting:
+		# Orange: Mandatory (0 to Speed - ADF)
+		# Green: Coasting (Speed - ADF to Speed)
+		# Yellow: Acceleration (Speed to Speed + ADF)
+		
+		var min_speed = max(0, start_speed - selected_ship.adf)
+		var max_speed = start_speed + selected_ship.adf
+		
+		var orange_count = max(0, min_speed - steps_taken)
+		var green_count = max(0, start_speed - steps_taken - orange_count)
+		var yellow_count = max(0, max_speed - steps_taken - orange_count - green_count)
 		
 		var forward_vec = HexGrid.get_direction_vec(ghost_ship.facing)
 		var current_check_hex = ghost_ship.grid_position
 		
-		# Draw Green Hexes (Mandatory Momentum)
+		# Draw Orange (Mandatory)
+		for i in range(orange_count):
+			current_check_hex += forward_vec
+			_draw_hex_outline(current_check_hex, Color(1, 0.4, 0, 0.8), 4.0)
+
+		# Draw Green (Coasting)
 		for i in range(green_count):
 			current_check_hex += forward_vec
 			_draw_hex_outline(current_check_hex, Color(0, 1, 0, 0.6), 4.0)
 			
-		# Draw Yellow Hexes (Potential Acceleration)
+		# Draw Yellow (Acceleration)
 		for i in range(yellow_count):
 			current_check_hex += forward_vec
 			_draw_hex_outline(current_check_hex, Color(1, 1, 0, 0.6), 4.0)
@@ -2106,12 +2164,7 @@ func handle_click(hex: Vector3i):
 		if clicked_ship and clicked_ship != selected_ship:
 			selected_ship = clicked_ship
 			# Reset plot
-			start_speed = selected_ship.speed
-			current_path = []
-			current_path = []
-			turns_remaining = selected_ship.mr
-			can_turn_this_step = false
-			start_ms_active = selected_ship.is_ms_active
+			_reset_plotting_state()
 			
 			if audio_ship_select and audio_ship_select.stream: audio_ship_select.play()
 			_spawn_ghost()
@@ -2491,6 +2544,8 @@ func load_scenario(key: String, seed_val: int = 12345):
 		s.grid_position = data.get("position", data.get("pos", Vector3i.ZERO))
 		s.facing = data.get("facing", 0)
 		s.orbit_direction = data.get("orbit_direction", 0)
+		if s.orbit_direction != 0:
+			print("[DEBUG] Ship %s loaded with Orbit Dir %d" % [s.name, s.orbit_direction])
 		s.speed = data.get("start_speed", 0)
 		if s.speed > 0: s.has_moved = true
 		
