@@ -85,18 +85,18 @@ func _draw():
 			draw_arc(map_pos, radius + 2, 0, TAU, 16, Color.RED, 1.0)
 			
 	# 3. Draw Camera View Rect
-	# GameManager position is inverted camera.
-	# World View Center = -game_manager.position
-	# View Size = get_viewport_rect().size
+	# Use active camera position and zoom
+	var cam = game_manager.camera
+	if not cam: return
+	
 	var viewport_size = get_viewport_rect().size
-	# Top-Left of view in world space
-	# Node2D position is the offset of (0,0) from Top-Left.
-	# So World(0,0) is at Screen(position).
-	# Screen(0,0) is at World(-position).
-	var view_tl_world = - game_manager.position
-	var view_rect_size_world = viewport_size
+	# World View Size = Screen Size / Zoom
+	var view_world_size = viewport_size / cam.zoom
+	
+	# Camera position is center of view
+	var view_tl_world = cam.position - (view_world_size / 2.0)
 	
 	var map_view_tl = (view_tl_world * scale_factor) + center_offset
-	var map_view_size = view_rect_size_world * scale_factor
+	var map_view_size = view_world_size * scale_factor
 	
 	draw_rect(Rect2(map_view_tl, map_view_size), Color(1, 1, 1, 0.3), false, 1.0)
