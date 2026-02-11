@@ -127,13 +127,13 @@ func setup_game(seed_val: int, scen_key: String):
 func _process(delta):
 	var move_vec = Vector2.ZERO
 	if Input.is_key_pressed(KEY_W) or Input.is_key_pressed(KEY_UP):
-		move_vec.y += 1
-	if Input.is_key_pressed(KEY_S) or Input.is_key_pressed(KEY_DOWN):
 		move_vec.y -= 1
+	if Input.is_key_pressed(KEY_S) or Input.is_key_pressed(KEY_DOWN):
+		move_vec.y += 1
 	if Input.is_key_pressed(KEY_A) or Input.is_key_pressed(KEY_LEFT):
-		move_vec.x += 1
-	if Input.is_key_pressed(KEY_D) or Input.is_key_pressed(KEY_RIGHT):
 		move_vec.x -= 1
+	if Input.is_key_pressed(KEY_D) or Input.is_key_pressed(KEY_RIGHT):
+		move_vec.x += 1
 	
 	if move_vec != Vector2.ZERO:
 		camera.position += move_vec.normalized() * camera_speed * delta / camera.zoom.x
@@ -377,7 +377,7 @@ func _handle_combat_click(hex: Vector3i):
 	# Check if clicked on a FRIENDLY ship to switch shooter
 	# Only checks ships belonging to firing_player_id that haven't fired
 	for s in ships:
-		if s.grid_position == hex and s.player_id == firing_player_id and not s.has_fired:
+		if is_instance_valid(s) and s.grid_position == hex and s.player_id == firing_player_id and not s.has_fired:
 			if s != selected_ship:
 				selected_ship = s
 				# Auto-retarget
@@ -978,7 +978,7 @@ func _reset_plotting_state():
 func _cycle_selection():
 	if current_phase == Phase.MOVEMENT:
 		# Filter: Active Player, !has_moved
-		var available = ships.filter(func(s): return s.player_id == current_player_id and not s.has_moved)
+		var available = ships.filter(func(s): return is_instance_valid(s) and s.player_id == current_player_id and not s.has_moved)
 		if available.size() <= 1: return
 		
 		var idx = available.find(selected_ship)
@@ -1680,7 +1680,7 @@ func execute_commit_move(ship_name: String, path: Array, final_facing: int, orbi
 	# Find Ship
 	var ship: Ship = null
 	for s in ships:
-		if s.name == ship_name:
+		if is_instance_valid(s) and s.name == ship_name:
 			ship = s
 			break
 			
@@ -1753,7 +1753,7 @@ func execute_commit_move(ship_name: String, path: Array, final_facing: int, orbi
 
 func _handle_docking_states(ship: Ship):
 	# 1. Check for Auto-Docking
-	var potential_hosts = ships.filter(func(s): return s.player_id == ship.player_id and s != ship and s.grid_position == ship.grid_position)
+	var potential_hosts = ships.filter(func(s): return is_instance_valid(s) and s.player_id == ship.player_id and s != ship and s.grid_position == ship.grid_position)
 	# Filter for valid hosts
 	potential_hosts = potential_hosts.filter(func(s): return s.ship_class in ["Space Station", "Assault Carrier"])
 	
@@ -2248,7 +2248,7 @@ func handle_click(hex: Vector3i):
 		# Check if clicked on a friendly available ship (CHANGE SELECTION)
 		var clicked_ship = null
 		for s in ships:
-			if s.grid_position == hex and s.player_id == current_player_id and not s.has_moved:
+			if is_instance_valid(s) and s.grid_position == hex and s.player_id == current_player_id and not s.has_moved:
 				clicked_ship = s
 				break
 		
@@ -2273,7 +2273,7 @@ func _handle_movement_click(hex: Vector3i):
 	# Check if clicked on a friendly available ship (CHANGE SELECTION)
 	var clicked_ship = null
 	for s in ships:
-		if s.grid_position == hex and s.player_id == current_player_id and not s.has_moved:
+		if is_instance_valid(s) and s.grid_position == hex and s.player_id == current_player_id and not s.has_moved:
 			clicked_ship = s
 			break
 	
@@ -2481,6 +2481,7 @@ func _on_ship_destroyed(ship: Ship):
 	var p1_count = 0
 	var p2_count = 0
 	for s in ships:
+		if not is_instance_valid(s): continue
 		if s.player_id == 1: p1_count += 1
 		elif s.player_id == 2: p2_count += 1
 	
@@ -2717,7 +2718,7 @@ func _check_scenario_debuffs(ship: Ship, action: String) -> bool:
 					# Check Trigger
 					var trigger = null
 					for s in ships:
-						if s.name == rule["trigger_name"]:
+						if is_instance_valid(s) and s.name == rule["trigger_name"]:
 							trigger = s
 							break
 					
