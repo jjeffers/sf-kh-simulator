@@ -377,7 +377,7 @@ func _handle_combat_click(hex: Vector3i):
 	# Check if clicked on a FRIENDLY ship to switch shooter
 	# Only checks ships belonging to firing_player_id that haven't fired
 	for s in ships:
-		if s.grid_position == hex and s.player_id == firing_player_id and not s.has_fired:
+		if is_instance_valid(s) and s.grid_position == hex and s.player_id == firing_player_id and not s.has_fired:
 			if s != selected_ship:
 				selected_ship = s
 				# Auto-retarget
@@ -2481,6 +2481,7 @@ func _on_ship_destroyed(ship: Ship):
 	var p1_count = 0
 	var p2_count = 0
 	for s in ships:
+		if not is_instance_valid(s): continue
 		if s.player_id == 1: p1_count += 1
 		elif s.player_id == 2: p2_count += 1
 	
@@ -2717,7 +2718,7 @@ func _check_scenario_debuffs(ship: Ship, action: String) -> bool:
 					# Check Trigger
 					var trigger = null
 					for s in ships:
-						if s.name == rule["trigger_name"]:
+						if is_instance_valid(s) and s.name == rule["trigger_name"]:
 							trigger = s
 							break
 					
