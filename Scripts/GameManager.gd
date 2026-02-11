@@ -127,13 +127,13 @@ func setup_game(seed_val: int, scen_key: String):
 func _process(delta):
 	var move_vec = Vector2.ZERO
 	if Input.is_key_pressed(KEY_W) or Input.is_key_pressed(KEY_UP):
-		move_vec.y += 1
-	if Input.is_key_pressed(KEY_S) or Input.is_key_pressed(KEY_DOWN):
 		move_vec.y -= 1
+	if Input.is_key_pressed(KEY_S) or Input.is_key_pressed(KEY_DOWN):
+		move_vec.y += 1
 	if Input.is_key_pressed(KEY_A) or Input.is_key_pressed(KEY_LEFT):
-		move_vec.x += 1
-	if Input.is_key_pressed(KEY_D) or Input.is_key_pressed(KEY_RIGHT):
 		move_vec.x -= 1
+	if Input.is_key_pressed(KEY_D) or Input.is_key_pressed(KEY_RIGHT):
+		move_vec.x += 1
 	
 	if move_vec != Vector2.ZERO:
 		camera.position += move_vec.normalized() * camera_speed * delta / camera.zoom.x

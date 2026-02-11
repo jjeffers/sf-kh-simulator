@@ -8,6 +8,8 @@ const MAP_SIZE = Vector2(200, 200)
 const PADDING = 10.0
 var scale_factor: float = 1.0
 
+var center_offset: Vector2
+
 func _ready():
 	custom_minimum_size = MAP_SIZE
 	
@@ -25,22 +27,34 @@ func _ready():
 	style.corner_radius_bottom_left = 5
 	add_theme_stylebox_override("panel", style)
 
-func _process(delta):
+func _process(_delta):
 	queue_redraw()
+
+func _gui_input(event):
+	if not game_manager or not game_manager.camera: return
+	
+	if event is InputEventMouseButton and event.button_index == MOUSE_BUTTON_LEFT and event.pressed:
+		# Convert click to world pos
+		# map_pos = (world_pos * scale_factor) + center_offset
+		# world_pos = (map_pos - center_offset) / scale_factor
+		if scale_factor > 0:
+			var click_pos = event.position
+			var world_pos = (click_pos - center_offset) / scale_factor
+			game_manager.camera.position = world_pos
+
+func recalculate_layout():
+	if not game_manager: return
+	
+	center_offset = size / 2.0
+	
+	var world_radius = game_manager.map_radius * HexGrid.TILE_SIZE * 2.0
+	if world_radius > 0:
+		scale_factor = (min(size.x, size.y) / 2.0 - PADDING) / world_radius
 
 func _draw():
 	if not game_manager: return
 	
-	var center_offset = size / 2.0
-	
-	# Determine Scale
-	# Map Radius is hex distance. 
-	# Max pixel distance approx = map_radius * TILE_SIZE * 2 (roughly)
-	# We want to fit (-map_radius to +map_radius) into (size.x - padding)
-	
-	var world_radius = game_manager.map_radius * HexGrid.TILE_SIZE * 2.0 # Approximation
-	if world_radius > 0:
-		scale_factor = (min(size.x, size.y) / 2.0 - PADDING) / world_radius
+	recalculate_layout()
 	
 	# 1. Draw Planets
 	for hex in game_manager.planet_hexes:
