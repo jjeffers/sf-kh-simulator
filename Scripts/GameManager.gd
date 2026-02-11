@@ -2197,7 +2197,7 @@ func _get_hexes_in_range(center: Vector3i, dist: int) -> Array:
 func _get_valid_targets(shooter: Ship) -> Array:
 	var valid = []
 	for s in ships:
-		if s.player_id != shooter.player_id and not s.is_exploding:
+		if is_instance_valid(s) and s.player_id != shooter.player_id and not s.is_exploding:
 			# Check against ALL available weapons (or just current? usually any valid weapon means ship is active)
 			# Let's check if ANY weapon can hit the target
 			var can_hit = false
