@@ -28,6 +28,10 @@ NetworkManager="*res://Scripts/NetworkManager.gd"
 window/size/viewport_width=1880
 window/size/viewport_height=1140
 
+[editor_plugins]
+
+enabled=PackedStringArray("res://addons/gut/plugin.cfg")
+
 [rendering]
 
 textures/vram_compression/import_etc2_astc=true
