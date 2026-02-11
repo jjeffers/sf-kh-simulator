@@ -6,10 +6,13 @@ extends Control
 @onready var line_ip = $CenterContainer/VBoxContainer/LineEditIP
 @onready var status = $CenterContainer/VBoxContainer/StatusLabel
 
+var line_port: LineEdit
 var opt_scenario: OptionButton
 var opt_side: OptionButton
 
 func _ready():
+	_setup_port_ui() # Add Port Field
+	
 	btn_host.pressed.connect(_on_host_pressed)
 	btn_join.pressed.connect(_on_join_pressed)
 	
@@ -20,6 +23,22 @@ func _ready():
 	NetworkManager.player_connected.connect(_on_player_connected)
 	
 	_setup_scenario_ui()
+
+func _setup_port_ui():
+	# Port Input
+	var hbox_port = HBoxContainer.new()
+	container_controls.add_child(hbox_port)
+	container_controls.move_child(hbox_port, container_controls.get_children().find(line_ip) + 1)
+	
+	var lbl_port = Label.new()
+	lbl_port.text = "Port:"
+	hbox_port.add_child(lbl_port)
+	
+	line_port = LineEdit.new()
+	line_port.text = "7000"
+	line_port.placeholder_text = "7000"
+	line_port.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	hbox_port.add_child(line_port)
 
 func _setup_scenario_ui():
 	# Scenario Dropdown
@@ -63,12 +82,17 @@ func _on_scenario_selected(idx):
 
 func _on_host_pressed():
 	status.text = "Hosting..."
-	var err = NetworkManager.host_game()
+	
+	var port = 7000
+	if line_port and line_port.text.is_valid_int():
+		port = int(line_port.text)
+		
+	var err = NetworkManager.host_game(port)
 	if err:
 		status.text = "Error hosting: %s" % err
 		return
 		
-	status.text = "Waiting for players..."
+	status.text = "Waiting for players on Port %d..." % port
 	_disable_buttons()
 	
 func _on_join_pressed():
@@ -76,7 +100,11 @@ func _on_join_pressed():
 	var ip = line_ip.text
 	if ip.is_empty(): ip = "127.0.0.1"
 	
-	var err = NetworkManager.join_game(ip)
+	var port = 7000
+	if line_port and line_port.text.is_valid_int():
+		port = int(line_port.text)
+	
+	var err = NetworkManager.join_game(ip, port)
 	if err:
 		status.text = "Error joining: %s" % err
 		return
@@ -130,8 +158,10 @@ func _disable_buttons():
 	btn_host.disabled = true
 	btn_join.disabled = true
 	line_ip.editable = false
+	if line_port: line_port.editable = false
 
 func _enable_buttons():
 	btn_host.disabled = false
 	btn_join.disabled = false
 	line_ip.editable = true
+	if line_port: line_port.editable = true

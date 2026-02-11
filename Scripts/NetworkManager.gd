@@ -21,19 +21,19 @@ func _ready():
 	multiplayer.connection_failed.connect(_on_connected_fail)
 	multiplayer.server_disconnected.connect(_on_server_disconnected)
 
-func join_game(address = ""):
+func join_game(address = "", port = PORT):
 	if address.is_empty():
 		address = "127.0.0.1"
 	
 	var peer = ENetMultiplayerPeer.new()
-	var error = peer.create_client(address, PORT)
+	var error = peer.create_client(address, port)
 	if error:
 		return error
 	multiplayer.multiplayer_peer = peer
 
-func host_game():
+func host_game(port = PORT):
 	var peer = ENetMultiplayerPeer.new()
-	var error = peer.create_server(PORT, MAX_CLIENTS)
+	var error = peer.create_server(port, MAX_CLIENTS)
 	if error:
 		return error
 	multiplayer.multiplayer_peer = peer

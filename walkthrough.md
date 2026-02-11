@@ -17,6 +17,7 @@ Added a new scenario "The Last Stand" featuring a massive Sathar fleet attacking
 - **Randomization**:
     - **Fortress K'zdit**: Spawns in a random orbit around the center planet.
     - **Sathar Fleet**: Spawns at a random map edge, attacking inward.
+- **Custom Port**: Users can now specify a server port (default 7000) in the Lobby.
 
 ## UI Updates
 - **Ship Names**: Ships now display their class abbreviation (e.g., "DD Vicious", "F Fighter") on the map and in logs.
