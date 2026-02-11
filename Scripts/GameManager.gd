@@ -978,7 +978,7 @@ func _reset_plotting_state():
 func _cycle_selection():
 	if current_phase == Phase.MOVEMENT:
 		# Filter: Active Player, !has_moved
-		var available = ships.filter(func(s): return s.player_id == current_player_id and not s.has_moved)
+		var available = ships.filter(func(s): return is_instance_valid(s) and s.player_id == current_player_id and not s.has_moved)
 		if available.size() <= 1: return
 		
 		var idx = available.find(selected_ship)
@@ -1753,7 +1753,7 @@ func execute_commit_move(ship_name: String, path: Array, final_facing: int, orbi
 
 func _handle_docking_states(ship: Ship):
 	# 1. Check for Auto-Docking
-	var potential_hosts = ships.filter(func(s): return s.player_id == ship.player_id and s != ship and s.grid_position == ship.grid_position)
+	var potential_hosts = ships.filter(func(s): return is_instance_valid(s) and s.player_id == ship.player_id and s != ship and s.grid_position == ship.grid_position)
 	# Filter for valid hosts
 	potential_hosts = potential_hosts.filter(func(s): return s.ship_class in ["Space Station", "Assault Carrier"])
 	
