@@ -4,9 +4,9 @@ const SCENARIOS = {
 	"surprise_attack": {
 		"name": "Surprise Attack!",
 		"description": "Attackers ambush Station Alpha. Defiant must escape.",
-		"sides": {
-			0: {"name": "Defenders (Side A)", "color": Color.GREEN},
-			1: {"name": "Attackers (Side B)", "color": Color.RED}
+	"sides": {
+			0: {"name": "Sathar", "color": Color.RED},
+			1: {"name": "UPF", "color": Color.GREEN}
 		},
 		"ships": [], # Template, filled by generator
 		"special_rules": [
@@ -29,8 +29,8 @@ const SCENARIOS = {
 		"name": "The Last Stand",
 		"description": "A massive Sathar fleet assaults Fortress K'zdit. UPF must hold the line.",
 		"sides": {
-			0: {"name": "UPF (Defenders)", "color": Color.GREEN},
-			1: {"name": "Sathar (Invaders)", "color": Color.RED}
+			0: {"name": "UPF", "color": Color.GREEN},
+			1: {"name": "Sathar", "color": Color.RED}
 		},
 		"ships": [
 			# Ships are generated procedurally in generate_scenario()
@@ -61,13 +61,14 @@ static func generate_scenario(key: String, rng_seed: int) -> Dictionary:
 		]
 		var station_pos = center_neighbors[randi() % center_neighbors.size()]
 		var station_orbit_dir = 1 if randf() > 0.5 else -1
+		print("[SCENARIO] Station Alpha Pos: %s, Orbit: %d" % [station_pos, station_orbit_dir])
 		
 		# Station Ship Def
 		var station = {
 			"name": "Station Alpha",
 			"class": "Station",
 			"faction": "UPF",
-			"side_index": 0,
+			"side_index": 1, # Defender
 			"position": station_pos,
 			"orbit_direction": station_orbit_dir,
 			"stats": {
@@ -94,7 +95,7 @@ static func generate_scenario(key: String, rng_seed: int) -> Dictionary:
 			"name": "Defiant",
 			"class": "Frigate",
 			"faction": "UPF",
-			"side_index": 0,
+			"side_index": 1, # Defender
 			"position": station_pos,
 			"docked_at": "Station Alpha",
 			"color": Color.CYAN
@@ -104,7 +105,7 @@ static func generate_scenario(key: String, rng_seed: int) -> Dictionary:
 			"name": "Stiletto",
 			"class": "Assault Scout",
 			"faction": "UPF",
-			"side_index": 0,
+			"side_index": 1, # Defender
 			"position": station_pos,
 			"docked_at": "Station Alpha",
 			"color": Color.CYAN
@@ -135,7 +136,9 @@ static func generate_scenario(key: String, rng_seed: int) -> Dictionary:
 		# HexGrid facings: 0=E, 1=SE, 2=SW, 3=W, 4=NW, 5=NE
 		# If edge is E (0), facing should be W (3).
 		# (idx + 3) % 6
+		# (idx + 3) % 6
 		var attack_facing = (edge_dir_idx + 3) % 6
+		print("[SCENARIO] Sathar Entry Edge: %d (Vec: %s), Facing: %d" % [edge_dir_idx, edge_vec, attack_facing])
 		
 		# Perdition adjacent
 		# Determine 'right' or 'left' neighbor for formation
@@ -148,13 +151,14 @@ static func generate_scenario(key: String, rng_seed: int) -> Dictionary:
 		# Side-by-side relative to facing 3 (W) would be N or S directions.
 		# Let's just pick (edge_dir_idx + 2) % 6 (a diagonal neighbor)
 		var offset_dir = directions[(edge_dir_idx + 2) % 6]
+		
 		var perdition_pos = venemous_pos + offset_dir
 		
 		ships.append({
 			"name": "Venemous",
 			"class": "Destroyer",
 			"faction": "Sathar",
-			"side_index": 1,
+			"side_index": 0, # Attacker
 			"position": venemous_pos,
 			"facing": attack_facing,
 			"start_speed": 8
@@ -164,7 +168,7 @@ static func generate_scenario(key: String, rng_seed: int) -> Dictionary:
 			"name": "Perdition",
 			"class": "Heavy Cruiser",
 			"faction": "Sathar",
-			"side_index": 1,
+			"side_index": 0, # Attacker
 			"position": perdition_pos,
 			"facing": attack_facing,
 			"start_speed": 8

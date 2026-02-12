@@ -5,11 +5,15 @@ extends Node2D
 
 var ships: Array[Ship] = []
 const LOG_FILE = "user://game_log.txt"
-var current_player_id: int = 1 # The "Active" moving player
-var firing_player_id: int = 0 # The player currently firing in Combat Phase
-var my_local_player_id: int = 0 # 0 = All/Debug, otherwise specific ID
+var current_side_id: int = 1 # The "Active" moving side
+var firing_side_id: int = 0 # The side currently firing in Combat Phase
+var my_side_id: int = 0 # 0 = All/Debug, otherwise specific Side ID (1 or 2)
 var selected_ship: Ship = null
 var combat_target: Ship = null
+
+# Initiative / Turn Order
+var turn_order: Array[int] = [1, 2] # Side 1, Side 2
+var current_turn_order_index: int = 0
 
 @export var camera_speed: float = 500.0
 
@@ -71,14 +75,21 @@ var current_scenario_rules: Array = []
 # Planning UI
 var panel_planning: PanelContainer
 var container_ships: VBoxContainer
+var panel_movement: PanelContainer # NEW: Movement Status Panel
+var list_movement: VBoxContainer # NEW
 
 # ICM UI
 signal icm_decision_made(count: int)
 var panel_icm: PanelContainer
 
+# Visuals
+var selection_highlight: Polygon2D = null
+
 
 func _ready():
 	_init_log_file()
+	# Ensure RNG is randomized
+	randomize()
 	# Camera Setup
 	camera = Camera2D.new()
 	camera.name = "MainCamera"
@@ -86,34 +97,62 @@ func _ready():
 	camera.make_current()
 	
 	_setup_ui()
+	_setup_ui()
+	_setup_selection_highlight()
 	queue_redraw()
 	_spawn_planets()
 	
 	# Network Setup
 	var setup = NetworkManager.game_setup_data
-	var scen_key = "the_last_stand"
+	# Lobby Data fallback
+	var lobby = NetworkManager.lobby_data
+	var scen_key = lobby.get("scenario", "the_last_stand")
 	
+	var peer_id = multiplayer.get_unique_id()
+	# Determine MY Team ID (1 or 2)
+	# If in Lobby, we use lobby["teams"].
+	# If standalone, we default to 1 (P1) or 0 (Spectator)?
+	# Legacy fallback:
+	# Legacy fallback:
+	if lobby["teams"].has(peer_id):
+		my_side_id = lobby["teams"][peer_id]
+		print("[DEBUG] GameManager: Found Team ID %d for Peer %d in Lobby Data" % [my_side_id, peer_id])
+	else:
+		my_side_id = 0 # Default to Spectator if not found
+		print("[DEBUG] GameManager: Peer %d NOT in Lobby Teams. Defaulting to 0 (Spectator). Teams: %s" % [peer_id, lobby["teams"]])
+		
+	# Legacy "host_side" override if lobby incomplete
 	if setup and not setup.is_empty():
 		scen_key = setup.get("scenario", "the_last_stand")
 		var h_side = setup.get("host_side", 0)
 		var h_pid = h_side + 1
+		if multiplayer.is_server():
+			my_side_id = h_pid
+		else:
+			my_side_id = (h_pid % 2) + 1
+		print("[DEBUG] GameManager: Applying Game Setup Override. My Side ID: %d" % my_side_id)
 		
 		# Determine Identity
 		if multiplayer.is_server():
-			my_local_player_id = h_pid
-			log_message("Network: Host playing as Player %d" % my_local_player_id)
+			my_side_id = h_pid
+			log_message("Network: Host playing as Side %d" % my_side_id)
 		else:
 			# Assuming 2 player for now
-			my_local_player_id = 3 - h_pid
-			log_message("Network: Client playing as Player %d" % my_local_player_id)
+			my_side_id = 3 - h_pid
+			log_message("Network: Client playing as Side %d" % my_side_id)
 	else:
 		# Fallback / Debug
-		my_local_player_id = -1 # Default to Spectator if network data missing
-		log_message("Network: Offline/Debug Mode (Spectator)")
+		if my_side_id == 0:
+			if multiplayer.is_server():
+				my_side_id = 1 # Host defaults to Side 1 (Attacker usually)
+			else:
+				my_side_id = 2 # Client defaults to Side 2 (Defender usually)
+			log_message("Network: Default Assignment (Host=1, Client=2). My Side: %d" % my_side_id)
 		
 	if multiplayer.is_server():
 		# Host: Generate random seed and broadcast
 		var seed_val = randi()
+		print("GameManager: Generated Random Seed: %d" % seed_val)
 		setup_game.rpc(seed_val, scen_key)
 	else:
 		log_message("Waiting for Game Setup from Host...")
@@ -146,6 +185,31 @@ func _process(delta):
 
 	if Input.is_action_just_pressed("ui_focus_next"): # TAB usually
 		_cycle_selection()
+
+	if selection_highlight:
+		if is_instance_valid(selected_ship):
+			selection_highlight.visible = true
+			selection_highlight.position = HexGrid.hex_to_pixel(selected_ship.grid_position)
+			# Pulse Alpha
+			var time = Time.get_ticks_msec() / 200.0
+			var alpha = (sin(time) + 1.0) / 2.0 * 0.4 + 0.2
+			selection_highlight.color = Color(1, 1, 0, alpha)
+		else:
+			selection_highlight.visible = false
+
+func _setup_selection_highlight():
+	selection_highlight = Polygon2D.new()
+	selection_highlight.name = "SelectionHighlight"
+	var points = PackedVector2Array()
+	var size = HexGrid.TILE_SIZE * 0.95 # Slightly smaller than hex
+	for i in range(6):
+		var angle_deg = 60 * i - 30
+		var angle_rad = deg_to_rad(angle_deg)
+		points.append(Vector2(size * cos(angle_rad), size * sin(angle_rad)))
+	selection_highlight.polygon = points
+	selection_highlight.color = Color(1, 1, 0, 0.4)
+	add_child(selection_highlight)
+	move_child(selection_highlight, 0) # Draw behind ships/planets if possible
 
 func _setup_ui():
 	ui_layer = CanvasLayer.new()
@@ -214,9 +278,31 @@ func _setup_ui():
 	panel_planning.anchor_left = 0.8
 	panel_planning.anchor_right = 1.0
 	panel_planning.anchor_top = 0.0
+	# Shift down for Label/Minimap space
+	panel_planning.offset_top = 80 # Leave space for Player Label
 	# panel_planning.anchor_bottom = 0.75 # Allow auto-sizing
 	panel_planning.visible = false
 	ui_layer.add_child(panel_planning)
+	
+	# Movement UI (Same position as Planning UI, shown during Movement phase)
+	panel_movement = PanelContainer.new()
+	panel_movement.anchor_left = 0.8
+	panel_movement.anchor_right = 1.0
+	panel_movement.anchor_top = 0.0
+	panel_movement.offset_top = 80
+	panel_movement.visible = false
+	ui_layer.add_child(panel_movement)
+	
+	var pm_vbox = VBoxContainer.new()
+	panel_movement.add_child(pm_vbox)
+	
+	var pm_lbl = Label.new()
+	pm_lbl.text = "Fleet Status"
+	pm_lbl.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	pm_vbox.add_child(pm_lbl)
+	
+	list_movement = VBoxContainer.new()
+	pm_vbox.add_child(list_movement)
 	
 	var pp_vbox = VBoxContainer.new()
 	panel_planning.add_child(pp_vbox)
@@ -290,6 +376,21 @@ func _setup_ui():
 	label_center_message.visible = false
 	ui_layer.add_child(label_center_message)
 	
+	# Player Info (Top Right)
+	label_player_info = Label.new()
+	label_player_info.text = "Side: ?"
+	label_player_info.add_theme_font_size_override("font_size", 20)
+	label_player_info.add_theme_color_override("font_outline_color", Color.BLACK)
+	label_player_info.add_theme_constant_override("outline_size", 4)
+	# Anchor top right
+	label_player_info.anchors_preset = Control.PRESET_TOP_RIGHT
+	# Position: Just below minimap or above? Minimap is at x-220, y=20.
+	# Let's put this to the left of minimap or below?
+	# Minimap is 200x200.
+	# Let's put it at Top Center-Right?
+	label_player_info.position = Vector2(get_viewport_rect().size.x - 450, 10)
+	ui_layer.add_child(label_player_info)
+	
 	# Audio Setup
 	var audio_node = Node.new()
 	audio_node.name = "AudioParams"
@@ -352,9 +453,11 @@ var label_winner: Label
 var btn_restart: Button
 
 var label_center_message: Label
+var label_player_info: Label
 
 func log_message(msg: String):
-	combat_log.append_text(msg + "\n")
+	if combat_log:
+		combat_log.append_text(msg + "\n")
 	print(msg)
 	_log_to_file(msg)
 	
@@ -375,9 +478,13 @@ func _handle_combat_click(hex: Vector3i):
 	if combat_action_taken: return
 	
 	# Check if clicked on a FRIENDLY ship to switch shooter
-	# Only checks ships belonging to firing_player_id that haven't fired
+	# Only checks ships belonging to firing_side_id that haven't fired
 	for s in ships:
-		if is_instance_valid(s) and s.grid_position == hex and s.player_id == firing_player_id and not s.has_fired:
+		if is_instance_valid(s) and s.grid_position == hex and s.side_id == firing_side_id and not s.has_fired:
+			# Ownership Check
+			if s.side_id != my_side_id and my_side_id != 0:
+				continue
+				
 			if s != selected_ship:
 				selected_ship = s
 				# Auto-retarget
@@ -453,31 +560,42 @@ func _handle_combat_click(hex: Vector3i):
 		# Rules don't say we can't double tap, so allow it.
 		
 		# Check for existing plan with THIS weapon and remove it (Overwrite Rule)
+		# We must broadcast removals too
+		# Check for existing plan with THIS weapon
+		var is_toggle_off = false # If true, we are canceling the attack on the SAME target
+		
+		# First Pass: Check if we are cancelling
+		for atk in queued_attacks:
+			if atk["source"] == selected_ship and atk["weapon_idx"] == selected_ship.current_weapon_index:
+				# Found existing plan for this weapon
+				if atk["target"] == s:
+					is_toggle_off = true
+				break
+		
+		# Always remove existing plan for this weapon (whether toggling off or overwriting)
 		for i in range(queued_attacks.size() - 1, -1, -1):
 			var atk = queued_attacks[i]
 			if atk["source"] == selected_ship and atk["weapon_idx"] == selected_ship.current_weapon_index:
-				queued_attacks.remove_at(i)
-				# log_message("Command updated.") # Optional feedback
+				# Use RPC to remove locally and remotely
+				rpc("rpc_remove_attack", selected_ship.name, selected_ship.current_weapon_index)
 				break
 
-		# ADD TO PLAN
-		queued_attacks.append({
-			"source": selected_ship,
-			"target": s,
-			"target_pos": s.position, # Store visual position for FX if target dies
-			"weapon_idx": selected_ship.current_weapon_index,
-			"weapon_name": weapon["name"]
-		})
+		if not is_toggle_off:
+			# ADD TO PLAN (Broadcast)
+			rpc("rpc_add_attack", selected_ship.name, s.name, selected_ship.current_weapon_index)
+			log_message("Planned: %s -> %s (%s)" % [selected_ship.get_display_name(), s.get_display_name(), weapon["name"]])
+		else:
+			log_message("Attack Canceled")
 		
 		log_message("Planned: %s -> %s (%s)" % [selected_ship.get_display_name(), s.get_display_name(), weapon["name"]])
 		
-		_update_planning_ui_list()
-		queue_redraw()
+		# _update_planning_ui_list() # Handled by RPC callback
+		# queue_redraw()
 
 	else:
 		# Check if switching target (Enemy)
 		for s in ships:
-			if s.player_id != firing_player_id and s.grid_position == hex:
+			if is_instance_valid(s) and s.side_id != firing_side_id and s.grid_position == hex:
 				var d = HexGrid.hex_distance(selected_ship.grid_position, s.grid_position)
 				if d <= Combat.MAX_RANGE:
 					combat_target = s
@@ -487,10 +605,10 @@ func _handle_combat_click(hex: Vector3i):
 					break
 
 func _check_for_valid_combat_targets() -> bool:
-	# Iterate all ships owned by firing_player_id
-	var my_ships = ships.filter(func(s): return is_instance_valid(s) and s.player_id == firing_player_id and not s.is_exploding and not s.is_docked) # Docked ships cant fire? Usually true.
+	# Iterate all ships owned by firing_side_id
+	var my_ships = ships.filter(func(s): return is_instance_valid(s) and s.side_id == firing_side_id and not s.is_exploding) # Docked check is per-weapon now
 	
-	print("[DEBUG] TARGET CHECK P%d. Ships: %d" % [firing_player_id, my_ships.size()])
+	print("[DEBUG] TARGET CHECK P%d. Ships: %d" % [firing_side_id, my_ships.size()])
 	
 	for s in my_ships:
 		# Check each weapon
@@ -498,7 +616,9 @@ func _check_for_valid_combat_targets() -> bool:
 			if w.get("fired", false): continue
 			
 			# Check availability (e.g. Phase/Debuff)
-			if not _is_weapon_available_in_phase(w, s): continue
+			if not _is_weapon_available_in_phase(w, s):
+				print("[DEBUG] Weapon %s N/A for %s (Phase %s, Fired %s)" % [w["name"], s.name, current_phase, w.get("fired", false)])
+				continue
 			
 			# Check for ANY target in range/arc
 			var valid_targets = _get_valid_targets_for_weapon(s, w)
@@ -507,16 +627,16 @@ func _check_for_valid_combat_targets() -> bool:
 				print("[DEBUG] VALID: %s found target with %s" % [s.name, w["name"]])
 				return true
 				
-	print("[DEBUG] NO TARGETS FOUND for P%d" % firing_player_id)
+	print("[DEBUG] NO TARGETS FOUND for P%d" % firing_side_id)
 	return false
 
 func _get_valid_targets_for_weapon(shooter: Ship, weapon: Dictionary) -> Array[Ship]:
 	var valid: Array[Ship] = []
-	var targets = ships.filter(func(s): return is_instance_valid(s) and s != shooter and not s.is_exploding and s.player_id != shooter.player_id and not s.is_docked)
+	var targets = ships.filter(func(s): return is_instance_valid(s) and s != shooter and not s.is_exploding and s.side_id != shooter.side_id) # Allow docked ships as targets (rules check later)
 	
 	for t in targets:
 		var dist = HexGrid.hex_distance(shooter.grid_position, t.grid_position)
-		print("[DEBUG] %s -> %s Dist: %d Range: %d" % [shooter.name, t.name, dist, weapon["range"]])
+		# print("[DEBUG] %s -> %s Dist: %d Range: %d" % [shooter.name, t.name, dist, weapon["range"]])
 		
 		if dist > weapon["range"]: continue
 		
@@ -704,7 +824,7 @@ func _spawn_attack_fx(start: Vector2, end: Vector2, type: String) -> float:
 
 func _on_combat_commit():
 	# Authority Check
-	if my_local_player_id > 0 and firing_player_id != my_local_player_id:
+	if my_side_id > 0 and firing_side_id != my_side_id:
 		log_message("Not your turn to fire!")
 		return
 		
@@ -730,6 +850,20 @@ func _on_combat_commit():
 
 @rpc("any_peer", "call_local", "reliable")
 func execute_commit_combat(attacks_data: Array, rng_seed: int):
+	# SECURITY CHECK
+	var sender_id = multiplayer.get_remote_sender_id()
+	if sender_id == 0: sender_id = multiplayer.get_unique_id() # Handle local call
+	
+	if current_phase != Phase.COMBAT:
+		print("[Security] Combat rejected: Wrong Phase (%s)" % current_phase)
+		# We might need to handle stuck state if we return here? 
+		# But this is an illegal call, so ignoring it is safe.
+		return
+
+	# Validate Sender owns the Firing Side
+	if not _validate_rpc_ownership(sender_id, firing_side_id):
+		return
+		
 	current_combat_state = CombatState.RESOLVING
 	
 	# Sync RNG
@@ -742,9 +876,15 @@ func execute_commit_combat(attacks_data: Array, rng_seed: int):
 		var target = null
 		
 		for s in ships:
+			if not is_instance_valid(s): continue
 			if s.name == data["s"]: source = s
 			if s.name == data["t"]: target = s
 		
+		# SECURITY: Verify Source Ownership
+		if source and source.side_id != firing_side_id:
+			print("[Security] Attack rejected: Source %s (Side %d) != Firing Side %d" % [source.name, source.side_id, firing_side_id])
+			continue
+			
 		if source and target: # Target might be null if we allow ground targeting later, but for now ship-to-ship
 			pending_resolutions.append({
 				"source": source,
@@ -978,7 +1118,7 @@ func _reset_plotting_state():
 func _cycle_selection():
 	if current_phase == Phase.MOVEMENT:
 		# Filter: Active Player, !has_moved
-		var available = ships.filter(func(s): return is_instance_valid(s) and s.player_id == current_player_id and not s.has_moved)
+		var available = ships.filter(func(s): return is_instance_valid(s) and s.side_id == current_side_id and not s.has_moved)
 		if available.size() <= 1: return
 		
 		var idx = available.find(selected_ship)
@@ -1032,6 +1172,9 @@ func _update_ship_visuals():
 		if not grid_counts.has(s.grid_position):
 			grid_counts[s.grid_position] = []
 		grid_counts[s.grid_position].append(s)
+		
+		# Update Selection State
+		s.is_selected = (s == selected_ship)
 	
 	for hex in grid_counts:
 		var stack: Array = grid_counts[hex]
@@ -1080,26 +1223,44 @@ func start_turn_cycle():
 		panel_icm = null
 
 	for s in ships:
-		s.reset_weapons()
+		if is_instance_valid(s):
+			s.reset_weapons()
+
+
+	# Initial Setup
+	turn_order = [1, 2] # Side 1 First
+	current_turn_order_index = 0
+	
+	# Start Turn for Side 1
+	_start_turn_for_side(turn_order[current_turn_order_index])
+
+func _start_turn_for_side(sid: int):
+	current_side_id = sid
+	log_message("=== Turn Start: Side %s ===" % get_side_name(sid))
+	
 	start_movement_phase()
 
 func start_movement_phase():
 	var is_phase_change = (current_phase != Phase.MOVEMENT)
 	current_phase = Phase.MOVEMENT
 	combat_subphase = 0
-	firing_player_id = 0
+	firing_side_id = 0
 	combat_action_taken = false # Reset lock
 	
-	# Find un-moved ships for ACTIVE player
-	# Allow docked ships to be selected (so they can undock)
-	# Added safety check for instance validity
-	var available = ships.filter(func(s): return is_instance_valid(s) and s.player_id == current_player_id and not s.is_exploding and not s.has_moved)
-	
-	print("[DEBUG] start_movement_phase: Player %d. Available Ships: %d" % [current_player_id, available.size()])
+	# Find un-moved ships for ACTIVE side (Current Side Only)
+	var available = ships.filter(func(s): return is_instance_valid(s) and s.side_id == current_side_id and not s.is_exploding and not s.has_moved)
 	
 	if available.size() == 0:
-		print("[DEBUG] No ships to move. Starting Passive Combat.")
+		# Movement Phase COMPLETE for this side
+		# Proceed to Combat Phase (Passive Fire first)
 		start_combat_passive()
+		return
+
+	# FIX: Respect current selection if valid
+	# If we already have a selected ship that is VALID (available), don't change selection.
+	# This prevents focus stealing when another player commits a move.
+	if selected_ship and selected_ship in available:
+		_update_ui_state() # Just refresh UI
 		return
 
 	# Select first available
@@ -1114,20 +1275,14 @@ func start_movement_phase():
 	# Check for Persistent Orbit
 	if selected_ship.orbit_direction != 0:
 		_on_orbit(selected_ship.orbit_direction)
-		# This effectively pre-plans the move.
-		# User can then just hit Engage.
 		log_message("Auto-plotting Orbit...")
 		print("[DEBUG] Orbit plotted for %s" % selected_ship.name)
 	else:
 		print("[DEBUG] Standard move start for %s" % selected_ship.name)
 	
 	_update_camera()
-	
-	# If start speed is 0 or just spawned? Speed 0 rotation check happens in UI update.
-	
-	_update_camera()
 	_update_ui_state()
-	log_message("Movement Phase: Player %d" % current_player_id)
+	log_message("Movement Phase: %s" % get_side_name(current_side_id))
 	
 	if is_phase_change and audio_phase_change and audio_phase_change.stream:
 		audio_phase_change.play()
@@ -1135,9 +1290,10 @@ func start_movement_phase():
 func start_combat_passive():
 	current_phase = Phase.COMBAT
 	combat_subphase = 1 # Passive First
-	firing_player_id = 3 - current_player_id # The Non-Active Player
+	# Passive Fire: The NON-ACTIVE side fires
+	firing_side_id = 3 - current_side_id # Assuming 2 sides (1 vs 2)
 	
-	print("[DEBUG] start_combat_passive: P%d firing (Passive)" % firing_player_id)
+	print("[DEBUG] start_combat_passive: Side %d firing (Opponent of Moving Side %d)" % [firing_side_id, current_side_id])
 	
 	if audio_phase_change and audio_phase_change.stream:
 		audio_phase_change.play()
@@ -1147,7 +1303,10 @@ func start_combat_passive():
 func start_combat_active():
 	current_phase = Phase.COMBAT
 	combat_subphase = 2 # Active Second
-	firing_player_id = current_player_id # The Active Player
+	# Active Fire: The ACTIVE side fires
+	firing_side_id = current_side_id
+	
+	print("[DEBUG] start_combat_active: Side %d firing (Active Side)" % firing_side_id)
 	
 	if audio_phase_change and audio_phase_change.stream:
 		audio_phase_change.play()
@@ -1164,7 +1323,7 @@ func _start_combat_planning():
 	# Actually, we need to track "planned usage".
 	# For now, let's just refresh the UI.
 	
-	log_message("Combat Planning: Player %d" % firing_player_id)
+	log_message("Combat Planning: Side %d" % firing_side_id)
 	
 	_update_camera()
 	_update_ui_state()
@@ -1174,9 +1333,8 @@ func _start_combat_planning():
 	queue_redraw()
 	
 	# Skip Check: If valid targets exist, stay. Else commit/next.
-	# Skip Check: If valid targets exist, stay. Else commit/next.
 	if not _check_for_valid_combat_targets():
-		var msg = "No valid targets for Player %d. Skipping..." % firing_player_id
+		var msg = "No valid targets for Side %d. Skipping..." % firing_side_id
 		log_message(msg)
 		
 		# Center Message
@@ -1186,16 +1344,23 @@ func _start_combat_planning():
 		# Delay slightly for readability
 		get_tree().create_timer(2.0).timeout.connect(func():
 			label_center_message.visible = false
-			_on_combat_commit()
+			_handle_auto_skip_combat()
 		)
+
+func _handle_auto_skip_combat():
+	# If we are the Server OR the Firing Side, we have authority to advance the state
+	# when there are no valid choices to make.
+	if multiplayer.is_server() or (my_side_id == firing_side_id) or (my_side_id == 0):
+		# Bypass _on_combat_commit authority check and call RPC directly
+		rpc("execute_commit_combat", [], randi())
 
 func _update_planning_ui_list():
 	# Clear existing
 	for c in container_ships.get_children():
 		c.queue_free()
 		
-	# Find ships for firing player
-	var my_ships = ships.filter(func(s): return is_instance_valid(s) and s.player_id == firing_player_id and not s.is_exploding)
+	# Find ships for firing side
+	var my_ships = ships.filter(func(s): return is_instance_valid(s) and s.side_id == firing_side_id and not s.is_exploding)
 	
 	for s in my_ships:
 		var btn = Button.new()
@@ -1249,15 +1414,22 @@ func _update_planning_ui_list():
 			selected_ship = s
 			combat_target = null
 			_update_planning_ui_list()
+			# _update_ui_state() # REMOVED: _update_planning_ui_list now handles its own visibility, and _update_ui_state defaults to hiding it!
+			# If we need to update other UI elements (like camera/status), we should ensure they don't clobber this.
+			# Better: Let _update_ui_state be the master, and HAVE IT call _update_planning_ui_list.
+			
+			# Current Fix: Call _update_ui_state FIRST, then refresh list (which sets visibility)
 			_update_ui_state()
+			_update_planning_ui_list()
+			
 			_update_ship_visuals()
 			queue_redraw()
 		)
 		
 		container_ships.add_child(btn)
 	
-	# Only show planning panel if it's THIS player's turn to fire
-	var is_my_planning_phase = (firing_player_id == my_local_player_id) or (my_local_player_id == 0)
+	# Only show planning panel if it's THIS side's turn to fire
+	var is_my_planning_phase = (firing_side_id == my_side_id) or (my_side_id == 0)
 	var show_planning = (current_phase == Phase.COMBAT and current_combat_state == CombatState.PLANNING and is_my_planning_phase)
 	panel_planning.visible = show_planning
 	
@@ -1272,7 +1444,7 @@ func _update_planning_ui_list():
 			# mini_map.set_anchors_and_offsets_preset(Control.PRESET_TOP_RIGHT, Control.PRESET_MODE_KEEP_SIZE, 20)
 
 	if not is_my_planning_phase and current_phase == Phase.COMBAT and current_combat_state == CombatState.PLANNING:
-		label_status.text += "\n\n(Waiting for Player %d to plan attacks...)" % firing_player_id
+		label_status.text += "\n\n(Waiting for Side %d to plan attacks...)" % firing_side_id
 
 # _check_combat_availability removed/replaced by explicit planning flow
 
@@ -1293,6 +1465,7 @@ func end_turn_cycle():
 				# Find target
 				var target_ship = null
 				for s in ships:
+					if not is_instance_valid(s): continue
 					if s.name == t_name:
 						target_ship = s
 						break
@@ -1305,16 +1478,37 @@ func end_turn_cycle():
 						var msg = log_tmpl % (current_val + 1)
 						log_message(msg)
 			
-	log_message("Turn Complete. Switching Active Player.")
-	current_player_id = 3 - current_player_id
+	log_message("Turn Segment Complete.")
 	
-	# Reset ALL ships
+	# Logic:
+	# If Passive Combat just finished -> Start Active Combat
+	# If Active Combat just finished -> End Player's Turn -> Start Next Player OR End Round
+	
+	if combat_subphase == 1:
+		# Pasive done, start Active
+		start_combat_active()
+	elif combat_subphase == 2:
+		# Active done, Side's Turn Complete
+		current_turn_order_index += 1
+		if current_turn_order_index < turn_order.size():
+			# Next Side
+			_start_turn_for_side(turn_order[current_turn_order_index])
+		else:
+			# Round Complete
+			_end_round_cycle()
+
+func _end_round_cycle():
+	log_message("Round Complete. Starting New Round.")
+	# Reset Turn Order
+	current_turn_order_index = 0
+	
+	# Reset ALL ships (Movement/Fired state)
 	for s in ships:
 		if is_instance_valid(s):
-			s.reset_turn_state()
-		
-	print("[DEBUG] Calling start_movement_phase from end_turn_cycle")
-	start_movement_phase()
+			s.reset_turn_state() # Resets has_moved, has_fired, AP, energy, etc.
+			
+	# Start Side 1 Again
+	_start_turn_for_side(turn_order[0])
 
 func _update_camera(focus_target_override = null):
 	var target_pos = Vector2.ZERO
@@ -1339,7 +1533,7 @@ func _spawn_ghost():
 	
 	ghost_ship = Ship.new()
 	ghost_ship.name = "GhostShip"
-	ghost_ship.player_id = selected_ship.player_id
+	ghost_ship.side_id = selected_ship.side_id
 	ghost_ship.ship_class = selected_ship.ship_class # Copy visual class
 	ghost_ship.faction = selected_ship.faction # Copy faction for sprite selection
 	ghost_ship.color = selected_ship.color
@@ -1350,7 +1544,16 @@ func _spawn_ghost():
 	queue_redraw() # Ensure predictive path draws immediately
 
 func _update_ui_state():
+	if not ui_layer: return
+	
+	# Reset Panels
+	panel_planning.visible = false
+	panel_movement.visible = false
+	
 	if current_phase == Phase.MOVEMENT:
+		panel_movement.visible = true
+		_update_movement_ui_list()
+		
 		btn_undo.visible = (current_path.size() > 0)
 		
 		var steps = current_path.size()
@@ -1361,9 +1564,10 @@ func _update_ui_state():
 		if state_is_orbiting:
 			# Orbit moves are always 1 hex, regardless of ADF/Speed limits
 			is_valid = true
-		
+			
+		var is_moved = selected_ship.has_moved
 		btn_commit.visible = true
-		btn_commit.disabled = not is_valid
+		btn_commit.disabled = not is_valid or is_moved
 		
 		btn_turn_left.visible = true
 		btn_turn_right.visible = true
@@ -1375,7 +1579,9 @@ func _update_ui_state():
 		var is_stationary = (current_path.size() == 0)
 		var allow_turn = false
 		
-		if is_stationary or state_is_orbiting:
+		if is_moved:
+			allow_turn = false
+		elif is_stationary or state_is_orbiting:
 			allow_turn = true
 		else:
 			allow_turn = (can_turn_this_step and turns_remaining > 0)
@@ -1441,8 +1647,8 @@ func _update_ui_state():
 					btn_ms_toggle.tooltip_text = "Deploy Masking Screen (Cost: 1)"
 		else:
 			btn_ms_toggle.visible = false
-		
-		var txt = "Player %d Plotting\n" % selected_ship.player_id
+			
+		var txt = "%s Moving\n" % get_side_name(current_side_id)
 		txt += "Ship: %s (%s)\n" % [selected_ship.name, selected_ship.ship_class]
 		txt += "Hull: %d\n" % selected_ship.hull
 		txt += "Stats: ADF %d | MR %d\n" % [selected_ship.adf, selected_ship.mr]
@@ -1485,7 +1691,7 @@ func _update_ui_state():
 		btn_orbit_ccw.visible = false
 		
 		var phase_name = "Passive" if combat_subphase == 1 else "Active"
-		var txt = "Combat (%s Fire)\nPlayer %d Firing" % [phase_name, firing_player_id]
+		var txt = "Combat (%s Fire)\n%s Firing" % [phase_name, get_side_name(firing_side_id)]
 		
 		if selected_ship:
 			txt += "\nShip: %s" % selected_ship.get_display_name()
@@ -1514,7 +1720,7 @@ func _update_ui_state():
 			txt += "\n\n-- Planned Attacks --"
 			for atk in queued_attacks:
 				var s = atk["source"]
-				if s.player_id == firing_player_id:
+				if is_instance_valid(s) and s.side_id == firing_side_id:
 					var t = atk["target"]
 					var w_name = atk["weapon_name"]
 					# Recalculate chance for display
@@ -1525,6 +1731,13 @@ func _update_ui_state():
 					
 					txt += "\n%s -> %s: %s (%d%%)" % [s.get_display_name(), t.get_display_name(), w_name, chance]
 		
+		# Ensure planning panel visibility is managed here
+		if current_combat_state == CombatState.PLANNING:
+			var is_my_planning_phase = (firing_side_id == my_side_id) or (my_side_id == 0)
+			panel_planning.visible = is_my_planning_phase
+			if is_my_planning_phase:
+				call_deferred("_update_minimap_position")
+				
 		label_status.text = txt
 	elif current_phase == Phase.END:
 		btn_undo.visible = false
@@ -1532,6 +1745,17 @@ func _update_ui_state():
 		btn_turn_left.visible = false
 		btn_turn_right.visible = false
 		label_status.text = "Game Over"
+
+	# Update Player Info Label
+	if label_player_info:
+		var p_txt = "Side: %d (%s)" % [my_side_id, get_side_name(my_side_id)]
+		var pid = multiplayer.get_unique_id()
+		label_player_info.text = "%s\nPID: %d" % [p_txt, pid]
+		
+		# Color
+		if my_side_id == 1: label_player_info.modulate = Color(1, 0.5, 0.5) # Red-ish
+		elif my_side_id == 2: label_player_info.modulate = Color(0.5, 0.5, 1) # Blue-ish
+		else: label_player_info.modulate = Color.GREEN
 
 func _on_undo():
 	if current_path.size() > 0:
@@ -1547,7 +1771,7 @@ func _on_undo():
 
 func _on_turn(direction: int):
 	# Authority Check
-	if my_local_player_id > 0 and current_player_id != my_local_player_id:
+	if my_side_id > 0 and current_side_id != my_side_id:
 		return
 		
 	# direction: -1 (left), 1 (right)
@@ -1570,7 +1794,7 @@ var state_is_orbiting: bool = false # Temp state for UI
 
 func _on_orbit(direction: int):
 	# Authority Check
-	if my_local_player_id > 0 and current_player_id != my_local_player_id:
+	if my_side_id > 0 and current_side_id != my_side_id:
 		return
 		
 	# direction: 1 (CW), -1 (CCW)
@@ -1622,7 +1846,7 @@ var current_orbit_direction: int = 0
 
 func _on_ms_toggled(pressed: bool):
 	# Authority Check
-	if my_local_player_id > 0 and current_player_id != my_local_player_id:
+	if my_side_id > 0 and current_side_id != my_side_id:
 		return
 		
 	if not selected_ship: return
@@ -1659,12 +1883,51 @@ func _on_ms_toggled(pressed: bool):
 			log_message("Screen Dropped")
 			
 	selected_ship.queue_redraw()
+	selected_ship.queue_redraw()
 	_update_ui_state()
+
+func _update_movement_ui_list():
+	# Clear
+	for c in list_movement.get_children():
+		c.queue_free()
+		
+	# List all friendly ships with status
+	# Filter: My Side
+	var my_ships = ships.filter(func(s): return is_instance_valid(s) and s.side_id == current_side_id and not s.is_exploding)
+	
+	for s in my_ships:
+		var btn = Button.new()
+		var status = "MOVED" if s.has_moved else "PLANNING"
+		var color_code = Color.GREEN if s.has_moved else Color.WHITE
+		
+		# Highlight selected
+		if s == selected_ship:
+			btn.text = "> %s (%s) <" % [s.name, status]
+			btn.modulate = Color(1, 1, 0) # Yellow highlight
+		else:
+			btn.text = "%s (%s)" % [s.name, status]
+			btn.modulate = color_code
+			
+		
+		btn.pressed.connect(func():
+			# Select ship logic (Allow inspecting moved ships too)
+			_handle_movement_click(s.grid_position) # Reuse click logic for consistency
+		)
+		
+		# Disable only if we want to restrict selection. User asked for freedom.
+		# But visual feedback is good.
+		# if s.has_moved:
+		# 	btn.disabled = true
+			
+		list_movement.add_child(btn)
+	
+	# Reposition Minimap
+	call_deferred("_update_minimap_position")
 
 func _on_commit_move():
 	# Authority Check
-	if my_local_player_id != 0 and current_player_id != my_local_player_id:
-		log_message("Not your turn!")
+	if my_side_id != 0 and current_side_id != my_side_id:
+		log_message("Not your turn! (Active: %d, You: %d)" % [current_side_id, my_side_id])
 		return
 		
 	# NETWORK: Send RPC
@@ -1674,6 +1937,22 @@ func _on_commit_move():
 	# But ghost is local. We need to send ghost.facing.
 	
 	rpc("execute_commit_move", selected_ship.name, path_data, ghost_ship.facing, current_orbit_direction, state_is_orbiting)
+
+# --- Security Validation ---
+func _validate_rpc_ownership(sender_id: int, required_side_id: int) -> bool:
+	# 1. Host (ID 1) always has authority (e.g. for AI or admin actions)
+	if sender_id == 1:
+		return true
+		
+	# 2. Map Sender ID to Side ID
+	# NetworkManager.lobby_data["teams"] = { peer_id: side_id }
+	var sender_side = NetworkManager.lobby_data["teams"].get(sender_id, 0)
+	
+	if sender_side == required_side_id:
+		return true
+		
+	print("[Security] Validation Failed: Sender %d (Side %d) tried to control Side %d" % [sender_id, sender_side, required_side_id])
+	return false
 
 @rpc("any_peer", "call_local", "reliable")
 func execute_commit_move(ship_name: String, path: Array, final_facing: int, orbit_dir: int, is_orbiting: bool):
@@ -1687,7 +1966,23 @@ func execute_commit_move(ship_name: String, path: Array, final_facing: int, orbi
 	if not ship:
 		print("Error: Ship %s not found for move commit!" % ship_name)
 		return
+
+	# SECURITY CHECK
+	var sender_id = multiplayer.get_remote_sender_id()
+	if sender_id == 0: sender_id = multiplayer.get_unique_id() # Handle local call
+	
+	if not _validate_rpc_ownership(sender_id, ship.side_id):
+		return
 		
+	# Phase & State Validation
+	if current_phase != Phase.MOVEMENT:
+		print("[Security] Move rejected: Wrong Phase (%s)" % current_phase)
+		return
+		
+	if ship.has_moved:
+		print("[Security] Move rejected: Ship %s already moved" % ship.name)
+		return
+
 	# Apply State
 	ship.orbit_direction = orbit_dir
 	if not is_orbiting:
@@ -1740,6 +2035,15 @@ func execute_commit_move(ship_name: String, path: Array, final_facing: int, orbi
 	
 	ship.has_moved = true
 	
+	# Orbit MS Check: Did we complete the loop?
+	# If MS active AND Orbiting AND Position == Start Hex
+	if ship.is_ms_active and ship.orbit_direction != 0:
+		if ship.ms_orbit_start_hex != Vector3i.MAX:
+			if ship.grid_position == ship.ms_orbit_start_hex:
+				ship.is_ms_active = false
+				ship.ms_orbit_start_hex = Vector3i.MAX
+				log_message("%s completes orbit; Screen drops." % ship.name)
+	
 	# Force Phase Check / Next Ship
 	if current_phase == Phase.MOVEMENT:
 		# If this client is the ACTIVE player, they select next.
@@ -1753,7 +2057,7 @@ func execute_commit_move(ship_name: String, path: Array, final_facing: int, orbi
 
 func _handle_docking_states(ship: Ship):
 	# 1. Check for Auto-Docking
-	var potential_hosts = ships.filter(func(s): return is_instance_valid(s) and s.player_id == ship.player_id and s != ship and s.grid_position == ship.grid_position)
+	var potential_hosts = ships.filter(func(s): return is_instance_valid(s) and s.side_id == ship.side_id and s != ship and s.grid_position == ship.grid_position)
 	# Filter for valid hosts
 	potential_hosts = potential_hosts.filter(func(s): return s.ship_class in ["Space Station", "Assault Carrier"])
 	
@@ -2025,17 +2329,19 @@ func _unhandled_input(event):
 			return # Consume Input
 
 	# Authority Check
-	if my_local_player_id != 0:
+	if my_side_id != 0:
 		# If it's not my turn (Movement) OR not my firing phase (Combat)
-		# Movement: current_player_id must match
-		# Combat: firing_player_id must match
-		var active_id = current_player_id
+		# Movement: current_side_id must match
+		# Combat: firing_side_id must match
+		var active_id = current_side_id
 		if current_phase == Phase.COMBAT:
-			active_id = firing_player_id
+			active_id = firing_side_id
 			
-		if active_id != my_local_player_id:
-			# print("Input Rejected: Active %d vs Local %d" % [active_id, my_local_player_id])
-			return # Ignore input for other players
+		if active_id != my_side_id:
+			# print("Input Rejected: Active %d vs Local %d" % [active_id, my_side_id])
+			return # Ignore input for other sides
+			
+	# print("[DEBUG] Input Accepted for Side %d" % my_side_id)
 			
 	if event is InputEventMouseButton and event.pressed:
 		if event.button_index == MOUSE_BUTTON_LEFT:
@@ -2082,9 +2388,10 @@ func _is_weapon_available_in_phase(weapon: Dictionary, ship: Ship = null) -> boo
 	# Rule 1: Moving Player Only for Propelled weapons (Assault Rockets, Torpedoes)
 	# Rocket Batteries are EXEMPT from this (can be fired defensively)
 	var is_propelled_movement_restricted = w_type in ["Rocket", "Torpedo"]
+	# Rocket Batteries are EXEMPT from this (can be fired defensively)
 	
 	if is_propelled_movement_restricted:
-		if firing_player_id != current_player_id:
+		if firing_side_id != current_side_id:
 			return false
 
 	# Scenario Debuff Check
@@ -2197,7 +2504,7 @@ func _get_hexes_in_range(center: Vector3i, dist: int) -> Array:
 func _get_valid_targets(shooter: Ship) -> Array:
 	var valid = []
 	for s in ships:
-		if is_instance_valid(s) and s.player_id != shooter.player_id and not s.is_exploding:
+		if is_instance_valid(s) and s.side_id != shooter.side_id and not s.is_exploding:
 			# Check against ALL available weapons (or just current? usually any valid weapon means ship is active)
 			# Let's check if ANY weapon can hit the target
 			var can_hit = false
@@ -2238,44 +2545,38 @@ func _get_valid_targets(shooter: Ship) -> Array:
 					# Default or Turret (360)
 					can_hit = true
 					break
-			
 			if can_hit:
 				valid.append(s)
 	return valid
 
-func handle_click(hex: Vector3i):
-	if current_phase == Phase.MOVEMENT:
-		# Check if clicked on a friendly available ship (CHANGE SELECTION)
-		var clicked_ship = null
-		for s in ships:
-			if is_instance_valid(s) and s.grid_position == hex and s.player_id == current_player_id and not s.has_moved:
-				clicked_ship = s
-				break
-		
-		if clicked_ship and clicked_ship != selected_ship:
-			selected_ship = clicked_ship
-			# Reset plot
-			_reset_plotting_state()
-			
-			if audio_ship_select and audio_ship_select.stream: audio_ship_select.play()
-			_spawn_ghost()
-			_update_camera()
-			_update_ship_visuals() # Re-sort stack
-			_update_ui_state()
-			log_message("Selected %s" % selected_ship.name)
-			return
-
-		_handle_ghost_input(hex)
-	elif current_phase == Phase.COMBAT:
-		_handle_combat_click(hex)
-
 func _handle_movement_click(hex: Vector3i):
+	# MOVEMENT PRIORITY FIX:
+	if selected_ship and ghost_ship and not selected_ship.has_moved:
+		var forward_vec = HexGrid.get_direction_vec(ghost_ship.facing)
+		var dist = HexGrid.hex_distance(ghost_ship.grid_position, hex)
+		
+		# Valid straight line check
+		if dist > 0:
+			var check_pos = ghost_ship.grid_position + (forward_vec * dist)
+			if check_pos == hex:
+				_handle_ghost_input(hex)
+				return
+
 	# Check if clicked on a friendly available ship (CHANGE SELECTION)
 	var clicked_ship = null
+	
+	# Priority 1: Unmoved Ships
 	for s in ships:
-		if is_instance_valid(s) and s.grid_position == hex and s.player_id == current_player_id and not s.has_moved:
+		if is_instance_valid(s) and s.grid_position == hex and s.side_id == current_side_id and not s.has_moved:
 			clicked_ship = s
 			break
+			
+	# Priority 2: Moved Ships (for inspection)
+	if not clicked_ship:
+		for s in ships:
+			if is_instance_valid(s) and s.grid_position == hex and s.side_id == current_side_id:
+				clicked_ship = s
+				break
 	
 	if clicked_ship and clicked_ship != selected_ship:
 		selected_ship = clicked_ship
@@ -2290,10 +2591,17 @@ func _handle_movement_click(hex: Vector3i):
 		log_message("Selected %s" % selected_ship.name)
 		return
 
+	# If no ship selected or clicked empty hex...
 	_handle_ghost_input(hex)
 
 func _handle_ghost_input(hex: Vector3i):
 	if not ghost_ship: return
+	
+	# Rule: If ship has already moved, no new input allowed (it's just for inspection)
+	if selected_ship and selected_ship.has_moved:
+		# log_message("Ship has already moved.")
+		return
+
 	
 	# Strict Rule: Must be along Forward Vector
 	var forward_vec = HexGrid.get_direction_vec(ghost_ship.facing)
@@ -2411,7 +2719,7 @@ func _trigger_icm_decision(attacker_name: String, weapon_name: String, weapon_ty
 	vbox.add_child(lbl)
 	
 	# Network Logic: Who decides?
-	var is_target_owner = (target.player_id == my_local_player_id) or (my_local_player_id == 0) # Debug/0 can also decide
+	var is_target_owner = (target.side_id == my_side_id) or (my_side_id == 0) # Debug/0 can also decide
 	
 	if is_target_owner:
 		var lbl_ammo = Label.new()
@@ -2458,6 +2766,19 @@ func _trigger_icm_decision(attacker_name: String, weapon_name: String, weapon_ty
 		lbl_wait.add_theme_color_override("font_color", Color.YELLOW)
 		vbox.add_child(lbl_wait)
 
+func get_side_name(side_id: int) -> String:
+	# Side ID 1 = Scenario Index 0 (Attackers/P1)
+	# Side ID 2 = Scenario Index 1 (Defenders/P2)
+	# Assuming 1-based Side ID maps to 0-based Array Index
+	var scen_key = NetworkManager.lobby_data.get("scenario", "surprise_attack")
+	var scen = ScenarioManager.get_scenario(scen_key)
+	if scen and scen.has("sides"):
+		var side_idx = side_id - 1
+		if scen["sides"].has(side_idx):
+			return scen["sides"][side_idx]["name"]
+			
+	return "Side %d" % side_id
+
 func _submit_icm_decision(count: int):
 	# Send RPC to broadcast decision
 	rpc("broadcast_icm_decision", count)
@@ -2478,19 +2799,19 @@ func _on_ship_destroyed(ship: Ship):
 	log_message("Ship destroyed: %s" % ship.name)
 	
 	# Check for Victory
-	var p1_count = 0
-	var p2_count = 0
+	var s1_count = 0
+	var s2_count = 0
 	for s in ships:
 		if not is_instance_valid(s): continue
-		if s.player_id == 1: p1_count += 1
-		elif s.player_id == 2: p2_count += 1
+		if s.side_id == 1: s1_count += 1
+		elif s.side_id == 2: s2_count += 1
 	
-	if p1_count == 0 and p2_count == 0:
+	if s1_count == 0 and s2_count == 0:
 		show_game_over("Draw!")
-	elif p1_count == 0:
-		show_game_over("Winner: Player 2!")
-	elif p2_count == 0:
-		show_game_over("Winner: Player 1!")
+	elif s1_count == 0:
+		show_game_over("Winner: Side 2 (Defenders)!")
+	elif s2_count == 0:
+		show_game_over("Winner: Side 1 (Attackers)!")
 
 func show_game_over(msg: String):
 	current_phase = Phase.END
@@ -2509,18 +2830,6 @@ func end_turn():
 		audio_action_complete.play()
 	
 	if current_phase == Phase.MOVEMENT:
-		if selected_ship:
-			selected_ship.has_moved = true
-			
-			# Orbit MS Check: Did we complete the loop?
-			# If MS active AND Orbiting AND Position == Start Hex
-			if selected_ship.is_ms_active and selected_ship.orbit_direction != 0:
-				if selected_ship.ms_orbit_start_hex != Vector3i.MAX:
-					if selected_ship.grid_position == selected_ship.ms_orbit_start_hex:
-						selected_ship.is_ms_active = false
-						selected_ship.ms_orbit_start_hex = Vector3i.MAX
-						log_message("%s completes orbit; Screen drops." % selected_ship.name)
-					
 		start_movement_phase() # Loop to next ship
 		
 	elif current_phase == Phase.COMBAT:
@@ -2593,8 +2902,14 @@ func _check_planet_collision(ship: Ship):
 	return false
 
 func _update_minimap_position():
-	if panel_planning and panel_planning.visible and mini_map:
-		var pp_rect = panel_planning.get_global_rect()
+	var active_panel = null
+	if panel_planning and panel_planning.visible:
+		active_panel = panel_planning
+	elif panel_movement and panel_movement.visible:
+		active_panel = panel_movement
+		
+	if active_panel and mini_map:
+		var pp_rect = active_panel.get_global_rect()
 		var new_y = pp_rect.end.y + 20
 		# Clamp to screen?
 		var screen_h = get_viewport_rect().size.y
@@ -2602,6 +2917,11 @@ func _update_minimap_position():
 			new_y = screen_h - 220
 			
 		mini_map.position = Vector2(get_viewport_rect().size.x - 220, new_y)
+	else:
+		# Reset Minimap
+		if mini_map:
+			# mini_map.anchors_preset = Control.PRESET_TOP_RIGHT
+			mini_map.position = Vector2(get_viewport_rect().size.x - 220, 20)
 
 func load_scenario(key: String, seed_val: int = 12345):
 	# Retrieve Scenario Data
@@ -2649,7 +2969,7 @@ func load_scenario(key: String, seed_val: int = 12345):
 		s.faction = data.get("faction", "UPF")
 		# Handle side/side_index variance
 		var s_idx = data.get("side", data.get("side_index", 0))
-		s.player_id = s_idx + 1 # 0->1, 1->2
+		s.side_id = s_idx + 1 # 0->1, 1->2
 		
 		var side_info = scen_dataset.get("sides", {}).get(s_idx, {})
 		s.color = side_info.get("color", Color.WHITE)
@@ -2662,7 +2982,7 @@ func load_scenario(key: String, seed_val: int = 12345):
 		if s.orbit_direction != 0:
 			print("[DEBUG] Ship %s loaded with Orbit Dir %d" % [s.name, s.orbit_direction])
 		s.speed = data.get("start_speed", 0)
-		if s.speed > 0: s.has_moved = true
+		# if s.speed > 0: s.has_moved = true # FIX: Do not skip turn just because we have speed
 		
 		# Stats Overrides (Crucial for Fortress K'zdit)
 		if data.has("overrides"):
@@ -2679,6 +2999,26 @@ func load_scenario(key: String, seed_val: int = 12345):
 				else:
 					s.set(k, val)
 				
+		# Assign Ownership from Lobby
+		var owner_pid = NetworkManager.lobby_data["ship_assignments"].get(s.name, 0)
+		
+		# Default Assignment Logic (Fallback)
+		if owner_pid == 0:
+			# Try to find a player on this team
+			var potential_owners = []
+			for pid in NetworkManager.lobby_data["teams"]:
+				if NetworkManager.lobby_data["teams"][pid] == s.side_id:
+					potential_owners.append(pid)
+			
+			if potential_owners.size() > 0:
+				potential_owners.sort() # Consistent assignment (lowest ID first)
+				owner_pid = potential_owners[0]
+			else:
+				# Fallback to Host (1) if no one on team
+				owner_pid = 1
+				
+		s.owner_peer_id = owner_pid
+		
 		s.binding_pos_update()
 		s.ship_destroyed.connect(func(ship): _on_ship_destroyed(ship))
 		ships.append(s)
@@ -2689,6 +3029,7 @@ func load_scenario(key: String, seed_val: int = 12345):
 			var host_name = data["docked_at"]
 			var host = null
 			for cand in ships:
+				if not is_instance_valid(cand): continue
 				if cand.name == host_name:
 					host = cand
 					break
@@ -2697,6 +3038,7 @@ func load_scenario(key: String, seed_val: int = 12345):
 				var s_name = data["name"]
 				var s = null
 				for cand in ships:
+					if not is_instance_valid(cand): continue
 					if cand.name == s_name:
 						s = cand
 						break
@@ -2735,3 +3077,55 @@ func _check_scenario_debuffs(ship: Ship, action: String) -> bool:
 							return true # Debuff IS active, so action is blocked
 	
 	return false
+
+# Sync Logic for Attack Planning
+func _find_ship_by_name(n: String) -> Ship:
+	for s in ships:
+		if is_instance_valid(s) and s.name == n: return s
+	return null
+
+@rpc('any_peer', 'call_local', 'reliable')
+func rpc_add_attack(source_name: String, target_name: String, weapon_idx: int):
+	var s = _find_ship_by_name(source_name)
+	var t = _find_ship_by_name(target_name)
+	
+	if not s or not t:
+		print('Error: Could not find ships for rpc_add_attack: %s -> %s' % [source_name, target_name])
+		return
+		
+	var weapon = s.weapons[weapon_idx]
+	
+	# Check duplicates just in case (though remove should have handled it)
+	for i in range(queued_attacks.size() - 1, -1, -1):
+		var atk = queued_attacks[i]
+		if atk['source'] == s and atk['weapon_idx'] == weapon_idx:
+			queued_attacks.remove_at(i)
+			break
+
+	queued_attacks.append({
+		'source': s,
+		'target': t,
+		'target_pos': t.position,
+		'weapon_idx': weapon_idx,
+		'weapon_name': weapon['name']
+	})
+	
+	_update_planning_ui_list()
+	_update_ui_state() # Update Status Label (Planned Attacks List)
+	queue_redraw()
+
+@rpc('any_peer', 'call_local', 'reliable')
+func rpc_remove_attack(source_name: String, weapon_idx: int):
+	var s = _find_ship_by_name(source_name)
+	if not s: return
+	
+	for i in range(queued_attacks.size() - 1, -1, -1):
+		var atk = queued_attacks[i]
+		var match_idx = atk['weapon_idx']
+		if atk['source'] == s and match_idx == weapon_idx:
+			queued_attacks.remove_at(i)
+			break
+			
+	_update_planning_ui_list()
+	_update_ui_state() # Update Status Label (Planned Attacks List)
+	queue_redraw()

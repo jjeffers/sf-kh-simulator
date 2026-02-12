@@ -12,7 +12,7 @@ func before_each():
 	
 	# Mock NetworkManager if needed, but it's Autoloaded so we might use real or override
 	# For integration, we assume Single Player or Host logic
-	_gm.my_local_player_id = 1 # Act as P1
+	_gm.my_side_id = 1 # Act as P1
 	_gm.current_player_id = 1
 	
 	# Clear specific scenario data
