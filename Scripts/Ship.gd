@@ -2,7 +2,7 @@ class_name Ship
 extends Node2D
 
 
-@export var player_id: int = 1
+@export var side_id: int = 1
 @export var adf: int = 5
 @export var mr: int = 3
 @export var color: Color = Color.WHITE
@@ -22,7 +22,12 @@ var texture_upf_heavy_cruiser = preload("res://Assets/upf_heavy_cruiser.png")
 var texture_upf_battleship = preload("res://Assets/upf_battleship.png")
 var texture_upf_assault_carrier = preload("res://Assets/upf_assault_carrier.png")
 
+
 var faction: String = "UPF"
+var agility: int = 1
+
+# Multiplayer Ownership
+var owner_peer_id: int = 0 # 0 = Server/AI, >0 = Player Peer ID
 
 var max_hull: int = 15
 var hull: int = 15
@@ -32,6 +37,8 @@ var ms_max: int = 0
 var ms_current: int = 0
 var is_ms_active: bool = false: set = _set_ms_active
 var ms_orbit_start_hex: Vector3i = Vector3i.MAX # Sentinel for orbit MS logic
+
+var is_selected: bool = false: set = _set_is_selected
 
 var ms_particles: CPUParticles2D = null
 
@@ -587,6 +594,10 @@ func _set_ms_active(val: bool):
 		ms_particles.emitting = val
 	queue_redraw()
 
+func _set_is_selected(val: bool):
+	is_selected = val
+	queue_redraw()
+
 func _set_facing(v: int):
 	facing = v
 	queue_redraw()
@@ -635,6 +646,11 @@ func _draw():
 	if is_ms_active:
 		# Draw a very faint outline to define the "screen" boundary
 		draw_arc(Vector2.ZERO, HexGrid.TILE_SIZE * 0.8, 0, TAU, 32, Color(0.4, 0.7, 1.0, 0.3), 1.0)
+
+	if is_selected:
+		# Draw bright selection ring
+		# Pulse width or brightness? Simple bright outline for now.
+		draw_arc(Vector2.ZERO, HexGrid.TILE_SIZE * 0.9, 0, TAU, 32, Color(1.0, 1.0, 0.0, 0.8), 3.0)
 
 	var color_to_use = color
 	if is_exploding:

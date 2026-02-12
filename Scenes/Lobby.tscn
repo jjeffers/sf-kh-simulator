@@ -1,6 +1,6 @@
-[gd_scene format=3 uid="uid://c6j8lal0m1n2"]
+[gd_scene load_steps=2 format=3 uid="uid://c8q1x2y3z4a5"]
 
-[ext_resource type="Script" path="res://Scripts/Lobby.gd" id="1_script"]
+[ext_resource type="Script" path="res://Scripts/Lobby.gd" id="1_lobby"]
 
 [node name="Lobby" type="Control"]
 layout_mode = 3
@@ -9,42 +9,98 @@ anchor_right = 1.0
 anchor_bottom = 1.0
 grow_horizontal = 2
 grow_vertical = 2
-script = ExtResource("1_script")
+script = ExtResource("1_lobby")
 
-[node name="CenterContainer" type="CenterContainer" parent="."]
+[node name="OptionScenario" type="OptionButton" parent="."]
+layout_mode = 0
+offset_left = 40.0
+offset_top = 40.0
+offset_right = 240.0
+offset_bottom = 71.0
+
+[node name="ButtonStart" type="Button" parent="."]
+layout_mode = 1
+anchors_preset = 1
+anchor_left = 1.0
+anchor_right = 1.0
+offset_left = -140.0
+offset_top = 40.0
+offset_right = -40.0
+offset_bottom = 71.0
+grow_horizontal = 0
+text = "Start Game"
+
+[node name="HBoxContainer" type="HBoxContainer" parent="."]
 layout_mode = 1
 anchors_preset = 15
 anchor_right = 1.0
 anchor_bottom = 1.0
+offset_left = 40.0
+offset_top = 100.0
+offset_right = -40.0
+offset_bottom = -100.0
 grow_horizontal = 2
 grow_vertical = 2
-
-[node name="VBoxContainer" type="VBoxContainer" parent="CenterContainer"]
-layout_mode = 2
 theme_override_constants/separation = 20
 
-[node name="Label" type="Label" parent="CenterContainer/VBoxContainer"]
+[node name="Team1Panel" type="PanelContainer" parent="HBoxContainer"]
 layout_mode = 2
-theme_override_font_sizes/font_size = 32
-text = "Hex Space Combat"
+size_flags_horizontal = 3
+
+[node name="VBoxContainer" type="VBoxContainer" parent="HBoxContainer/Team1Panel"]
+layout_mode = 2
+
+[node name="Label" type="Label" parent="HBoxContainer/Team1Panel/VBoxContainer"]
+layout_mode = 2
+text = "Team 1 (Attacker)"
 horizontal_alignment = 1
 
-[node name="HBoxContainer" type="HBoxContainer" parent="CenterContainer/VBoxContainer"]
+[node name="List" type="ItemList" parent="HBoxContainer/Team1Panel/VBoxContainer"]
 layout_mode = 2
-theme_override_constants/separation = 10
+size_flags_vertical = 3
 
-[node name="BtnHost" type="Button" parent="CenterContainer/VBoxContainer/HBoxContainer"]
+[node name="ButtonJoin1" type="Button" parent="HBoxContainer/Team1Panel/VBoxContainer"]
 layout_mode = 2
-text = "Host Game"
+text = "Join Team"
 
-[node name="BtnJoin" type="Button" parent="CenterContainer/VBoxContainer/HBoxContainer"]
+[node name="Team2Panel" type="PanelContainer" parent="HBoxContainer"]
 layout_mode = 2
-text = "Join Game"
+size_flags_horizontal = 3
 
-[node name="LineEditIP" type="LineEdit" parent="CenterContainer/VBoxContainer"]
+[node name="VBoxContainer" type="VBoxContainer" parent="HBoxContainer/Team2Panel"]
 layout_mode = 2
-placeholder_text = "Enter Host IP (Default: 127.0.0.1)"
 
-[node name="StatusLabel" type="Label" parent="CenterContainer/VBoxContainer"]
+[node name="Label" type="Label" parent="HBoxContainer/Team2Panel/VBoxContainer"]
 layout_mode = 2
+text = "Team 2 (Defender)"
 horizontal_alignment = 1
+
+[node name="List" type="ItemList" parent="HBoxContainer/Team2Panel/VBoxContainer"]
+layout_mode = 2
+size_flags_vertical = 3
+
+[node name="ButtonJoin2" type="Button" parent="HBoxContainer/Team2Panel/VBoxContainer"]
+layout_mode = 2
+text = "Join Team"
+
+[node name="UnassignedPanel" type="PanelContainer" parent="HBoxContainer"]
+layout_mode = 2
+size_flags_horizontal = 3
+
+[node name="VBoxContainer" type="VBoxContainer" parent="HBoxContainer/UnassignedPanel"]
+layout_mode = 2
+
+[node name="Label" type="Label" parent="HBoxContainer/UnassignedPanel/VBoxContainer"]
+layout_mode = 2
+text = "Unassigned"
+horizontal_alignment = 1
+
+[node name="List" type="ItemList" parent="HBoxContainer/UnassignedPanel/VBoxContainer"]
+layout_mode = 2
+size_flags_vertical = 3
+
+
+
+[connection signal="pressed" from="HBoxContainer/Team1Panel/VBoxContainer/ButtonJoin1" to="." method="_on_join_team_1_pressed"]
+[connection signal="pressed" from="HBoxContainer/Team2Panel/VBoxContainer/ButtonJoin2" to="." method="_on_join_team_2_pressed"]
+

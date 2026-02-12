@@ -23,14 +23,16 @@ static func calculate_icm_reduction(weapon_type: String, icm_count: int) -> int:
 	return icm_count * reduction_per_missile
 
 static func calculate_hit_chance(dist: int, weapon: Dictionary = {}, target: Ship = null, is_head_on: bool = false, icm_count: int = 0, source: Ship = null) -> int:
-	if dist > MAX_RANGE:
-		return 0
-		
 	var chance = 0
+	var w_type = weapon.get("type")
 	
-	# Special Rule: Assault Rocket vs Reflective Hull (RH)
-	if target and target.defense == "RH" and weapon.get("type") == "Rocket":
-		chance = 60
+	# Special Rule: Rockets are FLAT (Ignore Range Penalty)
+	if w_type == "Rocket":
+		chance = 80
+		# VS Reflective Hull (RH)
+		if target and target.defense == "RH":
+			chance = 60
+			
 		if is_head_on: chance += 10
 		if icm_count > 0: chance -= calculate_icm_reduction("Rocket", icm_count)
 		return max(0, chance)
@@ -76,7 +78,12 @@ static func calculate_hit_chance(dist: int, weapon: Dictionary = {}, target: Shi
 	
 	# Standard / Laser / Laser Canon Rule: Range Diffusion (RD)
 	# -5% per hex
-	chance = base - (dist * RANGE_PENALTY)
+	# ONLY if type is Laser or Laser Canon
+	if w_type == "Laser" or w_type == "Laser Canon":
+		chance = base - (dist * RANGE_PENALTY)
+	else:
+		chance = base # Should not happen given early returns for Rockets/Torpedoes, but safe fallback
+		
 	if is_head_on: chance += 10
 	
 	# Apply ICM reduction for any falling-through weapons (e.g. Assault Rocket vs non-RH)

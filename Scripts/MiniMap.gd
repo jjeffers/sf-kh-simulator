@@ -70,8 +70,8 @@ func _draw():
 		var map_pos = (world_pos * scale_factor) + center_offset
 		
 		var color = Color.GRAY
-		if s.player_id == 1: color = Color.GREEN
-		elif s.player_id == 2: color = Color.RED
+		if s.side_id == 1: color = Color.GREEN
+		elif s.side_id == 2: color = Color.RED
 		
 		var radius = 3.0
 		if s.ship_class == "Space Station":

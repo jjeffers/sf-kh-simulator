@@ -10,7 +10,7 @@ func before_each():
 	_gm = GameManagerScript.new()
 	add_child(_gm)
 	
-	_gm.my_local_player_id = 1
+	_gm.my_side_id = 1
 	_gm.current_player_id = 1
 	_gm.ships.clear()
 	_gm.planet_hexes.clear()
