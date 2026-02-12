@@ -26,7 +26,7 @@ func before_each():
 	_gm.add_child(_ship)
 	
 	_gm.current_player_id = 1
-	_gm.my_local_player_id = 1 # Authoritative
+	_gm.my_side_id = 1 # Authoritative
 	_gm.current_phase = _gm.Phase.MOVEMENT
 	_gm.selected_ship = _ship
 	_gm.start_movement_phase()

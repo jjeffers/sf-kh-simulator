@@ -1,0 +1,19 @@
+[remap]
+
+importer="mp3"
+type="AudioStreamMP3"
+uid="uid://denwcsq268trt"
+path="res://.godot/imported/Orbital Siege.mp3-97c474424f676ee214ed6d67757f93fd.mp3str"
+
+[deps]
+
+source_file="res://Assets/Audio/Orbital Siege.mp3"
+dest_files=["res://.godot/imported/Orbital Siege.mp3-97c474424f676ee214ed6d67757f93fd.mp3str"]
+
+[params]
+
+loop=false
+loop_offset=0
+bpm=0
+beat_count=0
+bar_beats=4
