@@ -16,14 +16,14 @@ func test_rpc_add_attack():
 	# Setup Ships
 	var s1 = ShipScript.new()
 	s1.name = "Ship1"
-	s1.player_id = 1
-	s1.weapon_index = 0
+	s1.side_id = 1
+	s1.current_weapon_index = 0
 	s1.weapons = [ {"name": "Laser", "type": "Laser", "range": 5, "arc": "360", "ammo": 10}]
 	_gm.ships.append(s1)
 	
 	var s2 = ShipScript.new()
 	s2.name = "Target1"
-	s2.player_id = 2
+	s2.side_id = 2
 	_gm.ships.append(s2)
 	
 	# Execute RPC (Direct call to simulate receipt)

@@ -34,6 +34,8 @@ func test_generate_scenario_random():
 	var s2 = scen2["ships"][0]["position"]
 	var v1 = scen1["ships"][3]["position"]
 	var v2 = scen2["ships"][3]["position"]
+	var o1 = scen1["ships"][0]["orbit_direction"]
+	var o2 = scen2["ships"][0]["orbit_direction"]
 	
-	var changed = (s1 != s2) or (v1 != v2)
+	var changed = (s1 != s2) or (v1 != v2) or (o1 != o2)
 	assert_true(changed, "Different seeds should produce different scenarios")

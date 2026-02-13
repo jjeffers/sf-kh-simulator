@@ -14,7 +14,7 @@ func _ready():
 	NetworkManager.server_disconnected.connect(_on_server_disconnected)
 	
 	# Start Music
-	MusicManager.play_music("res://Assets/Audio/Orbital Siege.mp3", -5.0, 2.0)
+	MusicManager.play_music("res://Assets/Audio/Orbital Siege.mp3", -12.0, 2.0)
 	
 	_load_last_server()
 

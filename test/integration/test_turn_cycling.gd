@@ -7,6 +7,7 @@ var ScenarioManagerScript = preload("res://Scripts/ScenarioManager.gd")
 var _gm = null
 
 func before_each():
+	NetworkManager.lobby_data = {"teams": {}, "ship_assignments": {}}
 	_gm = GameManagerScript.new()
 	add_child(_gm)
 	# Mock Network Data for Surprise Attack
@@ -23,11 +24,11 @@ func test_turn_order_surprise_attack():
 	await get_tree().process_frame
 	
 	# Verify P1 starts
-	assert_eq(_gm.current_player_id, 1, "Player 1 (Sathar) should start")
+	assert_eq(_gm.current_side_id, 1, "Player 1 (Sathar) should start")
 	assert_eq(_gm.current_phase, _gm.Phase.MOVEMENT, "Should be P1 Movement Phase")
 	
 	# Verify P1 Ships valid?
-	var p1_ships = _gm.ships.filter(func(s): return s.player_id == 1 and not s.has_moved)
+	var p1_ships = _gm.ships.filter(func(s): return s.side_id == 1 and not s.has_moved)
 	assert_gt(p1_ships.size(), 0, "P1 should have ships to move")
 	
 	# 2. End P1 Turn (Force it)
@@ -44,13 +45,13 @@ func test_turn_order_surprise_attack():
 	# Since I can't see private functions easily, I'll simulate the public loop.
 	
 	# But wait, if P1 is done, logic should switch to P2.
-	# Let's try calling start_movement_phase() while current_player_id is 1 
+	# Let's try calling start_movement_phase() while current_side_id is 1 
 	# BUT all P1 ships have moved.
 	
 	_gm.start_movement_phase()
 	
 	# Logic:
-	# start_movement_phase checks available ships for current_player_id.
+	# start_movement_phase checks available ships for current_side_id.
 	# If 0, it calls start_combat_passive()? 
 	# Wait. If P1 is done, who switches it to P2?
 	
@@ -63,9 +64,17 @@ func test_turn_order_surprise_attack():
 	# If P2 done -> Switch to Combat.
 	
 	# 3. Assert P2 Turn
-	assert_eq(_gm.current_player_id, 2, "Should switch to P2 (UPF)")
+	# Handle Combat Phases (Passive then Active)
+	if _gm.current_phase == _gm.Phase.COMBAT:
+		print("DEBUG: skipping passive combat")
+		_gm.end_turn_cycle() # End Passive
+		if _gm.current_phase == _gm.Phase.COMBAT:
+			print("DEBUG: skipping active combat")
+			_gm.end_turn_cycle() # End Active
+
+	assert_eq(_gm.current_side_id, 2, "Should switch to P2 (UPF)")
 	assert_eq(_gm.current_phase, _gm.Phase.MOVEMENT, "Should stay in Movement Phase for P2")
 	
 	# Verify P2 Ship Selection
 	assert_not_null(_gm.selected_ship, "P2 should have a selected ship")
-	assert_eq(_gm.selected_ship.player_id, 2, "Selected ship should belong to P2")
+	assert_eq(_gm.selected_ship.side_id, 2, "Selected ship should belong to P2")

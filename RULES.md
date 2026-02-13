@@ -20,8 +20,9 @@ IMPORTANT: damage is counted as it occurs, it's possible for ships to destroyed 
 ## Movement
 - Driven by **ADF** (Acceleration/Deceleration Factor).
 - Ships can accelerate/decelerate by up to ADF equal to their current speed? (Verification needed).
-- **Turning**: Costs movement points? Or limited by turn mode?
-- **Orbiting**: Special maneuver for ships entering a planet's hex.
+- **Turning**: A ship may change it's facing to any direction of it's speed is 0. Otherwise a ship may change facing by 1 hexside when they enter a new hex.
+  When planning movement the player may select a hex to move to and then use the buttons to freely switch facings, left or right or straight ahead. An "undo" button will unwind the last segment of movement (direction and facing). Multiple undos will unwind the entire movement plan.
+- **Orbiting**: Special maneuver for ships starting their movement in a hex adjacent to a planet. The ship will orbit the planet clockwise or counter-clockwise, player's choice. The ship will orbit the planet until it decides to move out of the hex away from the planet.
 
 ## Ship Register
 
@@ -95,6 +96,8 @@ Mechanics for damage mitigation and avoidance.
 
 Available game scenarios and their configurations.
 
+Setup: if there is a planet present, ships should not spawn in the same hex as the planet.
+
 ### Surprise Attack!
 **Description:** Attackers ambush Station Alpha. The Defiant must evacuate the station and then escape.
 
@@ -114,17 +117,17 @@ Available game scenarios and their configurations.
 - **Spawn:** Random map edge (Distance 24).
 - **Venemous** (Destroyer)
   - Location: Edge hex.
-  - Heading: Facing inward.
+  - Heading: Facing toward the center.
   - Starting Speed: 10
   - Faction: Sathar.
 - **Perdition** (Heavy Cruiser)
   - Location: Adjacent to Venemous (Diagonal formation).
-  - Heading: Facing inward.
+  - Heading: Facing toards the center.
   - Starting Speed: 10
   - Faction: Sathar.
 
 **Special Rules**
- - The UPF frigate Defiant must dock for 3 turns to complete evacuation.
+ - The UPF frigate Defiant must dock for 3 turns to complete evacuation. After the 3rd turn the station is considered evacuated.
  - Once evacuated the station may no longer fire weapons or activate screens.
 
 **Objectives:**
@@ -137,7 +140,7 @@ Available game scenarios and their configurations.
 **UPF (Defenders):**
 - **Fortress K'zdit** (Space Station - Custom)
   - Stats: 100 Hull, 8 ICM, 2 MS.
-  - Weapons: 3x Laser Battery, 1x Rocket Battery Swarm (12 shots).
+  - Weapons: 3x Laser Battery, x12 Rocket Battery Swarm (12 shots).
 - **Valiant** (Battleship)
 - **Allison May** (Destroyer)
 - **Daridia** (Frigate)
@@ -146,11 +149,10 @@ Available game scenarios and their configurations.
 
 **Sathar (Invaders):
 - **Infamous** (Assault Carrier)
-  - Carries: 2 Fighter wings.
 - **Star Scourge** (Heavy Cruiser)
 - **Vicious, Pestilence, Doomfist** (Destroyers)
 - **Stinger** (Frigate)
-- **Fighters** (2 wings, independent)
+- **Fighters** (2 wings, docked with the Infamous)
 
 
 ## Winning Conditions

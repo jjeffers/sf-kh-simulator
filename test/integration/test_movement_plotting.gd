@@ -8,6 +8,7 @@ var _gm = null
 var _ship = null
 
 func before_each():
+	get_node("/root/NetworkManager").lobby_data = {"teams": {}, "ship_assignments": {}}
 	_gm = GameManagerScript.new()
 	add_child(_gm)
 	_gm._ready()
@@ -18,17 +19,17 @@ func before_each():
 	_ship = ShipScript.new()
 	_ship.name = "TestShip"
 	_ship.grid_position = Vector3i(0, 0, 0)
-	_ship.player_id = 1
+	_ship.side_id = 1
 	_ship.adf = 2
 	_ship.speed = 0 # Start stationary to avoid auto-orbit
 	_ship.facing = 0 # East
 	_gm.ships.append(_ship)
 	_gm.add_child(_ship)
 	
-	_gm.current_player_id = 1
+	_gm.current_side_id = 1
 	_gm.my_side_id = 1 # Authoritative
 	_gm.current_phase = _gm.Phase.MOVEMENT
-	_gm.selected_ship = _ship
+	_gm.current_phase = _gm.Phase.MOVEMENT
 	_gm.start_movement_phase()
 	
 func after_each():
@@ -42,6 +43,9 @@ func test_movement_click_handles_ghost_input():
 	# Facing 0 is East (1, 0, -1)
 	var target_hex = Vector3i(1, 0, -1)
 	var pixel_pos = HexGridScript.hex_to_pixel(target_hex)
+	print("DEBUG: test_movement target_hex: ", target_hex)
+	print("DEBUG: Selected Ship: ", _gm.selected_ship)
+	print("DEBUG: Ghost Ship: ", _gm.ghost_ship)
 	
 	_gm._handle_movement_click(target_hex)
 	
@@ -84,7 +88,7 @@ func test_select_ship_click():
 	var s2 = ShipScript.new()
 	s2.name = "OtherShip"
 	s2.grid_position = Vector3i(-2, 2, 0)
-	s2.player_id = 1
+	s2.side_id = 1
 	_gm.ships.append(s2)
 	_gm.add_child(s2)
 	

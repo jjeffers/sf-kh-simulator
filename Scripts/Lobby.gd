@@ -44,7 +44,30 @@ func _ready():
 func _on_refresh(_id = 0, _info = {}):
 	_refresh_ui()
 
+@onready var team1_label = $HBoxContainer/Team1Panel/VBoxContainer/Label
+@onready var team2_label = $HBoxContainer/Team2Panel/VBoxContainer/Label
+
+# ... (Existing lines)
+
 func _refresh_ui():
+	# Update Labels based on Scenario
+	var scen_key = NetworkManager.lobby_data.get("scenario", "surprise_attack")
+	var scen_data = ScenarioManager.get_scenario(scen_key)
+	
+	if not scen_data.is_empty():
+		var sides = scen_data.get("sides", {})
+		# Team 1 -> Side 0
+		var side0 = sides.get(0, {})
+		var role0 = side0.get("role", "Team 1")
+		var name0 = side0.get("name", "Unknown")
+		team1_label.text = "%s (%s)" % [name0, role0]
+		
+		# Team 2 -> Side 1
+		var side1 = sides.get(1, {})
+		var role1 = side1.get("role", "Team 2")
+		var name1 = side1.get("name", "Unknown")
+		team2_label.text = "%s (%s)" % [name1, role1]
+
 	# Clear Lists
 	team1_list.clear() # ItemList
 	team2_list.clear()

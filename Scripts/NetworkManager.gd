@@ -55,9 +55,11 @@ func host_game(port = PORT):
 	player_connected.emit(1, player_info)
 	
 	# Host is unassigned initially? Or Team 1?
-	# Host is unassigned initially? Or Team 1?
 	lobby_data["teams"][1] = 0
 	lobby_data["player_numbers"][1] = 1 # Host is Player 1
+	
+	# Ensure clean state
+	game_setup_data.clear()
 
 func _on_player_connected(id):
 	_register_player.rpc_id(id, player_info)
@@ -106,8 +108,10 @@ func _on_connected_fail():
 func _on_server_disconnected():
 	multiplayer.multiplayer_peer = null
 	players.clear()
+	lobby_data["team_names"] = {} # Optional additional cleanup?
 	lobby_data["teams"].clear()
 	lobby_data["ship_assignments"].clear()
+	game_setup_data.clear() # Prevent test data from leaking into game
 	server_disconnected.emit()
 
 # --- Lobby RPCs ---
