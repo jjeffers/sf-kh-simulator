@@ -59,6 +59,7 @@ var current_path: Array[Vector3i] = [] # List of hexes visited
 var turns_remaining: int = 0
 var start_speed: int = 0
 var can_turn_this_step: bool = false # "Use it or lose it" flag
+var turn_taken_this_step: int = 0 # -1 Left, 0 None, 1 Right
 var combat_action_taken: bool = false # Lock to prevent click spam
 var start_ms_active: bool = false # Track initial state for cost logic
 
@@ -67,7 +68,7 @@ var queued_attacks: Array = [] # Objects: {source, target, weapon_idx}
 var pending_resolutions: Array = []
 
 # Environment
-var planet_hexes: Array[Vector3i] = [Vector3i(0, 0, 0)] # Center hex
+var planet_hexes: Array[Vector3i] = []
 
 # Scenario Rules
 var current_scenario_rules: Array = []
@@ -97,7 +98,6 @@ func _ready():
 	camera.make_current()
 	
 	_setup_ui()
-	_setup_ui()
 	_setup_selection_highlight()
 	queue_redraw()
 	_spawn_planets()
@@ -106,7 +106,7 @@ func _ready():
 	var setup = NetworkManager.game_setup_data
 	# Lobby Data fallback
 	var lobby = NetworkManager.lobby_data
-	var scen_key = lobby.get("scenario", "the_last_stand")
+	var scen_key = lobby.get("scenario", null)
 	
 	var peer_id = multiplayer.get_unique_id()
 	# Determine MY Team ID (1 or 2)
@@ -116,14 +116,13 @@ func _ready():
 	# Legacy fallback:
 	if lobby["teams"].has(peer_id):
 		my_side_id = lobby["teams"][peer_id]
-		print("[DEBUG] GameManager: Found Team ID %d for Peer %d in Lobby Data" % [my_side_id, peer_id])
 	else:
 		my_side_id = 0 # Default to Spectator if not found
 		print("[DEBUG] GameManager: Peer %d NOT in Lobby Teams. Defaulting to 0 (Spectator). Teams: %s" % [peer_id, lobby["teams"]])
 		
 	# Legacy "host_side" override if lobby incomplete
 	if setup and not setup.is_empty():
-		scen_key = setup.get("scenario", "the_last_stand")
+		scen_key = setup.get("scenario", null)
 		var h_side = setup.get("host_side", 0)
 		var h_pid = h_side + 1
 		if multiplayer.is_server():
@@ -149,18 +148,57 @@ func _ready():
 				my_side_id = 2 # Client defaults to Side 2 (Defender usually)
 			log_message("Network: Default Assignment (Host=1, Client=2). My Side: %d" % my_side_id)
 		
+	# Game Start Handshake
+	if multiplayer.has_multiplayer_peer():
+		# Notify Host that we are loaded
+		player_loaded.rpc_id(1)
+	else:
+		# Offline / Testing
+		log_message("Offline Mode: Starting Game immediately.")
+		var seed_val = randi()
+		setup_game(seed_val, scen_key if scen_key else "")
+
+var loaded_players = {}
+
+@rpc("any_peer", "call_local", "reliable")
+func player_loaded():
+	var sender_id = multiplayer.get_remote_sender_id()
+	if sender_id == 0: sender_id = multiplayer.get_unique_id() # Local call
+	
+	log_message("Player %d finished loading." % sender_id)
+	loaded_players[sender_id] = true
+	
 	if multiplayer.is_server():
-		# Host: Generate random seed and broadcast
+		_check_all_players_ready()
+
+func _check_all_players_ready():
+	var all_ready = true
+	for pid in NetworkManager.players:
+		if not loaded_players.has(pid):
+			all_ready = false
+			break
+	
+	if all_ready:
+		log_message("All Players Ready. Starting Game...")
+		
+		# Generate Seed
 		var seed_val = randi()
 		print("GameManager: Generated Random Seed: %d" % seed_val)
-		setup_game.rpc(seed_val, scen_key)
-	else:
-		log_message("Waiting for Game Setup from Host...")
+		
+		# Determine Scenario Key
+		var lobby = NetworkManager.lobby_data
+		var setup = NetworkManager.game_setup_data
+		var scen_key = lobby.get("scenario", null)
+		if setup and not setup.is_empty():
+			scen_key = setup.get("scenario", null)
+			
+		setup_game.rpc(seed_val, scen_key if scen_key else "")
 
 @rpc("authority", "call_local", "reliable")
 func setup_game(seed_val: int, scen_key: String):
 	log_message("Game Setup Received: Seed %d" % seed_val)
 	load_scenario(scen_key, seed_val)
+	_load_planets_from_scenario(scen_key)
 	start_turn_cycle()
 
 func _process(delta):
@@ -436,6 +474,15 @@ func _setup_ui():
 	# Make sure it stays anchored
 	mini_map.set_anchors_and_offsets_preset(Control.PRESET_TOP_RIGHT, Control.PRESET_MODE_KEEP_SIZE, 20)
 	ui_layer.add_child(mini_map)
+	
+	# Connect Minimap Layout Updates
+	panel_planning.visibility_changed.connect(_update_minimap_position)
+	panel_planning.item_rect_changed.connect(_update_minimap_position)
+	panel_movement.visibility_changed.connect(_update_minimap_position)
+	panel_movement.item_rect_changed.connect(_update_minimap_position)
+	
+	# Initial Position Update
+	_update_minimap_position()
 
 var audio_laser: AudioStreamPlayer
 var audio_hit: AudioStreamPlayer
@@ -636,7 +683,6 @@ func _get_valid_targets_for_weapon(shooter: Ship, weapon: Dictionary) -> Array[S
 	
 	for t in targets:
 		var dist = HexGrid.hex_distance(shooter.grid_position, t.grid_position)
-		# print("[DEBUG] %s -> %s Dist: %d Range: %d" % [shooter.name, t.name, dist, weapon["range"]])
 		
 		if dist > weapon["range"]: continue
 		
@@ -658,12 +704,14 @@ func _get_valid_targets_for_weapon(shooter: Ship, weapon: Dictionary) -> Array[S
 		var line = HexGrid.get_line_coords(shooter.grid_position, t.grid_position)
 		var is_masked = false
 		for hex in line:
+			# Exclude Shooter and Target from masking check (can fire out of/into planet)
+			if hex == shooter.grid_position or hex == t.grid_position: continue
+			
 			if hex in planet_hexes:
 				is_masked = true
 				break
 		
 		if is_masked:
-			# print("[DEBUG] Masked by Planet: %s -> %s" % [shooter.name, t.name])
 			continue
 
 		if in_arc:
@@ -1111,6 +1159,7 @@ func _reset_plotting_state():
 		start_ms_active = false
 		
 	can_turn_this_step = false
+	turn_taken_this_step = 0
 	current_orbit_direction = 0
 	state_is_orbiting = false
 	combat_action_taken = false
@@ -1248,7 +1297,17 @@ func start_movement_phase():
 	combat_action_taken = false # Reset lock
 	
 	# Find un-moved ships for ACTIVE side (Current Side Only)
+	for s in ships:
+		if not is_instance_valid(s): continue
+		if s.side_id == current_side_id and not s.is_exploding and not s.has_moved:
+			pass # Accepted
+		else:
+			print("DEBUG: Rejected ", s.name, " Side:", s.side_id, " CurSide:", current_side_id, " Moved:", s.has_moved)
+
 	var available = ships.filter(func(s): return is_instance_valid(s) and s.side_id == current_side_id and not s.is_exploding and not s.has_moved)
+	print("DEBUG: start_movement_phase. Side: ", current_side_id, " Available: ", available.size())
+	if available.size() > 0:
+		print("DEBUG: First available: ", available[0].name, " ID: ", available[0].side_id, " Moved: ", available[0].has_moved)
 	
 	if available.size() == 0:
 		# Movement Phase COMPLETE for this side
@@ -1576,7 +1635,7 @@ func _update_ui_state():
 		# OR if we are stationary (Speed 0 Rule)
 		# OR if we are Orbiting
 		
-		var is_stationary = (current_path.size() == 0)
+		var is_stationary = (current_path.size() == 0 and start_speed == 0)
 		var allow_turn = false
 		
 		if is_moved:
@@ -1584,10 +1643,26 @@ func _update_ui_state():
 		elif is_stationary or state_is_orbiting:
 			allow_turn = true
 		else:
-			allow_turn = (can_turn_this_step and turns_remaining > 0)
+			# Normal Move Logic
+			# Enable if we have turns remaining AND haven't used step yet
+			# OR if we HAVE used step, allow Undo (opposite direction)
+			if turn_taken_this_step != 0:
+				allow_turn = true # Should calculate per button
+			else:
+				allow_turn = (can_turn_this_step and turns_remaining > 0)
 			
-		btn_turn_left.disabled = not allow_turn
-		btn_turn_right.disabled = not allow_turn
+		# Specific Button Logic
+		if is_stationary or state_is_orbiting:
+			btn_turn_left.disabled = false
+			btn_turn_right.disabled = false
+		elif turn_taken_this_step != 0:
+			# Allow only UNDO
+			# If taken Left (-1), allow Right (1). Disable Left.
+			btn_turn_left.disabled = (turn_taken_this_step == -1)
+			btn_turn_right.disabled = (turn_taken_this_step == 1)
+		else:
+			btn_turn_left.disabled = not allow_turn
+			btn_turn_right.disabled = not allow_turn
 		
 		# Orbit Check
 		var can_orbit = false
@@ -1776,14 +1851,28 @@ func _on_turn(direction: int):
 		
 	# direction: -1 (left), 1 (right)
 	# Rule: If Speed 0 (stationary) OR Orbiting, free rotation.
-	var is_stationary = (current_path.size() == 0)
+	var is_stationary = (current_path.size() == 0 and start_speed == 0)
 	
 	if not is_stationary and not state_is_orbiting:
-		if not can_turn_this_step or turns_remaining <= 0:
-			return
-		turns_remaining -= 1
-		can_turn_this_step = false # Used it
-		
+		# Check Reversal Logic
+		if turn_taken_this_step != 0:
+			# If we already turned, we can only turn BACK (Undo)
+			if direction == -turn_taken_this_step:
+				# Refund
+				turns_remaining += 1
+				turn_taken_this_step = 0
+				can_turn_this_step = true # Actually it was false, but now we are back to neutral
+			else:
+				# Trying to turn MORE in same direction (or blocked)
+				return
+		else:
+			# Fresh Turn
+			if not can_turn_this_step or turns_remaining <= 0:
+				return
+			turns_remaining -= 1
+			# can_turn_this_step = false # Dont set false, simpler to use turn_taken
+			turn_taken_this_step = direction
+			
 	ghost_ship.facing = posmod(ghost_ship.facing + direction, 6)
 	
 	ghost_ship.queue_redraw()
@@ -2523,14 +2612,10 @@ func _get_valid_targets(shooter: Ship) -> Array:
 				var blocked = false
 				for h in line_hexes:
 					if h in planet_hexes:
-						# "Firing through". 
-						# Usually, if shooter or target is IN the planet, it's weird, but technically blocked too?
-						# Or is it only blocked if an INTERMEDIATE hex mimics blocking?
-						# Prompt: "A ship may not fire through a hex containing a planet."
-						# Exclude Start and End? 
-						# If Start is inside, you can't fire out? If End is inside, you can't fire in?
-						# Let's assume strict blocking: If ANY hex in the line is a planet, it's blocked.
-						# Unless the ship is magically "above" it? No, collisions imply same plane.
+						# Logic: If ANY hex in the line is a planet, it's blocked.
+						# EXCEPTION: Shooter and Target hexes (Firing out/in is allowed)
+						if h == shooter.grid_position or h == s.grid_position: continue
+						
 						blocked = true
 						break
 				
@@ -2550,6 +2635,7 @@ func _get_valid_targets(shooter: Ship) -> Array:
 	return valid
 
 func _handle_movement_click(hex: Vector3i):
+	print("DEBUG: _handle_movement_click called with hex: ", hex)
 	# MOVEMENT PRIORITY FIX:
 	if selected_ship and ghost_ship and not selected_ship.has_moved:
 		var forward_vec = HexGrid.get_direction_vec(ghost_ship.facing)
@@ -2614,6 +2700,7 @@ func _handle_ghost_input(hex: Vector3i):
 	# Since grid is discrete, checking if hex is in the path of repeated forward_vec additions.
 	
 	var dist = HexGrid.hex_distance(ghost_ship.grid_position, hex)
+	print("DEBUG: ghost input dist: ", dist, " | start: ", ghost_ship.grid_position, " | target: ", hex, " | facing: ", ghost_ship.facing)
 	if dist == 0: return # Clicked itself
 	
 	# Verify it is exactly in the forward direction
@@ -2664,6 +2751,7 @@ func _handle_ghost_input(hex: Vector3i):
 	
 	# Enable turning for the final step
 	can_turn_this_step = true
+	turn_taken_this_step = 0
 	
 	if audio_beep.stream: audio_beep.play()
 
@@ -3129,3 +3217,48 @@ func rpc_remove_attack(source_name: String, weapon_idx: int):
 	_update_planning_ui_list()
 	_update_ui_state() # Update Status Label (Planned Attacks List)
 	queue_redraw()
+
+func _load_planets_from_scenario(scen_key: String):
+	var scen = ScenarioManager.get_scenario(scen_key)
+	
+	# Clear existing visual nodes (if any)
+	# Assuming planet visuals are named "Planet_X"
+	for c in get_children():
+		if c.name.begins_with("Planet_"):
+			c.queue_free()
+	
+	planet_hexes = []
+	if scen.has("planets"):
+		planet_hexes.clear()
+		for h in scen["planets"]:
+			planet_hexes.append(h)
+	elif scen_key == "surprise_attack":
+		# Fallback for backward compatibility if ScenarioManager update failed or crossed wires
+		planet_hexes = [Vector3i(0, 0, 0)]
+		
+	_spawn_planets_visuals()
+
+func _spawn_planets_visuals():
+	var idx = 0
+	for hex in planet_hexes:
+		var s = Sprite2D.new()
+		s.name = "Planet_%d" % idx
+		# Pick random texture or deterministic based on hex?
+		# Deterministic for sync?
+		var tex_idx = (abs(hex.x + hex.y * 10) % 6) + 1
+		s.texture = load("res://Assets/planet%d.png" % tex_idx)
+		
+		s.position = HexGrid.hex_to_pixel(hex)
+		
+		# Scale: Texture size unknown, assume 256ish.
+		# TILE_SIZE = 65. Diameter = 130.
+		# Scale to fill 80% of hex?
+		if s.texture:
+			var size = s.texture.get_size()
+			var target_size = HexGrid.TILE_SIZE * 1.5
+			var scale_fac = target_size / max(size.x, size.y)
+			s.scale = Vector2(scale_fac, scale_fac)
+			
+		s.z_index = -1 # Background
+		add_child(s)
+		idx += 1

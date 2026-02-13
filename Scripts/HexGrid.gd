@@ -18,7 +18,9 @@ static var directions = [
 ]
 
 static func get_direction_vec(facing_index: int) -> Vector3i:
-	return directions[posmod(facing_index, 6)]
+	var idx = facing_index % 6
+	if idx < 0: idx += 6
+	return directions[idx]
 
 # Get all 6 neighbors of a hex
 static func get_neighbors(hex: Vector3i) -> Array[Vector3i]:

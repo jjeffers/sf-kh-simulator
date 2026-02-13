@@ -15,14 +15,14 @@ func before_each():
 	# Mock ships
 	var s1 = ShipScript.new()
 	s1.name = "Shooter"
-	s1.player_id = 1
+	s1.side_id = 1
 	s1.grid_position = Vector3i(0, 0, 0)
 	_gm.ships.append(s1)
 	_gm.add_child(s1)
 	
 	var s2 = ShipScript.new()
 	s2.name = "Victim"
-	s2.player_id = 2
+	s2.side_id = 2
 	s2.grid_position = Vector3i(1, -1, 0)
 	_gm.ships.append(s2)
 	_gm.add_child(s2)
@@ -48,7 +48,7 @@ func test_crash_on_freed_ship_access():
 	# We can use .free() for immediate testing, but game uses queue_free.
 	
 	# Let's try to trigger the functions that crashed.
-	_gm.firing_player_id = 1
+	_gm.firing_side_id = 1
 	
 	# 1. _check_for_valid_combat_targets
 	_gm._check_for_valid_combat_targets()

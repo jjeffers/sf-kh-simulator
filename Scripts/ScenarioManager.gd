@@ -5,8 +5,8 @@ const SCENARIOS = {
 		"name": "Surprise Attack!",
 		"description": "Attackers ambush Station Alpha. Defiant must escape.",
 	"sides": {
-			0: {"name": "Sathar", "color": Color.RED},
-			1: {"name": "UPF", "color": Color.GREEN}
+			0: {"name": "Sathar", "color": Color.RED, "role": "Attacker"},
+			1: {"name": "UPF", "color": Color.GREEN, "role": "Defender"}
 		},
 		"ships": [], # Template, filled by generator
 		"special_rules": [
@@ -29,13 +29,14 @@ const SCENARIOS = {
 		"name": "The Last Stand",
 		"description": "A massive Sathar fleet assaults Fortress K'zdit. UPF must hold the line.",
 		"sides": {
-			0: {"name": "UPF", "color": Color.GREEN},
-			1: {"name": "Sathar", "color": Color.RED}
+			0: {"name": "UPF", "color": Color.GREEN, "role": "Defender"},
+			1: {"name": "Sathar", "color": Color.RED, "role": "Attacker"}
 		},
 		"ships": [
 			# Ships are generated procedurally in generate_scenario()
 		],
-		"special_rules": []
+		"special_rules": [],
+		"planets": [Vector3i(0, 0, 0)]
 	}
 }
 
@@ -122,8 +123,8 @@ static func generate_scenario(key: String, rng_seed: int) -> Dictionary:
 		# 5: (0, 1, -1) NE
 		
 		var directions = [
-			Vector3i(1, 0, -1), Vector3i(1, -1, 0), Vector3i(0, -1, 1),
-			Vector3i(-1, 0, 1), Vector3i(-1, 1, 0), Vector3i(0, 1, -1)
+			Vector3i(1, 0, -1), Vector3i(0, 1, -1), Vector3i(-1, 1, 0),
+			Vector3i(-1, 0, 1), Vector3i(0, -1, 1), Vector3i(1, -1, 0)
 		]
 		
 		var edge_dir_idx = randi() % 6
@@ -131,12 +132,7 @@ static func generate_scenario(key: String, rng_seed: int) -> Dictionary:
 		var start_dist = 24 # Moved to edge (Map Radius 25)
 		
 		var venemous_pos = edge_vec * start_dist
-		# Facing towards center? Center is 0,0,0.
-		# Opposite of edge_dir_idx basically.
-		# HexGrid facings: 0=E, 1=SE, 2=SW, 3=W, 4=NW, 5=NE
-		# If edge is E (0), facing should be W (3).
-		# (idx + 3) % 6
-		# (idx + 3) % 6
+		# Facing towards center (Opposite)
 		var attack_facing = (edge_dir_idx + 3) % 6
 		print("[SCENARIO] Sathar Entry Edge: %d (Vec: %s), Facing: %d" % [edge_dir_idx, edge_vec, attack_facing])
 		
@@ -203,7 +199,7 @@ static func generate_scenario(key: String, rng_seed: int) -> Dictionary:
 		
 		# 2. UPF Fleet - Defensive Cluster near Center (avoiding Station)
 		var upf_roster = [
-			{"name": "Valiant", "class": "Battleship", "pos": Vector3i(0, 0, 0), "facing": 0}, # Center
+			{"name": "Valiant", "class": "Battleship", "pos": Vector3i(1, 0, -1), "facing": 0}, # Shifted East off Planet
 			{"name": "Allison May", "class": "Destroyer", "pos": Vector3i(0, -2, 2), "facing": 1},
 			{"name": "Daridia", "class": "Frigate", "pos": Vector3i(-1, 1, 0), "facing": 5},
 			{"name": "Dauntless", "class": "Assault Scout", "pos": Vector3i(1, 1, -2), "facing": 0},
@@ -225,8 +221,8 @@ static func generate_scenario(key: String, rng_seed: int) -> Dictionary:
 		# SATHAR SETUP
 		# Random Edge Direction
 		var directions = [
-			Vector3i(1, 0, -1), Vector3i(1, -1, 0), Vector3i(0, -1, 1),
-			Vector3i(-1, 0, 1), Vector3i(-1, 1, 0), Vector3i(0, 1, -1)
+			Vector3i(1, 0, -1), Vector3i(0, 1, -1), Vector3i(-1, 1, 0),
+			Vector3i(-1, 0, 1), Vector3i(0, -1, 1), Vector3i(1, -1, 0)
 		]
 		var edge_dir_idx = randi() % 6
 		var edge_vec = directions[edge_dir_idx]
@@ -271,5 +267,6 @@ static func generate_scenario(key: String, rng_seed: int) -> Dictionary:
 		})
 
 		scen["ships"] = ships
+		scen["planets"] = [Vector3i(0, 0, 0)]
 		
 	return scen

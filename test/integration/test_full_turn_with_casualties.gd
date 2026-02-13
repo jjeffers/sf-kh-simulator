@@ -11,7 +11,7 @@ func before_each():
 	_gm._ready()
 	
 	_gm.my_side_id = 1
-	_gm.current_player_id = 1
+	_gm.current_side_id = 1
 	_gm.ships.clear()
 	_gm.planet_hexes.clear()
 
@@ -22,14 +22,14 @@ func test_turn_continues_after_casualty():
 	# 1. Setup: P1 Attacker, P2 Victim
 	var attacker = ShipScript.new()
 	attacker.name = "Attacker"
-	attacker.player_id = 1
+	attacker.side_id = 1
 	attacker.grid_position = Vector3i(0, 0, 0)
 	_gm.ships.append(attacker)
 	_gm.add_child(attacker)
 	
 	var victim = ShipScript.new()
 	victim.name = "Victim"
-	victim.player_id = 2
+	victim.side_id = 2
 	victim.grid_position = Vector3i(1, -1, 0) # Adjacent
 	_gm.ships.append(victim)
 	_gm.add_child(victim)
@@ -58,9 +58,12 @@ func test_turn_continues_after_casualty():
 	# Switch to combat phase manually to test this
 	_gm.current_phase = _gm.Phase.COMBAT
 	_gm.combat_subphase = 1 # Active Player fires
-	_gm.firing_player_id = 1
+	_gm.firing_side_id = 1
 	
 	# This was crashing at line 380
+	# We need to ensure we don't crash when interacting with the "dead" hex?
+	# Or just generally.
+	_gm.selected_ship = attacker # Reselect
 	_gm._handle_combat_click(Vector3i(1, -1, 0)) # Click on dead victim's hex
 	pass_test("Combat click survived")
 	

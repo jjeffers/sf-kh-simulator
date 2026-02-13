@@ -9,6 +9,7 @@ Added a new scenario "The Last Stand" featuring a massive Sathar fleet attacking
 - **Overrides**: Scenarios can now override default ship stats (e.g., custom hull/weapons for Fortress K'zdit).
 - **Assault Carrier**: Added configuration for the Sathar Assault Carrier (75 Hull, Launch Fighters).
 - **Debuffs**: Implemented `linked_state_debuff` support (Station evacuation disables weapons).
+- **Planet Masking**: Fixed blocking logic to allow ships inside planet hexes (e.g., Valiant) to fire out, and be targeted.
 
 ## How to Play "The Last Stand"
 - The scenario is currently set as the **default** in `GameManager.gd`.
