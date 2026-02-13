@@ -942,6 +942,7 @@ func execute_commit_combat(attacks_data: Array, rng_seed: int):
 			})
 			
 	panel_planning.visible = false
+	queue_redraw() # Clear planning visuals (Range arcs, target lines)
 	
 	log_message("Resolving %d attacks..." % pending_resolutions.size())
 	_process_next_attack()
