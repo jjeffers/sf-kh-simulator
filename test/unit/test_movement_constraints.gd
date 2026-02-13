@@ -56,12 +56,20 @@ func test_can_turn_freely_at_start_if_speed_0():
 	_gm.current_path = p
 	_gm.turns_remaining = 2
 	
+	# Current facing 0
+	_gm.ghost_ship.facing = 0
+	
 	# Try to turn
 	_gm._on_turn(1)
 	
 	# Expectation: Should change facing
-	assert_ne(_gm.ghost_ship.facing, _ship.facing, "Should turn if speed is 0")
-	assert_eq(_gm.turns_remaining, 2, "Speed 0 turn should be free")
+	assert_eq(_gm.ghost_ship.facing, 1, "Should turn if speed is 0")
+	assert_eq(_gm.turns_remaining, 2, "Speed 0 turn should be free (MR not consumed)")
+	
+	# Turn again
+	_gm._on_turn(1)
+	assert_eq(_gm.ghost_ship.facing, 2, "Should turn again")
+	assert_eq(_gm.turns_remaining, 2, "Still free")
 
 func test_undo_turn_logic():
 	# Simulate entered a hex

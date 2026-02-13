@@ -56,6 +56,7 @@ var btn_ms_toggle: CheckBox
 # Movement State
 var ghost_ship: Ship = null
 var current_path: Array[Vector3i] = [] # List of hexes visited
+var movement_history: Array = [] # Stack of partial states for Undo
 var turns_remaining: int = 0
 var start_speed: int = 0
 var can_turn_this_step: bool = false # "Use it or lose it" flag
@@ -147,6 +148,9 @@ func _ready():
 			else:
 				my_side_id = 2 # Client defaults to Side 2 (Defender usually)
 			log_message("Network: Default Assignment (Host=1, Client=2). My Side: %d" % my_side_id)
+		
+	# Force UI Update to show Side ID immediately
+	_update_ui_state()
 		
 	# Game Start Handshake
 	if multiplayer.has_multiplayer_peer():
@@ -1085,7 +1089,7 @@ func _process_next_attack():
 		var target_ms = target.get("is_ms_active")
 		var source_ms = source.get("is_ms_active")
 		if (target_ms or source_ms) and w_type in ["Laser", "Laser Canon"]:
-			dmg = floor(dmg / 2)
+			dmg = floor(float(dmg) / 2.0)
 			log_message("Masking Screen reduces damage!")
 			
 		log_message("[color=green]HIT![/color] Dmg: %d" % dmg)
@@ -1148,8 +1152,11 @@ func _spawn_hit_text(pos: Vector2, damage: int):
 
 
 # Helper to clear plotting state when switching ships
+# Helper to clear plotting state when switching ships
 func _reset_plotting_state():
 	current_path = []
+	movement_history.clear() # Clear Undo Stack
+	
 	if selected_ship:
 		turns_remaining = selected_ship.mr
 		start_speed = selected_ship.speed
@@ -1161,6 +1168,7 @@ func _reset_plotting_state():
 		
 	can_turn_this_step = false
 	turn_taken_this_step = 0
+	state_is_orbiting = false
 	current_orbit_direction = 0
 	state_is_orbiting = false
 	combat_action_taken = false
@@ -1323,8 +1331,44 @@ func start_movement_phase():
 		_update_ui_state() # Just refresh UI
 		return
 
-	# Select first available
-	selected_ship = available[0]
+	# Default to first available
+	var candidate = available[0]
+	
+	# AUTO-ORBIT LOGIC
+	# "If a space station is in orbit we can skip presenting the user with movement planning..."
+	if candidate.ship_class in ["Space Station"] and candidate.orbit_direction != 0:
+		selected_ship = candidate
+		
+		# Only Authority triggers the auto-move
+		var am_authority = (my_side_id == current_side_id) or multiplayer.is_server()
+		
+		if am_authority:
+			_spawn_ghost()
+			_reset_plotting_state()
+			_on_orbit(candidate.orbit_direction)
+			
+			_update_camera()
+			_update_ui_state()
+			log_message("Station %s maintaining orbit..." % candidate.name)
+			
+			# Brief delay to show path
+			await get_tree().create_timer(1.0).timeout
+			
+			# VALIDATION FIX: Ensure state is still valid after delay
+			var is_valid_state = true
+			if current_phase != Phase.MOVEMENT: is_valid_state = false
+			elif current_side_id != candidate.side_id: is_valid_state = false
+			elif not is_instance_valid(selected_ship) or selected_ship != candidate: is_valid_state = false
+			
+			if is_valid_state:
+				_on_commit_move()
+			else:
+				print("DEBUG: Auto-orbit cancelled due to state change during await")
+				
+		return # Stop processing, wait for commit/RPC to trigger next cycle
+
+	# Standard Selection
+	selected_ship = candidate
 	
 	if audio_ship_select and audio_ship_select.stream:
 		audio_ship_select.play()
@@ -1341,11 +1385,28 @@ func start_movement_phase():
 		print("[DEBUG] Standard move start for %s" % selected_ship.name)
 	
 	_update_camera()
-	_update_ui_state()
-	log_message("Movement Phase: %s" % get_side_name(current_side_id))
 	
 	if is_phase_change and audio_phase_change and audio_phase_change.stream:
 		audio_phase_change.play()
+
+
+func _push_history_state():
+	# Save snapshot of current state BEFORE applying a change
+	var state = {
+		"ghost_pos": ghost_ship.grid_position,
+		"ghost_facing": ghost_ship.facing,
+		"path_size": current_path.size(),
+		"turns_rem": turns_remaining,
+		"can_turn": can_turn_this_step,
+		"turn_taken": turn_taken_this_step,
+		"is_orbiting": state_is_orbiting,
+		"orbit_dir": current_orbit_direction
+	}
+	movement_history.push_back(state)
+	btn_undo.visible = true # Ensure undo is visible if history exists
+	_update_ui_state()
+	_update_ui_state()
+	log_message("Movement Phase: %s" % get_side_name(current_side_id))
 
 func start_combat_passive():
 	current_phase = Phase.COMBAT
@@ -1834,16 +1895,45 @@ func _update_ui_state():
 		else: label_player_info.modulate = Color.GREEN
 
 func _on_undo():
-	if current_path.size() > 0:
-		# Full Reset for simplicity
-		_spawn_ghost()
-		current_path.clear()
-		turns_remaining = selected_ship.mr
-		can_turn_this_step = false
-		state_is_orbiting = false
-		current_orbit_direction = 0
-		queue_redraw()
-		_update_ui_state()
+	# 1. Fallback / Safety Check
+	# If history is empty (or missing), but we have a path, we must reset to avoid getting stuck.
+	if movement_history.is_empty():
+		if current_path.size() > 0:
+			log_message("Resetting Movement (History Corrected)")
+			_reset_plotting_state()
+			_spawn_ghost()
+			_update_ui_state()
+			queue_redraw()
+		return
+
+	# 2. Normal Segmented Undo
+	var state = movement_history.pop_back()
+	
+	# Restore State
+	ghost_ship.grid_position = state["ghost_pos"]
+	ghost_ship.facing = state["ghost_facing"]
+	
+	# Restore Path
+	var target_size = state["path_size"]
+	if current_path.size() > target_size:
+		current_path.resize(target_size)
+		
+	turns_remaining = state["turns_rem"]
+	can_turn_this_step = state["can_turn"]
+	turn_taken_this_step = state["turn_taken"]
+	state_is_orbiting = state["is_orbiting"]
+	current_orbit_direction = state["orbit_dir"]
+	
+	# Visual Refresh
+	ghost_ship.queue_redraw()
+	queue_redraw()
+	_update_ui_state()
+	
+	if movement_history.is_empty():
+		btn_undo.visible = false
+		log_message("Movement Reset")
+	else:
+		log_message("Undo Last Step")
 
 func _on_turn(direction: int):
 	# Authority Check
@@ -1852,8 +1942,13 @@ func _on_turn(direction: int):
 		
 	# direction: -1 (left), 1 (right)
 	# Rule: If Speed 0 (stationary) OR Orbiting, free rotation.
+	# We also allow free rotation if we haven't started moving yet AND start_speed is 0
 	var is_stationary = (current_path.size() == 0 and start_speed == 0)
 	
+	# Explicitly allow if start_speed is 0, even if we are "moving" (which shouldn't happen if speed 0)
+	# But user says "ship with starting speed of 0".
+	if start_speed == 0: is_stationary = true
+
 	if not is_stationary and not state_is_orbiting:
 		# Check Reversal Logic
 		if turn_taken_this_step != 0:
@@ -1870,6 +1965,10 @@ func _on_turn(direction: int):
 			# Fresh Turn
 			if not can_turn_this_step or turns_remaining <= 0:
 				return
+			
+			# PUSH HISTORY
+			_push_history_state()
+			
 			turns_remaining -= 1
 			# can_turn_this_step = false # Dont set false, simpler to use turn_taken
 			turn_taken_this_step = direction
@@ -2044,6 +2143,36 @@ func _validate_rpc_ownership(sender_id: int, required_side_id: int) -> bool:
 	print("[Security] Validation Failed: Sender %d (Side %d) tried to control Side %d" % [sender_id, sender_side, required_side_id])
 	return false
 
+func _validate_move_path(ship: Ship, path: Array[Vector3i], final_facing: int) -> bool:
+	var start_pos = ship.grid_position
+	var current_pos = start_pos
+	
+	# 1. Path Continuity / Speed / Adjacency
+	for hex in path:
+		if HexGrid.hex_distance(current_pos, hex) != 1:
+			print("[Security] Teleport attempt! %s -> %s (Dist %d)" % [current_pos, hex, HexGrid.hex_distance(current_pos, hex)])
+			return false
+		current_pos = hex
+		
+	# 2. Speed / ADF Check
+	# Rule: In this game, your SPEED is the number of hexes moved this turn.
+	# You can change your speed by up to ADF (Acceleration/Deceleration Factor).
+	# So new_speed (path.size()) must be within [old_speed - adf, old_speed + adf].
+	var old_speed = ship.speed
+	var new_speed = path.size()
+	var min_speed = max(0, old_speed - ship.adf)
+	var max_speed = old_speed + ship.adf
+	
+	if new_speed < min_speed:
+		print("[Security] Illegal Deceleration! Speed %d -> %d (Min %d, ADF %d)" % [old_speed, new_speed, min_speed, ship.adf])
+		return false
+		
+	if new_speed > max_speed:
+		print("[Security] Illegal Acceleration! Speed %d -> %d (Max %d, ADF %d)" % [old_speed, new_speed, max_speed, ship.adf])
+		return false
+		
+	return true
+
 @rpc("any_peer", "call_local", "reliable")
 func execute_commit_move(ship_name: String, path: Array, final_facing: int, orbit_dir: int, is_orbiting: bool):
 	# Find Ship
@@ -2064,6 +2193,19 @@ func execute_commit_move(ship_name: String, path: Array, final_facing: int, orbi
 	if not _validate_rpc_ownership(sender_id, ship.side_id):
 		return
 		
+	# LOGIC VALIDATION (Anti-Cheat)
+	var typed_path: Array[Vector3i] = []
+	typed_path.assign(path)
+	
+	if not _validate_move_path(ship, typed_path, final_facing):
+		log_message("[Security] Move rejected: Invalid Path/Speed for %s" % ship.name)
+		return
+		
+	# LOGIC VALIDATION (Anti-Cheat)
+	if not _validate_move_path(ship, path, final_facing):
+		log_message("[Security] Move rejected: Invalid Path/Speed for %s" % ship.name)
+		return
+		
 	# Phase & State Validation
 	if current_phase != Phase.MOVEMENT:
 		print("[Security] Move rejected: Wrong Phase (%s)" % current_phase)
@@ -2081,7 +2223,7 @@ func execute_commit_move(ship_name: String, path: Array, final_facing: int, orbi
 	# Apply Move
 	ship.facing = final_facing
 	ship.speed = path.size()
-	ship.previous_path = path.duplicate() # Save for trails
+	ship.previous_path.assign(path) # Save for trails
 	
 	# Current Path for this client (for visual/logic if needed, though we just teleport usually)
 	# NOTE: collision checks happened on planner side. We assume valid if sent?
@@ -2254,7 +2396,7 @@ func _draw():
 		
 	# Predictive Path Highlighting
 	# FIX: Ensure we have a ghost ship AND are in movement phase
-	if current_phase == Phase.MOVEMENT and is_instance_valid(ghost_ship):
+	if current_phase == Phase.MOVEMENT and is_instance_valid(ghost_ship) and is_instance_valid(selected_ship):
 		# Re-verify start_speed is set (it should be set in start_movement_phase)
 		# But if ghost_ship was respawned, did we lose context?
 		# No, start_speed is a GM var.
@@ -2372,9 +2514,9 @@ func _draw():
 		var size = HexGrid.TILE_SIZE * 0.8
 		draw_arc(pos, size, 0, TAU, 32, Color.RED, 3.0)
 		# Draw crosshair
-		var len = 10
-		draw_line(pos + Vector2(-len, 0), pos + Vector2(len, 0), Color.RED, 2.0)
-		draw_line(pos + Vector2(0, -len), pos + Vector2(0, len), Color.RED, 2.0)
+		var length = 10
+		draw_line(pos + Vector2(-length, 0), pos + Vector2(length, 0), Color.RED, 2.0)
+		draw_line(pos + Vector2(0, -length), pos + Vector2(0, length), Color.RED, 2.0)
 
 func _draw_hex_outline(hex: Vector3i, color: Color, width: float):
 	var center = HexGrid.hex_to_pixel(hex)
@@ -2692,7 +2834,7 @@ func _handle_ghost_input(hex: Vector3i):
 	
 	# Strict Rule: Must be along Forward Vector
 	var forward_vec = HexGrid.get_direction_vec(ghost_ship.facing)
-	var diff = hex - ghost_ship.grid_position
+	var _diff = hex - ghost_ship.grid_position
 	
 	# Check if straight line
 	# A diff is a multiple of forward_vec if:
@@ -2739,6 +2881,9 @@ func _handle_ghost_input(hex: Vector3i):
 	if current_path.size() + dist > max_allowed_path:
 		log_message("Target too far! Limit: %d hexes" % max_allowed_path)
 		return
+
+	# PUSH HISTORY for UNDO
+	_push_history_state()
 
 	# Execute Move (Loop for each step)
 	for i in range(dist):
