@@ -3,6 +3,8 @@
 ## Overview
 Hex Space Combat is a turn-based tactical space combat simulator built in Godot 4. It uses a hex grid for movement and positioning, with a client-server architecture to support multiplayer gameplay.
 
+Gameplay rules are located in the RULES.md file.
+
 ## Core Systems
 
 ### GameManager (`Scripts/GameManager.gd`)

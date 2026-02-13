@@ -19,9 +19,12 @@ IMPORTANT: damage is counted as it occurs, it's possible for ships to destroyed 
 
 ## Movement
 - Driven by **ADF** (Acceleration/Deceleration Factor).
-- Ships can accelerate/decelerate by up to ADF equal to their current speed? (Verification needed).
+- Ships can accelerate/decelerate by up to ADF in hexes.
+- A ship must move the minimum number of hexes which is their current speed minus their ADF.
+
 - **Turning**: A ship may change it's facing to any direction of it's speed is 0. Otherwise a ship may change facing by 1 hexside when they enter a new hex.
   When planning movement the player may select a hex to move to and then use the buttons to freely switch facings, left or right or straight ahead. An "undo" button will unwind the last segment of movement (direction and facing). Multiple undos will unwind the entire movement plan.
+  
 - **Orbiting**: Special maneuver for ships starting their movement in a hex adjacent to a planet. The ship will orbit the planet clockwise or counter-clockwise, player's choice. The ship will orbit the planet until it decides to move out of the hex away from the planet.
 
 ## Ship Register
@@ -44,8 +47,7 @@ Detailed specifications for all ship classes currently implemented.
 
 Combat mechanics and specifications for all weapon types.
 **Global Modifiers:**
-- **Range:** -5% Hit Chance per hex.
-- **Head-On Attack:** +10% Hit Chance.
+- **Head-On Attack:** +10% Hit Chance for forward firing weapons (FF) if the target is in the row of hexes directly forward of a firing ship.
 - **Max Range:** 10 Hexes (Hard cap).
 
 | Weapon | Type | Range | Attributes | Damage | Base Chance | Special Rules |
