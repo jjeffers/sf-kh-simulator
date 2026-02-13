@@ -119,13 +119,26 @@ func _setup_background():
 	var layer = ParallaxLayer.new()
 	layer.name = "StarsLayer"
 	layer.motion_scale = Vector2(0.05, 0.05) # Distant stars
-	layer.motion_mirroring = texture.get_size()
-	bg.add_child(layer)
 	
-	var sprite = Sprite2D.new()
-	sprite.texture = texture
-	sprite.centered = false
-	layer.add_child(sprite)
+	# TextureRect approach for infinite tiling
+	var rect = TextureRect.new()
+	rect.texture = texture
+	# Enable Tiling and Repeat
+	rect.stretch_mode = TextureRect.STRETCH_TILE
+	rect.texture_repeat = CanvasItem.TEXTURE_REPEAT_ENABLED
+	# Make it huge to cover screen at any zoom (e.g. 4096 or larger)
+	# Since movement is relative to camera, we just need it big enough to tile.
+	# With mirroring, it just needs to be >= viewport size.
+	# Let's make it 4096 to be safe.
+	var tile_size = Vector2(4096, 4096)
+	rect.size = tile_size
+	rect.position = - tile_size / 2 # Center it
+	
+	# Parallax Mirroring must match the rect size for seamless scrolling
+	layer.motion_mirroring = tile_size
+	
+	bg.add_child(layer)
+	layer.add_child(rect)
 
 	# Network Setup
 	var setup = NetworkManager.game_setup_data
