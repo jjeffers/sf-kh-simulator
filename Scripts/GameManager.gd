@@ -2581,7 +2581,7 @@ func draw_hex(hex: Vector3i):
 	for i in range(6):
 		var angle = deg_to_rad(60 * i + 30)
 		points.append(center + Vector2(size * cos(angle), size * sin(angle)))
-	draw_polyline(points, Color(0.2, 0.2, 0.2), 1.0)
+	draw_polyline(points, Color(0.7, 0.7, 0.7, 0.4), 1.0)
 	
 	# Basic highlighting handled by predictive path now, removing old logic to avoid clutter
 
