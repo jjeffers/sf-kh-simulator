@@ -113,6 +113,7 @@ func _setup_background():
 
 	var bg = ParallaxBackground.new()
 	bg.name = "StarfieldBackground"
+	bg.scroll_ignore_camera_zoom = true
 	add_child(bg)
 	
 	var layer = ParallaxLayer.new()
