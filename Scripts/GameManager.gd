@@ -100,8 +100,85 @@ func _ready():
 	
 	_setup_ui()
 	_setup_selection_highlight()
+	_setup_background()
 	queue_redraw()
 	_spawn_planets()
+
+func _setup_background():
+	# Procedural Starfield using ParallaxBackground and NoiseTexture2D
+	var bg = ParallaxBackground.new()
+	bg.name = "StarfieldBackground"
+	add_child(bg)
+	
+	# Layer 1: Distant Stars (Slow movement)
+	var layer1 = ParallaxLayer.new()
+	layer1.name = "StarsLayer_Far"
+	layer1.motion_scale = Vector2(0.05, 0.05) # Very slow parallax (distance)
+	layer1.motion_mirroring = Vector2(2048, 2048) # Infinite scrolling match size
+	bg.add_child(layer1)
+	
+	var texture_rect = TextureRect.new()
+	texture_rect.name = "StarsTexture"
+	texture_rect.size = Vector2(2048, 2048)
+	texture_rect.stretch_mode = TextureRect.STRETCH_TILE
+	
+	# Create Noise Texture
+	var noise = FastNoiseLite.new()
+	noise.seed = randi()
+	noise.frequency = 0.1
+	noise.fractal_type = FastNoiseLite.FRACTAL_FBM
+	
+	var noise_tex = NoiseTexture2D.new()
+	noise_tex.width = 1024
+	noise_tex.height = 1024
+	noise_tex.in_3d_space = false
+	noise_tex.seamless = true
+	noise_tex.noise = noise
+	# Use a Gradient to make it look like stars (mostly black, some white dots)
+	var gradient = Gradient.new()
+	gradient.add_point(0.0, Color.BLACK)
+	gradient.add_point(0.6, Color.BLACK) # Threshold
+	gradient.add_point(0.95, Color(1, 1, 1, 0.5)) # Dim stars
+	gradient.add_point(1.0, Color.WHITE) # Bright stars
+	noise_tex.color_ramp = gradient
+	
+	texture_rect.texture = noise_tex
+	# Darkening Modulate for deep space feel
+	texture_rect.modulate = Color(0.8, 0.8, 1.0, 1.0)
+	
+	layer1.add_child(texture_rect)
+	
+	# Layer 2: Nebula / Closer Stars (Slightly faster)
+	var layer2 = ParallaxLayer.new()
+	layer2.name = "StarsLayer_Near"
+	layer2.motion_scale = Vector2(0.1, 0.1)
+	layer2.motion_mirroring = Vector2(2048, 2048)
+	bg.add_child(layer2)
+	
+	var nebula_rect = TextureRect.new()
+	nebula_rect.size = Vector2(2048, 2048)
+	nebula_rect.stretch_mode = TextureRect.STRETCH_TILE
+	
+	var noise2 = FastNoiseLite.new()
+	noise2.seed = randi() + 100
+	noise2.frequency = 0.005 # Lower freq for clouds
+	noise2.fractal_octaves = 2
+	
+	var nebula_tex = NoiseTexture2D.new()
+	nebula_tex.width = 1024
+	nebula_tex.height = 1024
+	nebula_tex.seamless = true
+	nebula_tex.noise = noise2
+	
+	var grad2 = Gradient.new()
+	grad2.add_point(0.0, Color(0, 0, 0, 0)) # Transparent
+	grad2.add_point(0.4, Color(0, 0, 0, 0))
+	grad2.add_point(1.0, Color(0.1, 0, 0.2, 0.3)) # Faint purple/blue nebula
+	nebula_tex.color_ramp = grad2
+	
+	nebula_rect.texture = nebula_tex
+	layer2.add_child(nebula_rect)
+
 	
 	# Network Setup
 	var setup = NetworkManager.game_setup_data
