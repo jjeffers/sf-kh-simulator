@@ -45,3 +45,13 @@ Added a new scenario "The Last Stand" featuring a massive Sathar fleet attacking
 - Star Scourge (Heavy Cruiser)
 - Vicious, Pestilence, Doomfist (Destroyers)
 - Stinger (Frigate)
+
+## Bug Fixes
+- **Station Auto-Orbit**: Refined orbital movement to be instant (0-second delay), effectively "skipping" the station during movement planning as requested. Fixed a validation bug where `execute_commit_move` was double-checking path validity without the `is_orbiting` flag, causing "Illegal Acceleration" rejections.
+- **Orbital Validation**: Patched `_validate_move_path` to explicitly allow orbital movement (Speed 1) for ships with ADF 0 (like Stations), which was previously rejecting the move as "Illegal Acceleration".
+- **Combat Skipping**: Fixed a bug where ships were incorrectly skipped during combat if they had fired in the previous turn segment (e.g. Offensive then Defensive). Implemented `reset_turn_state()` at the start of every player turn (instead of just round end) to ensure weapons are refreshed for each new movement/combat cycle.
+
+### Movement UX Improvements
+- **Self-Click Deceleration**: Players can now click their own ship's hex during movement planning to request a full stop (Speed 0), provided their ADF allows it.
+- **Ghost-Click Commit**: Clicking the "Ghost Ship" (the projected end position of a plotted move) now commits the move, serving as an intuitive "Confirm" action on the map.
+
