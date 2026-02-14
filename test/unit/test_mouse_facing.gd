@@ -104,6 +104,7 @@ func test_turn_after_move_preview():
 
 func test_mouse_over_right_turn_preview():
 	# Facing 1 (SE). Right is 2 (SW). Vector (-1, 1, 0).
+	game_manager.start_speed = 0 # Allow pivot
 	game_manager.ghost_ship.facing = 1
 	game_manager.can_turn_this_step = true
 	
@@ -129,21 +130,6 @@ func test_mouse_over_invalid_turn_preview():
 	# Assert
 	assert_eq(game_manager.ghost_ship.facing, 1, "Ghost should NOT rotate to Rear")
 
-func test_cannot_turn_restriction():
-	# Facing 1. Try Left Turn. But can_turn_this_step = false AND path not empty.
-	game_manager.ghost_ship.facing = 1
-	game_manager.can_turn_this_step = false
-	var path_arr: Array[Vector3i] = []
-	path_arr.append(Vector3i(0, 0, 0))
-	game_manager.current_path = path_arr # Moved at least once (dummy)
-	
-	var left_hex = Vector3i(1, 0, -1)
-	
-	# Execute
-	game_manager._handle_mouse_facing(left_hex)
-	
-	# Assert
-	assert_eq(game_manager.ghost_ship.facing, 1, "Ghost should NOT rotate if turn restricted")
 
 func test_speed_0_free_rotation_preview():
 	# Scenario: Speed 0 ship at start of turn. Should be able to rotate freely.

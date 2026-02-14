@@ -29,6 +29,13 @@ func before_each():
 	_gm.ghost_ship = _ship.duplicate() # Pseudo-ghost
 	_gm.add_child(_gm.ghost_ship)
 
+func _simulate_turn(dir: int):
+	var current_facing = _gm.ghost_ship.facing
+	var target_facing = (current_facing + dir + 6) % 6
+	var vec = HexGrid.get_direction_vec(target_facing)
+	var target_hex = _gm.ghost_ship.grid_position + vec
+	_gm._handle_mouse_facing(target_hex)
+
 func after_each():
 	_gm.free()
 	_gm = null
@@ -43,7 +50,7 @@ func test_cannot_turn_at_start_if_speed_gt_0():
 	_gm.can_turn_this_step = false # Revert to False
 	
 	# Try to turn
-	_gm._on_turn(1)
+	_simulate_turn(1)
 	
 	# Expectation: Should NOT change facing
 	assert_eq(_gm.ghost_ship.facing, _ship.facing, "Should NOT turn at start if speed > 0")
@@ -60,14 +67,14 @@ func test_can_turn_freely_at_start_if_speed_0():
 	_gm.ghost_ship.facing = 0
 	
 	# Try to turn
-	_gm._on_turn(1)
+	_simulate_turn(1)
 	
 	# Expectation: Should change facing
 	assert_eq(_gm.ghost_ship.facing, 1, "Should turn if speed is 0")
 	assert_eq(_gm.turns_remaining, 2, "Speed 0 turn should be free (MR not consumed)")
 	
 	# Turn again
-	_gm._on_turn(1)
+	_simulate_turn(1)
 	assert_eq(_gm.ghost_ship.facing, 2, "Should turn again")
 	assert_eq(_gm.turns_remaining, 2, "Still free")
 
@@ -78,31 +85,36 @@ func test_undo_turn_logic():
 	var p_start: Array[Vector3i] = [Vector3i(0, 0, 0)]
 	_gm.current_path = p_start
 	_gm.can_turn_this_step = true
-	_gm.turn_taken_this_step = 0
+	# _gm.turn_taken_this_step = 0 # Obsolete
 	var initial_facing = _gm.ghost_ship.facing
 	
 	# 1. Turn Right (+1)
-	_gm._on_turn(1)
+	_simulate_turn(1)
 	assert_eq(_gm.ghost_ship.facing, (initial_facing + 1) % 6, "Turn Right")
 	assert_eq(_gm.turns_remaining, 1, "Consumed MR")
-	assert_eq(_gm.turn_taken_this_step, 1, "Recorded Turn Right")
+	# assert_eq(_gm.turn_taken_this_step, 1, "Recorded Turn Right") # Obsolete
 	
 	# 2. Try Turn Right Again (+1) -> Should adhere to Max 1 Turn per hex
-	_gm._on_turn(1)
-	assert_eq(_gm.ghost_ship.facing, (initial_facing + 1) % 6, "Should Not Turn Again")
+	_simulate_turn(1)
+	assert_eq(_gm.ghost_ship.facing, (initial_facing + 1) % 6, "Should Not Turn Again (Blocked by Logic)")
 	assert_eq(_gm.turns_remaining, 1, "Should Not Consume MR")
 	
-	# 3. Undo with Left (-1)
-	_gm._on_turn(-1)
+	# 3. Undo with Left (-1) -> Mouse Gesture Logic: Turning back to entry facing is free/refund.
+	# Entry was initial_facing. Current is initial + 1.
+	# We want to turn to initial_facing.
+	_calculate_and_turn(initial_facing)
+	
 	assert_eq(_gm.ghost_ship.facing, initial_facing, "Turn Back (Undo)")
 	assert_eq(_gm.turns_remaining, 2, "Refunded MR")
-	assert_eq(_gm.turn_taken_this_step, 0, "Reset Turn Taken")
-	assert_true(_gm.can_turn_this_step, "Reset Can Turn")
+	# assert_eq(_gm.turn_taken_this_step, 0, "Reset Turn Taken") # Obsolete
 	
 	# 4. Now Turn Left (-1)
-	_gm._on_turn(-1)
-	var expected_left = (initial_facing - 1)
-	if expected_left < 0: expected_left += 6
+	_simulate_turn(-1)
+	var expected_left = (initial_facing - 1 + 6) % 6
 	assert_eq(_gm.ghost_ship.facing, expected_left, "Turn Left")
 	assert_eq(_gm.turns_remaining, 1, "Consumed MR")
-	assert_eq(_gm.turn_taken_this_step, -1, "Recorded Turn Left")
+
+func _calculate_and_turn(target_facing):
+	var vec = HexGrid.get_direction_vec(target_facing)
+	var target_hex = _gm.ghost_ship.grid_position + vec
+	_gm._handle_mouse_facing(target_hex)

@@ -50,7 +50,8 @@ static func generate_scenario(key: String, rng_seed: int) -> Dictionary:
 	# Clone to avoid modifying const
 	var scen = base_scen.duplicate(true)
 	
-	seed(rng_seed)
+	var rng = RandomNumberGenerator.new()
+	rng.seed = rng_seed
 	var ships = []
 	
 	if key == "surprise_attack":
@@ -60,8 +61,8 @@ static func generate_scenario(key: String, rng_seed: int) -> Dictionary:
 			Vector3i(1, 0, -1), Vector3i(1, -1, 0), Vector3i(0, -1, 1),
 			Vector3i(-1, 0, 1), Vector3i(-1, 1, 0), Vector3i(0, 1, -1)
 		]
-		var station_pos = center_neighbors[randi() % center_neighbors.size()]
-		var station_orbit_dir = 1 if randf() > 0.5 else -1
+		var station_pos = center_neighbors[rng.randi() % center_neighbors.size()]
+		var station_orbit_dir = 1 if rng.randf() > 0.5 else -1
 		print("[SCENARIO] Station Alpha Pos: %s, Orbit: %d" % [station_pos, station_orbit_dir])
 		
 		# Station Ship Def
@@ -127,7 +128,7 @@ static func generate_scenario(key: String, rng_seed: int) -> Dictionary:
 			Vector3i(-1, 0, 1), Vector3i(0, -1, 1), Vector3i(1, -1, 0)
 		]
 		
-		var edge_dir_idx = randi() % 6
+		var edge_dir_idx = rng.randi() % 6
 		var edge_vec = directions[edge_dir_idx]
 		var start_dist = 24 # Moved to edge (Map Radius 25)
 		
@@ -179,8 +180,8 @@ static func generate_scenario(key: String, rng_seed: int) -> Dictionary:
 			Vector3i(1, 0, -1), Vector3i(1, -1, 0), Vector3i(0, -1, 1),
 			Vector3i(-1, 0, 1), Vector3i(-1, 1, 0), Vector3i(0, 1, -1)
 		]
-		var station_pos = center_neighbors[randi() % center_neighbors.size()]
-		var station_orbit_dir = 1 if randf() > 0.5 else -1
+		var station_pos = center_neighbors[rng.randi() % center_neighbors.size()]
+		var station_orbit_dir = 1 if rng.randf() > 0.5 else -1
 		
 		ships.append({
 			"name": "Fortress K'zdit", "class": "Space Station", "side": 0,
@@ -224,7 +225,7 @@ static func generate_scenario(key: String, rng_seed: int) -> Dictionary:
 			Vector3i(1, 0, -1), Vector3i(0, 1, -1), Vector3i(-1, 1, 0),
 			Vector3i(-1, 0, 1), Vector3i(0, -1, 1), Vector3i(1, -1, 0)
 		]
-		var edge_dir_idx = randi() % 6
+		var edge_dir_idx = rng.randi() % 6
 		var edge_vec = directions[edge_dir_idx]
 		var center_dist = 22 # Slightly inside max radius
 		

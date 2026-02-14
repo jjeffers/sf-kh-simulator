@@ -24,6 +24,9 @@ jobs:
           mv Godot_v4.6-stable_linux.x86_64 godot
           chmod +x godot
 
+      - name: Import Assets
+        run: ./godot --headless --editor --quit-after 30
+
       - name: Run GUT Tests
         run: |
           ./godot --headless -s addons/gut/gut_cmdln.gd -gdir=test -ginclude_subdirs -gexit

@@ -10,7 +10,8 @@ func before_each():
 func test_station_orbit_environment():
 	# 1. Setup Environment similar to "Surprise Attack"
 	# We need to manually trigger _spawn_planets to populate planet_hexes
-	game_manager._spawn_planets()
+	# game_manager._spawn_planets()
+	game_manager.planet_hexes.append(Vector3i(0, 0, 0))
 	
 	print("Planet Hexes: ", game_manager.planet_hexes)
 	

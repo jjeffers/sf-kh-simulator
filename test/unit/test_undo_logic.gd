@@ -30,6 +30,15 @@ func before_each():
 	_gm._spawn_ghost()
 	_gm._reset_plotting_state()
 
+func _simulate_turn(dir: int):
+	# Helper to simulate mouse turn
+	var current_facing = _gm.ghost_ship.facing
+	var target_facing = (current_facing + dir + 6) % 6
+	# Global HexGrid class is available
+	var vec = HexGrid.get_direction_vec(target_facing)
+	var target_hex = _gm.ghost_ship.grid_position + vec
+	_gm._handle_mouse_facing(target_hex)
+
 func after_each():
 	_gm.free()
 
@@ -45,7 +54,7 @@ func test_segmented_undo():
 	assert_eq(_gm.ghost_ship.grid_position, hex1, "Ghost at hex1")
 	
 	# 2. Turn Right (+1) -> Facing 1 (SE: 0, 1, -1)
-	_gm._on_turn(1)
+	_simulate_turn(1)
 	
 	assert_eq(_gm.movement_history.size(), 2, "History should have 2 segments (Turn)")
 	assert_eq(_gm.ghost_ship.facing, 1, "Ghost facing 1")
