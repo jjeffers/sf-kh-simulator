@@ -47,8 +47,7 @@ var ui_layer: CanvasLayer
 var label_status: Label
 var btn_commit: Button
 var btn_undo: Button
-var btn_turn_left: Button
-var btn_turn_right: Button
+
 var btn_orbit_cw: Button
 var btn_orbit_ccw: Button
 var btn_ms_toggle: CheckBox
@@ -58,11 +57,17 @@ var ghost_ship: Ship = null
 var current_path: Array[Vector3i] = [] # List of hexes visited
 var movement_history: Array = [] # Stack of partial states for Undo
 var turns_remaining: int = 0
+var step_entry_facing: int = 0 # FACING LOGIC REFINEMENT: Tracks facing as we entered the *current* hex step.
 var start_speed: int = 0
 var can_turn_this_step: bool = false # "Use it or lose it" flag
 var turn_taken_this_step: int = 0 # -1 Left, 0 None, 1 Right
 var combat_action_taken: bool = false # Lock to prevent click spam
 var start_ms_active: bool = false # Track initial state for cost logic
+
+# Ghost Ship Visualization State
+var ghost_head_pos: Vector3i
+var ghost_head_facing: int
+var path_preview_active: bool = false
 
 # Combat State
 var queued_attacks: Array = [] # Objects: {source, target, weapon_idx}
@@ -276,6 +281,24 @@ func _process(delta):
 		else:
 			selection_highlight.visible = false
 
+	# Ghost Ship Hover Preview (Moved from _unhandled_input for reliability)
+	if current_phase == Phase.MOVEMENT and ghost_ship and is_instance_valid(ghost_ship) and selected_ship and not selected_ship.has_moved:
+		var local_mouse = get_local_mouse_position()
+		var hex_hover = HexGrid.pixel_to_hex(local_mouse)
+		
+		# Check if hovering over current path or start position
+		var on_path = current_path.has(hex_hover) or hex_hover == selected_ship.grid_position
+		
+		if on_path:
+			_handle_path_hover(hex_hover)
+		else:
+			_handle_preview_extension(hex_hover)
+			
+			# If we are NOT previewing (and not on path), we should handle standard Facing logic
+			# This replaces the logic in _unhandled_input to avoid 1-frame lag when leaving preview zone
+			if not path_preview_active:
+				_handle_mouse_facing(hex_hover)
+			
 func _setup_selection_highlight():
 	selection_highlight = Polygon2D.new()
 	selection_highlight.name = "SelectionHighlight"
@@ -315,19 +338,7 @@ func _setup_ui():
 	btn_commit.pressed.connect(_on_commit_move)
 	vbox.add_child(btn_commit)
 	
-	# Turn Buttons
-	var turn_box = HBoxContainer.new()
-	vbox.add_child(turn_box)
-	
-	btn_turn_left = Button.new()
-	btn_turn_left.text = "< Port"
-	btn_turn_left.pressed.connect(func(): _on_turn(-1))
-	turn_box.add_child(btn_turn_left)
-	
-	btn_turn_right = Button.new()
-	btn_turn_right.text = "Starbd >"
-	btn_turn_right.pressed.connect(func(): _on_turn(1))
-	turn_box.add_child(btn_turn_right)
+	# Turn Buttons Removed (Mouse Gesture Only)
 	
 	# Orbit Buttons
 	var orbit_box = HBoxContainer.new()
@@ -1209,6 +1220,7 @@ func _reset_plotting_state():
 	current_orbit_direction = 0
 	state_is_orbiting = false
 	combat_action_taken = false
+	step_entry_facing = selected_ship.facing # Init to current facing
 
 func _cycle_selection():
 	if current_phase == Phase.MOVEMENT:
@@ -1333,6 +1345,12 @@ func _start_turn_for_side(sid: int):
 	current_side_id = sid
 	log_message("=== Turn Start: Side %s ===" % get_side_name(sid))
 	
+	# Reset ALL ships (Movement/Fired state) for the new turn
+	# This ensures ships can fire again in the new turn (e.g. Defensive Fire)
+	for s in ships:
+		if is_instance_valid(s):
+			s.reset_turn_state()
+	
 	start_movement_phase()
 
 func start_movement_phase():
@@ -1357,24 +1375,26 @@ func start_movement_phase():
 	
 	if available.size() == 0:
 		# Movement Phase COMPLETE for this side
-		# Proceed to Combat Phase (Passive Fire first)
 		start_combat_passive()
 		return
 
-	# FIX: Respect current selection if valid
-	# If we already have a selected ship that is VALID (available), don't change selection.
-	# This prevents focus stealing when another player commits a move.
-	if selected_ship and selected_ship in available:
-		_update_ui_state() # Just refresh UI
-		return
-
-	# Default to first available
-	var candidate = available[0]
-	
-	# AUTO-ORBIT LOGIC
-	# "If a space station is in orbit we can skip presenting the user with movement planning..."
-	if candidate.ship_class in ["Space Station"] and candidate.orbit_direction != 0:
-		selected_ship = candidate
+	# AUTO-ORBIT LOGIC (Prioritized)
+	# Check if ANY available ship is a station in orbit
+	var auto_candidate = null
+	for s in available:
+		if s.ship_class in ["Space Station", "Station"] and s.orbit_direction != 0:
+			auto_candidate = s
+			print("DEBUG: Auto-Orbit Candidate Found: %s (Class: %s, Orbit: %d)" % [s.name, s.ship_class, s.orbit_direction])
+			break
+		else:
+			print("DEBUG: Skip Auto-Orbit Check: %s (Class: %s, Orbit: %d)" % [s.name, s.ship_class, s.orbit_direction])
+			
+	if auto_candidate:
+		# Force selection and execute
+		selected_ship = auto_candidate
+		# Proceed to execute logic block below (Factor out or verify flow)
+		# We can't just fall through because of the 'Respect Selection' block.
+		# So we handle it here and return.
 		
 		# Only Authority triggers the auto-move
 		var am_authority = (my_side_id == current_side_id) or multiplayer.is_server()
@@ -1382,31 +1402,28 @@ func start_movement_phase():
 		if am_authority:
 			_spawn_ghost()
 			_reset_plotting_state()
-			_on_orbit(candidate.orbit_direction)
+			_on_orbit(auto_candidate.orbit_direction)
 			
 			_update_camera()
 			_update_ui_state()
-			log_message("Station %s maintaining orbit..." % candidate.name)
+			# log_message("Station %s maintaining orbit..." % auto_candidate.name) # Silenced for speed
 			
-			# Brief delay to show path
-			await get_tree().create_timer(1.0).timeout
+			# Instant execution
+			_on_commit_move()
 			
-			# VALIDATION FIX: Ensure state is still valid after delay
-			var is_valid_state = true
-			if current_phase != Phase.MOVEMENT: is_valid_state = false
-			elif current_side_id != candidate.side_id: is_valid_state = false
-			elif not is_instance_valid(selected_ship) or selected_ship != candidate: is_valid_state = false
-			
-			if is_valid_state:
-				_on_commit_move()
-			else:
-				print("DEBUG: Auto-orbit cancelled due to state change during await")
+		return # Stop processing
 				
-		return # Stop processing, wait for commit/RPC to trigger next cycle
 
-	# Standard Selection
-	selected_ship = candidate
-	
+	# FIX: Respect current selection if valid
+	# If we already have a selected ship that is VALID (available), don't change selection.
+	if selected_ship and selected_ship in available:
+		_update_ui_state()
+		return
+
+	# Default to first available
+	selected_ship = available[0]
+		
+
 	if audio_ship_select and audio_ship_select.stream:
 		audio_ship_select.play()
 	
@@ -1430,8 +1447,8 @@ func start_movement_phase():
 func _push_history_state():
 	# Save snapshot of current state BEFORE applying a change
 	var state = {
-		"ghost_pos": ghost_ship.grid_position,
-		"ghost_facing": ghost_ship.facing,
+		"ghost_pos": ghost_head_pos,
+		"ghost_facing": ghost_head_facing,
 		"path_size": current_path.size(),
 		"turns_rem": turns_remaining,
 		"can_turn": can_turn_this_step,
@@ -1699,6 +1716,12 @@ func _spawn_ghost():
 	ghost_ship.facing = selected_ship.facing
 	ghost_ship.set_ghost(true)
 	add_child(ghost_ship)
+	
+	# Initialize Head State
+	ghost_head_pos = ghost_ship.grid_position
+	ghost_head_facing = ghost_ship.facing
+	path_preview_active = false
+	
 	queue_redraw() # Ensure predictive path draws immediately
 
 func _update_ui_state():
@@ -1727,41 +1750,8 @@ func _update_ui_state():
 		btn_commit.visible = true
 		btn_commit.disabled = not is_valid or is_moved
 		
-		btn_turn_left.visible = true
-		btn_turn_right.visible = true
-		
-		# Can only turn if we just moved, haven't turned yet, and have MR left
-		# OR if we are stationary (Speed 0 Rule)
-		# OR if we are Orbiting
-		
 		var is_stationary = (current_path.size() == 0 and start_speed == 0)
-		var allow_turn = false
-		
-		if is_moved:
-			allow_turn = false
-		elif is_stationary or state_is_orbiting:
-			allow_turn = true
-		else:
-			# Normal Move Logic
-			# Enable if we have turns remaining AND haven't used step yet
-			# OR if we HAVE used step, allow Undo (opposite direction)
-			if turn_taken_this_step != 0:
-				allow_turn = true # Should calculate per button
-			else:
-				allow_turn = (can_turn_this_step and turns_remaining > 0)
-			
-		# Specific Button Logic
-		if is_stationary or state_is_orbiting:
-			btn_turn_left.disabled = false
-			btn_turn_right.disabled = false
-		elif turn_taken_this_step != 0:
-			# Allow only UNDO
-			# If taken Left (-1), allow Right (1). Disable Left.
-			btn_turn_left.disabled = (turn_taken_this_step == -1)
-			btn_turn_right.disabled = (turn_taken_this_step == 1)
-		else:
-			btn_turn_left.disabled = not allow_turn
-			btn_turn_right.disabled = not allow_turn
+
 		
 		# Orbit Check
 		var can_orbit = false
@@ -1798,11 +1788,12 @@ func _update_ui_state():
 					# We only INVALIDATE if Path > Start Speed or Heading Mismatch
 					speed_ok = (current_path.size() <= start_speed)
 				else:
-					# Strict Activation Check:
 					# must EXACTLY match to activate fresh
 					speed_ok = (current_path.size() == start_speed)
 					
-				var heading_ok = (ghost_ship.facing == selected_ship.facing)
+				var heading_ok = false
+				if ghost_ship:
+					heading_ok = (ghost_ship.facing == selected_ship.facing)
 				ms_valid_move = (speed_ok and heading_ok)
 			
 			if selected_ship.is_ms_active:
@@ -1859,8 +1850,6 @@ func _update_ui_state():
 	elif current_phase == Phase.COMBAT:
 		btn_undo.visible = false
 		btn_commit.visible = false
-		btn_turn_left.visible = false
-		btn_turn_right.visible = false
 		btn_orbit_cw.visible = false
 		btn_orbit_ccw.visible = false
 		
@@ -1916,8 +1905,7 @@ func _update_ui_state():
 	elif current_phase == Phase.END:
 		btn_undo.visible = false
 		btn_commit.visible = false
-		btn_turn_left.visible = false
-		btn_turn_right.visible = false
+		btn_orbit_cw.visible = false
 		label_status.text = "Game Over"
 
 	# Update Player Info Label
@@ -1950,6 +1938,11 @@ func _on_undo():
 	ghost_ship.grid_position = state["ghost_pos"]
 	ghost_ship.facing = state["ghost_facing"]
 	
+	# Restore Head State
+	ghost_head_pos = ghost_ship.grid_position
+	ghost_head_facing = ghost_ship.facing
+	path_preview_active = false
+	
 	# Restore Path
 	var target_size = state["path_size"]
 	if current_path.size() > target_size:
@@ -1972,56 +1965,16 @@ func _on_undo():
 	else:
 		log_message("Undo Last Step")
 
-func _on_turn(direction: int):
-	# Authority Check
-	if my_side_id > 0 and current_side_id != my_side_id:
-		return
-		
-	# direction: -1 (left), 1 (right)
-	# Rule: If Speed 0 (stationary) OR Orbiting, free rotation.
-	# We also allow free rotation if we haven't started moving yet AND start_speed is 0
-	var is_stationary = (current_path.size() == 0 and start_speed == 0)
-	
-	# Explicitly allow if start_speed is 0, even if we are "moving" (which shouldn't happen if speed 0)
-	# But user says "ship with starting speed of 0".
-	if start_speed == 0: is_stationary = true
-
-	if not is_stationary and not state_is_orbiting:
-		# Check Reversal Logic
-		if turn_taken_this_step != 0:
-			# If we already turned, we can only turn BACK (Undo)
-			if direction == -turn_taken_this_step:
-				# Refund
-				turns_remaining += 1
-				turn_taken_this_step = 0
-				can_turn_this_step = true # Actually it was false, but now we are back to neutral
-			else:
-				# Trying to turn MORE in same direction (or blocked)
-				return
-		else:
-			# Fresh Turn
-			if not can_turn_this_step or turns_remaining <= 0:
-				return
-			
-			# PUSH HISTORY
-			_push_history_state()
-			
-			turns_remaining -= 1
-			# can_turn_this_step = false # Dont set false, simpler to use turn_taken
-			turn_taken_this_step = direction
-			
-	ghost_ship.facing = posmod(ghost_ship.facing + direction, 6)
-	
-	ghost_ship.queue_redraw()
-	queue_redraw() # Redraw GameManager to update grid highlight
-	_update_ui_state()
 
 var state_is_orbiting: bool = false # Temp state for UI
 
 func _on_orbit(direction: int):
-	# Authority Check
+	# Authority Check (Allow Server to override for Auto-Orbit visualization)
 	if my_side_id > 0 and current_side_id != my_side_id:
-		return
+		# If Server, we allow it (for auto-resolution visualization)
+		if not multiplayer.is_server():
+			print("[DEBUG] _on_orbit REJECTED: Not my turn (Me: %d, Cur: %d)" % [my_side_id, current_side_id])
+			return
 		
 	# direction: 1 (CW), -1 (CCW)
 	if not selected_ship: return
@@ -2180,7 +2133,7 @@ func _validate_rpc_ownership(sender_id: int, required_side_id: int) -> bool:
 	print("[Security] Validation Failed: Sender %d (Side %d) tried to control Side %d" % [sender_id, sender_side, required_side_id])
 	return false
 
-func _validate_move_path(ship: Ship, path: Array[Vector3i], final_facing: int) -> bool:
+func _validate_move_path(ship: Ship, path: Array[Vector3i], _final_facing: int, is_orbiting: bool = false) -> bool:
 	var start_pos = ship.grid_position
 	var current_pos = start_pos
 	
@@ -2195,6 +2148,16 @@ func _validate_move_path(ship: Ship, path: Array[Vector3i], final_facing: int) -
 	# Rule: In this game, your SPEED is the number of hexes moved this turn.
 	# You can change your speed by up to ADF (Acceleration/Deceleration Factor).
 	# So new_speed (path.size()) must be within [old_speed - adf, old_speed + adf].
+	
+	# EXCEPTION: Orbiting
+	if is_orbiting:
+		# Orbit moves are always length 1.
+		# If we are orbiting, we ignore ADF limits for the "Maintain Orbit" move.
+		if path.size() != 1:
+			print("[Security] Invalid Orbit Speed! Expected 1, got %d" % path.size())
+			return false
+		return true
+
 	var old_speed = ship.speed
 	var new_speed = path.size()
 	var min_speed = max(0, old_speed - ship.adf)
@@ -2234,15 +2197,11 @@ func execute_commit_move(ship_name: String, path: Array, final_facing: int, orbi
 	var typed_path: Array[Vector3i] = []
 	typed_path.assign(path)
 	
-	if not _validate_move_path(ship, typed_path, final_facing):
+	if not _validate_move_path(ship, typed_path, final_facing, is_orbiting):
 		log_message("[Security] Move rejected: Invalid Path/Speed for %s" % ship.name)
 		return
 		
-	# LOGIC VALIDATION (Anti-Cheat)
-	if not _validate_move_path(ship, path, final_facing):
-		log_message("[Security] Move rejected: Invalid Path/Speed for %s" % ship.name)
-		return
-		
+
 	# Phase & State Validation
 	if current_phase != Phase.MOVEMENT:
 		print("[Security] Move rejected: Wrong Phase (%s)" % current_phase)
@@ -2438,6 +2397,13 @@ func _draw():
 		# But if ghost_ship was respawned, did we lose context?
 		# No, start_speed is a GM var.
 		var steps_taken = current_path.size()
+		
+		# VISUAL AID: Draw line from Path End (Head) to Ghost Ship (Preview)
+		if ghost_head_pos != ghost_ship.grid_position:
+			var start_pix = HexGrid.hex_to_pixel(ghost_head_pos)
+			var end_pix = HexGrid.hex_to_pixel(ghost_ship.grid_position)
+			draw_line(start_pix, end_pix, Color(1, 1, 1, 0.5), 2.0, true) # Anti-aliased dashed-ish? No, just line.
+		
 		# Logic:
 		# Green (momentum): existing speed - steps taken. Must move at least this many more?
 		# Wait, "mandatory momentum" means you must move at least speed - ADF? No.
@@ -2469,8 +2435,10 @@ func _draw():
 		var green_count = max(0, start_speed - steps_taken - orange_count)
 		var yellow_count = max(0, max_speed - steps_taken - orange_count - green_count)
 		
-		var forward_vec = HexGrid.get_direction_vec(ghost_ship.facing)
-		var current_check_hex = ghost_ship.grid_position
+		# FIX: Use ghost_head_facing/pos to anchor the overlay to the COMMITTED path end,
+		# NOT the floating preview ghost.
+		var forward_vec = HexGrid.get_direction_vec(ghost_head_facing)
+		var current_check_hex = ghost_head_pos
 		
 		# Draw Orange (Mandatory)
 		for i in range(orange_count):
@@ -2621,7 +2589,17 @@ func _unhandled_input(event):
 				_handle_combat_click(hex_clicked)
 			elif current_phase == Phase.MOVEMENT:
 				_handle_movement_click(hex_clicked)
+		
+		# UX IMPROVEMENT: Right Click to Commit Move
+		elif event.button_index == MOUSE_BUTTON_RIGHT:
+			if current_phase == Phase.MOVEMENT and not current_path.is_empty():
+				log_message("Right Click: Committing Move...")
+				_on_commit_move()
 				
+	if event is InputEventMouseMotion:
+		pass # Mouse Logic moved to _process for consistency and to fix frame-lag bugs
+
+
 	if event is InputEventKey and event.pressed:
 		if event.keycode == KEY_EQUAL: # Plus key
 			target_zoom = (target_zoom + Vector2(ZOOM_SPEED, ZOOM_SPEED)).clamp(ZOOM_MIN, ZOOM_MAX)
@@ -2816,14 +2794,42 @@ func _get_valid_targets(shooter: Ship) -> Array:
 
 func _handle_movement_click(hex: Vector3i):
 	print("DEBUG: _handle_movement_click called with hex: ", hex)
+	
+	if not selected_ship or not is_instance_valid(selected_ship):
+		return
+
+	# UX IMPROVEMENT 1: Self-Click to Decelerate (Speed 0)
+	# If clicking own hex, and we haven't plotted a path yet.
+	if hex == selected_ship.grid_position and current_path.is_empty():
+		# Check if valid to stop (Speed - ADF <= 0)
+		var min_speed = max(0, start_speed - selected_ship.adf)
+		if min_speed == 0:
+			log_message("Requesting Full Stop (Speed 0)...")
+			# Commit Empty Path = Stay in place
+			_on_commit_move()
+			return
+		else:
+			log_message("Cannot stop! Min speed is %d" % min_speed)
+			return
+
+	# UX IMPROVEMENT 2: Ghost-Click to Commit
+	# If clicking the ghost (end of plotted path), commit.
+	# FIX: Only if NOT previewing (Ghost is confirmed at head)
+	if ghost_ship and is_instance_valid(ghost_ship) and hex == ghost_ship.grid_position and not path_preview_active:
+		if not current_path.is_empty():
+			log_message("Committing move via Ghost click...")
+			_on_commit_move()
+			return
+
+	# MOVEMENT PRIORITY FIX:
 	# MOVEMENT PRIORITY FIX:
 	if selected_ship and ghost_ship and not selected_ship.has_moved:
-		var forward_vec = HexGrid.get_direction_vec(ghost_ship.facing)
-		var dist = HexGrid.hex_distance(ghost_ship.grid_position, hex)
+		var forward_vec = HexGrid.get_direction_vec(ghost_head_facing)
+		var dist = HexGrid.hex_distance(ghost_head_pos, hex)
 		
 		# Valid straight line check
 		if dist > 0:
-			var check_pos = ghost_ship.grid_position + (forward_vec * dist)
+			var check_pos = ghost_head_pos + (forward_vec * dist)
 			if check_pos == hex:
 				_handle_ghost_input(hex)
 				return
@@ -2870,23 +2876,16 @@ func _handle_ghost_input(hex: Vector3i):
 
 	
 	# Strict Rule: Must be along Forward Vector
-	var forward_vec = HexGrid.get_direction_vec(ghost_ship.facing)
-	var _diff = hex - ghost_ship.grid_position
+	var forward_vec = HexGrid.get_direction_vec(ghost_head_facing)
 	
-	# Check if straight line
-	# A diff is a multiple of forward_vec if:
-	# For hexes, we must check if the distance matches the magnitude of diff in that direction.
-	# Simplest: Distance between them equals the dot-like check or loop.
-	# Since grid is discrete, checking if hex is in the path of repeated forward_vec additions.
-	
-	var dist = HexGrid.hex_distance(ghost_ship.grid_position, hex)
-	print("DEBUG: ghost input dist: ", dist, " | start: ", ghost_ship.grid_position, " | target: ", hex, " | facing: ", ghost_ship.facing)
+	var dist = HexGrid.hex_distance(ghost_head_pos, hex)
+	print("DEBUG: ghost input dist: ", dist, " | start: ", ghost_head_pos, " | target: ", hex, " | facing: ", ghost_head_facing)
 	if dist == 0: return # Clicked itself
 	
 	# Verify it is exactly in the forward direction
 	# We can check direction index matching
 	var valid_hex = false
-	var check = ghost_ship.grid_position + (forward_vec * dist)
+	var check = ghost_head_pos + (forward_vec * dist)
 	if check == hex:
 		valid_hex = true
 		
@@ -2923,9 +2922,11 @@ func _handle_ghost_input(hex: Vector3i):
 	_push_history_state()
 
 	# Execute Move (Loop for each step)
+
+	var current_pos = ghost_head_pos
 	for i in range(dist):
-		var next_hex = ghost_ship.grid_position + forward_vec
-		ghost_ship.grid_position = next_hex
+		var next_hex = current_pos + forward_vec
+		current_pos = next_hex
 		current_path.append(next_hex)
 		# "Usage" of turn opportunity:
 		# Logic: You only get the turn opportunity for the FINAL hex entered in this sequence.
@@ -2934,9 +2935,15 @@ func _handle_ghost_input(hex: Vector3i):
 	
 	# Enable turning for the final step
 	can_turn_this_step = true
+	step_entry_facing = ghost_ship.facing # New step started with this facing
 	turn_taken_this_step = 0
 	
 	if audio_beep.stream: audio_beep.play()
+	
+	# Update Head State
+	ghost_head_pos = current_pos
+	ghost_head_facing = ghost_ship.facing
+	ghost_ship.grid_position = ghost_head_pos
 
 	queue_redraw()
 	queue_redraw()
@@ -3445,3 +3452,240 @@ func _spawn_planets_visuals():
 		s.z_index = -1 # Background
 		add_child(s)
 		idx += 1
+
+func _handle_mouse_facing(hex: Vector3i):
+	# Only update if we can turn OR if we are just pivoting before moving?
+	if not ghost_ship: return
+	
+	# Determine relative direction from ghost
+	var dist = HexGrid.hex_distance(ghost_ship.grid_position, hex)
+	if dist != 1: return # Only react to adjacent hexes for "Look at" logic
+	
+	var dir_idx = HexGrid.get_hex_direction(ghost_ship.grid_position, hex)
+	if dir_idx == -1: return
+	
+	# Calculate relative turn
+	# current facing = f
+	# target facing = dir_idx
+	# diff = (dir_idx - f + 6) % 6
+	# 0 = Forward, 1 = Right, 5 = Left. Others are invalid for standard movement.
+	
+	# 1. Start of Turn, Speed 1
+	# Moving ships start with can_turn_this_step = false (must move first)
+	
+	# Speed 0 / Orbit Exception: Allow free rotation
+	var is_stationary = (current_path.size() == 0 and start_speed == 0)
+	if is_stationary or state_is_orbiting:
+		ghost_ship.facing = dir_idx
+		ghost_ship.queue_redraw()
+		queue_redraw()
+		_update_ui_state()
+		return
+
+	# Logic:
+	# diff 1 = Right, diff 5 = Left
+	
+	# DERIVED STATE REFACTOR
+	# Instead of using 'step_entry_facing' and 'turn_taken_this_step' vars,
+	# we calculate limits dynamically.
+	
+	var entry_facing = _get_step_entry_facing()
+	
+	# Validate Rotation Limit (1 hex side per step)
+	# Allowed facings: Entry, Entry+1 (Right), Entry-1 (Left)
+	
+	var diff_from_entry = posmod(dir_idx - entry_facing, 6)
+	var is_valid_turn = (diff_from_entry == 0) or (diff_from_entry == 1) or (diff_from_entry == 5)
+	
+	if not is_valid_turn:
+		# If speed 0, we might allow more? 
+		if start_speed == 0 and current_path.is_empty():
+			pass # Allow free rotation
+		else:
+			return # Block invalid turn
+			
+	# Cost Calculation
+	# Current Cost = abs(diff from entry)
+	# BUT we need to know if we *already* paid for a turn this step?
+	# We can't know that purely from state unless we track 'mr_spent_on_turn_this_step'.
+	# Or we recalculate total cost?
+	# Since we push state on every change, we can just look at the *previous* state's remaining turns.
+	
+	# Logic:
+	# 1. Calc checks if this specific target facing is allowed (geometry).
+	# 2. Calc cost relative to *current state* (not entry).
+	#    If we are at Entry+1 (Cost 1 paid). Target Entry (Cost -1).
+	#    If we are at Entry (Cost 0). Target Entry+1 (Cost 1).
+	
+	# We need 'turn_taken_this_step' to know if we are reversing a turn or making a new one?
+	# Actually, we can derive 'turn_taken' from (current_facing - entry_facing).
+	
+	var current_turn_state = posmod(ghost_ship.facing - entry_facing, 6)
+	# 0 = Center, 1 = Right, 5 = Left
+	
+	var target_turn_state = diff_from_entry
+	
+	var move_cost = 0
+	
+	# Transitions:
+	# 0 -> 1: Cost 1
+	# 0 -> 5: Cost 1
+	# 1 -> 0: Cost -1 (Refund)
+	# 5 -> 0: Cost -1 (Refund)
+	# 1 -> 5: Invalid (Jump) - caught by is_valid_turn check? 
+	#    Diff 1 to 5 is 4 steps. Blocked.
+	#    Wait, 1 (Right) to 5 (Left) is 2 steps left.
+	#    We only allow 1 step turns.
+	#    So the user must go 1 -> 0 -> 5.
+	
+	if current_turn_state == 0:
+		if target_turn_state != 0: move_cost = 1
+	else:
+		if target_turn_state == 0: move_cost = -1
+		elif target_turn_state != current_turn_state:
+			# 1 -> 5 or 5 -> 1.
+			# This implies a 2-step turn.
+			# Blocked by Geometry check?
+			# 1 is entry+1. 5 is entry-1.
+			# Distance is 2.
+			# Mouse handling usually calls us with neighbor hexes.
+			# But if we call this directly...
+			return # Block direct jump from L to R
+			
+	# Apply
+	if move_cost == 1 and turns_remaining <= 0:
+		return # No MR
+		
+	# Undo/Push History
+	_push_history_state()
+	turns_remaining -= move_cost
+	# turn_taken_this_step is no longer needed/maintained!
+	# We rely on ghost_ship.facing vs entry_facing.
+		
+	ghost_ship.facing = dir_idx
+		
+	# Update Visuals
+	ghost_ship.queue_redraw()
+	queue_redraw() # Update predictive path
+	_update_ui_state() # Update buttons to match
+	
+	# Update Head State
+	ghost_head_pos = ghost_ship.grid_position
+	ghost_head_facing = ghost_ship.facing
+
+# HELPER: Derive the facing we entered the current step with.
+# This replaces the fragile 'step_entry_facing' variable.
+func _get_step_entry_facing() -> int:
+	if current_path.is_empty():
+		return selected_ship.facing # Start facing
+	
+	# If path has items, the entry facing for the CURRENT tip (ghost pos)
+	# is the facing we had when we ENTERED this hex.
+	# Which is effectively the facing from the PREVIOUS path step?
+	# No, wait.
+	# Path: [Hex A, Hex B]
+	# Move A -> B.
+	# At B, we can turn.
+	# The facing we arrived at B with is the facing we had at A?
+	# Or rather, the facing we had *during* the move A->B.
+	# Which is the facing we had *after* leaving A.
+	
+	# Let's look at history.
+	# validation: diff = current - entry.
+	# If we just moved, current = entry. Cost = 0.
+	# If we turned once, current = entry + 1. Cost = 1.
+	
+	# We need the baseline facing for this step.
+	# It is the facing stored in the PREVIOUS history state corresponding to the start of this step?
+	
+	# Alternative:
+	# If we have a path, the 'entry facing' is the direction of the segment that led here?
+	# Vector = current_hex - prev_hex.
+	# derive facing from vector?
+	# YES. This is robust.
+	# Exception: If we just turned *in place* (speed 0 / orbit), there is no vector.
+	
+	if current_path.size() >= 1:
+		var current_hex = ghost_head_pos
+		var prev_hex = selected_ship.grid_position
+		if current_path.size() > 1:
+			prev_hex = current_path[current_path.size() - 2]
+		elif current_path.size() == 1:
+			prev_hex = selected_ship.grid_position
+			
+		var vec = current_hex - prev_hex
+		if vec != Vector3i.ZERO:
+			# The direction we moved to get here IS the entry facing.
+			# Because we move "forward".
+			# So entry facing == direction of movement.
+			return HexGrid.get_hex_direction(prev_hex, current_hex)
+			
+	return selected_ship.facing
+
+func _handle_path_hover(hex: Vector3i):
+	# Snap ghost ship to the state at this path step
+	var target_state = null
+	
+	if hex == selected_ship.grid_position:
+		# Start Position
+		# Search history for state at start (before any moves)
+		if movement_history.size() > 0:
+			target_state = movement_history[0]
+		else:
+			# No history, so start state is current state (if no moves)
+			# Or if we have moves but no history (shouldn't happen), assume start.
+			target_state = {"ghost_pos": selected_ship.grid_position, "ghost_facing": selected_ship.facing}
+	else:
+		# Search history for the LAST entry where ghost_pos == hex
+		# This represents the state before leaving that hex
+		for i in range(movement_history.size() - 1, -1, -1):
+			if movement_history[i]["ghost_pos"] == hex:
+				target_state = movement_history[i]
+				break
+				
+		# If not found in history, check if it's the CURRENT tip
+		if not target_state:
+			if ghost_head_pos == hex:
+				target_state = {"ghost_pos": ghost_head_pos, "ghost_facing": ghost_head_facing}
+				
+	if target_state:
+		ghost_ship.grid_position = target_state["ghost_pos"]
+		ghost_ship.facing = target_state["ghost_facing"]
+		ghost_ship.modulate.a = 0.6 # Semi-transparent
+		path_preview_active = true
+		queue_redraw()
+
+func _handle_preview_extension(hex: Vector3i):
+	# Not on existing path -> Check for valid extension preview
+	var forward_vec = HexGrid.get_direction_vec(ghost_head_facing)
+	var dist = HexGrid.hex_distance(ghost_head_pos, hex)
+	
+	# Check Max Speed / Path Limits (Visual Preview should match Logic)
+	var max_allowed_path = start_speed + selected_ship.adf
+	if current_path.size() + dist > max_allowed_path:
+		# Too far
+		dist = 0 # Invalid
+	
+	var is_valid_extension = false
+	if dist > 0:
+		var check_pos = ghost_head_pos + (forward_vec * dist)
+		# Check if hex is ON the line
+		if check_pos == hex:
+			# Validate range/etc? Assume yes for visual preview if line is straight
+			is_valid_extension = true
+			
+			# Snap Ghost to new tip
+			ghost_ship.grid_position = hex
+			ghost_ship.facing = ghost_head_facing
+			ghost_ship.modulate.a = 0.5 # Preview opacity
+			path_preview_active = true # Reuse flag to indicate "not at head"
+			queue_redraw()
+			
+	if not is_valid_extension:
+		# If we were previewing, snap back to head state
+		if path_preview_active:
+			ghost_ship.grid_position = ghost_head_pos
+			ghost_ship.facing = ghost_head_facing
+			ghost_ship.modulate.a = 1.0 # Reset opacity
+			path_preview_active = false
+			queue_redraw()

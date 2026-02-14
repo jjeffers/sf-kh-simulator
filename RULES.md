@@ -3,6 +3,7 @@
 ## Turn Sequence
 A. Side A Turn
 1. **Movement Phase**:
+   - All ships and stations in orbit are moved 1 hex in the direction of their orbit (CW or CCW).
    - Side A moves all ships.
 2. **Combat Phase**:
    - **Passive Fire**: The non-moving side (Side B) plans and executes defensive fire.
@@ -10,6 +11,7 @@ A. Side A Turn
 
 B. Side B Turn
 1. **Movement Phase**:
+  - All ships and stations in orbit are moved 1 hex  in the direction of their orbit (CW or CCW).
    - Side B moves all ships.
 2. **Combat Phase**:
    - **Passive Fire**: The non-moving side (Side A) plans and executes defensive fire.
@@ -23,8 +25,8 @@ IMPORTANT: damage is counted as it occurs, it's possible for ships to destroyed 
 - A ship must move the minimum number of hexes which is their current speed minus their ADF.
 
 - **Turning**: A ship may change it's facing to any direction of it's speed is 0. Otherwise a ship may change facing by 1 hexside when they enter a new hex.
-  When planning movement the player may select a hex to move to and then use the buttons to freely switch facings, left or right or straight ahead. An "undo" button will unwind the last segment of movement (direction and facing). Multiple undos will unwind the entire movement plan.
-  
+  When planning movement the player may select a hex to move to and then use the the mouse to switch facings, left or right or straight ahead, if current MR allows it. An "undo" button will unwind the last segment of movement (direction and facing). Multiple undos will unwind the entire movement plan.
+
 - **Orbiting**: Special maneuver for ships starting their movement in a hex adjacent to a planet. The ship will orbit the planet clockwise or counter-clockwise, player's choice. The ship will orbit the planet until it decides to move out of the hex away from the planet.
 
 ## Ship Register
