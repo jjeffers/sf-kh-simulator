@@ -79,6 +79,8 @@ var planet_hexes: Array[Vector3i] = []
 
 # Scenario Rules
 var current_scenario_rules: Array = []
+var turn_count: int = 0 # Track player turns
+
 
 # Planning UI
 var panel_planning: PanelContainer
@@ -621,10 +623,13 @@ var ship_status_panel # Typed as ShipStatusPanel, but checking if weak typing he
 
 
 func log_message(msg: String):
+	# Add Turn Number
+	var final_msg = "[Turn %d] %s" % [turn_count, msg]
+	
 	if combat_log:
-		combat_log.append_text(msg + "\n")
-	print(msg)
-	_log_to_file(msg)
+		combat_log.append_text(final_msg + "\n")
+	print(final_msg)
+	_log_to_file(final_msg)
 	
 func _init_log_file():
 	var f = FileAccess.open(LOG_FILE, FileAccess.WRITE)
@@ -1420,6 +1425,8 @@ func start_turn_cycle():
 
 func _start_turn_for_side(sid: int):
 	current_side_id = sid
+	turn_count += 1
+
 	log_message("=== Turn Start: Side %s ===" % get_side_name(sid))
 	
 	# Reset ALL ships (Movement/Fired state) for the new turn
@@ -3460,7 +3467,7 @@ func load_scenario(key: String, seed_val: int = 12345):
 		s.owner_peer_id = owner_pid
 		
 		s.binding_pos_update()
-		s.ship_destroyed.connect(func(ship): _on_ship_destroyed(ship))
+		s.ship_destroyed.connect(func(): _on_ship_destroyed(s))
 		ships.append(s)
 		
 	# Docking (Pass 2)
@@ -3511,6 +3518,16 @@ func _check_scenario_debuffs(ship: Ship, action: String) -> bool:
 							active = not trigger.is_docked
 						elif condition == "docked":
 							active = trigger.is_docked
+							
+						# Check Secondary Property Condition (if defined)
+						if active and rule.has("condition_property"):
+							var prop = rule["condition_property"]
+							var min_val = rule.get("condition_min_value", 0)
+							var actual_val = trigger.get(prop)
+							
+							if actual_val != null and actual_val < min_val:
+								active = false # Condition not met (e.g. not enough turns docked)
+
 							
 						if active:
 							log_message("Action '%s' blocked by scenario rule!" % action)

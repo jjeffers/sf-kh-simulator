@@ -106,8 +106,8 @@ Setup: if there is a planet present, ships should not spawn in the same hex as t
 **Description:** Attackers ambush Station Alpha. The Defiant must evacuate the station and then escape.
 
 **Defenders (Side A):**
-- **Station Alpha** (Space Station)
-  - Location: Random hex adjacent to Center (0, 0, 0).
+- **Station Alpha** (Space Station, 25 hull points, laser battery, reflective hull, x6 ICMs)
+  - Location: Random hex adjacent to a planet at Center (0, 0, 0).
   - Orbit: Clockwise or Counter-Clockwise (Random).
   - Faction: UPF.
 - **Defiant** (Frigate)
