@@ -189,6 +189,8 @@ func _setup_network_identity():
 			# Assuming 2 player for now
 			my_side_id = 3 - h_pid
 			log_message("Network: Client playing as Side %d" % my_side_id)
+
+
 	else:
 		# Fallback / Debug
 		if my_side_id == 0:
@@ -198,6 +200,11 @@ func _setup_network_identity():
 				my_side_id = 2 # Client defaults to Side 2 (Defender usually)
 			log_message("Network: Default Assignment (Host=1, Client=2). My Side: %d" % my_side_id)
 		
+	# Set Window Title for Easy Identification
+	var side_name = get_side_name(my_side_id)
+	var title = "Hex Space Combat - Player %d (%s)" % [my_side_id, side_name]
+	get_window().title = title
+
 	# Force UI Update to show Side ID immediately
 	_update_ui_state()
 		
