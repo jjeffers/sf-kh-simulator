@@ -1,6 +1,7 @@
 class_name GameManager
 extends Node2D
 
+
 @export var map_radius: int = 25
 
 var ships: Array[Ship] = []
@@ -44,9 +45,9 @@ var combat_subphase: int = 0
 
 # UI Nodes
 var ui_layer: CanvasLayer
-var label_status: Label
 var btn_commit: Button
 var btn_undo: Button
+
 
 var btn_orbit_cw: Button
 var btn_orbit_ccw: Button
@@ -84,6 +85,9 @@ var panel_planning: PanelContainer
 var container_ships: VBoxContainer
 var panel_movement: PanelContainer # NEW: Movement Status Panel
 var list_movement: VBoxContainer # NEW
+var panel_attack_queue: PanelContainer # NEW: Attack Queue Panel
+var list_attack_queue: VBoxContainer # NEW
+var btn_clear_all: Button # NEW: Clear All Attacks Button
 
 # ICM UI
 signal icm_decision_made(count: int)
@@ -189,6 +193,8 @@ func _setup_network_identity():
 			# Assuming 2 player for now
 			my_side_id = 3 - h_pid
 			log_message("Network: Client playing as Side %d" % my_side_id)
+
+
 	else:
 		# Fallback / Debug
 		if my_side_id == 0:
@@ -198,6 +204,11 @@ func _setup_network_identity():
 				my_side_id = 2 # Client defaults to Side 2 (Defender usually)
 			log_message("Network: Default Assignment (Host=1, Client=2). My Side: %d" % my_side_id)
 		
+	# Set Window Title for Easy Identification
+	var side_name = get_side_name(my_side_id)
+	var title = "Hex Space Combat - Player %d (%s)" % [my_side_id, side_name]
+	get_window().title = title
+
 	# Force UI Update to show Side ID immediately
 	_update_ui_state()
 		
@@ -323,6 +334,9 @@ func _setup_selection_highlight():
 	move_child(selection_highlight, 0) # Draw behind ships/planets if possible
 
 func _setup_ui():
+	if ui_layer:
+		ui_layer.queue_free()
+		
 	ui_layer = CanvasLayer.new()
 	add_child(ui_layer)
 	
@@ -331,9 +345,24 @@ func _setup_ui():
 	ui_layer.add_child(vbox)
 	
 	label_status = Label.new()
-	label_status.text = "Initializing..."
+	label_status.visible = true # Repurposed for Phase Info & Planned Attacks
+	# Ensure it doesn't overlap with ShipStatusPanel. 
+	# ShipStatusPanel is added to vbox FIRST. 
+	# Let's add label_status AFTER ShipStatusPanel, or Keep it at top but ensure content is distinct.
+	# Actually, ShipStatusPanel is added to vbox. label_status was added to vbox.
+	# If we want label_status to show "Planned Attacks", it might be better below the ship panel.
 	vbox.add_child(label_status)
 	
+	# New Ship Status Panel
+	# ship_status_panel = ShipStatusPanel.new() # Removed class_name, use load/preload
+	var panel_script = load("res://Scripts/ShipStatusPanel.gd")
+	if panel_script is GDScript:
+		ship_status_panel = panel_script.new()
+		vbox.add_child(ship_status_panel)
+	else:
+		push_error("CRITICAL: Failed to load ShipStatusPanel.gd! UI will be incomplete.")
+
+
 	var hbox = HBoxContainer.new()
 	vbox.add_child(hbox)
 	
@@ -371,6 +400,31 @@ func _setup_ui():
 	btn_ms_toggle.toggled.connect(_on_ms_toggled)
 	btn_ms_toggle.visible = false
 	vbox.add_child(btn_ms_toggle)
+	
+	# Attack Queue Panel
+	panel_attack_queue = PanelContainer.new()
+	panel_attack_queue.visible = false
+	vbox.add_child(panel_attack_queue)
+	
+	var aq_vbox = VBoxContainer.new()
+	panel_attack_queue.add_child(aq_vbox)
+	
+	var aq_header = HBoxContainer.new()
+	aq_vbox.add_child(aq_header)
+	
+	var aq_lbl = Label.new()
+	aq_lbl.text = "[!] PLANNED ATTACKS"
+	aq_lbl.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	aq_header.add_child(aq_lbl)
+	
+	btn_clear_all = Button.new()
+	btn_clear_all.text = "[Clear All]"
+	btn_clear_all.pressed.connect(func(): _clear_all_attacks())
+	aq_header.add_child(btn_clear_all)
+	
+	list_attack_queue = VBoxContainer.new()
+	aq_vbox.add_child(list_attack_queue)
+
 	
 	# Planning UI (Right Side)
 	panel_planning = PanelContainer.new()
@@ -562,6 +616,9 @@ var btn_restart: Button
 
 var label_center_message: Label
 var label_player_info: Label
+var label_status: Label
+var ship_status_panel # Typed as ShipStatusPanel, but checking if weak typing helps CI
+
 
 func log_message(msg: String):
 	if combat_log:
@@ -1459,6 +1516,7 @@ func start_movement_phase():
 		print("[DEBUG] Standard move start for %s" % selected_ship.name)
 	
 	_update_camera()
+	_update_ui_state() # Ensure UI reflects initial selection
 	
 	if is_phase_change and audio_phase_change and audio_phase_change.stream:
 		audio_phase_change.play()
@@ -1479,7 +1537,7 @@ func _push_history_state():
 	movement_history.push_back(state)
 	btn_undo.visible = true # Ensure undo is visible if history exists
 	_update_ui_state()
-	_update_ui_state()
+
 	log_message("Movement Phase: %s" % get_side_name(current_side_id))
 
 func start_combat_passive():
@@ -1514,7 +1572,12 @@ func _start_combat_planning():
 	selected_ship = null
 	combat_target = null
 	
+	# FIX: Explicitly hide Movement Panel to prevent overlap
+	if panel_movement:
+		panel_movement.visible = false
+		
 	# Reset "fired" state visually for planning (actual state reset happens differently)
+
 	# Actually, we need to track "planned usage".
 	# For now, let's just refresh the UI.
 	
@@ -1555,10 +1618,16 @@ func _handle_auto_skip_combat():
 func _update_planning_ui_list():
 	# Clear existing
 	for c in container_ships.get_children():
+		container_ships.remove_child(c)
 		c.queue_free()
 		
 	# Find ships for firing side
-	var my_ships = ships.filter(func(s): return is_instance_valid(s) and s.side_id == firing_side_id and not s.is_exploding)
+	var my_ships = []
+	
+	# Only populate list if it is MY turn to fire (or I am spectator/server)
+	if my_side_id == 0 or my_side_id == firing_side_id:
+		my_ships = ships.filter(func(s): return is_instance_valid(s) and s.side_id == firing_side_id and not s.is_exploding)
+
 	
 	for s in my_ships:
 		var btn = Button.new()
@@ -1566,6 +1635,7 @@ func _update_planning_ui_list():
 		
 		# Status Check
 		var targets = _get_valid_targets(s)
+
 		var has_targets = targets.size() > 0
 		var is_planned = false
 		for atk in queued_attacks:
@@ -1624,25 +1694,86 @@ func _update_planning_ui_list():
 			queue_redraw()
 		)
 		
+		
 		container_ships.add_child(btn)
+		
+	# FORCE Visibility purely based on content/logic
+	# We already checked my_ships.size() > 0 which effectively checks for valid ships to show
+	if my_ships.size() > 0:
+		panel_planning.visible = true
 	
-	# Only show planning panel if it's THIS side's turn to fire
-	var is_my_planning_phase = (firing_side_id == my_side_id) or (my_side_id == 0)
-	var show_planning = (current_phase == Phase.COMBAT and current_combat_state == CombatState.PLANNING and is_my_planning_phase)
-	panel_planning.visible = show_planning
-	
-	if show_planning:
-		# Reposition Minimap below the planning panel
+	# Reposition Minimap
+	if panel_planning.visible:
 		call_deferred("_update_minimap_position")
-	else:
-		# Reset Minimap
-		if mini_map:
-			mini_map.anchors_preset = Control.PRESET_TOP_RIGHT
-			mini_map.position = Vector2(get_viewport_rect().size.x - 220, 20)
-			# mini_map.set_anchors_and_offsets_preset(Control.PRESET_TOP_RIGHT, Control.PRESET_MODE_KEEP_SIZE, 20)
 
+	var is_my_planning_phase = (firing_side_id == my_side_id) or (my_side_id == 0)
 	if not is_my_planning_phase and current_phase == Phase.COMBAT and current_combat_state == CombatState.PLANNING:
 		label_status.text += "\n\n(Waiting for Side %d to plan attacks...)" % firing_side_id
+		
+	_update_attack_queue_ui()
+
+func _clear_all_attacks():
+	var attacks_to_clear = queued_attacks.duplicate()
+	for atk in attacks_to_clear:
+		if is_instance_valid(atk["source"]):
+			rpc_remove_attack.rpc(atk["source"].name, atk["weapon_idx"])
+			
+func _update_attack_queue_ui():
+	# Clear List
+	for c in list_attack_queue.get_children():
+		c.queue_free()
+
+	if current_phase != Phase.COMBAT or not panel_attack_queue:
+		if panel_attack_queue: panel_attack_queue.visible = false
+		return
+
+	# Show to ALL players during Combat
+	panel_attack_queue.visible = true
+	
+	# Only Firing Side (or Host/Spectator?) can Clear All
+	# Host (1) usually plays Side 1? Spec is 0. 
+	# Let's say: Clear All enabled if (my_side_id == firing_side_id) OR (my_side_id == 0)
+	if btn_clear_all:
+		var can_clear = (my_side_id == firing_side_id) or (my_side_id == 0)
+		btn_clear_all.visible = can_clear
+
+
+	# Populate
+	for atk in queued_attacks:
+		if not is_instance_valid(atk["source"]) or not is_instance_valid(atk["target"]): continue
+		
+		var source = atk["source"]
+		var target = atk["target"]
+		var weapon = source.weapons[atk["weapon_idx"]]
+		var weapon_name = atk["weapon_name"]
+		
+		# Calc Hit Chance
+		var dist = HexGrid.hex_distance(source.grid_position, target.grid_position)
+		
+		# Head On Logic (Replicated from Resolution for estimation)
+		var is_head_on = false
+		if weapon.get("arc") == "FF":
+			if target.grid_position == source.grid_position:
+				is_head_on = true
+			else:
+				var fwd_vec = HexGrid.get_direction_vec(source.facing)
+				var check = source.grid_position + fwd_vec
+				for i in range(weapon["range"]):
+					if check == target.grid_position:
+						is_head_on = true
+						break
+					check += fwd_vec
+		
+		var chance = Combat.calculate_hit_chance(dist, weapon, target, is_head_on, 0, source)
+		
+		var row = HBoxContainer.new()
+		list_attack_queue.add_child(row)
+		
+		var lbl = Label.new()
+		# Format: [ Source ] --> [ Weapon ] --> [ Target ] [ 75% ]
+		lbl.text = "[ %s ]  -->  [ %s ]  -->  [ %s ]   [ %d%% ]" % [source.name, weapon_name, target.name, chance]
+		lbl.horizontal_alignment = HORIZONTAL_ALIGNMENT_LEFT
+		row.add_child(lbl)
 
 # _check_combat_availability removed/replaced by explicit planning flow
 
@@ -1716,6 +1847,8 @@ func _update_camera(focus_target_override = null):
 			target_pos = focus_target_override.position
 		elif focus_target_override is Vector2:
 			target_pos = focus_target_override
+	elif combat_target and is_instance_valid(combat_target):
+		target_pos = combat_target.position
 	elif selected_ship:
 		target_pos = HexGrid.hex_to_pixel(selected_ship.grid_position)
 	else:
@@ -1750,12 +1883,16 @@ func _spawn_ghost():
 func _update_ui_state():
 	if not ui_layer: return
 	
-	# Reset Panels
-	panel_planning.visible = false
-	panel_movement.visible = false
+	# Reset Panels should be handled per-phase to avoid flicker
+	# panel_planning.visible = false 
+	# panel_movement.visible = false
 	
 	if current_phase == Phase.MOVEMENT:
 		panel_movement.visible = true
+		panel_planning.visible = false
+		if panel_attack_queue: panel_attack_queue.visible = false
+
+
 		_update_movement_ui_list()
 		
 		btn_undo.visible = (current_path.size() > 0)
@@ -1836,41 +1973,45 @@ func _update_ui_state():
 		else:
 			btn_ms_toggle.visible = false
 			
-		var txt = "%s Moving\n" % get_side_name(current_side_id)
-		txt += "Ship: %s (%s)\n" % [selected_ship.name, selected_ship.ship_class]
-		txt += "Hull: %d\n" % selected_ship.hull
-		txt += "Stats: ADF %d | MR %d\n" % [selected_ship.adf, selected_ship.mr]
-		if is_stationary:
-			txt += "Speed 0: Free Rotation Mode\n"
-		elif state_is_orbiting:
-			txt += "Orbiting: Free Rotation Mode\n"
+	# Update Status Panel
+	if ship_status_panel:
+		if selected_ship:
+			ship_status_panel.update_from_ship(selected_ship)
+			ship_status_panel.visible = true
 		else:
-			txt += "Remaining MR: %d\n" % turns_remaining
-			
-		txt += "Speed: %d -> %d / Range: [%d, %d]\n" % [start_speed, current_path.size(), min_speed, max_speed]
-		
-		if selected_ship.is_ms_active:
-			txt += "[COLOR=blue]Masking Screen ACTIVE[/COLOR]\n"
-		
-		txt += "Weapons:\n"
-		for w in selected_ship.weapons:
-			txt += "- %s (Ammo: %d)\n" % [w["name"], w["ammo"]]
+			ship_status_panel.visible = false
 
-		if not is_valid and not state_is_orbiting: # Orbit is always valid move of 1
-			# Special case: Orbit move is size 1. Does it respect ADF?
-			# User: "moves 1 hex". Usually Speed is irrelevant for Orbit or it SETS speed to 1?
-			# Assuming specific mechanic overrides speed limits or fits within them (1 is usually valid).
-			txt += "\n(Invalid Speed)"
-		
-		if state_is_orbiting:
-			# Orbit validity overrides speed check? 1 is valid usually.
-			# But commit button relies on is_valid.
-			# Let's assume 1 is valid. 
-			pass
+
+		if selected_ship:
+			# ShipStatusPanel handles detailed ship stats.
+			# label_status handles Phase/Global info.
+			var txt = ""
+			# Only show relevant phase info not covered by panel
+			if start_speed == 0:
+				txt += "Speed 0: Free Rotation Mode\n"
+			elif state_is_orbiting:
+				txt += "Orbiting: Free Rotation Mode\n"
 			
-		label_status.text = txt
+			if selected_ship.is_ms_active:
+				txt += "[COLOR=blue]Masking Screen ACTIVE[/COLOR]\n"
+
+			# Restore is_valid calc for UI feedback
+			var min_speed = max(0, start_speed - selected_ship.adf)
+			var max_speed = start_speed + selected_ship.adf
+			var is_valid = current_path.size() >= min_speed and current_path.size() <= max_speed
+
+
+			if not is_valid and not state_is_orbiting:
+				txt += "\n(Invalid Speed)"
+				
+			label_status.text = txt
+		else:
+			label_status.text = ""
+
 		
 	elif current_phase == Phase.COMBAT:
+		panel_movement.visible = false
+		
 		btn_undo.visible = false
 		btn_commit.visible = false
 		btn_orbit_cw.visible = false
@@ -1879,43 +2020,25 @@ func _update_ui_state():
 		var phase_name = "Passive" if combat_subphase == 1 else "Active"
 		var txt = "Combat (%s Fire)\n%s Firing" % [phase_name, get_side_name(firing_side_id)]
 		
+		# Ship details are in ShipStatusPanel. 
+		# But Hit Chance logic/Target info might be useful here or in Panel?
+		# Target info is specific to the selected ship's action.
+		
 		if selected_ship:
-			txt += "\nShip: %s" % selected_ship.get_display_name()
-			if selected_ship.weapons.size() > 0:
-				var w = selected_ship.weapons[selected_ship.current_weapon_index]
-				txt += "\nWeapon: %s" % w["name"]
-				txt += "\nAmmo: %d | Rng: %d | Arc: %s" % [w["ammo"], w["range"], w["arc"]]
-				if w.get("fired", false):
-					txt += " (FIRED)"
-					
+			# Keep Target Info here as it's transient
 			if combat_target:
 				txt += "\nTarget: %s" % combat_target.get_display_name()
 				# Show Hit Chance
 				if selected_ship and selected_ship.weapons.size() > 0:
 					var w = selected_ship.weapons[selected_ship.current_weapon_index]
 					var dist = HexGrid.hex_distance(selected_ship.grid_position, combat_target.grid_position)
-					# Quick Calc (ignoring partial implementation details for UI speed, or use Combat lib)
-					# We should use Combat.calculate_hit_chance(dist, w, target, head_on, 0, shooter)
-					# Need head_on check
-					var is_head_on = false # Simplified for UI hint, actual calc in resolve
+					# Quick Calc
+					var is_head_on = false
 					var chance = Combat.calculate_hit_chance(dist, w, combat_target, is_head_on, 0, selected_ship)
 					txt += "\nHit Chance: %d%%" % chance
 		
-		# SUMMARY OF PLANNED ATTACKS (Left Side)
-		if queued_attacks.size() > 0:
-			txt += "\n\n-- Planned Attacks --"
-			for atk in queued_attacks:
-				var s = atk["source"]
-				if is_instance_valid(s) and s.side_id == firing_side_id:
-					var t = atk["target"]
-					var w_name = atk["weapon_name"]
-					# Recalculate chance for display
-					var dist = HexGrid.hex_distance(s.grid_position, t.grid_position)
-					var w_idx = atk["weapon_idx"]
-					var w = s.weapons[w_idx]
-					var chance = Combat.calculate_hit_chance(dist, w, t, false, 0, s)
-					
-					txt += "\n%s -> %s: %s (%d%%)" % [s.get_display_name(), t.get_display_name(), w_name, chance]
+		# SUMMARY OF PLANNED ATTACKS (Left Side) - Now handled by panel_attack_queue
+		_update_attack_queue_ui()
 		
 		# Ensure planning panel visibility is managed here
 		if current_combat_state == CombatState.PLANNING:
@@ -1923,9 +2046,16 @@ func _update_ui_state():
 			panel_planning.visible = is_my_planning_phase
 			if is_my_planning_phase:
 				call_deferred("_update_minimap_position")
+				# Fix for disappearing list on input events (Q, clicks) that call _update_ui_state
+				_update_planning_ui_list()
+		else:
+			panel_planning.visible = false
 				
 		label_status.text = txt
 	elif current_phase == Phase.END:
+		panel_movement.visible = false
+		panel_planning.visible = false
+		
 		btn_undo.visible = false
 		btn_commit.visible = false
 		btn_orbit_cw.visible = false
@@ -3281,6 +3411,7 @@ func load_scenario(key: String, seed_val: int = 12345):
 		s.side_id = s_idx + 1 # 0->1, 1->2
 		
 		var side_info = scen_dataset.get("sides", {}).get(s_idx, {})
+
 		s.color = side_info.get("color", Color.WHITE)
 		if data.has("color"): s.color = data["color"]
 		
@@ -3419,8 +3550,8 @@ func rpc_add_attack(source_name: String, target_name: String, weapon_idx: int):
 		'weapon_name': weapon['name']
 	})
 	
-	_update_planning_ui_list()
 	_update_ui_state() # Update Status Label (Planned Attacks List)
+	_update_planning_ui_list()
 	queue_redraw()
 
 @rpc('any_peer', 'call_local', 'reliable')
@@ -3435,8 +3566,8 @@ func rpc_remove_attack(source_name: String, weapon_idx: int):
 			queued_attacks.remove_at(i)
 			break
 			
-	_update_planning_ui_list()
 	_update_ui_state() # Update Status Label (Planned Attacks List)
+	_update_planning_ui_list()
 	queue_redraw()
 
 func _load_planets_from_scenario(scen_key: String):
@@ -3508,6 +3639,7 @@ func _handle_mouse_facing(hex: Vector3i):
 	var is_stationary = (current_path.size() == 0 and start_speed == 0)
 	if is_stationary or state_is_orbiting:
 		ghost_ship.facing = dir_idx
+		ghost_head_facing = ghost_ship.facing # FIX: Ensure logic tracks the new facing!
 		ghost_ship.queue_redraw()
 		queue_redraw()
 		_update_ui_state()

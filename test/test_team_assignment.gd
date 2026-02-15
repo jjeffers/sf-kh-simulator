@@ -30,7 +30,8 @@ func test_host_assignment_surprise_attack_upf():
 	# In GUT, we might be server?
 	# We'll assume local logic works if we are Peer 1.
 	
-	game_manager = game_manager_script.new()
+	game_manager = GameManager.new()
+
 	add_child_autofree(game_manager)
 	
 	# _ready() runs.

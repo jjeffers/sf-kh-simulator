@@ -1,7 +1,9 @@
 class_name MiniMap
 extends PanelContainer
 
-var game_manager: GameManager
+
+var game_manager # : GameManager - Weak ref to avoid cyclic dependency
+
 
 # Configuration
 const MAP_SIZE = Vector2(200, 200)
