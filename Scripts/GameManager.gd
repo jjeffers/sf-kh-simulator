@@ -3462,8 +3462,8 @@ func rpc_add_attack(source_name: String, target_name: String, weapon_idx: int):
 		'weapon_name': weapon['name']
 	})
 	
-	_update_planning_ui_list()
 	_update_ui_state() # Update Status Label (Planned Attacks List)
+	_update_planning_ui_list()
 	queue_redraw()
 
 @rpc('any_peer', 'call_local', 'reliable')
@@ -3478,8 +3478,8 @@ func rpc_remove_attack(source_name: String, weapon_idx: int):
 			queued_attacks.remove_at(i)
 			break
 			
-	_update_planning_ui_list()
 	_update_ui_state() # Update Status Label (Planned Attacks List)
+	_update_planning_ui_list()
 	queue_redraw()
 
 func _load_planets_from_scenario(scen_key: String):
