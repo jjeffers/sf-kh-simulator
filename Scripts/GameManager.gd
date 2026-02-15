@@ -340,11 +340,11 @@ func _setup_ui():
 	
 	label_status = Label.new()
 	label_status.visible = true # Repurposed for Phase Info & Planned Attacks
-    # Ensure it doesn't overlap with ShipStatusPanel. 
-    # ShipStatusPanel is added to vbox FIRST. 
-    # Let's add label_status AFTER ShipStatusPanel, or Keep it at top but ensure content is distinct.
-    # Actually, ShipStatusPanel is added to vbox. label_status was added to vbox.
-    # If we want label_status to show "Planned Attacks", it might be better below the ship panel.
+	# Ensure it doesn't overlap with ShipStatusPanel. 
+	# ShipStatusPanel is added to vbox FIRST. 
+	# Let's add label_status AFTER ShipStatusPanel, or Keep it at top but ensure content is distinct.
+	# Actually, ShipStatusPanel is added to vbox. label_status was added to vbox.
+	# If we want label_status to show "Planned Attacks", it might be better below the ship panel.
 	vbox.add_child(label_status)
 	
 	# New Ship Status Panel
@@ -1874,7 +1874,7 @@ func _update_ui_state():
 			# ShipStatusPanel handles detailed ship stats.
 			# label_status handles Phase/Global info.
 			var txt = ""
-            # Only show relevant phase info not covered by panel
+			# Only show relevant phase info not covered by panel
 			if start_speed == 0:
 				txt += "Speed 0: Free Rotation Mode\n"
 			elif state_is_orbiting:
@@ -1906,10 +1906,10 @@ func _update_ui_state():
 		var phase_name = "Passive" if combat_subphase == 1 else "Active"
 		var txt = "Combat (%s Fire)\n%s Firing" % [phase_name, get_side_name(firing_side_id)]
 		
-        # Ship details are in ShipStatusPanel. 
-        # But Hit Chance logic/Target info might be useful here or in Panel?
-        # Target info is specific to the selected ship's action.
-        
+		# Ship details are in ShipStatusPanel. 
+		# But Hit Chance logic/Target info might be useful here or in Panel?
+		# Target info is specific to the selected ship's action.
+		
 		if selected_ship:
 			# Keep Target Info here as it's transient
 			if combat_target:
@@ -1945,6 +1945,8 @@ func _update_ui_state():
 			panel_planning.visible = is_my_planning_phase
 			if is_my_planning_phase:
 				call_deferred("_update_minimap_position")
+				# Fix for disappearing list on input events (Q, clicks) that call _update_ui_state
+				_update_planning_ui_list()
 				
 		label_status.text = txt
 	elif current_phase == Phase.END:
