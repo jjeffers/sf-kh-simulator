@@ -85,6 +85,9 @@ var panel_planning: PanelContainer
 var container_ships: VBoxContainer
 var panel_movement: PanelContainer # NEW: Movement Status Panel
 var list_movement: VBoxContainer # NEW
+var panel_attack_queue: PanelContainer # NEW: Attack Queue Panel
+var list_attack_queue: VBoxContainer # NEW
+var btn_clear_all: Button # NEW: Clear All Attacks Button
 
 # ICM UI
 signal icm_decision_made(count: int)
@@ -331,6 +334,9 @@ func _setup_selection_highlight():
 	move_child(selection_highlight, 0) # Draw behind ships/planets if possible
 
 func _setup_ui():
+	if ui_layer:
+		ui_layer.queue_free()
+		
 	ui_layer = CanvasLayer.new()
 	add_child(ui_layer)
 	
@@ -394,6 +400,31 @@ func _setup_ui():
 	btn_ms_toggle.toggled.connect(_on_ms_toggled)
 	btn_ms_toggle.visible = false
 	vbox.add_child(btn_ms_toggle)
+	
+	# Attack Queue Panel
+	panel_attack_queue = PanelContainer.new()
+	panel_attack_queue.visible = false
+	vbox.add_child(panel_attack_queue)
+	
+	var aq_vbox = VBoxContainer.new()
+	panel_attack_queue.add_child(aq_vbox)
+	
+	var aq_header = HBoxContainer.new()
+	aq_vbox.add_child(aq_header)
+	
+	var aq_lbl = Label.new()
+	aq_lbl.text = "[!] PLANNED ATTACKS"
+	aq_lbl.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	aq_header.add_child(aq_lbl)
+	
+	btn_clear_all = Button.new()
+	btn_clear_all.text = "[Clear All]"
+	btn_clear_all.pressed.connect(func(): _clear_all_attacks())
+	aq_header.add_child(btn_clear_all)
+	
+	list_attack_queue = VBoxContainer.new()
+	aq_vbox.add_child(list_attack_queue)
+
 	
 	# Planning UI (Right Side)
 	panel_planning = PanelContainer.new()
@@ -1541,7 +1572,12 @@ func _start_combat_planning():
 	selected_ship = null
 	combat_target = null
 	
+	# FIX: Explicitly hide Movement Panel to prevent overlap
+	if panel_movement:
+		panel_movement.visible = false
+		
 	# Reset "fired" state visually for planning (actual state reset happens differently)
+
 	# Actually, we need to track "planned usage".
 	# For now, let's just refresh the UI.
 	
@@ -1591,6 +1627,7 @@ func _update_planning_ui_list():
 	# Only populate list if it is MY turn to fire (or I am spectator/server)
 	if my_side_id == 0 or my_side_id == firing_side_id:
 		my_ships = ships.filter(func(s): return is_instance_valid(s) and s.side_id == firing_side_id and not s.is_exploding)
+
 	
 	for s in my_ships:
 		var btn = Button.new()
@@ -1598,6 +1635,7 @@ func _update_planning_ui_list():
 		
 		# Status Check
 		var targets = _get_valid_targets(s)
+
 		var has_targets = targets.size() > 0
 		var is_planned = false
 		for atk in queued_attacks:
@@ -1671,6 +1709,71 @@ func _update_planning_ui_list():
 	var is_my_planning_phase = (firing_side_id == my_side_id) or (my_side_id == 0)
 	if not is_my_planning_phase and current_phase == Phase.COMBAT and current_combat_state == CombatState.PLANNING:
 		label_status.text += "\n\n(Waiting for Side %d to plan attacks...)" % firing_side_id
+		
+	_update_attack_queue_ui()
+
+func _clear_all_attacks():
+	var attacks_to_clear = queued_attacks.duplicate()
+	for atk in attacks_to_clear:
+		if is_instance_valid(atk["source"]):
+			rpc_remove_attack.rpc(atk["source"].name, atk["weapon_idx"])
+			
+func _update_attack_queue_ui():
+	# Clear List
+	for c in list_attack_queue.get_children():
+		c.queue_free()
+
+	if current_phase != Phase.COMBAT or not panel_attack_queue:
+		if panel_attack_queue: panel_attack_queue.visible = false
+		return
+
+	# Show to ALL players during Combat
+	panel_attack_queue.visible = true
+	
+	# Only Firing Side (or Host/Spectator?) can Clear All
+	# Host (1) usually plays Side 1? Spec is 0. 
+	# Let's say: Clear All enabled if (my_side_id == firing_side_id) OR (my_side_id == 0)
+	if btn_clear_all:
+		var can_clear = (my_side_id == firing_side_id) or (my_side_id == 0)
+		btn_clear_all.visible = can_clear
+
+
+	# Populate
+	for atk in queued_attacks:
+		if not is_instance_valid(atk["source"]) or not is_instance_valid(atk["target"]): continue
+		
+		var source = atk["source"]
+		var target = atk["target"]
+		var weapon = source.weapons[atk["weapon_idx"]]
+		var weapon_name = atk["weapon_name"]
+		
+		# Calc Hit Chance
+		var dist = HexGrid.hex_distance(source.grid_position, target.grid_position)
+		
+		# Head On Logic (Replicated from Resolution for estimation)
+		var is_head_on = false
+		if weapon.get("arc") == "FF":
+			if target.grid_position == source.grid_position:
+				is_head_on = true
+			else:
+				var fwd_vec = HexGrid.get_direction_vec(source.facing)
+				var check = source.grid_position + fwd_vec
+				for i in range(weapon["range"]):
+					if check == target.grid_position:
+						is_head_on = true
+						break
+					check += fwd_vec
+		
+		var chance = Combat.calculate_hit_chance(dist, weapon, target, is_head_on, 0, source)
+		
+		var row = HBoxContainer.new()
+		list_attack_queue.add_child(row)
+		
+		var lbl = Label.new()
+		# Format: [ Source ] --> [ Weapon ] --> [ Target ] [ 75% ]
+		lbl.text = "[ %s ]  -->  [ %s ]  -->  [ %s ]   [ %d%% ]" % [source.name, weapon_name, target.name, chance]
+		lbl.horizontal_alignment = HORIZONTAL_ALIGNMENT_LEFT
+		row.add_child(lbl)
 
 # _check_combat_availability removed/replaced by explicit planning flow
 
@@ -1787,6 +1890,9 @@ func _update_ui_state():
 	if current_phase == Phase.MOVEMENT:
 		panel_movement.visible = true
 		panel_planning.visible = false
+		if panel_attack_queue: panel_attack_queue.visible = false
+
+
 		_update_movement_ui_list()
 		
 		btn_undo.visible = (current_path.size() > 0)
@@ -1931,21 +2037,8 @@ func _update_ui_state():
 					var chance = Combat.calculate_hit_chance(dist, w, combat_target, is_head_on, 0, selected_ship)
 					txt += "\nHit Chance: %d%%" % chance
 		
-		# SUMMARY OF PLANNED ATTACKS (Left Side)
-		if queued_attacks.size() > 0:
-			txt += "\n\n-- Planned Attacks --"
-			for atk in queued_attacks:
-				var s = atk["source"]
-				if is_instance_valid(s) and s.side_id == firing_side_id:
-					var t = atk["target"]
-					var w_name = atk["weapon_name"]
-					# Recalculate chance for display
-					var dist = HexGrid.hex_distance(s.grid_position, t.grid_position)
-					var w_idx = atk["weapon_idx"]
-					var w = s.weapons[w_idx]
-					var chance = Combat.calculate_hit_chance(dist, w, t, false, 0, s)
-					
-					txt += "\n%s -> %s: %s (%d%%)" % [s.get_display_name(), t.get_display_name(), w_name, chance]
+		# SUMMARY OF PLANNED ATTACKS (Left Side) - Now handled by panel_attack_queue
+		_update_attack_queue_ui()
 		
 		# Ensure planning panel visibility is managed here
 		if current_combat_state == CombatState.PLANNING:
@@ -3318,6 +3411,7 @@ func load_scenario(key: String, seed_val: int = 12345):
 		s.side_id = s_idx + 1 # 0->1, 1->2
 		
 		var side_info = scen_dataset.get("sides", {}).get(s_idx, {})
+
 		s.color = side_info.get("color", Color.WHITE)
 		if data.has("color"): s.color = data["color"]
 		
