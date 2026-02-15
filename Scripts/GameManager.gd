@@ -345,8 +345,11 @@ func _setup_ui():
 	# New Ship Status Panel
 	# ship_status_panel = ShipStatusPanel.new() # Removed class_name, use load/preload
 	var panel_script = load("res://Scripts/ShipStatusPanel.gd")
-	ship_status_panel = panel_script.new()
-	vbox.add_child(ship_status_panel)
+	if panel_script is GDScript:
+		ship_status_panel = panel_script.new()
+		vbox.add_child(ship_status_panel)
+	else:
+		push_error("CRITICAL: Failed to load ShipStatusPanel.gd! UI will be incomplete.")
 
 
 	var hbox = HBoxContainer.new()
