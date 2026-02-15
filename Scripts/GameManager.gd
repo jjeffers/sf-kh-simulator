@@ -3559,6 +3559,7 @@ func _handle_mouse_facing(hex: Vector3i):
 	var is_stationary = (current_path.size() == 0 and start_speed == 0)
 	if is_stationary or state_is_orbiting:
 		ghost_ship.facing = dir_idx
+		ghost_head_facing = ghost_ship.facing # FIX: Ensure logic tracks the new facing!
 		ghost_ship.queue_redraw()
 		queue_redraw()
 		_update_ui_state()
