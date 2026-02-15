@@ -339,7 +339,12 @@ func _setup_ui():
 	ui_layer.add_child(vbox)
 	
 	label_status = Label.new()
-	label_status.visible = false # Hide old label
+	label_status.visible = true # Repurposed for Phase Info & Planned Attacks
+    # Ensure it doesn't overlap with ShipStatusPanel. 
+    # ShipStatusPanel is added to vbox FIRST. 
+    # Let's add label_status AFTER ShipStatusPanel, or Keep it at top but ensure content is distinct.
+    # Actually, ShipStatusPanel is added to vbox. label_status was added to vbox.
+    # If we want label_status to show "Planned Attacks", it might be better below the ship panel.
 	vbox.add_child(label_status)
 	
 	# New Ship Status Panel
@@ -1866,47 +1871,20 @@ func _update_ui_state():
 
 
 		if selected_ship:
-			var txt = "%s Moving\n" % get_side_name(current_side_id)
-			txt += "Ship: %s (%s)\n" % [selected_ship.name, selected_ship.ship_class]
-			txt += "Hull: %d\n" % selected_ship.hull
-			txt += "Stats: ADF %d | MR %d\n" % [selected_ship.adf, selected_ship.mr]
-			var eff_mr_txt = "-"
+			# ShipStatusPanel handles detailed ship stats.
+			# label_status handles Phase/Global info.
+			var txt = ""
+            # Only show relevant phase info not covered by panel
 			if start_speed == 0:
 				txt += "Speed 0: Free Rotation Mode\n"
-				eff_mr_txt = "Free"
 			elif state_is_orbiting:
 				txt += "Orbiting: Free Rotation Mode\n"
-				eff_mr_txt = "Orbit"
-			else:
-				txt += "Remaining MR: %d\n" % turns_remaining
-				eff_mr_txt = str(turns_remaining)
-			
-			ship_status_panel.update_dynamic_status(eff_mr_txt)
-
-				
-			var min_speed = max(0, start_speed - selected_ship.adf)
-			var max_speed = start_speed + selected_ship.adf
-			var is_valid = current_path.size() >= min_speed and current_path.size() <= max_speed
-			txt += "Speed: %d -> %d / Range: [%d, %d]\n" % [start_speed, current_path.size(), min_speed, max_speed]
 			
 			if selected_ship.is_ms_active:
 				txt += "[COLOR=blue]Masking Screen ACTIVE[/COLOR]\n"
-			
-			txt += "Weapons:\n"
-			for w in selected_ship.weapons:
-				txt += "- %s (Ammo: %d)\n" % [w["name"], w["ammo"]]
 
-			if not is_valid and not state_is_orbiting: # Orbit is always valid move of 1
-				# Special case: Orbit move is size 1. Does it respect ADF?
-				# User: "moves 1 hex". Usually Speed is irrelevant for Orbit or it SETS speed to 1?
-				# Assuming specific mechanic overrides speed limits or fits within them (1 is usually valid).
+			if not is_valid and not state_is_orbiting:
 				txt += "\n(Invalid Speed)"
-			
-			if state_is_orbiting:
-				# Orbit validity overrides speed check? 1 is valid usually.
-				# But commit button relies on is_valid.
-				# Let's assume 1 is valid. 
-				pass
 				
 			label_status.text = txt
 		else:
@@ -1922,25 +1900,20 @@ func _update_ui_state():
 		var phase_name = "Passive" if combat_subphase == 1 else "Active"
 		var txt = "Combat (%s Fire)\n%s Firing" % [phase_name, get_side_name(firing_side_id)]
 		
+        # Ship details are in ShipStatusPanel. 
+        # But Hit Chance logic/Target info might be useful here or in Panel?
+        # Target info is specific to the selected ship's action.
+        
 		if selected_ship:
-			txt += "\nShip: %s" % selected_ship.get_display_name()
-			if selected_ship.weapons.size() > 0:
-				var w = selected_ship.weapons[selected_ship.current_weapon_index]
-				txt += "\nWeapon: %s" % w["name"]
-				txt += "\nAmmo: %d | Rng: %d | Arc: %s" % [w["ammo"], w["range"], w["arc"]]
-				if w.get("fired", false):
-					txt += " (FIRED)"
-					
+			# Keep Target Info here as it's transient
 			if combat_target:
 				txt += "\nTarget: %s" % combat_target.get_display_name()
 				# Show Hit Chance
 				if selected_ship and selected_ship.weapons.size() > 0:
 					var w = selected_ship.weapons[selected_ship.current_weapon_index]
 					var dist = HexGrid.hex_distance(selected_ship.grid_position, combat_target.grid_position)
-					# Quick Calc (ignoring partial implementation details for UI speed, or use Combat lib)
-					# We should use Combat.calculate_hit_chance(dist, w, target, head_on, 0, shooter)
-					# Need head_on check
-					var is_head_on = false # Simplified for UI hint, actual calc in resolve
+					# Quick Calc
+					var is_head_on = false
 					var chance = Combat.calculate_hit_chance(dist, w, combat_target, is_head_on, 0, selected_ship)
 					txt += "\nHit Chance: %d%%" % chance
 		
