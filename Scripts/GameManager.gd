@@ -1646,7 +1646,13 @@ func _update_planning_ui_list():
 			queue_redraw()
 		)
 		
+		
 		container_ships.add_child(btn)
+		
+	# FORCE Visibility purely based on content/logic, as _update_ui_state might be flaky
+	if my_ships.size() > 0 or (firing_side_id == my_side_id) or (my_side_id == 0):
+		panel_planning.visible = true
+
 	
 	# Only show planning panel if it's THIS side's turn to fire
 	var is_my_planning_phase = (firing_side_id == my_side_id) or (my_side_id == 0)
