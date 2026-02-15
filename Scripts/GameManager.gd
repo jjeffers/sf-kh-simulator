@@ -1775,12 +1775,13 @@ func _spawn_ghost():
 func _update_ui_state():
 	if not ui_layer: return
 	
-	# Reset Panels
-	panel_planning.visible = false
-	panel_movement.visible = false
+	# Reset Panels should be handled per-phase to avoid flicker
+	# panel_planning.visible = false 
+	# panel_movement.visible = false
 	
 	if current_phase == Phase.MOVEMENT:
 		panel_movement.visible = true
+		panel_planning.visible = false
 		_update_movement_ui_list()
 		
 		btn_undo.visible = (current_path.size() > 0)
@@ -1898,6 +1899,8 @@ func _update_ui_state():
 
 		
 	elif current_phase == Phase.COMBAT:
+		panel_movement.visible = false
+		
 		btn_undo.visible = false
 		btn_commit.visible = false
 		btn_orbit_cw.visible = false
@@ -1947,9 +1950,14 @@ func _update_ui_state():
 				call_deferred("_update_minimap_position")
 				# Fix for disappearing list on input events (Q, clicks) that call _update_ui_state
 				_update_planning_ui_list()
+		else:
+			panel_planning.visible = false
 				
 		label_status.text = txt
 	elif current_phase == Phase.END:
+		panel_movement.visible = false
+		panel_planning.visible = false
+		
 		btn_undo.visible = false
 		btn_commit.visible = false
 		btn_orbit_cw.visible = false
