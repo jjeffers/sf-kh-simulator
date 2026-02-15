@@ -1883,6 +1883,12 @@ func _update_ui_state():
 			if selected_ship.is_ms_active:
 				txt += "[COLOR=blue]Masking Screen ACTIVE[/COLOR]\n"
 
+			# Restore is_valid calc for UI feedback
+			var min_speed = max(0, start_speed - selected_ship.adf)
+			var max_speed = start_speed + selected_ship.adf
+			var is_valid = current_path.size() >= min_speed and current_path.size() <= max_speed
+
+
 			if not is_valid and not state_is_orbiting:
 				txt += "\n(Invalid Speed)"
 				
