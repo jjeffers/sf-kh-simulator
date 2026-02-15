@@ -1744,6 +1744,8 @@ func _update_camera(focus_target_override = null):
 			target_pos = focus_target_override.position
 		elif focus_target_override is Vector2:
 			target_pos = focus_target_override
+	elif combat_target and is_instance_valid(combat_target):
+		target_pos = combat_target.position
 	elif selected_ship:
 		target_pos = HexGrid.hex_to_pixel(selected_ship.grid_position)
 	else:
