@@ -1585,7 +1585,11 @@ func _update_planning_ui_list():
 		c.queue_free()
 		
 	# Find ships for firing side
-	var my_ships = ships.filter(func(s): return is_instance_valid(s) and s.side_id == firing_side_id and not s.is_exploding)
+	var my_ships = []
+	
+	# Only populate list if it is MY turn to fire (or I am spectator/server)
+	if my_side_id == 0 or my_side_id == firing_side_id:
+		my_ships = ships.filter(func(s): return is_instance_valid(s) and s.side_id == firing_side_id and not s.is_exploding)
 	
 	for s in my_ships:
 		var btn = Button.new()
