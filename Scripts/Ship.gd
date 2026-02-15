@@ -1017,3 +1017,30 @@ func undock():
 	
 	is_docked = false
 	docked_host = null
+
+func get_texture() -> Texture2D:
+	match ship_class:
+		"Fighter":
+			if faction == "Sathar": return texture_sathar_fighter
+			return texture_fighter
+		"Assault Scout":
+			# if faction == "Sathar": return texture_sathar_assault_scout # Missing asset?
+			return texture_assault_scout
+		"Frigate":
+			if faction == "Sathar": return texture_sathar_frigate
+			return texture_frigate
+		"Destroyer":
+			if faction == "Sathar": return texture_sathar_destroyer
+			return texture_upf_destroyer
+		"Heavy Cruiser":
+			if faction == "Sathar": return texture_sathar_heavy_cruiser
+			return texture_upf_heavy_cruiser
+		"Battleship":
+			if faction == "Sathar": return null # No asset yet
+			return texture_upf_battleship
+		"Assault Carrier":
+			if faction == "Sathar": return texture_sathar_assault_carrier
+			return texture_upf_assault_carrier
+		"Space Station":
+			return texture_space_station
+	return texture_fighter # Fallback

@@ -1,6 +1,7 @@
 class_name GameManager
 extends Node2D
 
+
 @export var map_radius: int = 25
 
 var ships: Array[Ship] = []
@@ -44,9 +45,9 @@ var combat_subphase: int = 0
 
 # UI Nodes
 var ui_layer: CanvasLayer
-var label_status: Label
 var btn_commit: Button
 var btn_undo: Button
+
 
 var btn_orbit_cw: Button
 var btn_orbit_ccw: Button
@@ -338,9 +339,16 @@ func _setup_ui():
 	ui_layer.add_child(vbox)
 	
 	label_status = Label.new()
-	label_status.text = "Initializing..."
+	label_status.visible = false # Hide old label
 	vbox.add_child(label_status)
 	
+	# New Ship Status Panel
+	# ship_status_panel = ShipStatusPanel.new() # Removed class_name, use load/preload
+	var panel_script = load("res://Scripts/ShipStatusPanel.gd")
+	ship_status_panel = panel_script.new()
+	vbox.add_child(ship_status_panel)
+
+
 	var hbox = HBoxContainer.new()
 	vbox.add_child(hbox)
 	
@@ -569,6 +577,9 @@ var btn_restart: Button
 
 var label_center_message: Label
 var label_player_info: Label
+var label_status: Label
+var ship_status_panel # Typed as ShipStatusPanel, but checking if weak typing helps CI
+
 
 func log_message(msg: String):
 	if combat_log:
@@ -1466,6 +1477,7 @@ func start_movement_phase():
 		print("[DEBUG] Standard move start for %s" % selected_ship.name)
 	
 	_update_camera()
+	_update_ui_state() # Ensure UI reflects initial selection
 	
 	if is_phase_change and audio_phase_change and audio_phase_change.stream:
 		audio_phase_change.play()
@@ -1486,7 +1498,7 @@ func _push_history_state():
 	movement_history.push_back(state)
 	btn_undo.visible = true # Ensure undo is visible if history exists
 	_update_ui_state()
-	_update_ui_state()
+
 	log_message("Movement Phase: %s" % get_side_name(current_side_id))
 
 func start_combat_passive():
@@ -1843,39 +1855,62 @@ func _update_ui_state():
 		else:
 			btn_ms_toggle.visible = false
 			
-		var txt = "%s Moving\n" % get_side_name(current_side_id)
-		txt += "Ship: %s (%s)\n" % [selected_ship.name, selected_ship.ship_class]
-		txt += "Hull: %d\n" % selected_ship.hull
-		txt += "Stats: ADF %d | MR %d\n" % [selected_ship.adf, selected_ship.mr]
-		if is_stationary:
-			txt += "Speed 0: Free Rotation Mode\n"
-		elif state_is_orbiting:
-			txt += "Orbiting: Free Rotation Mode\n"
+	# Update Status Panel
+	if ship_status_panel:
+		if selected_ship:
+			ship_status_panel.update_from_ship(selected_ship)
+			ship_status_panel.visible = true
 		else:
-			txt += "Remaining MR: %d\n" % turns_remaining
-			
-		txt += "Speed: %d -> %d / Range: [%d, %d]\n" % [start_speed, current_path.size(), min_speed, max_speed]
-		
-		if selected_ship.is_ms_active:
-			txt += "[COLOR=blue]Masking Screen ACTIVE[/COLOR]\n"
-		
-		txt += "Weapons:\n"
-		for w in selected_ship.weapons:
-			txt += "- %s (Ammo: %d)\n" % [w["name"], w["ammo"]]
+			ship_status_panel.visible = false
 
-		if not is_valid and not state_is_orbiting: # Orbit is always valid move of 1
-			# Special case: Orbit move is size 1. Does it respect ADF?
-			# User: "moves 1 hex". Usually Speed is irrelevant for Orbit or it SETS speed to 1?
-			# Assuming specific mechanic overrides speed limits or fits within them (1 is usually valid).
-			txt += "\n(Invalid Speed)"
-		
-		if state_is_orbiting:
-			# Orbit validity overrides speed check? 1 is valid usually.
-			# But commit button relies on is_valid.
-			# Let's assume 1 is valid. 
-			pass
+
+		if selected_ship:
+			var txt = "%s Moving\n" % get_side_name(current_side_id)
+			txt += "Ship: %s (%s)\n" % [selected_ship.name, selected_ship.ship_class]
+			txt += "Hull: %d\n" % selected_ship.hull
+			txt += "Stats: ADF %d | MR %d\n" % [selected_ship.adf, selected_ship.mr]
+			var eff_mr_txt = "-"
+			if start_speed == 0:
+				txt += "Speed 0: Free Rotation Mode\n"
+				eff_mr_txt = "Free"
+			elif state_is_orbiting:
+				txt += "Orbiting: Free Rotation Mode\n"
+				eff_mr_txt = "Orbit"
+			else:
+				txt += "Remaining MR: %d\n" % turns_remaining
+				eff_mr_txt = str(turns_remaining)
 			
-		label_status.text = txt
+			ship_status_panel.update_dynamic_status(eff_mr_txt)
+
+				
+			var min_speed = max(0, start_speed - selected_ship.adf)
+			var max_speed = start_speed + selected_ship.adf
+			var is_valid = current_path.size() >= min_speed and current_path.size() <= max_speed
+			txt += "Speed: %d -> %d / Range: [%d, %d]\n" % [start_speed, current_path.size(), min_speed, max_speed]
+			
+			if selected_ship.is_ms_active:
+				txt += "[COLOR=blue]Masking Screen ACTIVE[/COLOR]\n"
+			
+			txt += "Weapons:\n"
+			for w in selected_ship.weapons:
+				txt += "- %s (Ammo: %d)\n" % [w["name"], w["ammo"]]
+
+			if not is_valid and not state_is_orbiting: # Orbit is always valid move of 1
+				# Special case: Orbit move is size 1. Does it respect ADF?
+				# User: "moves 1 hex". Usually Speed is irrelevant for Orbit or it SETS speed to 1?
+				# Assuming specific mechanic overrides speed limits or fits within them (1 is usually valid).
+				txt += "\n(Invalid Speed)"
+			
+			if state_is_orbiting:
+				# Orbit validity overrides speed check? 1 is valid usually.
+				# But commit button relies on is_valid.
+				# Let's assume 1 is valid. 
+				pass
+				
+			label_status.text = txt
+		else:
+			label_status.text = ""
+
 		
 	elif current_phase == Phase.COMBAT:
 		btn_undo.visible = false
