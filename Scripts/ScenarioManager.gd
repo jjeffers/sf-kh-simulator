@@ -21,6 +21,8 @@ const SCENARIOS = {
 				"target_name": "Station Alpha",
 				"trigger_name": "Defiant",
 				"trigger_condition": "undocked", # When Defiant is NOT docked
+				"condition_property": "evacuation_turns",
+				"condition_min_value": 3,
 				"debuffs": ["no_fire", "no_ms"]
 			}
 		]
