@@ -1649,25 +1649,15 @@ func _update_planning_ui_list():
 		
 		container_ships.add_child(btn)
 		
-	# FORCE Visibility purely based on content/logic, as _update_ui_state might be flaky
-	if my_ships.size() > 0 or (firing_side_id == my_side_id) or (my_side_id == 0):
+	# FORCE Visibility purely based on content/logic
+	# We already checked my_ships.size() > 0 which effectively checks for valid ships to show
+	if my_ships.size() > 0:
 		panel_planning.visible = true
-
 	
-	# Only show planning panel if it's THIS side's turn to fire
-	var is_my_planning_phase = (firing_side_id == my_side_id) or (my_side_id == 0)
-	var show_planning = (current_phase == Phase.COMBAT and current_combat_state == CombatState.PLANNING and is_my_planning_phase)
-	panel_planning.visible = show_planning
-	
-	if show_planning:
-		# Reposition Minimap below the planning panel
+	# Reposition Minimap
+	if panel_planning.visible:
 		call_deferred("_update_minimap_position")
-	else:
-		# Reset Minimap
-		if mini_map:
-			mini_map.anchors_preset = Control.PRESET_TOP_RIGHT
-			mini_map.position = Vector2(get_viewport_rect().size.x - 220, 20)
-			# mini_map.set_anchors_and_offsets_preset(Control.PRESET_TOP_RIGHT, Control.PRESET_MODE_KEEP_SIZE, 20)
+
 
 	if not is_my_planning_phase and current_phase == Phase.COMBAT and current_combat_state == CombatState.PLANNING:
 		label_status.text += "\n\n(Waiting for Side %d to plan attacks...)" % firing_side_id
