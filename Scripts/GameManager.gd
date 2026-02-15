@@ -1658,7 +1658,7 @@ func _update_planning_ui_list():
 	if panel_planning.visible:
 		call_deferred("_update_minimap_position")
 
-
+	var is_my_planning_phase = (firing_side_id == my_side_id) or (my_side_id == 0)
 	if not is_my_planning_phase and current_phase == Phase.COMBAT and current_combat_state == CombatState.PLANNING:
 		label_status.text += "\n\n(Waiting for Side %d to plan attacks...)" % firing_side_id
 
