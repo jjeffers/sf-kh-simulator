@@ -1582,6 +1582,7 @@ func _handle_auto_skip_combat():
 func _update_planning_ui_list():
 	# Clear existing
 	for c in container_ships.get_children():
+		container_ships.remove_child(c)
 		c.queue_free()
 		
 	# Find ships for firing side
