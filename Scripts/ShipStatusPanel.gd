@@ -215,14 +215,18 @@ func update_from_ship(ship):
 	
 	for w in ship.weapons:
 		var w_lbl = Label.new()
-		w_lbl.text = "• %s" % w["name"]
+		var w_name = w.get("name", "Unknown Weapon")
+		w_lbl.text = "• %s" % w_name
+		
 		var max_ammo = w.get("max_ammo", 999)
+		var current_ammo = w.get("ammo", 0)
+		
 		if max_ammo < 900: # Not infinite
-			w_lbl.text += " (%d)" % w["ammo"]
+			w_lbl.text += " (%d)" % current_ammo
 		else:
 			w_lbl.text += " (∞)"
 
-			
+
 		if w.get("fired", false):
 			w_lbl.add_theme_color_override("font_color", Color(0.5, 0.5, 0.5))
 			w_lbl.text += " [FIRED]"
