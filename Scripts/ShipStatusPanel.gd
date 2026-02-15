@@ -213,10 +213,20 @@ func update_from_ship(ship):
 	# Weapons
 	for c in weapons_vbox.get_children(): c.queue_free()
 	
-	for w in ship.weapons:
+	for i in range(ship.weapons.size()):
+		var w = ship.weapons[i]
 		var w_lbl = Label.new()
 		var w_name = w.get("name", "Unknown Weapon")
-		w_lbl.text = "• %s" % w_name
+		
+		# Highlight Logic
+		var prefix = "• "
+		var is_selected = (i == ship.current_weapon_index)
+		
+		if is_selected:
+			prefix = "> "
+			w_lbl.add_theme_color_override("font_color", Color.YELLOW)
+			
+		w_lbl.text = "%s%s" % [prefix, w_name]
 		
 		var max_ammo = w.get("max_ammo", 999)
 		var current_ammo = w.get("ammo", 0)
