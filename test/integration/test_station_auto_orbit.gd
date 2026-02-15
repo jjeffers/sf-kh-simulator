@@ -41,6 +41,9 @@ func before_each():
 	game_manager.current_side_id = 2
 	game_manager.my_side_id = 2 # Authority
 	
+	# Add Planet for Orbit Logic
+	game_manager.planet_hexes.append(Vector3i(0, 0, 0))
+	
 func test_station_auto_orbit_detection():
 	# Ensure Station is detected as valid candidate
 	# We call start_movement_phase and check if selected_ship becomes the station

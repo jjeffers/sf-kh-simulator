@@ -108,6 +108,7 @@ func _ready():
 	_setup_background()
 	queue_redraw()
 	_spawn_planets()
+	_setup_network_identity()
 
 func _setup_background():
 	# Static Starfield using ParallaxBackground and Downloaded Texture
@@ -145,13 +146,17 @@ func _setup_background():
 	bg.add_child(layer)
 	layer.add_child(rect)
 
+func _setup_network_identity():
 	# Network Setup
 	var setup = NetworkManager.game_setup_data
 	# Lobby Data fallback
 	var lobby = NetworkManager.lobby_data
 	var scen_key = lobby.get("scenario", null)
 	
-	var peer_id = multiplayer.get_unique_id()
+	var peer_id = 1 # Default (Server)
+	if multiplayer.has_multiplayer_peer():
+		peer_id = multiplayer.get_unique_id()
+		
 	# Determine MY Team ID (1 or 2)
 	# If in Lobby, we use lobby["teams"].
 	# If standalone, we default to 1 (P1) or 0 (Spectator)?
@@ -168,14 +173,16 @@ func _setup_background():
 		scen_key = setup.get("scenario", null)
 		var h_side = setup.get("host_side", 0)
 		var h_pid = h_side + 1
-		if multiplayer.is_server():
+		
+		# Allow override if I am the host (ID 1)
+		if peer_id == 1:
 			my_side_id = h_pid
 		else:
 			my_side_id = (h_pid % 2) + 1
 		print("[DEBUG] GameManager: Applying Game Setup Override. My Side ID: %d" % my_side_id)
 		
 		# Determine Identity
-		if multiplayer.is_server():
+		if peer_id == 1:
 			my_side_id = h_pid
 			log_message("Network: Host playing as Side %d" % my_side_id)
 		else:
@@ -185,7 +192,7 @@ func _setup_background():
 	else:
 		# Fallback / Debug
 		if my_side_id == 0:
-			if multiplayer.is_server():
+			if _is_server_or_offline():
 				my_side_id = 1 # Host defaults to Side 1 (Attacker usually)
 			else:
 				my_side_id = 2 # Client defaults to Side 2 (Defender usually)
@@ -208,13 +215,15 @@ var loaded_players = {}
 
 @rpc("any_peer", "call_local", "reliable")
 func player_loaded():
-	var sender_id = multiplayer.get_remote_sender_id()
-	if sender_id == 0: sender_id = multiplayer.get_unique_id() # Local call
+	var sender_id = 1
+	if multiplayer.has_multiplayer_peer():
+		sender_id = multiplayer.get_remote_sender_id()
+		if sender_id == 0: sender_id = multiplayer.get_unique_id() # Local call
 	
 	log_message("Player %d finished loading." % sender_id)
 	loaded_players[sender_id] = true
 	
-	if multiplayer.is_server():
+	if _is_server_or_offline():
 		_check_all_players_ready()
 
 func _check_all_players_ready():
@@ -676,12 +685,18 @@ func _handle_combat_click(hex: Vector3i):
 			var atk = queued_attacks[i]
 			if atk["source"] == selected_ship and atk["weapon_idx"] == selected_ship.current_weapon_index:
 				# Use RPC to remove locally and remotely
-				rpc("rpc_remove_attack", selected_ship.name, selected_ship.current_weapon_index)
+				if multiplayer.has_multiplayer_peer():
+					rpc("rpc_remove_attack", selected_ship.name, selected_ship.current_weapon_index)
+				else:
+					rpc_remove_attack(selected_ship.name, selected_ship.current_weapon_index)
 				break
 
 		if not is_toggle_off:
 			# ADD TO PLAN (Broadcast)
-			rpc("rpc_add_attack", selected_ship.name, s.name, selected_ship.current_weapon_index)
+			if multiplayer.has_multiplayer_peer():
+				rpc("rpc_add_attack", selected_ship.name, s.name, selected_ship.current_weapon_index)
+			else:
+				rpc_add_attack(selected_ship.name, s.name, selected_ship.current_weapon_index)
 			log_message("Planned: %s -> %s (%s)" % [selected_ship.get_display_name(), s.get_display_name(), weapon["name"]])
 		else:
 			log_message("Attack Canceled")
@@ -946,13 +961,18 @@ func _on_combat_commit():
 			"tp": atk["target_pos"]
 		})
 	
-	rpc("execute_commit_combat", attacks_data, randi())
+	if multiplayer.has_multiplayer_peer():
+		rpc("execute_commit_combat", attacks_data, randi())
+	else:
+		execute_commit_combat(attacks_data, randi())
 
 @rpc("any_peer", "call_local", "reliable")
 func execute_commit_combat(attacks_data: Array, rng_seed: int):
 	# SECURITY CHECK
-	var sender_id = multiplayer.get_remote_sender_id()
-	if sender_id == 0: sender_id = multiplayer.get_unique_id() # Handle local call
+	var sender_id = 1
+	if multiplayer.has_multiplayer_peer():
+		sender_id = multiplayer.get_remote_sender_id()
+		if sender_id == 0: sender_id = multiplayer.get_unique_id() # Handle local call
 	
 	if current_phase != Phase.COMBAT:
 		print("[Security] Combat rejected: Wrong Phase (%s)" % current_phase)
@@ -1397,7 +1417,7 @@ func start_movement_phase():
 		# So we handle it here and return.
 		
 		# Only Authority triggers the auto-move
-		var am_authority = (my_side_id == current_side_id) or multiplayer.is_server()
+		var am_authority = (my_side_id == current_side_id) or _is_server_or_offline()
 		
 		if am_authority:
 			_spawn_ghost()
@@ -1525,9 +1545,12 @@ func _start_combat_planning():
 func _handle_auto_skip_combat():
 	# If we are the Server OR the Firing Side, we have authority to advance the state
 	# when there are no valid choices to make.
-	if multiplayer.is_server() or (my_side_id == firing_side_id) or (my_side_id == 0):
+	if _is_server_or_offline() or (my_side_id == firing_side_id) or (my_side_id == 0):
 		# Bypass _on_combat_commit authority check and call RPC directly
-		rpc("execute_commit_combat", [], randi())
+		if multiplayer.has_multiplayer_peer():
+			rpc("execute_commit_combat", [], randi())
+		else:
+			execute_commit_combat([], randi())
 
 func _update_planning_ui_list():
 	# Clear existing
@@ -1629,7 +1652,7 @@ func end_turn_cycle():
 	# Check before switching player, or after? 
 	# "Turns docked" -> implied "Full Turns" or "Turn Cycles"?
 	# Let's count at the end of the Cycle (when both players have acted).
-	if multiplayer.is_server():
+	if _is_server_or_offline():
 		# Process Special Rules
 		for rule in current_scenario_rules:
 			if rule["type"] == "docked_turn_counter":
@@ -1911,7 +1934,10 @@ func _update_ui_state():
 	# Update Player Info Label
 	if label_player_info:
 		var p_txt = "Side: %d (%s)" % [my_side_id, get_side_name(my_side_id)]
-		var pid = multiplayer.get_unique_id()
+		var pid = 1
+		if multiplayer.has_multiplayer_peer():
+			pid = multiplayer.get_unique_id()
+			
 		label_player_info.text = "%s\nPID: %d" % [p_txt, pid]
 		
 		# Color
@@ -1972,7 +1998,7 @@ func _on_orbit(direction: int):
 	# Authority Check (Allow Server to override for Auto-Orbit visualization)
 	if my_side_id > 0 and current_side_id != my_side_id:
 		# If Server, we allow it (for auto-resolution visualization)
-		if not multiplayer.is_server():
+		if not _is_server_or_offline():
 			print("[DEBUG] _on_orbit REJECTED: Not my turn (Me: %d, Cur: %d)" % [my_side_id, current_side_id])
 			return
 		
@@ -2115,7 +2141,10 @@ func _on_commit_move():
 	# Optimization: Could just send Path? Facing is derived from ghost.
 	# But ghost is local. We need to send ghost.facing.
 	
-	rpc("execute_commit_move", selected_ship.name, path_data, ghost_ship.facing, current_orbit_direction, state_is_orbiting)
+	if multiplayer.has_multiplayer_peer():
+		rpc("execute_commit_move", selected_ship.name, path_data, ghost_ship.facing, current_orbit_direction, state_is_orbiting)
+	else:
+		execute_commit_move(selected_ship.name, path_data, ghost_ship.facing, current_orbit_direction, state_is_orbiting)
 
 # --- Security Validation ---
 func _validate_rpc_ownership(sender_id: int, required_side_id: int) -> bool:
@@ -2187,8 +2216,10 @@ func execute_commit_move(ship_name: String, path: Array, final_facing: int, orbi
 		return
 
 	# SECURITY CHECK
-	var sender_id = multiplayer.get_remote_sender_id()
-	if sender_id == 0: sender_id = multiplayer.get_unique_id() # Handle local call
+	var sender_id = 1
+	if multiplayer.has_multiplayer_peer():
+		sender_id = multiplayer.get_remote_sender_id()
+		if sender_id == 0: sender_id = multiplayer.get_unique_id() # Handle local call
 	
 	if not _validate_rpc_ownership(sender_id, ship.side_id):
 		return
@@ -3483,6 +3514,11 @@ func _handle_mouse_facing(hex: Vector3i):
 		return
 
 	# Logic:
+	
+	# RESTRICTION: Moving ships (Speed > 0) cannot turn before moving at least 1 hex.
+	if current_path.size() == 0 and start_speed > 0:
+		return
+		
 	# diff 1 = Right, diff 5 = Left
 	
 	# DERIVED STATE REFACTOR
@@ -3576,9 +3612,11 @@ func _handle_mouse_facing(hex: Vector3i):
 # HELPER: Derive the facing we entered the current step with.
 # This replaces the fragile 'step_entry_facing' variable.
 func _get_step_entry_facing() -> int:
-	if current_path.is_empty():
+	if current_path.size() <= 1:
 		return selected_ship.facing # Start facing
-	
+		return selected_ship.facing # Start facing
+
+
 	# If path has items, the entry facing for the CURRENT tip (ghost pos)
 	# is the facing we had when we ENTERED this hex.
 	# Which is effectively the facing from the PREVIOUS path step?
@@ -3689,3 +3727,8 @@ func _handle_preview_extension(hex: Vector3i):
 			ghost_ship.modulate.a = 1.0 # Reset opacity
 			path_preview_active = false
 			queue_redraw()
+
+func _is_server_or_offline() -> bool:
+	if not multiplayer.has_multiplayer_peer():
+		return true
+	return multiplayer.is_server()
