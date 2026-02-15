@@ -216,14 +216,17 @@ func update_from_ship(ship):
 	for w in ship.weapons:
 		var w_lbl = Label.new()
 		w_lbl.text = "• %s" % w["name"]
-		if w["max_ammo"] < 900: # Not infinite
+		var max_ammo = w.get("max_ammo", 999)
+		if max_ammo < 900: # Not infinite
 			w_lbl.text += " (%d)" % w["ammo"]
 		else:
 			w_lbl.text += " (∞)"
+
 			
-		if w["fired"]:
+		if w.get("fired", false):
 			w_lbl.add_theme_color_override("font_color", Color(0.5, 0.5, 0.5))
 			w_lbl.text += " [FIRED]"
+
 			
 		weapons_vbox.add_child(w_lbl)
 		
