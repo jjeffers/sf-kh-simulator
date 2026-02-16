@@ -19,6 +19,45 @@ B. Side B Turn
 
 IMPORTANT: damage is counted as it occurs, it's possible for ships to destroyed during a combat phase. Damage take effect immediately!
 
+## Damage Effects
+
+### Explanation
+When a weapon hits a target, the next step is to determine the nature of the damage. Some of the effects are merely reductions in hull points. Other effects include debuffs in ships operations, like penalties to hit, or loss of weapons systems.
+
+### Procedure 
+A number between 1 and 100 is randomly selected (roll a d100). Then the DTM from the weapon system is applied. The result is taken from the following table, the "Damage Table". 
+
+### Damage Table
+| Damage Roll | Result | 
+| :--- | :--- |
+| 10 or less | Hull hit: roll normal damage, then multiply by 2, and apply to hull points |
+| 11-45 | Hull hit: roll normal damage and apply to hull points |
+| 46-49 | Drive hit: lose 1 ADF point |
+| 50-52 | Drive hit: lose 1/2 total ADF (round up) |
+| 53    | Drive hit: lose all ADF |
+| 54-58 | Steering hit: lose 1 MR |
+| 59-60 | Steering hit: lose entire MR |
+| 61-62 | Weapon hit: laser canon, laser battery, assault rockets, rocket battery |
+| 63-64 | Weapon hit: laser battery, rocket battery, torpedos, assault rockets |
+| 65-66 | Weapon hit: laser canon, assault rockets, torpedoes, laser battery |
+| 67-68 | Weapon hit: torpedoes, assault rockets, laser battery, rocket battery |
+| 69-70 | Weapon hit: laser battery, rocket battery, torpedoes, assault rockets, laser canon |
+| 71-74 | Power short circuit: lose ICMs |
+| 75-80 | Defense hit: masking screens, ICMs |
+| 81-84 | Defense hit: ICMs, masking screens |
+| 85-91 | Combat Control System hit: -10% on all attacks |
+| 92-97 | Navigation hit: ADF and MR become 0 |
+| 98-116 | Electrical fire: roll addition damage at +20 each turn |
+| 117+ | Disastrous fire: lose all ADF and MR, -10% on all attacks, roll additional damage at +20 each turn |
+
+#### Damage Table Notes
+- hull hits deduct from target ship hull points
+- drive hits deduct from ADF as noted in the table
+- steering hits deduct from MR as noted in the table
+- weapon hits cripple weapons systems in the order they are listed. If a weapon is already damaged, then the next weapon in the list is crippled. A ship with mulitple of the same weapon system will only have one crippled (laser battery, laser canon, etc).
+- electrical fire is a condition that causes damage at +20 each turn before either side can do attack planning. If an electrical fire damage table roll indicates a hull hit, the damage to the hull is 1d10.
+- disastrous fire is condition that causes damage at +20 each turn before either side can do attack planning. It also inflicts the following debuffs: -10% on all attacks. If a disastrous fire damage table roll indicates a hull hit, the damage to the hull is 1d10.
+
 ## Movement
 - Driven by **ADF** (Acceleration/Deceleration Factor).
 - Ships can accelerate/decelerate by up to ADF in hexes.
@@ -52,19 +91,21 @@ Combat mechanics and specifications for all weapon types.
 - **Head-On Attack:** +10% Hit Chance for forward firing weapons (FF) if the target is in the row of hexes directly forward of a firing ship.
 - **Max Range:** 10 Hexes (Hard cap).
 
-| Weapon | Type | Range | Attributes | Damage | Base Chance | Special Rules |
+| Weapon | Type | Range | Attributes | Damage | Base Chance | DTM | Special Rules |
 | :--- | :--- | :--- | :--- | :--- | :--- | :--- |
-| **Laser Battery** | Laser | 9 | RD | 1d10 | 80% | - Reduced to 50% vs RH<br>- Reduced to 10% if Screen active |
-| **Laser Canon** | Laser | 10 | FF, RD | 2d10 | 80% | - Reduced to 60% vs RH<br>- Reduced to 20% if Screen active |
-| **Assault Rocket** | Rocket | 4 | FF, LTD, MPO | 2d10+4 | 80% | - Reduced to 60% vs RH<br>- Subject to ICM (-5% per) |
-| **Rocket Battery** | Rocket | 3 | LTD | 2d10 | 40% (Flat) | <br>- Subject to ICM (-3% per) |
-| **Torpedo** | Torpedo | 4 | LTD, MPO | 4d10 | 70% (Flat) | <br>- Subject to ICM (-10% per) |
+| **Laser Battery** | Laser | 9 | RD | 1d10 | 80% | 0| - Reduced to 50% vs RH<br>- Reduced to 10% if Screen active |
+| **Laser Canon** | Laser | 10 | FF, RD | 2d10 | 80% | 0 | - Reduced to 60% vs RH<br>- Reduced to 20% if Screen active |
+| **Assault Rocket** | Rocket | 4 | FF, LTD, MPO | 2d10+4 | 80% | -10 | - Reduced to 60% vs RH<br>- Subject to ICM (-5% per) |
+| **Rocket Battery** | Rocket | 3 | LTD | 2d10 | 40% (Flat) | -10|  <br>- Subject to ICM (-3% per) |
+| **Torpedo** | Torpedo | 4 | LTD, MPO | 4d10 | 70% (Flat) | 20 | <br>- Subject to ICM (-10% per) |
 
 RD = Range Diffusion (weapon accuracy degrades 5% per hex), FF = Forward Fire, MPO = Moving player only (not valid for defensive fire), LTD = Limited Ammunition (limited number of uses)
 
 
 A weapon's chance to hit is not effected by distance unless it has the RD attribute.
 Weapons have can fire in any direction unless they have the FF attribute.
+
+DTM in the table above refers to Damage Table Modifier. 
 
 *Note: "Flat" chances usually ignore Range penalties in some systems, but code implies `Chance = Base - (Dist * 5)`. The "Flat" designation in `Combat.gd` overrides the 80% default base, but the Range logic at line 79 applies to ALL weapons. (Verification needed: `Combat.gd` lines 38-51 return EARLY for Torpedo/RB, skipping line 79?? Yes, they verify `return max(0, chance)`. So Torpedoes/Available Rockets **IGNORE RANGE PENALTY**).*
 
@@ -88,7 +129,7 @@ Mechanics for damage mitigation and avoidance.
 - **Laser Canon:** Base hit chance reduced to 20%.
 - **Notes:** Supersedes Reflective Hull effects when active.
 
-### Inter-Counter-Missiles (ICM)
+### Interceptor Missiles ("ICMs")
 - **Effect:** Automated point-defense system against ballistic projectiles.
 - **Usage:** Passive/Automatic reduction of incoming hit chance.
 - **Modifiers:**

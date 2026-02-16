@@ -55,3 +55,27 @@ Added a new scenario "The Last Stand" featuring a massive Sathar fleet attacking
 - **Self-Click Deceleration**: Players can now click their own ship's hex during movement planning to request a full stop (Speed 0), provided their ADF allows it.
 - **Ghost-Click Commit**: Clicking the "Ghost Ship" (the projected end position of a plotted move) now commits the move, serving as an intuitive "Confirm" action on the map.
 
+
+## Damage System Implementation
+
+We have replaced the simple hull damage model with a detailed damage table system as per the rules.
+
+### Key Features
+- **Damage Table**: Attacks now roll `1d100` plus a Damage Table Modifier (DTM) to determine effects beyond just hull damage.
+- **Critical Effects**:
+  - **Hull Hits**: Can be standard (1x) or critical (2x) depending on the roll.
+  - **Mobility Hits**: Ships can lose ADF (Movement) or MR (Turn) points.
+  - **Weapon Hits**: specific weapons can be crippled, rendering them unusable.
+  - **System Hits**: ICMs and Masking Screens can be destroyed.
+  - **Fire**: Electrical and Disastrous fires cause recurring damage at the start of each turn.
+- **Ship State**: `Ship.gd` now tracks `current_adf_modifier`, `current_mr_modifier`, `fire_damage_stack`, and distinct flags for crippled weapons.
+- **Combat Logic**: `GameManager.gd` simplifies combat resolution to use `Ship.apply_damage_effect`.
+- **Feedback**: Combat log and floating text now show specific effects like "Drive Hit" or "FIRE!".
+
+### Verification
+- Created `test/unit/test_damage_system.gd` to verify:
+  - Correct table lookups for various roll ranges.
+  - Proper application of ADF/MR penalties.
+  - Weapon crippling logic (matching types).
+  - Fire damage accumulation.
+- Ran full test suite, confirming 5/5 passes for damage system tests.

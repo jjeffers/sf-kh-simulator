@@ -59,16 +59,135 @@ var has_moved: bool = false
 var has_fired: bool = false
 var orbit_direction: int = 0 # 0=None, 1=CW, -1=CCW
 
+func get_effective_adf() -> int:
+	return max(0, adf - current_adf_modifier)
+
+func get_effective_mr() -> int:
+	return max(0, mr - current_mr_modifier)
+
 # Class and Weapons
 var ship_class: String = "Scout"
 var defense: String = "None"
-# Weapon Dictionary: {name, type, range, arc, ammo, max_ammo, damage_dice, damage_bonus}
+# Weapon Dictionary: {name, type, range, arc, ammo, max_ammo, damage_dice, damage_bonus, dtm, is_crippled}
 var weapons: Array = []
 var current_weapon_index: int = 0
+
+# Damage State
+var current_adf_modifier: int = 0
+var current_mr_modifier: int = 0
+var fire_damage_stack: int = 0 # 20, 40 etc.
+var ccs_damaged: bool = false
+var has_electrical_fire: bool = false
+var has_disastrous_fire: bool = false
 
 signal ship_moved(new_pos)
 signal ship_destroyed
 signal hull_changed(new_value)
+signal state_changed # Warning: New signal for non-hull state changes
+
+func take_hull_damage(amount: int):
+	hull = max(0, hull - amount)
+	hull_changed.emit(hull)
+	if hull <= 0:
+		ship_destroyed.emit()
+
+func apply_damage_effect(effect: Dictionary, roll_damage_amount: int) -> String:
+	var log_msg = effect.get("text", "Unknown Effect")
+	var type = effect.get("type")
+	
+	if type == "Hull":
+		var mult = effect.get("mult", 1.0)
+		var dmg = int(roll_damage_amount * mult)
+		take_hull_damage(dmg)
+		log_msg += " (%d Damage)" % dmg
+		
+	elif type == "ADF":
+		var val = effect.get("val", 0)
+		if val == -99: # All
+			current_adf_modifier = adf
+		elif val == -0.5: # Half
+			current_adf_modifier += ceil(adf / 2.0)
+		else:
+			current_adf_modifier += abs(val)
+		
+	elif type == "MR":
+		var val = effect.get("val", 0)
+		if val == -99:
+			current_mr_modifier = mr
+		else:
+			current_mr_modifier += abs(val)
+			
+	elif type == "Weapon":
+		# list: ["Laser", "Rocket"]
+		var priority_list = effect.get("list", [])
+		var crippled_weapon = null
+		
+		# Find first available weapon type to cripple
+		for target_type in priority_list:
+			# Find a weapon of this type that is NOT already crippled
+			for w in weapons:
+				# Correct matching logic for "Laser" matching "Laser Battery" or "Laser Canon"? NO.
+				# Rules say "laser canon, laser battery" are distinct items in the list.
+				# So exact match on w["type"] is safest, but definitions use "Laser" for Battery and "Laser Canon" for Canon.
+				# "Rocket" matches "Assault Rocket"?
+				# "Rocket Battery" matches "Rocket Battery".
+				# "Torpedo" matches "Torpedo".
+				var w_type = w.get("type", "")
+				var match_found = false
+				
+				if target_type == "Laser" and w_type == "Laser": match_found = true
+				elif target_type == "Laser Canon" and w_type == "Laser Canon": match_found = true
+				elif target_type == "Rocket" and w_type == "Rocket": match_found = true # Assault Rocket type is "Rocket"
+				elif target_type == "Rocket Battery" and w_type == "Rocket Battery": match_found = true
+				elif target_type == "Torpedo" and w_type == "Torpedo": match_found = true
+				
+				if match_found and not w.get("is_crippled", false):
+					w["is_crippled"] = true
+					crippled_weapon = w
+					break
+			if crippled_weapon: break
+			
+		if crippled_weapon:
+			log_msg += ": %s Crippled!" % crippled_weapon["name"]
+		else:
+			log_msg += " (No matching weapons to cripple)"
+
+	elif type == "System":
+		var key = effect.get("key")
+		if key == "ICM":
+			icm_current = 0
+			icm_max = 0
+		elif key == "CCS":
+			ccs_damaged = true
+
+	elif type == "Defense":
+		var list = effect.get("list", [])
+		for sys in list:
+			if sys == "MS":
+				ms_current = 0
+				ms_max = 0
+			elif sys == "ICM":
+				icm_current = 0
+				icm_max = 0
+
+	elif type == "Navigation":
+		current_adf_modifier = adf
+		current_mr_modifier = mr
+		
+	elif type == "Fire":
+		var key = effect.get("key")
+		if key == "Electrical":
+			has_electrical_fire = true
+			fire_damage_stack += 20
+		elif key == "Disastrous":
+			has_disastrous_fire = true
+			fire_damage_stack += 20
+			current_adf_modifier = adf
+			current_mr_modifier = mr
+			ccs_damaged = true
+
+	state_changed.emit()
+	return log_msg
 
 func configure_fighter():
 	ship_class = "Fighter"
@@ -83,7 +202,6 @@ func configure_fighter():
 	ms_current = 0
 	
 	weapons.clear()
-	# Assault Rockets: Range 4, Forward Firing (FF), Ammo 3, 2d10+4
 	weapons.append({
 		"name": "Assault Rockets",
 		"type": "Rocket",
@@ -93,6 +211,7 @@ func configure_fighter():
 		"max_ammo": 3,
 		"damage_dice": "2d10",
 		"damage_bonus": 4,
+		"dtm": - 10,
 		"fired": false
 	})
 	current_weapon_index = 0
@@ -118,6 +237,7 @@ func configure_assault_scout():
 		"max_ammo": 999,
 		"damage_dice": "1d10",
 		"damage_bonus": 0,
+		"dtm": 0,
 		"fired": false
 	})
 	
@@ -131,6 +251,7 @@ func configure_assault_scout():
 		"max_ammo": 4,
 		"damage_dice": "2d10",
 		"damage_bonus": 4,
+		"dtm": - 10,
 		"fired": false
 	})
 	current_weapon_index = 0 # Default to Laser
@@ -171,6 +292,7 @@ func configure_frigate():
 		"max_ammo": 999,
 		"damage_dice": "2d10",
 		"damage_bonus": 0,
+		"dtm": 0,
 		"fired": false
 	})
 	
@@ -185,6 +307,7 @@ func configure_frigate():
 		"max_ammo": 4,
 		"damage_dice": "2d10",
 		"damage_bonus": 0,
+		"dtm": - 10,
 		"fired": false
 	})
 	
@@ -198,6 +321,7 @@ func configure_frigate():
 		"max_ammo": 2,
 		"damage_dice": "4d10",
 		"damage_bonus": 0,
+		"dtm": 20,
 		"fired": false
 	})
 	
@@ -267,6 +391,7 @@ func configure_destroyer():
 		"max_ammo": 2,
 		"damage_dice": "4d10",
 		"damage_bonus": 0,
+		"dtm": 20,
 		"fired": false
 	})
 		
@@ -322,6 +447,7 @@ func configure_heavy_cruiser():
 		"max_ammo": 8,
 		"damage_dice": "2d10",
 		"damage_bonus": 0,
+		"dtm": - 10,
 		"fired": false
 	})
 	
@@ -335,6 +461,7 @@ func configure_heavy_cruiser():
 		"max_ammo": 4,
 		"damage_dice": "4d10",
 		"damage_bonus": 0,
+		"dtm": 20,
 		"fired": false
 	})
 	
@@ -364,6 +491,7 @@ func configure_battleship():
 			"max_ammo": 999,
 			"damage_dice": "2d10",
 			"damage_bonus": 0,
+			"dtm": 0,
 			"fired": false
 		})
 		
@@ -378,6 +506,7 @@ func configure_battleship():
 			"max_ammo": 999,
 			"damage_dice": "1d10",
 			"damage_bonus": 0,
+			"dtm": 0,
 			"fired": false
 		})
 		
@@ -391,6 +520,7 @@ func configure_battleship():
 		"max_ammo": 10,
 		"damage_dice": "2d10",
 		"damage_bonus": 0,
+		"dtm": - 10,
 		"fired": false
 	})
 	
@@ -404,6 +534,7 @@ func configure_battleship():
 		"max_ammo": 8,
 		"damage_dice": "4d10",
 		"damage_bonus": 0,
+		"dtm": 20,
 		"fired": false
 	})
 	
@@ -433,6 +564,7 @@ func configure_assault_carrier():
 			"max_ammo": 999,
 			"damage_dice": "1d10",
 			"damage_bonus": 0,
+			"dtm": 0,
 			"fired": false
 		})
 		
@@ -446,6 +578,7 @@ func configure_assault_carrier():
 		"max_ammo": 6,
 		"damage_dice": "2d10",
 		"damage_bonus": 0,
+		"dtm": - 10,
 		"fired": false
 	})
 	
@@ -493,6 +626,7 @@ func configure_space_station(force_hull: int = -1):
 			"max_ammo": 999,
 			"damage_dice": "1d10",
 			"damage_bonus": 0,
+			"dtm": 0,
 			"fired": false
 		})
 		
@@ -534,6 +668,7 @@ func configure_space_station(force_hull: int = -1):
 		"max_ammo": rb_count,
 		"damage_dice": "2d10",
 		"damage_bonus": 0,
+		"dtm": - 10,
 		"fired": false
 	})
 	
@@ -549,6 +684,7 @@ func reset_weapons():
 	# So we don't reset it here manually unless we want to clear it on turn start?
 	# Actually, if it remains "once activated", we shouldn't clear it.
 	
+	state_changed.emit()
 	queue_redraw()
 
 func _ready():
@@ -592,6 +728,7 @@ func _set_ms_active(val: bool):
 	is_ms_active = val
 	if ms_particles:
 		ms_particles.emitting = val
+	state_changed.emit()
 	queue_redraw()
 
 func _set_is_selected(val: bool):

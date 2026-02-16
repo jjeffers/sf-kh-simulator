@@ -97,6 +97,11 @@ var panel_icm: PanelContainer
 
 # Visuals
 var selection_highlight: Polygon2D = null
+var current_connected_ship: Ship = null
+
+func _on_ship_state_changed():
+	if ship_status_panel and is_instance_valid(selected_ship):
+		ship_status_panel.update_from_ship(selected_ship)
 
 
 func _ready():
@@ -1211,28 +1216,36 @@ func _process_next_attack():
 		_spawn_icm_fx(target, source.position, travel_time)
 	
 	if hit:
-		var dmg_str = "%s+%d" % [weapon["damage_dice"], weapon["damage_bonus"]]
-		var dmg = Combat.roll_damage(dmg_str)
+		# 1. Roll for Hull Damage Amount (Standard, used if result is Hull Hit)
+		var dmg_str = "%s+%d" % [weapon.get("damage_dice", "1d10"), weapon.get("damage_bonus", 0)]
+		var hull_dmg_roll = Combat.roll_damage(dmg_str)
 		
-		# Masking Screen Damage Reduction (Halved)
-		# Applies if Target OR Source has MS active, and weapon is Laser/Canon
-		var target_ms = target.get("is_ms_active")
-		var source_ms = source.get("is_ms_active")
-		if (target_ms or source_ms) and w_type in ["Laser", "Laser Canon"]:
-			dmg = floor(float(dmg) / 2.0)
-			log_message("Masking Screen reduces damage!")
-			
-		log_message("[color=green]HIT![/color] Dmg: %d" % dmg)
+		# 2. Roll for Damage Table Effect
+		var dtm = weapon.get("dtm", 0)
+		var table_roll = Combat.calculate_damage_roll(dtm)
+		var effect = Combat.get_damage_effect(table_roll)
+		log_message("[color=green]HIT![/color] Rolling Damage Table (d100+%d = %d)" % [dtm, table_roll])
 		
-		# Delay damage for FX arrival
+		# 3. Apply Effect (delayed for FX)
 		var damage_delay = travel_time
-		if damage_delay == 0: damage_delay = 0.5 # Safety for instant lasers
+		if damage_delay == 0: damage_delay = 0.5
 		
 		await get_tree().create_timer(damage_delay).timeout
 		
 		if is_instance_valid(target):
-			target.take_damage(dmg)
-			_spawn_hit_text(target_pos, dmg)
+			var res_str = target.apply_damage_effect(effect, hull_dmg_roll)
+			log_message("%s: %s" % [target.name, res_str])
+			
+			# Visuals & Audio
+			# Only show hull damage number if it was a hull hit? 
+			# Or always show "CRIT" or something?
+			# For now, show hull dmg if > 0
+			if effect.get("type") == "Hull":
+				var final_dmg = int(hull_dmg_roll * effect.get("mult", 1.0))
+				_spawn_hit_text(target_pos, final_dmg)
+			else:
+				_spawn_hit_text(target_pos, effect.get("text", "HIT")) # overload spawn_hit_text to accept string?
+			
 			if audio_hit.stream: audio_hit.play()
 	else:
 		log_message("[color=red]MISS![/color]")
@@ -1266,11 +1279,16 @@ func _on_resolution_complete():
 	else:
 		end_turn_cycle()
 
-func _spawn_hit_text(pos: Vector2, damage: int):
+func _spawn_hit_text(pos: Vector2, val: Variant):
 	var lbl = Label.new()
-	lbl.text = "HIT! -%d" % damage
+	if typeof(val) == TYPE_INT:
+		lbl.text = "HIT! -%d" % val
+		lbl.modulate = Color.RED
+	else:
+		lbl.text = str(val)
+		lbl.modulate = Color(1.0, 0.6, 0.0) # Orange
+		
 	lbl.position = pos + Vector2(-20, -40) # Slightly above
-	lbl.modulate = Color.RED
 	lbl.add_theme_font_size_override("font_size", 20)
 	add_child(lbl)
 	
@@ -1436,6 +1454,26 @@ func _start_turn_for_side(sid: int):
 			s.reset_turn_state()
 	
 	start_movement_phase()
+
+	# Fire Damage Phase (after Turn Start reset)
+	for s in ships:
+		if is_instance_valid(s) and (s.fire_damage_stack > 0 or s.has_electrical_fire or s.has_disastrous_fire):
+			log_message("[color=orange]Fire damage on %s![/color]" % s.name)
+			
+			var dtm = s.fire_damage_stack
+			# Ensure minimum +20 if any fire exists? 
+			# Ship.gd sets stack += 20 on fire start.
+			
+			var roll = Combat.calculate_damage_roll(dtm)
+			var effect = Combat.get_damage_effect(roll)
+			
+			log_message("Fire Roll: d100+%d = %d -> %s" % [dtm, roll, effect.get("text")])
+			
+			var hull_dmg = Combat.roll_damage("1d10")
+			var res = s.apply_damage_effect(effect, hull_dmg)
+			
+			_spawn_hit_text(s.position, "FIRE!")
+			log_message("%s: %s" % [s.name, res])
 
 func start_movement_phase():
 	var is_phase_change = (current_phase != Phase.MOVEMENT)
@@ -1905,8 +1943,9 @@ func _update_ui_state():
 		btn_undo.visible = (current_path.size() > 0)
 		
 		var steps = current_path.size()
-		var min_speed = max(0, start_speed - selected_ship.adf)
-		var max_speed = start_speed + selected_ship.adf
+		var eff_adf = selected_ship.get_effective_adf()
+		var min_speed = max(0, start_speed - eff_adf)
+		var max_speed = start_speed + eff_adf
 		var is_valid = (steps >= min_speed and steps <= max_speed)
 		
 		if state_is_orbiting:
@@ -1985,8 +2024,23 @@ func _update_ui_state():
 		if selected_ship:
 			ship_status_panel.update_from_ship(selected_ship)
 			ship_status_panel.visible = true
+			
+			# Signal Connection Management
+			if selected_ship != current_connected_ship:
+				if current_connected_ship and is_instance_valid(current_connected_ship):
+					if current_connected_ship.state_changed.is_connected(_on_ship_state_changed):
+						current_connected_ship.state_changed.disconnect(_on_ship_state_changed)
+				
+				current_connected_ship = selected_ship
+				if not current_connected_ship.state_changed.is_connected(_on_ship_state_changed):
+					current_connected_ship.state_changed.connect(_on_ship_state_changed)
 		else:
 			ship_status_panel.visible = false
+			# Disconnect if we deselected
+			if current_connected_ship and is_instance_valid(current_connected_ship):
+				if current_connected_ship.state_changed.is_connected(_on_ship_state_changed):
+					current_connected_ship.state_changed.disconnect(_on_ship_state_changed)
+			current_connected_ship = null
 
 
 		if selected_ship:
@@ -2003,8 +2057,9 @@ func _update_ui_state():
 				txt += "[COLOR=blue]Masking Screen ACTIVE[/COLOR]\n"
 
 			# Restore is_valid calc for UI feedback
-			var min_speed = max(0, start_speed - selected_ship.adf)
-			var max_speed = start_speed + selected_ship.adf
+			var eff_adf = selected_ship.get_effective_adf()
+			var min_speed = max(0, start_speed - eff_adf)
+			var max_speed = start_speed + eff_adf
 			var is_valid = current_path.size() >= min_speed and current_path.size() <= max_speed
 
 
@@ -2326,15 +2381,16 @@ func _validate_move_path(ship: Ship, path: Array[Vector3i], _final_facing: int, 
 
 	var old_speed = ship.speed
 	var new_speed = path.size()
-	var min_speed = max(0, old_speed - ship.adf)
-	var max_speed = old_speed + ship.adf
+	var eff_adf = ship.get_effective_adf()
+	var min_speed = max(0, old_speed - eff_adf)
+	var max_speed = old_speed + eff_adf
 	
 	if new_speed < min_speed:
-		print("[Security] Illegal Deceleration! Speed %d -> %d (Min %d, ADF %d)" % [old_speed, new_speed, min_speed, ship.adf])
+		print("[Security] Illegal Deceleration! Speed %d -> %d (Min %d, ADF %d)" % [old_speed, new_speed, min_speed, eff_adf])
 		return false
 		
 	if new_speed > max_speed:
-		print("[Security] Illegal Acceleration! Speed %d -> %d (Max %d, ADF %d)" % [old_speed, new_speed, max_speed, ship.adf])
+		print("[Security] Illegal Acceleration! Speed %d -> %d (Max %d, ADF %d)" % [old_speed, new_speed, max_speed, eff_adf])
 		return false
 		
 	return true
