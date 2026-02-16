@@ -39,7 +39,7 @@ func test_ship_destruction_signal_error():
 	# If the connection is bad, it might throw an error or crash.
 	# GUT captures errors.
 	
-	ship.take_damage(999)
+	ship.take_hull_damage(999)
 	
 	# If we reach here without crash, check if _on_ship_destroyed was called?
 	# We can check if ship is in gm.ships (should be removed or handled).

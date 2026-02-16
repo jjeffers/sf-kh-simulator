@@ -1564,6 +1564,11 @@ func start_movement_phase():
 			_update_ui_state()
 			# log_message("Station %s maintaining orbit..." % auto_candidate.name) # Silenced for speed
 			
+			if not state_is_orbiting:
+				print("[DEBUG] Auto-Orbit Failed (No planet?). Defaulting to Hold Position.")
+				current_path.clear()
+				state_is_orbiting = false
+
 			# Instant execution
 			_on_commit_move()
 			
@@ -2270,6 +2275,7 @@ func _on_orbit(direction: int):
 	
 	if not found:
 		print("[DEBUG] _on_orbit: No planet found adjacent to %s at %s" % [selected_ship.name, selected_ship.grid_position])
+		state_is_orbiting = false
 		return
 	
 	# Calculate move
@@ -2369,8 +2375,12 @@ func _update_movement_ui_list():
 			
 		
 		btn.pressed.connect(func():
-			# Select ship logic (Allow inspecting moved ships too)
-			_handle_movement_click(s.grid_position) # Reuse click logic for consistency
+			# Select ship logic
+			if s != selected_ship:
+				_select_ship(s)
+			else:
+				# Just center camera if already selected
+				_update_camera()
 		)
 		
 		# Disable only if we want to restrict selection. User asked for freedom.
@@ -2714,8 +2724,8 @@ func _draw():
 		# Green: Coasting (Speed - ADF to Speed)
 		# Yellow: Acceleration (Speed to Speed + ADF)
 		
-		var min_speed = max(0, start_speed - selected_ship.adf)
-		var max_speed = start_speed + selected_ship.adf
+		var min_speed = max(0, start_speed - selected_ship.get_effective_adf())
+		var max_speed = start_speed + selected_ship.get_effective_adf()
 		
 		var orange_count = max(0, min_speed - steps_taken)
 		var green_count = max(0, start_speed - steps_taken - orange_count)
@@ -2917,6 +2927,9 @@ func _unhandled_input(event):
 			_update_camera()
 
 func _is_weapon_available_in_phase(weapon: Dictionary, ship: Ship = null) -> bool:
+	if weapon.get("is_crippled", false):
+		return false
+		
 	var w_type = weapon.get("type")
 	# Rule 1: Moving Player Only for Propelled weapons (Assault Rockets, Torpedoes)
 	# Rocket Batteries are EXEMPT from this (can be fired defensively)
@@ -3137,20 +3150,24 @@ func _handle_movement_click(hex: Vector3i):
 				break
 	
 	if clicked_ship and clicked_ship != selected_ship:
-		selected_ship = clicked_ship
-		# Reset plot
-		_reset_plotting_state()
-		
-		if audio_ship_select and audio_ship_select.stream: audio_ship_select.play()
-		_spawn_ghost()
-		_update_camera()
-		_update_ship_visuals() # Re-sort stack
-		_update_ui_state()
-		log_message("Selected %s" % selected_ship.name)
+		_select_ship(clicked_ship)
 		return
 
 	# If no ship selected or clicked empty hex...
 	_handle_ghost_input(hex)
+
+func _select_ship(ship: Ship):
+	selected_ship = ship
+	# Reset plot
+	_reset_plotting_state()
+	
+	if audio_ship_select and audio_ship_select.stream: audio_ship_select.play()
+	_spawn_ghost()
+	_update_camera()
+	_update_ship_visuals() # Re-sort stack
+	_update_ui_state()
+	log_message("Selected %s" % selected_ship.name)
+
 
 func _handle_ghost_input(hex: Vector3i):
 	if not ghost_ship: return
@@ -3199,7 +3216,7 @@ func _handle_ghost_input(hex: Vector3i):
 		return
 
 	# Check Max Speed / Path Limits
-	var max_allowed_path = start_speed + selected_ship.adf
+	var max_allowed_path = start_speed + selected_ship.get_effective_adf()
 	if current_path.size() + dist > max_allowed_path:
 		log_message("Target too far! Limit: %d hexes" % max_allowed_path)
 		return
@@ -3966,7 +3983,7 @@ func _handle_preview_extension(hex: Vector3i):
 	var dist = HexGrid.hex_distance(ghost_head_pos, hex)
 	
 	# Check Max Speed / Path Limits (Visual Preview should match Logic)
-	var max_allowed_path = start_speed + selected_ship.adf
+	var max_allowed_path = start_speed + selected_ship.get_effective_adf()
 	if current_path.size() + dist > max_allowed_path:
 		# Too far
 		dist = 0 # Invalid
