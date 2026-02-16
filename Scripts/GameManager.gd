@@ -629,10 +629,15 @@ func _on_exec_move_pressed():
 	start_combat_passive()
 
 	# Connect Minimap Layout Updates
-	panel_planning.visibility_changed.connect(_update_minimap_position)
-	panel_planning.item_rect_changed.connect(_update_minimap_position)
-	panel_movement.visibility_changed.connect(_update_minimap_position)
-	panel_movement.item_rect_changed.connect(_update_minimap_position)
+	if not panel_planning.visibility_changed.is_connected(_update_minimap_position):
+		panel_planning.visibility_changed.connect(_update_minimap_position)
+	if not panel_planning.item_rect_changed.is_connected(_update_minimap_position):
+		panel_planning.item_rect_changed.connect(_update_minimap_position)
+	
+	if not panel_movement.visibility_changed.is_connected(_update_minimap_position):
+		panel_movement.visibility_changed.connect(_update_minimap_position)
+	if not panel_movement.item_rect_changed.is_connected(_update_minimap_position):
+		panel_movement.item_rect_changed.connect(_update_minimap_position)
 	
 	# Initial Position Update
 	_update_minimap_position()

@@ -50,6 +50,9 @@ func test_turn_cycle_switch():
 	# End Turn -> Should check if more ships available for P1
 	_gm.end_turn()
 	
+	# EXECUTE MOVEMENT (Manual Phase Transition)
+	_gm._on_exec_move_pressed()
+	
 	# Since no more P1 ships, it should switch phase to Combat Passive?
 	# Wait, logic is: Movement Phase P1 -> if done -> Combat Passive (P2 fires)
 	
@@ -78,5 +81,9 @@ func test_ship_destruction_handling():
 	# If we are in movement and active player lost a ship (maybe self-destruct or boundary?)
 	_gm.current_side_id = 2
 	_gm.start_movement_phase()
-	# Should detect 0 ships and go to Combat
+	# Should detect 0 ships and go to Combat?
+	# With manual button, we must click it.
+	_gm.my_side_id = _gm.current_side_id
+	_gm._on_exec_move_pressed()
+	
 	assert_eq(_gm.current_phase, _gm.Phase.COMBAT, "Should transition to Combat if no ships")
