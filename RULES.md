@@ -8,6 +8,7 @@ A. Side A Turn
 2. **Combat Phase**:
    - **Passive Fire**: The non-moving side (Side B) plans and executes defensive fire.
    - **Active Fire**: The moving player plans and executes offensive fire.
+  
 
 B. Side B Turn
 1. **Movement Phase**:
@@ -48,7 +49,7 @@ A number between 1 and 100 is randomly selected (roll a d100). Then the DTM from
 | 85-91 | Combat Control System hit: -10% on all attacks |
 | 92-97 | Navigation hit: ADF and MR become 0 |
 | 98-116 | Electrical fire: roll addition damage at +20 each turn |
-| 117+ | Disastrous fire: lose all ADF and MR, -10% on all attacks, roll additional damage at +20 each turn |
+| 117+ | Disastrous fire: lose all ADF and MR, -10% on all attacks, roll additional damage at +20 each turn. |
 
 #### Damage Table Notes
 - hull hits deduct from target ship hull points
@@ -57,6 +58,7 @@ A number between 1 and 100 is randomly selected (roll a d100). Then the DTM from
 - weapon hits cripple weapons systems in the order they are listed. If a weapon is already damaged, then the next weapon in the list is crippled. A ship with mulitple of the same weapon system will only have one crippled (laser battery, laser canon, etc).
 - electrical fire is a condition that causes damage at +20 each turn before either side can do attack planning. If an electrical fire damage table roll indicates a hull hit, the damage to the hull is 1d10.
 - disastrous fire is condition that causes damage at +20 each turn before either side can do attack planning. It also inflicts the following debuffs: -10% on all attacks. If a disastrous fire damage table roll indicates a hull hit, the damage to the hull is 1d10.
+- Important fire rule: multiple fire results are not cumulative. You can only have a single electrical fire or disastrous fire at a time. Also, the ongoing damage rolls from fires will only ever have a maximum +20 adjustment to the damage table. In other words, multiple fire results will not add additional +20 damage rolls.
 
 ## Movement
 - Driven by **ADF** (Acceleration/Deceleration Factor).
@@ -67,6 +69,8 @@ A number between 1 and 100 is randomly selected (roll a d100). Then the DTM from
   When planning movement the player may select a hex to move to and then use the the mouse to switch facings, left or right or straight ahead, if current MR allows it. An "undo" button will unwind the last segment of movement (direction and facing). Multiple undos will unwind the entire movement plan.
 
 - **Orbiting**: Special maneuver for ships starting their movement in a hex adjacent to a planet. The ship will orbit the planet clockwise or counter-clockwise, player's choice. The ship will orbit the planet until it decides to move out of the hex away from the planet.
+
+- **Planets**: Planets block attacks that pass through their hex.
 
 ## Ship Register
 
@@ -185,7 +189,7 @@ Setup: if there is a planet present, ships should not spawn in the same hex as t
 **UPF (Defenders):**
 - **Fortress K'zdit** (Space Station - Custom)
   - Stats: 100 Hull, 8 ICM, 2 MS.
-  - Weapons: 3x Laser Battery, x12 Rocket Battery Swarm (12 shots).
+  - Weapons: 3x Laser Battery, x12 Rocket Battery (12 shots).
 - **Valiant** (Battleship)
 - **Allison May** (Destroyer)
 - **Daridia** (Frigate)
