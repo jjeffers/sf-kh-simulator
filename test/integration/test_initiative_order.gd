@@ -48,6 +48,8 @@ func test_initiative_order_p2_first():
 	# Execute P2 Move
 	s2.has_moved = true
 	_gm.end_turn()
+	_gm.my_side_id = 2
+	_gm._on_exec_move_pressed()
 	
 	# Expectation: Combat Phase (Passive for P2's opponent -> P1 fires)
 	assert_eq(_gm.current_phase, _gm.Phase.COMBAT, "Should switch to Combat")

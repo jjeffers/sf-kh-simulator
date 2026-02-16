@@ -41,6 +41,8 @@ func test_second_turn_combat_skip():
 	_gm.start_movement_phase()
 	s1.has_moved = true
 	_gm.end_turn() # Triggers start_combat_passive
+	_gm.my_side_id = 1
+	_gm._on_exec_move_pressed()
 	
 	assert_eq(_gm.current_phase, _gm.Phase.COMBAT, "T1: P1 Combat Started")
 	assert_eq(_gm.combat_subphase, 1, "T1: P1 Passive Combat")
@@ -57,6 +59,8 @@ func test_second_turn_combat_skip():
 	# 4. P2 Movement
 	s2.has_moved = true
 	_gm.end_turn() # Triggers P2 Passive
+	_gm.my_side_id = 2
+	_gm._on_exec_move_pressed()
 	
 	assert_eq(_gm.current_phase, _gm.Phase.COMBAT, "T1: P2 Combat Started")
 	assert_eq(_gm.combat_subphase, 1, "T1: P2 Passive Combat")
@@ -79,6 +83,8 @@ func test_second_turn_combat_skip():
 	# P1 Move
 	s1.has_moved = true
 	_gm.end_turn()
+	_gm.my_side_id = 1
+	_gm._on_exec_move_pressed()
 	
 	assert_eq(_gm.current_phase, _gm.Phase.COMBAT, "Turn 2: Should enter Combat Phase")
 	

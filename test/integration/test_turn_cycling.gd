@@ -49,6 +49,8 @@ func test_turn_order_surprise_attack():
 	# BUT all P1 ships have moved.
 	
 	_gm.start_movement_phase()
+	_gm.my_side_id = _gm.current_side_id
+	_gm._on_exec_move_pressed()
 	
 	# Logic:
 	# start_movement_phase checks available ships for current_side_id.
