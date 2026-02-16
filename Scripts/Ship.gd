@@ -88,8 +88,12 @@ signal state_changed # Warning: New signal for non-hull state changes
 func take_hull_damage(amount: int):
 	hull = max(0, hull - amount)
 	hull_changed.emit(hull)
+	queue_redraw() # Immediate visual update
+	
 	if hull <= 0:
+		is_destroyed = true
 		ship_destroyed.emit()
+		trigger_explosion()
 
 func apply_damage_effect(effect: Dictionary, roll_damage_amount: int) -> String:
 	var log_msg = effect.get("text", "Unknown Effect")
@@ -177,11 +181,13 @@ func apply_damage_effect(effect: Dictionary, roll_damage_amount: int) -> String:
 	elif type == "Fire":
 		var key = effect.get("key")
 		if key == "Electrical":
-			has_electrical_fire = true
-			fire_damage_stack += 20
+			if not has_disastrous_fire:
+				has_electrical_fire = true
+				fire_damage_stack = 20
 		elif key == "Disastrous":
 			has_disastrous_fire = true
-			fire_damage_stack += 20
+			has_electrical_fire = false
+			fire_damage_stack = 20
 			current_adf_modifier = adf
 			current_mr_modifier = mr
 			ccs_damaged = true
@@ -746,16 +752,6 @@ func _set_grid_position(v: Vector3i):
 	position = HexGrid.hex_to_pixel(v)
 	ship_moved.emit(v)
 
-func take_damage(amount: int):
-	hull -= amount
-	hull_changed.emit(hull)
-	queue_redraw() # Update health bar
-
-	if hull <= 0:
-		hull = 0
-		is_destroyed = true
-		ship_destroyed.emit()
-		trigger_explosion()
 
 var is_ghost: bool = false
 var is_exploding: bool = false
@@ -1069,15 +1065,15 @@ func trigger_explosion():
 	var particles = CPUParticles2D.new()
 	particles.emitting = false
 	particles.one_shot = true
-	particles.amount = 50
-	particles.lifetime = 1.0
+	particles.amount = 100
+	particles.lifetime = 1.5
 	particles.explosiveness = 1.0
 	particles.spread = 180.0
 	particles.gravity = Vector2.ZERO
 	particles.initial_velocity_min = 50.0
-	particles.initial_velocity_max = 150.0
-	particles.scale_amount_min = 3.0
-	particles.scale_amount_max = 6.0
+	particles.initial_velocity_max = 200.0
+	particles.scale_amount_min = 4.0
+	particles.scale_amount_max = 12.0 # Much larger particles
 	particles.color = Color.ORANGE
 	
 	# Color gradient for fire effect
