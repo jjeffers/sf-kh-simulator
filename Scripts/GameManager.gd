@@ -52,6 +52,7 @@ var btn_undo: Button
 var btn_orbit_cw: Button
 var btn_orbit_ccw: Button
 var btn_ms_toggle: CheckBox
+var btn_exec_move: Button # NEW: Manual Phase Transition
 
 # Movement State
 var ghost_ship: Ship = null
@@ -464,6 +465,14 @@ func _setup_ui():
 	list_movement = VBoxContainer.new()
 	pm_vbox.add_child(list_movement)
 	
+	# Execute Movement Button (Manual Phase End)
+	btn_exec_move = Button.new()
+	btn_exec_move.text = "EXECUTE MOVEMENT"
+	btn_exec_move.modulate = Color(1, 0.6, 0.2) # Orange-ish
+	btn_exec_move.visible = false
+	btn_exec_move.pressed.connect(func(): _on_exec_move_pressed())
+	pm_vbox.add_child(btn_exec_move)
+	
 	var pp_vbox = VBoxContainer.new()
 	panel_planning.add_child(pp_vbox)
 	
@@ -597,6 +606,28 @@ func _setup_ui():
 	mini_map.set_anchors_and_offsets_preset(Control.PRESET_TOP_RIGHT, Control.PRESET_MODE_KEEP_SIZE, 20)
 	ui_layer.add_child(mini_map)
 	
+func _on_exec_move_pressed():
+	# Validate Phase
+	if current_phase != Phase.MOVEMENT: return
+	
+	# Validate Ownership
+	if my_side_id != 0 and my_side_id != current_side_id:
+		log_message("Not your turn to execute movement!")
+		return
+		
+	# Double check all moved?
+	var unmoved_count = 0
+	for s in ships:
+		if is_instance_valid(s) and s.side_id == current_side_id and not s.is_exploding and not s.has_moved:
+			unmoved_count += 1
+			
+	if unmoved_count > 0:
+		log_message("Cannot execute: %d ships still need to move!" % unmoved_count)
+		return
+		
+	# Proceed
+	start_combat_passive()
+
 	# Connect Minimap Layout Updates
 	panel_planning.visibility_changed.connect(_update_minimap_position)
 	panel_planning.item_rect_changed.connect(_update_minimap_position)
@@ -1496,8 +1527,11 @@ func start_movement_phase():
 		print("DEBUG: First available: ", available[0].name, " ID: ", available[0].side_id, " Moved: ", available[0].has_moved)
 	
 	if available.size() == 0:
-		# Movement Phase COMPLETE for this side
-		start_combat_passive()
+		# Movement Phase COMPLETE for this side (All ships moved)
+		# OLD: Auto-advance
+		# start_combat_passive()
+		# NEW: Just update UI to enable "Execute" button
+		_update_ui_state()
 		return
 
 	# AUTO-ORBIT LOGIC (Prioritized)
@@ -1940,84 +1974,112 @@ func _update_ui_state():
 
 		_update_movement_ui_list()
 		
-		btn_undo.visible = (current_path.size() > 0)
+		_update_movement_ui_list()
 		
-		var steps = current_path.size()
-		var eff_adf = selected_ship.get_effective_adf()
-		var min_speed = max(0, start_speed - eff_adf)
-		var max_speed = start_speed + eff_adf
-		var is_valid = (steps >= min_speed and steps <= max_speed)
-		
-		if state_is_orbiting:
-			# Orbit moves are always 1 hex, regardless of ADF/Speed limits
-			is_valid = true
-			
-		var is_moved = selected_ship.has_moved
-		btn_commit.visible = true
-		btn_commit.disabled = not is_valid or is_moved
-		
-		var is_stationary = (current_path.size() == 0 and start_speed == 0)
+		# Default State: HIDE ship controls
+		btn_undo.visible = false
+		btn_commit.visible = false
+		btn_orbit_cw.visible = false
+		btn_orbit_ccw.visible = false
+		btn_ms_toggle.visible = false
 
-		
-		# Orbit Check
-		var can_orbit = false
-		# Must be start of move (stationary)
-		if is_stationary:
-			for p in planet_hexes:
-				if HexGrid.hex_distance(selected_ship.grid_position, p) == 1:
-					can_orbit = true
-					break
-		
-		btn_orbit_cw.visible = can_orbit
-		btn_orbit_ccw.visible = can_orbit
-		
-		# MS Toggle Check
-		# Visible if ship has Max MS > 0
-		if selected_ship.ms_max > 0:
-			btn_ms_toggle.visible = true
-			btn_ms_toggle.set_pressed_no_signal(selected_ship.is_ms_active)
-			btn_ms_toggle.text = "Deploy Screen (%d)" % selected_ship.ms_current
+		if selected_ship:
+			btn_undo.visible = (current_path.size() > 0)
 			
-			# Constraint Check: Maintain Speed and Heading
-			# Logic:
-			# 1. Calculate validity of current plot for MS (Speed == Start Speed AND Heading == Start Heading)
-			#    BUT: Orbit works differently (always valid if orbiting)
+			var steps = current_path.size()
+			var eff_adf = selected_ship.get_effective_adf()
+			var min_speed = max(0, start_speed - eff_adf)
+			var max_speed = start_speed + eff_adf
+			var is_valid = (steps >= min_speed and steps <= max_speed)
 			
-			var ms_valid_move = false
 			if state_is_orbiting:
-				ms_valid_move = true
-			else:
-				var speed_ok = false
-				if selected_ship.is_ms_active:
-					# Relaxed Persistence Check:
-					# Valid if Path <= Start Speed (Partial) AND Heading Matches
-					# We only INVALIDATE if Path > Start Speed or Heading Mismatch
-					speed_ok = (current_path.size() <= start_speed)
-				else:
-					# must EXACTLY match to activate fresh
-					speed_ok = (current_path.size() == start_speed)
-					
-				var heading_ok = false
-				if ghost_ship:
-					heading_ok = (ghost_ship.facing == selected_ship.facing)
-				ms_valid_move = (speed_ok and heading_ok)
+				# Orbit moves are always 1 hex, regardless of ADF/Speed limits
+				is_valid = true
+				
+			var is_moved = selected_ship.has_moved
+			btn_commit.visible = true
+			btn_commit.disabled = not is_valid or is_moved
 			
-			if selected_ship.is_ms_active:
-				# If already active, check if we need to DROP it
-				if not ms_valid_move:
-					_on_ms_toggled(false) # Auto-drop
-					log_message("Maneuver Dropped Screen")
-			else:
-				# If not active, can we Activate it?
-				# Only if move is valid (Straight line) OR if we haven't moved yet (Stationary start is valid?)
-				# Actually, user plans move then activates. If plot is invalid, disable button.
-				btn_ms_toggle.disabled = not ms_valid_move
-				if not ms_valid_move:
-					btn_ms_toggle.tooltip_text = "Must maintain Speed and Heading to deploy"
+			var is_stationary = (current_path.size() == 0 and start_speed == 0)
+
+			
+			# Orbit Check
+			var can_orbit = false
+			# Must be start of move (stationary)
+			if is_stationary:
+				for p in planet_hexes:
+					if HexGrid.hex_distance(selected_ship.grid_position, p) == 1:
+						can_orbit = true
+						break
+			
+			btn_orbit_cw.visible = can_orbit
+			btn_orbit_ccw.visible = can_orbit
+			
+			# MS Toggle Check
+			# Visible if ship has Max MS > 0
+			if selected_ship.ms_max > 0:
+				btn_ms_toggle.visible = true
+				btn_ms_toggle.set_pressed_no_signal(selected_ship.is_ms_active)
+				btn_ms_toggle.text = "Deploy Screen (%d)" % selected_ship.ms_current
+				
+				# Constraint Check: Maintain Speed and Heading
+				# Logic:
+				# 1. Calculate validity of current plot for MS (Speed == Start Speed AND Heading == Start Heading)
+				#    BUT: Orbit works differently (always valid if orbiting)
+				
+				var ms_valid_move = false
+				if state_is_orbiting:
+					ms_valid_move = true
 				else:
-					btn_ms_toggle.tooltip_text = "Deploy Masking Screen (Cost: 1)"
+					var speed_ok = false
+					if selected_ship.is_ms_active:
+						# Relaxed Persistence Check:
+						# Valid if Path <= Start Speed (Partial) AND Heading Matches
+						# We only INVALIDATE if Path > Start Speed or Heading Mismatch
+						speed_ok = (current_path.size() <= start_speed)
+					else:
+						# must EXACTLY match to activate fresh
+						speed_ok = (current_path.size() == start_speed)
+						
+					var heading_ok = false
+					if ghost_ship:
+						heading_ok = (ghost_ship.facing == selected_ship.facing)
+					ms_valid_move = (speed_ok and heading_ok)
+				
+				if selected_ship.is_ms_active:
+					# If already active, check if we need to DROP it
+					if not ms_valid_move:
+						_on_ms_toggled(false) # Auto-drop
+						log_message("Maneuver Dropped Screen")
+				else:
+					# If not active, can we Activate it?
+					# Only if move is valid (Straight line) OR if we haven't moved yet (Stationary start is valid?)
+					# Actually, user plans move then activates. If plot is invalid, disable button.
+					btn_ms_toggle.disabled = not ms_valid_move
+					if not ms_valid_move:
+						btn_ms_toggle.tooltip_text = "Must maintain Speed and Heading to deploy"
+					else:
+						btn_ms_toggle.tooltip_text = "Deploy Masking Screen (Cost: 1)"
+			else:
+				btn_ms_toggle.visible = false
+
+		# Execute Movement Button Logic
+		btn_exec_move.visible = true
+		
+		# Find ANY unmoved ships for this side
+		var unmoved = []
+		for s in ships:
+			if is_instance_valid(s) and s.side_id == current_side_id and not s.is_exploding and not s.has_moved:
+				unmoved.append(s)
+		
+		if unmoved.size() > 0:
+			btn_exec_move.disabled = true
+			btn_exec_move.text = "Finish Moves (%d left)" % unmoved.size()
+			btn_exec_move.modulate = Color(0.5, 0.5, 0.5) # Grey
 		else:
-			btn_ms_toggle.visible = false
+			btn_exec_move.disabled = false
+			btn_exec_move.text = "EXECUTE MOVEMENT"
+			btn_exec_move.modulate = Color(1, 0.6, 0.2) # Orange
 			
 	# Update Status Panel
 	if ship_status_panel:
