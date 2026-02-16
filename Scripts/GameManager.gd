@@ -3478,6 +3478,9 @@ func _update_minimap_position():
 		active_panel = panel_movement
 		
 	if active_panel and mini_map:
+		if not active_panel.is_inside_tree() or not mini_map.is_inside_tree():
+			return
+			
 		var pp_rect = active_panel.get_global_rect()
 		var new_y = pp_rect.end.y + 20
 		# Clamp to screen?
