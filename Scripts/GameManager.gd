@@ -629,10 +629,15 @@ func _on_exec_move_pressed():
 	start_combat_passive()
 
 	# Connect Minimap Layout Updates
-	panel_planning.visibility_changed.connect(_update_minimap_position)
-	panel_planning.item_rect_changed.connect(_update_minimap_position)
-	panel_movement.visibility_changed.connect(_update_minimap_position)
-	panel_movement.item_rect_changed.connect(_update_minimap_position)
+	if not panel_planning.visibility_changed.is_connected(_update_minimap_position):
+		panel_planning.visibility_changed.connect(_update_minimap_position)
+	if not panel_planning.item_rect_changed.is_connected(_update_minimap_position):
+		panel_planning.item_rect_changed.connect(_update_minimap_position)
+	
+	if not panel_movement.visibility_changed.is_connected(_update_minimap_position):
+		panel_movement.visibility_changed.connect(_update_minimap_position)
+	if not panel_movement.item_rect_changed.is_connected(_update_minimap_position):
+		panel_movement.item_rect_changed.connect(_update_minimap_position)
 	
 	# Initial Position Update
 	_update_minimap_position()
@@ -3490,6 +3495,9 @@ func _update_minimap_position():
 		active_panel = panel_movement
 		
 	if active_panel and mini_map:
+		if not active_panel.is_inside_tree() or not mini_map.is_inside_tree():
+			return
+			
 		var pp_rect = active_panel.get_global_rect()
 		var new_y = pp_rect.end.y + 20
 		# Clamp to screen?

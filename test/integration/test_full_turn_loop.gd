@@ -41,6 +41,8 @@ func test_full_turn_loop():
 	# P1 Move Done -> Combat (Passive: Opponent S2 fires)
 	s1.has_moved = true
 	_gm.end_turn()
+	_gm.my_side_id = 1
+	_gm._on_exec_move_pressed() # Manual Transition
 	assert_eq(_gm.current_phase, _gm.Phase.COMBAT, "Should be Combat Phase")
 	assert_eq(_gm.combat_subphase, 1, "Passive Combat")
 	assert_eq(_gm.firing_side_id, 2, "Passive: Side 2 should fire")
@@ -58,6 +60,8 @@ func test_full_turn_loop():
 	# P2 Move Done -> Combat (Passive: Opponent S1 fires)
 	s2.has_moved = true
 	_gm.end_turn()
+	_gm.my_side_id = 2
+	_gm._on_exec_move_pressed() # Manual Transition
 	assert_eq(_gm.current_phase, _gm.Phase.COMBAT, "Should be Combat Phase")
 	assert_eq(_gm.combat_subphase, 1, "Passive Combat")
 	assert_eq(_gm.firing_side_id, 1, "Passive: Side 1 should fire")
