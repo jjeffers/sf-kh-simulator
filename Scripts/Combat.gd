@@ -131,3 +131,36 @@ static func roll_damage(damage_str: Variant = "1d10") -> int:
 			return total + bonus
 			
 	return 1 # Fallback
+
+# --- Damage System ---
+
+static func calculate_damage_roll(dtm: int) -> int:
+	var roll = (randi() % 100) + 1
+	var total = roll + dtm
+	print("Damage Roll: d100(%d) + DTM(%d) = %d" % [roll, dtm, total])
+	return total
+
+static func get_damage_effect(roll: int) -> Dictionary:
+	if roll <= 10: return {"type": "Hull", "mult": 2.0, "text": "CRITICAL HULL HIT (x2)"}
+	if roll <= 45: return {"type": "Hull", "mult": 1.0, "text": "Hull Hit"}
+	if roll <= 49: return {"type": "ADF", "val": - 1, "text": "Drive Hit (-1 ADF)"}
+	if roll <= 52: return {"type": "ADF", "val": - 0.5, "text": "Drive Hit (-1/2 ADF)"}
+	if roll <= 53: return {"type": "ADF", "val": - 99, "text": "Drive Hit (All ADF)"}
+	if roll <= 58: return {"type": "MR", "val": - 1, "text": "Steering Hit (-1 MR)"}
+	if roll <= 60: return {"type": "MR", "val": - 99, "text": "Steering Hit (All MR)"}
+	
+	# Weapon Hits
+	if roll <= 62: return {"type": "Weapon", "list": ["Laser Canon", "Laser", "Rocket", "Rocket Battery"], "text": "Weapon Hit"}
+	if roll <= 64: return {"type": "Weapon", "list": ["Laser", "Rocket Battery", "Torpedo", "Rocket"], "text": "Weapon Hit"}
+	if roll <= 66: return {"type": "Weapon", "list": ["Laser Canon", "Rocket", "Torpedo", "Laser"], "text": "Weapon Hit"}
+	if roll <= 68: return {"type": "Weapon", "list": ["Torpedo", "Rocket", "Laser", "Rocket Battery"], "text": "Weapon Hit"}
+	if roll <= 70: return {"type": "Weapon", "list": ["Laser", "Rocket Battery", "Torpedo", "Rocket", "Laser Canon"], "text": "Weapon Hit"}
+	
+	if roll <= 74: return {"type": "System", "key": "ICM", "text": "Power Short Circuit (Lose ICMs)"}
+	if roll <= 80: return {"type": "Defense", "list": ["MS", "ICM"], "text": "Defense Hit (MS, ICM)"}
+	if roll <= 84: return {"type": "Defense", "list": ["ICM", "MS"], "text": "Defense Hit (ICM, MS)"}
+	
+	if roll <= 91: return {"type": "System", "key": "CCS", "text": "Combat Control System Hit (-10% Hit Chance)"}
+	if roll <= 97: return {"type": "Navigation", "text": "Navigation Hit (ADF=0, MR=0)"}
+	if roll <= 116: return {"type": "Fire", "key": "Electrical", "text": "ELECTRICAL FIRE! (+20 Dmg/Turn)"}
+	return {"type": "Fire", "key": "Disastrous", "text": "DISASTROUS FIRE! (+20 Dmg/Turn, Crippled)"}

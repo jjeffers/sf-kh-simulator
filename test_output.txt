@@ -1,0 +1,35 @@
+﻿Godot Engine v4.6.stable.official.89cea1439 - https://godotengine.org
+
+---  GUT  ---
+[1m[INFO]:  [0musing [C:/Users/James Jeffers/AppData/Roaming/Godot/app_userdata/Hex Space Combat] for temporary output.
+Godot version:  4.6.0
+GUT version:  9.5.0
+[4m
+
+test/unit/test_damage_system.gd
+[0m* test_combat_damage_table_lookup
+* test_ship_apply_damage_hull
+* test_ship_apply_damage_adf
+* test_ship_apply_damage_weapon
+* test_fire_damage_stack
+[1m5/5 passed.
+[0m
+
+
+
+[33m==============================================
+[0m[33m= Run Summary
+[0m[33m==============================================
+[0m
+Totals
+------
+Scripts               1
+Tests                 5
+Passing Tests         5
+Asserts              16
+Time              0.376s
+
+
+Ran Scripts matching "test_damage_system"
+[32m---- All tests passed! ----
+[0m
