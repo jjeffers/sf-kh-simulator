@@ -1,3 +1,6 @@
+# Bug Tracker
+
+## 🚨 Critical / High Priority
 - [ ] 
 
 ## 🐛 Backlog
