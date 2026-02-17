@@ -57,7 +57,10 @@ func test_planet_collision_avoids_safe_path():
 	ship.grid_position = Vector3i(0, 0, 0)
 	ship.side_id = 1 # Must match current_side_id
 	gm.ships.append(ship)
-	add_child_autofree(ship)
+	
+	# FIX: Parent to GM to prevent GUT double-free/ownership issues
+	gm.add_child(ship)
+	# add_child_autofree(ship) # Removed
 	
 	var path = [Vector3i(1, -1, 0)] # Stops before planet
 	
