@@ -1321,8 +1321,47 @@ func _process_next_attack():
 		await get_tree().create_timer(damage_delay).timeout
 		
 		if is_instance_valid(target):
-			var res_str = target.apply_damage_effect(effect, hull_dmg_roll)
-			log_message("%s: %s" % [target.name, res_str])
+			var res = target.apply_damage_effect(effect, hull_dmg_roll)
+			log_message("%s: %s" % [target.name, res.get("text")])
+			
+			if res.get("fallback", false):
+				log_message("[color=red]System missing/destroyed -> FALLBACK HULL HIT[/color]")
+				# Rule: "roll normal hull hit damage" (usually 1d10 for fallback implied?)
+				# Prompt said "roll normal hull hit damage". The Damage Table says "Hull hit: roll normal damage".
+				# Normal damage depends on weapon? NO. 
+				# "If a system is destroyed... that is converted to a hull hit and normal hull damage is rolled and applied."
+				# THIS MEANS: Reroll the damage as if it was a Hull Hit (1-45 range).
+				# BUT wait, the weapon that CAUSED it has specific damage dice (e.g. 2d10).
+				# "roll normal hull hit damage" usually implies standard weapon damage.
+				# However, for FIRE, the rule said "If a ... fire damage table roll indicates a hull hit, the damage to the hull is 1d10."
+				# But for WEAPON hits converting to hull hits? It likely means "The weapon does hull damage instead."
+				# So we should use the `damage` passed into this function?
+				# OR reroll it?
+				# "roll... damage". Implies action.
+				# Using the existing roll is safer/fairer, but "roll" implies new RN.
+				# Let's re-roll using the weapon's dice if available?
+				# But `_resolve_attack` knows the weapon.
+				# Actually, simpler: just pass `damage` (the int) as the fallback?
+				# But `damage` was passed into `apply_damage_effect` and ignored if it wasn't Hull type.
+				# So we can just use `damage` (the original roll).
+				# UNLESS "roll normal hull hit damage" means "Do a hull hit procedure".
+				# Let's stick to: Use the same damage amount that triggered the effect, but applied to hull.
+				# Actually, explicitly rerolling consistent with "roll" wording.
+				
+				# ISSUE: I don't have the weapon dice here easily without passing it?
+				# `damage` is an INT.
+				# Let's just apply `damage` to hull. It's the "Damage Amount" from the attack.
+				# "Hull hit: roll normal damage". We did that to get `damage`.
+				# So converting means applying it.
+				
+				# WAIT: The prompt said for FIRE: "is 1d10".
+				# For FALLBACK generally: "converted to a hull hit and normal hull damage is rolled".
+				# If I hit with a Torpedo (4d10). I roll 25 dmg. Table say Drive Hit. Drive gone.
+				# Fallback -> Hull Hit. Should take 4d10 (approx 25).
+				# So `target.take_hull_damage(damage)` is correct.
+				
+				target.take_hull_damage(hull_dmg_roll)
+				log_message("%s takes %d Fallback Damage (Converted Effect)" % [target.name, hull_dmg_roll])
 			
 			# Visuals & Audio
 			# Only show hull damage number if it was a hull hit? 
@@ -1588,24 +1627,44 @@ func _start_turn_for_side(sid: int):
 	start_movement_phase()
 
 	# Fire Damage Phase (after Turn Start reset)
-	for s in ships:
-		if is_instance_valid(s) and (s.fire_damage_stack > 0 or s.has_electrical_fire or s.has_disastrous_fire):
-			log_message("[color=orange]Fire damage on %s![/color]" % s.name)
-			
-			var dtm = s.fire_damage_stack
-			# Ensure minimum +20 if any fire exists? 
-			# Ship.gd sets stack += 20 on fire start.
-			
-			var roll = Combat.calculate_damage_roll(dtm)
-			var effect = Combat.get_damage_effect(roll)
-			
-			log_message("Fire Roll: d100+%d = %d -> %s" % [dtm, roll, effect.get("text")])
-			
-			var hull_dmg = Combat.roll_damage("1d10")
-			var res = s.apply_damage_effect(effect, hull_dmg)
-			
-			_spawn_hit_text(s.position, "FIRE!")
-			log_message("%s: %s" % [s.name, res])
+	# Fire Damage Phase (after Turn Start reset)
+	# AUTHORITY ONLY: Calculate and broadcast fire damage results to ensure sync
+	if not multiplayer.has_multiplayer_peer() or multiplayer.is_server():
+		for s in ships:
+			if is_instance_valid(s) and (s.fire_damage_stack > 0 or s.has_electrical_fire or s.has_disastrous_fire):
+				var dtm = s.fire_damage_stack
+				# Ensure minimum +20 if any fire exists? 
+				# Ship.gd sets stack += 20 on fire start.
+				
+				var roll = Combat.calculate_damage_roll(dtm)
+				var effect = Combat.get_damage_effect(roll)
+				
+				var hull_dmg = Combat.roll_damage("1d10") # For Hull Hit result
+				var fb_dmg = Combat.roll_damage("1d10") # For Fallback
+				
+				if multiplayer.has_multiplayer_peer():
+					rpc_apply_fire_damage.rpc(s.name, dtm, roll, effect, hull_dmg, fb_dmg)
+				else:
+					rpc_apply_fire_damage(s.name, dtm, roll, effect, hull_dmg, fb_dmg)
+
+@rpc("authority", "call_local", "reliable")
+func rpc_apply_fire_damage(ship_name: String, dtm: int, roll: int, effect: Dictionary, hull_dmg: int, fb_dmg: int):
+	var s = _find_ship_by_name(ship_name)
+	if not is_instance_valid(s): return
+	
+	log_message("[color=orange]Fire damage on %s![/color]" % s.name)
+	log_message("Fire Roll: d100+%d = %d -> %s" % [dtm, roll, effect.get("text")])
+	
+	# Apply effect using provided hull damage roll
+	var res = s.apply_damage_effect(effect, hull_dmg)
+	
+	_spawn_hit_text(s.position, "FIRE!")
+	log_message("%s: %s" % [s.name, res.get("text")])
+	
+	if res.get("fallback", false):
+		log_message("[color=red]System missing/destroyed -> FALLBACK HULL HIT[/color]")
+		s.take_hull_damage(fb_dmg)
+		log_message("%s takes %d Fallback Damage" % [s.name, fb_dmg])
 
 func start_movement_phase():
 	var is_phase_change = (current_phase != Phase.MOVEMENT)

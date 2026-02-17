@@ -59,6 +59,15 @@ A number between 1 and 100 is randomly selected (roll a d100). Then the DTM from
 - electrical fire is a condition that causes damage at +20 each turn before either side can do attack planning. If an electrical fire damage table roll indicates a hull hit, the damage to the hull is 1d10.
 - disastrous fire is condition that causes damage at +20 each turn before either side can do attack planning. It also inflicts the following debuffs: -10% on all attacks. If a disastrous fire damage table roll indicates a hull hit, the damage to the hull is 1d10.
 - Important fire rule: multiple fire results are not cumulative. You can only have a single electrical fire or disastrous fire at a time. Also, the ongoing damage rolls from fires will only ever have a maximum +20 adjustment to the damage table. In other words, multiple fire results will not add additional +20 damage rolls.
+- when a damage table indicates a result where no more systems can be damaged or that ship does not have the system indicated to be damaged, the hit is instead a hull hit (roll normal hull hit damage). This rule also applied if a system is destroyed, like a ship with no ADF takes a drive hit, that is converted to a hull hit and normal hull damage is rolled and applied.
+- when a result indicates a type of fire but the ship already has a fire of that type it is instead a hull hit (roll normal hull hit damage)
+
+### Damage Control
+ - Every ship will have an attribute called "DCR", which represents capcity to repair damaged systems or removed conditions like fires.
+ - Once every 3 turns both side will be prompted for DCR allocation. The amount of DCR allocated represents a % chance that crippled system will be repaired or damage repaired.
+ - The maximum amount of DCR you can allocate to a system is 100.
+ - The event for repair occurs after the 3rd full cycle of each side's movement and then combat. This is called a Repair Turn. 
+ - During a repair trn
 
 ## Movement
 - Driven by **ADF** (Acceleration/Deceleration Factor).
