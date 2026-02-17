@@ -3910,7 +3910,7 @@ func _handle_mouse_facing(hex: Vector3i):
 # HELPER: Derive the facing we entered the current step with.
 # This replaces the fragile 'step_entry_facing' variable.
 func _get_step_entry_facing() -> int:
-	if current_path.size() <= 1:
+	if current_path.size() == 0:
 		return selected_ship.facing # Start facing
 		return selected_ship.facing # Start facing
 
