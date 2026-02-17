@@ -50,13 +50,16 @@ func test_fragile_state_desync():
 	assert_eq(game_manager.ghost_ship.facing, 1)
 	assert_eq(game_manager.turns_remaining, 2) # Cost 1
 	
-	# 4. UNDO (Should restore MR and Facing)
+	# 4. UNDO (Full Reset)
 	game_manager._on_undo()
 	
 	assert_eq(game_manager.ghost_ship.facing, 0) # Should be back to 0
-	# Turns remaining depends on if undo logic restores it.
-	# _on_undo pops history. History pushed before turn had full MR.
+	# Full reset means MR is refreshed
 	assert_eq(game_manager.turns_remaining, 3)
+	
+	# 4b. Replay the Move Forward (Verification that clean slate works)
+	game_manager._handle_ghost_input(Vector3i(1, 0, -1))
+	assert_eq(game_manager.current_path.size(), 1)
 	
 	# 5. Turn LEFT (0 -> 5)
 	# Neighbor 5 (NE) of (1, 0, -1) is (1, 0, -1) + (1, -1, 0) = (2, -1, -1)

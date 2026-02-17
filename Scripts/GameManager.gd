@@ -1365,6 +1365,17 @@ func _reset_plotting_state():
 	combat_action_taken = false
 	step_entry_facing = selected_ship.facing # Init to current facing
 
+	# Snapshot State for Undo (if not already moved)
+	if selected_ship and not selected_ship.has_moved and selected_ship.turn_start_state.is_empty():
+		selected_ship.turn_start_state = {
+			"grid_position": selected_ship.grid_position,
+			"facing": selected_ship.facing,
+			"speed": selected_ship.speed,
+			"is_ms_active": selected_ship.is_ms_active,
+			"ms_orbit_start_hex": selected_ship.ms_orbit_start_hex
+		}
+
+
 func _cycle_selection():
 	if current_phase == Phase.MOVEMENT:
 		# Filter: Active Player, !has_moved
@@ -2004,7 +2015,10 @@ func _update_ui_state():
 		btn_ms_toggle.visible = false
 
 		if selected_ship:
-			btn_undo.visible = (current_path.size() > 0)
+			# Undo available if plotting path exists OR if ship has already moved (to reset)
+			# Only for my side and if I am authoritative
+			var can_undo = (current_path.size() > 0) or (selected_ship.has_moved)
+			btn_undo.visible = can_undo
 			
 			var steps = current_path.size()
 			var eff_adf = selected_ship.get_effective_adf()
@@ -2220,50 +2234,32 @@ func _update_ui_state():
 		else: label_player_info.modulate = Color.GREEN
 
 func _on_undo():
-	# 1. Fallback / Safety Check
-	# If history is empty (or missing), but we have a path, we must reset to avoid getting stuck.
-	if movement_history.is_empty():
-		if current_path.size() > 0:
-			log_message("Resetting Movement (History Corrected)")
-			_reset_plotting_state()
-			_spawn_ghost()
-			_update_ui_state()
-			queue_redraw()
-		return
-
-	# 2. Normal Segmented Undo
-	var state = movement_history.pop_back()
+	# User Request: "Undo" button should restore ship to original position/state (Full Reset)
+	if selected_ship and selected_ship.has_moved:
+		log_message("Undoing Committed Move for %s" % selected_ship.name)
+		if not selected_ship.turn_start_state.is_empty():
+			var s = selected_ship.turn_start_state
+			selected_ship.grid_position = s["grid_position"]
+			selected_ship.facing = s["facing"]
+			selected_ship.speed = s["speed"]
+			selected_ship.is_ms_active = s["is_ms_active"]
+			selected_ship.ms_orbit_start_hex = s["ms_orbit_start_hex"]
+			selected_ship.has_moved = false
+			selected_ship.previous_path.clear() # Clear visual trail from the undone move
+			
+			# Note: We don't clear turn_start_state here, enabling repeated undos if needed (though pointless)
+		else:
+			log_message("[Error] No turn start state found for undo!")
+			
+	log_message("Movement Reset")
 	
-	# Restore State
-	ghost_ship.grid_position = state["ghost_pos"]
-	ghost_ship.facing = state["ghost_facing"]
+	# Clear all plotting data and restore start state
+	_reset_plotting_state()
 	
-	# Restore Head State
-	ghost_head_pos = ghost_ship.grid_position
-	ghost_head_facing = ghost_ship.facing
-	path_preview_active = false
-	
-	# Restore Path
-	var target_size = state["path_size"]
-	if current_path.size() > target_size:
-		current_path.resize(target_size)
-		
-	turns_remaining = state["turns_rem"]
-	can_turn_this_step = state["can_turn"]
-	turn_taken_this_step = state["turn_taken"]
-	state_is_orbiting = state["is_orbiting"]
-	current_orbit_direction = state["orbit_dir"]
-	
-	# Visual Refresh
-	ghost_ship.queue_redraw()
-	queue_redraw()
+	# Visual Reset
+	_spawn_ghost()
 	_update_ui_state()
-	
-	if movement_history.is_empty():
-		btn_undo.visible = false
-		log_message("Movement Reset")
-	else:
-		log_message("Undo Last Step")
+	queue_redraw()
 
 
 var state_is_orbiting: bool = false # Temp state for UI
@@ -2702,8 +2698,8 @@ func _draw():
 		draw_polyline(points, Color(1, 1, 1, 0.8), 5.0)
 		
 	# Predictive Path Highlighting
-	# FIX: Ensure we have a ghost ship AND are in movement phase
-	if current_phase == Phase.MOVEMENT and is_instance_valid(ghost_ship) and is_instance_valid(selected_ship):
+	# FIX: Ensure we have a ghost ship AND are in movement phase AND ship hasn't moved yet
+	if current_phase == Phase.MOVEMENT and is_instance_valid(ghost_ship) and is_instance_valid(selected_ship) and not selected_ship.has_moved:
 		# Re-verify start_speed is set (it should be set in start_movement_phase)
 		# But if ghost_ship was respawned, did we lose context?
 		# No, start_speed is a GM var.
