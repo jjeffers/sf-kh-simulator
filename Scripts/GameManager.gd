@@ -695,26 +695,49 @@ func _log_to_file(msg: String):
 func _handle_combat_click(hex: Vector3i):
 	if combat_action_taken: return
 	
-	# Check if clicked on a FRIENDLY ship to switch shooter
-	# Only checks ships belonging to firing_side_id that haven't fired
+	# NEW LOGIC: Prioritize Targeting over Selection Switching if a valid target exists in the hex
+	# Check if clicked hex has a valid target FIRST
+	var potential_target = null
 	for s in ships:
-		if is_instance_valid(s) and s.grid_position == hex and s.side_id == firing_side_id and not s.has_fired:
-			# Ownership Check
-			if s.side_id != my_side_id and my_side_id != 0:
-				continue
-				
-			if s != selected_ship:
-				selected_ship = s
-				# Auto-retarget
-				combat_target = null
-				var targets = _get_valid_targets(selected_ship)
-				if targets.size() > 0: combat_target = targets[0]
-				
-				queue_redraw()
-				_update_ship_visuals() # Re-sort stack
-				_update_ui_state()
-				log_message("Switched to %s" % selected_ship.get_display_name())
-				return
+		if is_instance_valid(s) and s.grid_position == hex and s != selected_ship:
+			# Check validity as target
+			if s.side_id != my_side_id and not s.is_exploding:
+				# Basic check, detailed check happens below?
+				# Ideally we should check if it is in _get_valid_targets(selected_ship)
+				# But that might be expensive? No, valid_targets is usually small.
+				potential_target = s
+				break
+	
+	if potential_target:
+		# Check if this IS a valid target for current weapon?
+		# If we just unconditionally set it, we might set an invalid target (e.g. out of range).
+		# But the subsequent "PLAN FIRE" block does validation (Range, Arc, etc).
+		# So it's safe to set it as the INTENDED target.
+		# If validation fails, it just won't fire.
+		combat_target = potential_target
+		queue_redraw()
+	
+	if not potential_target:
+		# Check if clicked on a FRIENDLY ship to switch shooter
+		# Only checks ships belonging to firing_side_id that haven't fired
+		for s in ships:
+			if is_instance_valid(s) and s.grid_position == hex and s.side_id == firing_side_id and not s.has_fired:
+				# Ownership Check
+				if s.side_id != my_side_id and my_side_id != 0:
+					continue
+					
+				if s != selected_ship:
+					selected_ship = s
+					# Auto-retarget
+					combat_target = null
+					var targets = _get_valid_targets(selected_ship)
+					if targets.size() > 0: combat_target = targets[0]
+					
+					queue_redraw()
+					_update_ship_visuals() # Re-sort stack
+					_update_ui_state()
+					log_message("Switched to %s" % selected_ship.get_display_name())
+					return
 	
 	# if not combat_target: return # REMOVED: Prevent blocking target selection
 	
@@ -770,7 +793,7 @@ func _handle_combat_click(hex: Vector3i):
 			if atk["source"] == selected_ship and atk["weapon_idx"] == selected_ship.current_weapon_index:
 				queued_count += 1
 		
-		if weapon["ammo"] - queued_count <= 0:
+		if weapon["ammo"] != -1 and weapon["ammo"] - queued_count <= 0:
 			log_message("[color=red]Insufficent Ammo for planned shot![/color]")
 			return
 			

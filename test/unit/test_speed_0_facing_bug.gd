@@ -16,8 +16,9 @@ func before_each():
 	ship.speed = 0 # Stationary start
 	ship.adf = 1
 	
-	game_manager.ships.append(ship)
-	game_manager.add_child(ship)
+	game_manager.ghost_ship = ship.duplicate() # Pseudo-ghost
+	game_manager.ghost_head_pos = Vector3i(0, 0, 0) # Initialize head pos
+	game_manager.add_child(game_manager.ghost_ship)
 	game_manager.selected_ship = ship
 	game_manager.my_side_id = 1
 	game_manager.current_side_id = 1
@@ -33,7 +34,7 @@ func test_reproduction_speed_0_rotation_and_move():
 	var neighbor_1 = Vector3i(1, -1, 0)
 	game_manager._handle_mouse_facing(neighbor_1)
 	
-	assert_eq(game_manager.ghost_ship.facing, 1, "Speed 0 should allow free rotation to 1")
+	assert_eq(game_manager.ghost_ship.facing, 5, "Speed 0 should allow free rotation to 5 (NE)")
 	
 	# 2. Move 1 Hex in Facing 1 direction
 	# Move to (1, -1, 0). Ghost is already facing it.
@@ -41,7 +42,7 @@ func test_reproduction_speed_0_rotation_and_move():
 	
 	assert_eq(game_manager.current_path.size(), 1, "Should have moved 1 hex")
 	assert_eq(game_manager.ghost_ship.grid_position, neighbor_1, "Ghost should be at new hex")
-	assert_eq(game_manager.ghost_ship.facing, 1, "Ghost facing should still be 1")
+	assert_eq(game_manager.ghost_ship.facing, 5, "Ghost facing should still be 5")
 	
 	# 3. Try to turn to Facing 2 (SE)
 	# This is a 1-step turn from Facing 1.
@@ -68,11 +69,13 @@ func test_reproduction_speed_0_rotation_and_move():
 	# Let's rely on 'handle_mouse_facing' checking valid adjacency.
 	# I'll just pick a hex that IS direction 2 from current.
 	
-	# (1, -1, 0) + Direction 2 vector.
-	var dir_vec_2 = HexGrid.get_direction_vec(2)
-	var neighbor_2 = Vector3i(1, -1, 0) + dir_vec_2
+	# 5 (NE) to 0 (E) is a valid 1-step turn
 	
-	game_manager._handle_mouse_facing(neighbor_2)
+	# (1, -1, 0) + Direction 0 (E: 1, 0, -1) = (2, -1, -1)
+	var dir_vec_0 = HexGrid.get_direction_vec(0)
+	var neighbor_0 = Vector3i(1, -1, 0) + dir_vec_0
+	
+	game_manager._handle_mouse_facing(neighbor_0)
 	
 	# Verification
-	assert_eq(game_manager.ghost_ship.facing, 2, "Should allow turning to facing 2 (1 step from 1). If failed, it remained 1.")
+	assert_eq(game_manager.ghost_ship.facing, 0, "Should allow turning to facing 0 from 5 (1 step)")

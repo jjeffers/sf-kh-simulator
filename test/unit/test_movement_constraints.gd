@@ -27,6 +27,7 @@ func before_each():
 	var p: Array[Vector3i] = []
 	_gm.current_path = p
 	_gm.ghost_ship = _ship.duplicate() # Pseudo-ghost
+	_gm.ghost_head_pos = Vector3i(0, 0, 0) # Initialize head pos
 	_gm.add_child(_gm.ghost_ship)
 
 func _simulate_turn(dir: int):
