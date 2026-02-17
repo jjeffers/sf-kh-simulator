@@ -626,6 +626,13 @@ func _on_exec_move_pressed():
 		return
 		
 	# Proceed
+	if multiplayer.has_multiplayer_peer():
+		rpc_start_combat_passive.rpc()
+	else:
+		start_combat_passive()
+
+@rpc("any_peer", "call_local", "reliable")
+func rpc_start_combat_passive():
 	start_combat_passive()
 
 	# Connect Minimap Layout Updates
@@ -1482,6 +1489,9 @@ func _start_turn_for_side(sid: int):
 	turn_count += 1
 
 	log_message("=== Turn Start: Side %s ===" % get_side_name(sid))
+	
+	# Update UI to reflect new Side ID immediately
+	_update_ui_state()
 	
 	# Reset ALL ships (Movement/Fired state) for the new turn
 	# This ensures ships can fire again in the new turn (e.g. Defensive Fire)
