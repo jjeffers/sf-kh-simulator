@@ -695,24 +695,29 @@ func _log_to_file(msg: String):
 func _handle_combat_click(hex: Vector3i):
 	if combat_action_taken: return
 	
-	# STACK SELECTION FIX:
-	# If we are in "Targeting Mode" (Selected Ship + Weapon Active),
-	# we should PRIORITIZE finding an ENEMY target at this hex.
-	# Only if no enemy is found (or we are not targeting) should we switch to a friendly ship.
-	
-	var prioritize_enemies = false
-	if selected_ship and selected_ship.weapons.size() > 0:
-		prioritize_enemies = true
-		
-	var enemy_found_at_hex = false
-	if prioritize_enemies:
-		for s in ships:
-			if is_instance_valid(s) and s.grid_position == hex and s.side_id != firing_side_id:
-				enemy_found_at_hex = true
+	# NEW LOGIC: Prioritize Targeting over Selection Switching if a valid target exists in the hex
+	# Check if clicked hex has a valid target FIRST
+	var potential_target = null
+	for s in ships:
+		if is_instance_valid(s) and s.grid_position == hex and s != selected_ship:
+			# Check validity as target
+			if s.side_id != my_side_id and not s.is_exploding:
+				# Basic check, detailed check happens below?
+				# Ideally we should check if it is in _get_valid_targets(selected_ship)
+				# But that might be expensive? No, valid_targets is usually small.
+				potential_target = s
 				break
 	
-	# Only switch friendly selection if we are NOT prioritizing enemies, OR if no enemy is here.
-	if not prioritize_enemies or not enemy_found_at_hex:
+	if potential_target:
+		# Check if this IS a valid target for current weapon?
+		# If we just unconditionally set it, we might set an invalid target (e.g. out of range).
+		# But the subsequent "PLAN FIRE" block does validation (Range, Arc, etc).
+		# So it's safe to set it as the INTENDED target.
+		# If validation fails, it just won't fire.
+		combat_target = potential_target
+		queue_redraw()
+	
+	if not potential_target:
 		# Check if clicked on a FRIENDLY ship to switch shooter
 		# Only checks ships belonging to firing_side_id that haven't fired
 		for s in ships:
@@ -788,7 +793,7 @@ func _handle_combat_click(hex: Vector3i):
 			if atk["source"] == selected_ship and atk["weapon_idx"] == selected_ship.current_weapon_index:
 				queued_count += 1
 		
-		if weapon["ammo"] - queued_count <= 0:
+		if weapon["ammo"] != -1 and weapon["ammo"] - queued_count <= 0:
 			log_message("[color=red]Insufficent Ammo for planned shot![/color]")
 			return
 			
