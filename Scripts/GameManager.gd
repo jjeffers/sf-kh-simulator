@@ -47,6 +47,7 @@ var combat_subphase: int = 0
 var ui_layer: CanvasLayer
 var btn_commit: Button
 var btn_undo: Button
+var label_phase_indicator: Label # NEW: Phase Indicator Label
 
 
 var btn_orbit_cw: Button
@@ -219,6 +220,7 @@ func _setup_network_identity():
 
 	# Force UI Update to show Side ID immediately
 	_update_ui_state()
+	_update_phase_indicator() # NEW
 		
 	# Game Start Handshake
 	if multiplayer.has_multiplayer_peer():
@@ -347,6 +349,20 @@ func _setup_ui():
 		
 	ui_layer = CanvasLayer.new()
 	add_child(ui_layer)
+	
+	# NEW: Phase Indicator (Top Center)
+	var panel_phase = PanelContainer.new()
+	panel_phase.anchor_left = 0.5
+	panel_phase.anchor_right = 0.5
+	panel_phase.anchor_top = 0.0
+	panel_phase.offset_top = 10
+	panel_phase.grow_horizontal = Control.GROW_DIRECTION_BOTH
+	ui_layer.add_child(panel_phase)
+	
+	label_phase_indicator = Label.new()
+	label_phase_indicator.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	label_phase_indicator.add_theme_font_size_override("font_size", 24)
+	panel_phase.add_child(label_phase_indicator)
 	
 	var vbox = VBoxContainer.new()
 	vbox.position = Vector2(20, 20)
@@ -1405,6 +1421,42 @@ func _reset_plotting_state():
 		}
 
 
+# --- Phase Indicator Helpers ---
+func _get_side_name(s_id: int) -> String:
+	# Dynamic lookup from ships
+	for s in ships:
+		if is_instance_valid(s) and s.side_id == s_id:
+			return s.faction # e.g. "UPF", "Sathar"
+			
+	# Fallback if no ships found
+	if s_id == 1: return "UPF"
+	if s_id == 2: return "Sathar"
+	return "Side %d" % s_id
+
+func _get_phase_name(p: int) -> String:
+	match p:
+		Phase.START: return "Setup"
+		Phase.MOVEMENT: return "Movement"
+		Phase.COMBAT: return "Combat"
+		Phase.END: return "End"
+		_: return "Unknown"
+
+func _update_phase_indicator():
+	if not label_phase_indicator: return
+	
+	# Format: "Turn <turn> : <phase> : <side>"
+	var side_name = "None"
+	var active_id = current_side_id
+	if current_phase == Phase.COMBAT:
+		active_id = firing_side_id
+		
+	if active_id != 0:
+		side_name = _get_side_name(active_id)
+		
+	var text = "Turn %d : %s : %s" % [turn_count, _get_phase_name(current_phase), side_name]
+	label_phase_indicator.text = text
+
+
 func _cycle_selection():
 	if current_phase == Phase.MOVEMENT:
 		# Filter: Active Player, !has_moved
@@ -1433,12 +1485,6 @@ func _cycle_selection():
 		# But `_check_combat_availability` locks us into one.
 		# Let's allow cycling the SHOOTER if multiple are available?
 		# Or cycling the TARGET if a shooter is selected?
-		# Consistent UI: TAB cycles controllable units. 
-		# If we want to cycle targets, we need a different key or context.
-		# EXISTING logic cycled targets. Let's keep that for now if a shooter is locked?
-		# BUT wait, the previous code cycled TARGETS.
-		# Let's split: TAB cycles SHOOTERS (if we allow changing shooter). click cycles targets?
-		# Or TAB cycles targets if we have a shooter?
 		# DECISION: Tab cycles TARGETS for the current shooter.
 		# Changing shooter: Click on friendly ship?
 		# Update target cycling
@@ -1528,7 +1574,7 @@ func _start_turn_for_side(sid: int):
 	current_side_id = sid
 	turn_count += 1
 
-	log_message("=== Turn Start: Side %s ===" % get_side_name(sid))
+	log_message("=== Turn Start: Side %s ===" % _get_side_name(sid))
 	
 	# Update UI to reflect new Side ID immediately
 	_update_ui_state()
@@ -1567,6 +1613,8 @@ func start_movement_phase():
 	combat_subphase = 0
 	firing_side_id = 0
 	combat_action_taken = false # Reset lock
+	
+	_update_phase_indicator() # NEW: Update UI for Movement Phase
 	
 	# Find un-moved ships for ACTIVE side (Current Side Only)
 	for s in ships:
@@ -1687,6 +1735,8 @@ func start_combat_passive():
 	
 	print("[DEBUG] start_combat_passive: Side %d firing (Opponent of Moving Side %d)" % [firing_side_id, current_side_id])
 	
+	_update_phase_indicator() # NEW: Update UI for Combat Phase (Passive)
+	
 	if audio_phase_change and audio_phase_change.stream:
 		audio_phase_change.play()
 	
@@ -1697,6 +1747,8 @@ func start_combat_active():
 	combat_subphase = 2 # Active Second
 	# Active Fire: The ACTIVE side fires
 	firing_side_id = current_side_id
+	
+	_update_phase_indicator() # NEW: Update UI for Combat Phase (Active)
 	
 	print("[DEBUG] start_combat_active: Side %d firing (Active Side)" % firing_side_id)
 	
