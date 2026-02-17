@@ -698,7 +698,9 @@ func _handle_combat_click(hex: Vector3i):
 	# NEW LOGIC: Prioritize Targeting over Selection Switching if a valid target exists in the hex
 	# Check if clicked hex has a valid target FIRST
 	var potential_target = null
-	for s in ships:
+	# Iterate BACKWARDS to pick the "Top" visual ship (last rendered/added)
+	for i in range(ships.size() - 1, -1, -1):
+		var s = ships[i]
 		if is_instance_valid(s) and s.grid_position == hex and s != selected_ship:
 			# Check validity as target
 			if s.side_id != my_side_id and not s.is_exploding:
