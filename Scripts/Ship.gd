@@ -59,6 +59,10 @@ var has_moved: bool = false
 var has_fired: bool = false
 var orbit_direction: int = 0 # 0=None, 1=CW, -1=CCW
 
+# Undo State
+var turn_start_state: Dictionary = {}
+
+
 func get_effective_adf() -> int:
 	return max(0, adf - current_adf_modifier)
 
@@ -1092,6 +1096,9 @@ func trigger_explosion():
 func reset_turn_state():
 	has_moved = false
 	has_fired = false
+	turn_start_state.clear()
+	# Don't reset movement points here, they are reset when phase starts
+	# But we should reset energy or other per-turn counters if any
 	reset_weapons()
 
 func get_docking_capacity() -> int:

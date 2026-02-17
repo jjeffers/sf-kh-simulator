@@ -60,17 +60,14 @@ func test_segmented_undo():
 	assert_eq(_gm.ghost_ship.facing, 1, "Ghost facing 1")
 	assert_eq(_gm.turns_remaining, 1, "Used 1 turn")
 	
-	# UNDO 1: Revert Turn
+	# UNDO: Full Reset
 	_gm._on_undo()
 	
-	assert_eq(_gm.movement_history.size(), 1, "History popback")
-	assert_eq(_gm.ghost_ship.facing, 0, "Facing restored to 0")
-	assert_eq(_gm.turns_remaining, 2, "Turn refunded")
-	assert_eq(_gm.ghost_ship.grid_position, hex1, "Position still at hex1")
-	
-	# UNDO 2: Revert Move
-	_gm._on_undo()
-	
+	# Verify Full Reset
 	assert_eq(_gm.movement_history.size(), 0, "History empty")
 	assert_eq(_gm.current_path.size(), 0, "Path cleared")
 	assert_eq(_gm.ghost_ship.grid_position, Vector3i(0, 0, 0), "Position restored to start")
+	assert_eq(_gm.ghost_ship.facing, 0, "Facing restored to start (0)")
+	
+	# Turns remaining should be reset to max (assuming _reset_plotting_state does this)
+	assert_eq(_gm.turns_remaining, _ship.mr, "Turns reset to MR")
