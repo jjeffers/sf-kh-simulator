@@ -33,6 +33,10 @@ func before_each():
 	game_manager.ships.append(enemy_1)
 	game_manager.ships.append(enemy_2)
 	
+	game_manager.add_child(friendly_ship)
+	game_manager.add_child(enemy_1)
+	game_manager.add_child(enemy_2)
+	
 	game_manager.current_phase = game_manager.Phase.COMBAT
 	game_manager.my_side_id = 1
 	game_manager.current_side_id = 1
@@ -43,16 +47,19 @@ func before_each():
 	friendly_ship.current_weapon_index = 0
 
 func test_multi_enemy_stack_targeting():
-	# Situation: We have 2 enemies in the stack.
-	# We click the hex.
-	# Standard behavior: Pick one.
-	# 1. Click the stack
+	# 1. Force Visual Mismatch
+	# Ships array order: [Friendly, Enemy_A, Enemy_B]
+	# Naturally Enemy_B is last = top.
+	# Let's force Enemy_A to be TOP visually (move_to_front / raise)
+	enemy_1.get_parent().move_child(enemy_1, -1) # Enemy_A is now last sibling (Top)
+	
+	# 2. Click the stack
 	game_manager._handle_combat_click(Vector3i(0, 0, 0))
 	
-	# Assert we targeted the TOP enemy (Enemy_B)
+	# Assert we targeted the VISUAL TOP (Enemy_A), even though it is earlier in ships array
 	assert_not_null(game_manager.combat_target, "Should have targeted an enemy")
 	if game_manager.combat_target:
-		assert_eq(game_manager.combat_target.name, "Enemy_B", "Should prioritize Top ship (Enemy B)")
+		assert_eq(game_manager.combat_target.name, "Enemy_A", "Should prioritize Visual Top ship (Enemy A)")
 		
 	# Check queued attack
 	assert_gt(game_manager.queued_attacks.size(), 0, "First click should store attack")

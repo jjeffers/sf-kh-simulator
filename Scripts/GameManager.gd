@@ -698,17 +698,21 @@ func _handle_combat_click(hex: Vector3i):
 	# NEW LOGIC: Prioritize Targeting over Selection Switching if a valid target exists in the hex
 	# Check if clicked hex has a valid target FIRST
 	var potential_target = null
-	# Iterate BACKWARDS to pick the "Top" visual ship (last rendered/added)
-	for i in range(ships.size() - 1, -1, -1):
-		var s = ships[i]
+	
+	# Gather ALL candidates at this hex
+	var candidates = []
+	for s in ships:
 		if is_instance_valid(s) and s.grid_position == hex and s != selected_ship:
 			# Check validity as target
 			if s.side_id != my_side_id and not s.is_exploding:
-				# Basic check, detailed check happens below?
-				# Ideally we should check if it is in _get_valid_targets(selected_ship)
-				# But that might be expensive? No, valid_targets is usually small.
-				potential_target = s
-				break
+				candidates.append(s)
+	
+	# Sort candidates by Visual Order (Scene Tree Index)
+	# Higher index = Drawn on Top = Priority
+	candidates.sort_custom(func(a, b): return a.get_index() > b.get_index())
+	
+	if candidates.size() > 0:
+		potential_target = candidates[0] # The "Top" ship
 	
 	if potential_target:
 		# Check if this IS a valid target for current weapon?
