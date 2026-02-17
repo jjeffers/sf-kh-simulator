@@ -99,9 +99,10 @@ func take_hull_damage(amount: int):
 		ship_destroyed.emit()
 		trigger_explosion()
 
-func apply_damage_effect(effect: Dictionary, roll_damage_amount: int) -> String:
+func apply_damage_effect(effect: Dictionary, roll_damage_amount: int) -> Dictionary:
 	var log_msg = effect.get("text", "Unknown Effect")
 	var type = effect.get("type")
+	var fallback_needed = false
 	
 	if type == "Hull":
 		var mult = effect.get("mult", 1.0)
@@ -111,7 +112,9 @@ func apply_damage_effect(effect: Dictionary, roll_damage_amount: int) -> String:
 		
 	elif type == "ADF":
 		var val = effect.get("val", 0)
-		if val == -99: # All
+		if get_effective_adf() == 0:
+			fallback_needed = true
+		elif val == -99: # All
 			current_adf_modifier = adf
 		elif val == -0.5: # Half
 			current_adf_modifier += ceil(adf / 2.0)
@@ -120,7 +123,9 @@ func apply_damage_effect(effect: Dictionary, roll_damage_amount: int) -> String:
 		
 	elif type == "MR":
 		var val = effect.get("val", 0)
-		if val == -99:
+		if get_effective_mr() == 0:
+			fallback_needed = true
+		elif val == -99:
 			current_mr_modifier = mr
 		else:
 			current_mr_modifier += abs(val)
@@ -134,12 +139,6 @@ func apply_damage_effect(effect: Dictionary, roll_damage_amount: int) -> String:
 		for target_type in priority_list:
 			# Find a weapon of this type that is NOT already crippled
 			for w in weapons:
-				# Correct matching logic for "Laser" matching "Laser Battery" or "Laser Canon"? NO.
-				# Rules say "laser canon, laser battery" are distinct items in the list.
-				# So exact match on w["type"] is safest, but definitions use "Laser" for Battery and "Laser Canon" for Canon.
-				# "Rocket" matches "Assault Rocket"?
-				# "Rocket Battery" matches "Rocket Battery".
-				# "Torpedo" matches "Torpedo".
 				var w_type = w.get("type", "")
 				var match_found = false
 				
@@ -158,46 +157,75 @@ func apply_damage_effect(effect: Dictionary, roll_damage_amount: int) -> String:
 		if crippled_weapon:
 			log_msg += ": %s Crippled!" % crippled_weapon["name"]
 		else:
+			fallback_needed = true
 			log_msg += " (No matching weapons to cripple)"
 
 	elif type == "System":
 		var key = effect.get("key")
 		if key == "ICM":
-			icm_current = 0
-			icm_max = 0
+			if icm_max == 0:
+				fallback_needed = true
+			else:
+				icm_current = 0
+				icm_max = 0
 		elif key == "CCS":
-			ccs_damaged = true
+			if ccs_damaged:
+				fallback_needed = true
+			else:
+				ccs_damaged = true
 
 	elif type == "Defense":
 		var list = effect.get("list", [])
+		var affected = false
 		for sys in list:
 			if sys == "MS":
-				ms_current = 0
-				ms_max = 0
+				if ms_max > 0:
+					ms_current = 0
+					ms_max = 0
+					affected = true
 			elif sys == "ICM":
-				icm_current = 0
-				icm_max = 0
+				if icm_max > 0:
+					icm_current = 0
+					icm_max = 0
+					affected = true
+		
+		# If neither system existed to be damaged?
+		# Rule says "does not have the system indicated". 
+		# Prior logic didn't check. Now let's assume if NO system was affected, fallback?
+		# "Defense hit: masking screens, ICMs". If I have neither, fallback.
+		if not affected:
+			fallback_needed = true
 
 	elif type == "Navigation":
-		current_adf_modifier = adf
-		current_mr_modifier = mr
+		if get_effective_adf() == 0 and get_effective_mr() == 0:
+			fallback_needed = true
+		else:
+			current_adf_modifier = adf
+			current_mr_modifier = mr
 		
 	elif type == "Fire":
 		var key = effect.get("key")
 		if key == "Electrical":
-			if not has_disastrous_fire:
+			if not has_disastrous_fire and has_electrical_fire:
+				fallback_needed = true # Duplicate Electrical
+			elif has_disastrous_fire:
+				fallback_needed = true # Cannot downgrade or stack
+			else:
 				has_electrical_fire = true
 				fire_damage_stack = 20
 		elif key == "Disastrous":
-			has_disastrous_fire = true
-			has_electrical_fire = false
-			fire_damage_stack = 20
-			current_adf_modifier = adf
-			current_mr_modifier = mr
-			ccs_damaged = true
+			if has_disastrous_fire:
+				fallback_needed = true # Duplicate Disastrous
+			else:
+				has_disastrous_fire = true
+				has_electrical_fire = false
+				fire_damage_stack = 20
+				current_adf_modifier = adf
+				current_mr_modifier = mr
+				ccs_damaged = true
 
 	state_changed.emit()
-	return log_msg
+	return {"text": log_msg, "fallback": fallback_needed}
 
 func configure_fighter():
 	ship_class = "Fighter"

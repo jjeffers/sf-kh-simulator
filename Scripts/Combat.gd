@@ -87,8 +87,15 @@ static func calculate_hit_chance(dist: int, weapon: Dictionary = {}, target: Shi
 	if is_head_on: chance += 10
 	
 	# Apply ICM reduction for any falling-through weapons (e.g. Assault Rocket vs non-RH)
+	# Apply ICM reduction for any falling-through weapons (e.g. Assault Rocket vs non-RH)
 	if icm_count > 0:
 		chance -= calculate_icm_reduction(weapon.get("type", ""), icm_count)
+		
+	# CCS / Disastrous Fire Penalty
+	# "-10% on all attacks"
+	if source:
+		if source.get("ccs_damaged") or source.get("has_disastrous_fire"):
+			chance -= 10
 		
 	return max(0, chance)
 
