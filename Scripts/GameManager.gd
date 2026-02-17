@@ -1629,7 +1629,7 @@ func _start_turn_for_side(sid: int):
 	# Fire Damage Phase (after Turn Start reset)
 	# Fire Damage Phase (after Turn Start reset)
 	# AUTHORITY ONLY: Calculate and broadcast fire damage results to ensure sync
-	if multiplayer.is_server() or not multiplayer.has_multiplayer_peer():
+	if not multiplayer.has_multiplayer_peer() or multiplayer.is_server():
 		for s in ships:
 			if is_instance_valid(s) and (s.fire_damage_stack > 0 or s.has_electrical_fire or s.has_disastrous_fire):
 				var dtm = s.fire_damage_stack
