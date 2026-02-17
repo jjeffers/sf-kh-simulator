@@ -695,26 +695,44 @@ func _log_to_file(msg: String):
 func _handle_combat_click(hex: Vector3i):
 	if combat_action_taken: return
 	
-	# Check if clicked on a FRIENDLY ship to switch shooter
-	# Only checks ships belonging to firing_side_id that haven't fired
-	for s in ships:
-		if is_instance_valid(s) and s.grid_position == hex and s.side_id == firing_side_id and not s.has_fired:
-			# Ownership Check
-			if s.side_id != my_side_id and my_side_id != 0:
-				continue
-				
-			if s != selected_ship:
-				selected_ship = s
-				# Auto-retarget
-				combat_target = null
-				var targets = _get_valid_targets(selected_ship)
-				if targets.size() > 0: combat_target = targets[0]
-				
-				queue_redraw()
-				_update_ship_visuals() # Re-sort stack
-				_update_ui_state()
-				log_message("Switched to %s" % selected_ship.get_display_name())
-				return
+	# STACK SELECTION FIX:
+	# If we are in "Targeting Mode" (Selected Ship + Weapon Active),
+	# we should PRIORITIZE finding an ENEMY target at this hex.
+	# Only if no enemy is found (or we are not targeting) should we switch to a friendly ship.
+	
+	var prioritize_enemies = false
+	if selected_ship and selected_ship.weapons.size() > 0:
+		prioritize_enemies = true
+		
+	var enemy_found_at_hex = false
+	if prioritize_enemies:
+		for s in ships:
+			if is_instance_valid(s) and s.grid_position == hex and s.side_id != firing_side_id:
+				enemy_found_at_hex = true
+				break
+	
+	# Only switch friendly selection if we are NOT prioritizing enemies, OR if no enemy is here.
+	if not prioritize_enemies or not enemy_found_at_hex:
+		# Check if clicked on a FRIENDLY ship to switch shooter
+		# Only checks ships belonging to firing_side_id that haven't fired
+		for s in ships:
+			if is_instance_valid(s) and s.grid_position == hex and s.side_id == firing_side_id and not s.has_fired:
+				# Ownership Check
+				if s.side_id != my_side_id and my_side_id != 0:
+					continue
+					
+				if s != selected_ship:
+					selected_ship = s
+					# Auto-retarget
+					combat_target = null
+					var targets = _get_valid_targets(selected_ship)
+					if targets.size() > 0: combat_target = targets[0]
+					
+					queue_redraw()
+					_update_ship_visuals() # Re-sort stack
+					_update_ui_state()
+					log_message("Switched to %s" % selected_ship.get_display_name())
+					return
 	
 	# if not combat_target: return # REMOVED: Prevent blocking target selection
 	
