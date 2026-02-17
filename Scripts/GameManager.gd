@@ -2674,7 +2674,47 @@ func execute_commit_move(ship_name: String, path: Array, final_facing: int, orbi
 	
 	# Teleport/Animate
 	# For "instant" update:
-	ship.grid_position = path.back() if path.size() > 0 else ship.grid_position
+	var collision_hex = Vector3i.ZERO
+	var collision_index = -1
+	
+	if path.size() > 0:
+		# Iterate path to check for planets
+		for i in range(path.size()):
+			var hex = path[i]
+			# Skip checking start hex (presumably safe)
+			if i == 0 and hex == ship.grid_position: continue
+			
+			if planet_hexes.has(hex):
+				collision_hex = hex
+				collision_index = i
+				log_message("[color=red]COLLISION: %s flew into a Planet at %s![/color]" % [ship.name, hex])
+				break
+		
+		# Teleport/Animate
+		if collision_index != -1:
+			# Truncate path to collision point
+			var truncated_path = path.slice(0, collision_index + 1)
+			ship.grid_position = truncated_path.back()
+			ship.facing = final_facing # Face death
+			
+			ship.trigger_explosion()
+			
+			# CLEANUP & ADVANCE TURN (Fix Freeze)
+			if ship == selected_ship:
+				if is_instance_valid(ghost_ship):
+					ghost_ship.queue_free()
+					ghost_ship = null
+				combat_action_taken = false
+				state_is_orbiting = false
+				current_path.clear()
+			
+			ship.has_moved = true
+			if current_phase == Phase.MOVEMENT:
+				end_turn()
+				
+			return
+		else:
+			ship.grid_position = path.back()
 	
 	# COLLISION / BOUNDARY CHECKS (Must run on all to sync death?)
 	# Use the logic from original _on_commit_move but applied to `ship` instead of `selected_ship`

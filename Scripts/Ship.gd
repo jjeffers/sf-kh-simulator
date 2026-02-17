@@ -95,8 +95,6 @@ func take_hull_damage(amount: int):
 	queue_redraw() # Immediate visual update
 	
 	if hull <= 0:
-		is_destroyed = true
-		ship_destroyed.emit()
 		trigger_explosion()
 
 func apply_damage_effect(effect: Dictionary, roll_damage_amount: int) -> Dictionary:
@@ -1090,8 +1088,13 @@ func _draw():
 		draw_rect(fill_rect, health_color, true)
 
 func trigger_explosion():
+	if is_destroyed: return # Prevent double explosion/signal
+	
 	is_ms_active = false # Kill systems
 	is_exploding = true
+	is_destroyed = true
+	hull = 0
+	ship_destroyed.emit()
 	queue_redraw()
 	
 	var particles = CPUParticles2D.new()

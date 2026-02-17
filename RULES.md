@@ -79,7 +79,9 @@ A number between 1 and 100 is randomly selected (roll a d100). Then the DTM from
 
 - **Orbiting**: Special maneuver for ships starting their movement in a hex adjacent to a planet. The ship will orbit the planet clockwise or counter-clockwise, player's choice. The ship will orbit the planet until it decides to move out of the hex away from the planet.
 
-- **Planets**: Planets block attacks that pass through their hex.
+- **Planets**: 
+- Planets block attacks that pass through their hex.
+- Ships entering a hex with a planet are destroyed.
 
 ## Ship Register
 
