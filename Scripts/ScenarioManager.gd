@@ -75,8 +75,9 @@ static func generate_scenario(key: String, rng_seed: int) -> Dictionary:
 			"side_index": 1, # Defender
 			"position": station_pos,
 			"orbit_direction": station_orbit_dir,
-			"stats": {
+			"overrides": {
 				"max_hull": 25,
+				"hull": 25,
 				"icm_max": 6,
 				"icm_current": 6,
 				"weapons": [ {
