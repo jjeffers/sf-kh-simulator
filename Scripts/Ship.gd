@@ -62,6 +62,96 @@ var orbit_direction: int = 0 # 0=None, 1=CW, -1=CCW
 # Undo State
 var turn_start_state: Dictionary = {}
 
+func get_net_state() -> Dictionary:
+	return {
+		"hull": hull,
+		"max_hull": max_hull,
+		"icm_current": icm_current,
+		"icm_max": icm_max,
+		"ms_current": ms_current,
+		"ms_max": ms_max,
+		"is_ms_active": is_ms_active,
+		"ccs_damaged": ccs_damaged,
+		"has_electrical_fire": has_electrical_fire,
+		"has_disastrous_fire": has_disastrous_fire,
+		"fire_damage_stack": fire_damage_stack,
+		"current_adf_modifier": current_adf_modifier,
+		"current_mr_modifier": current_mr_modifier,
+		"has_moved": has_moved,
+		"has_fired": has_fired,
+		"grid_position": grid_position,
+		"facing": facing,
+		"orbit_direction": orbit_direction,
+		"speed": speed,
+		"is_destroyed": is_destroyed, # Important for sync
+		"weapons": _get_weapon_states() # Needed for crippled/ammo
+	}
+
+func apply_net_state(data: Dictionary):
+	hull = data.get("hull", hull)
+	max_hull = data.get("max_hull", max_hull)
+	icm_current = data.get("icm_current", icm_current)
+	icm_max = data.get("icm_max", icm_max)
+	ms_current = data.get("ms_current", ms_current)
+	ms_max = data.get("ms_max", ms_max)
+	is_ms_active = data.get("is_ms_active", is_ms_active)
+	
+	ccs_damaged = data.get("ccs_damaged", ccs_damaged)
+	has_electrical_fire = data.get("has_electrical_fire", has_electrical_fire)
+	has_disastrous_fire = data.get("has_disastrous_fire", has_disastrous_fire)
+	fire_damage_stack = data.get("fire_damage_stack", fire_damage_stack)
+	
+	current_adf_modifier = data.get("current_adf_modifier", current_adf_modifier)
+	current_mr_modifier = data.get("current_mr_modifier", current_mr_modifier)
+	
+	has_moved = data.get("has_moved", has_moved)
+	has_fired = data.get("has_fired", has_fired)
+	
+	# Position/Movement
+	grid_position = data.get("grid_position", grid_position)
+	facing = data.get("facing", facing)
+	orbit_direction = data.get("orbit_direction", orbit_direction)
+	speed = data.get("speed", speed)
+	
+	is_destroyed = data.get("is_destroyed", false) # Handling logic elsewhere might be needed if it transitions
+	if is_destroyed and hull > 0: hull = 0 # Safety
+	
+	if data.has("weapons"):
+		_apply_weapon_states(data["weapons"])
+		
+	# Trigger visual updates
+	queue_redraw()
+	binding_pos_update()
+	if is_destroyed and not is_exploding:
+		# If we sync a destroyed state but aren't dead locally, just vanish?
+		# trigger_explosion() might be too noisy for sync.
+		modulate = Color(0.5, 0.5, 0.5, 0.5) # Dim it
+		# Or hide?
+
+func _get_weapon_states() -> Array:
+	var states = []
+	for w in weapons:
+		states.append({
+			"ammo": w.get("ammo", 0),
+			"is_crippled": w.get("is_crippled", false),
+			"fired": w.get("fired", false)
+		})
+	return states
+
+func _apply_weapon_states(states: Array):
+	if states.size() != weapons.size():
+		# Weapon count mismatch? 
+		# This can happen if scenario loaded wrong, but we fixed that.
+		# Just try to map by index.
+		pass
+		
+	for i in range(min(states.size(), weapons.size())):
+		var s = states[i]
+		var w = weapons[i]
+		w["ammo"] = s.get("ammo", w.get("ammo", 0))
+		w["is_crippled"] = s.get("is_crippled", w.get("is_crippled", false))
+		w["fired"] = s.get("fired", w.get("fired", false))
+
 
 func get_effective_adf() -> int:
 	return max(0, adf - current_adf_modifier)

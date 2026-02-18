@@ -1116,10 +1116,13 @@ func _on_combat_commit():
 			"tp": atk["target_pos"]
 		})
 	
+	var seed_val = randi()
 	if multiplayer.has_multiplayer_peer():
-		rpc("execute_commit_combat", attacks_data, randi())
+		# Client: Send Request to Server
+		rpc_id(1, "execute_commit_combat", attacks_data, seed_val)
 	else:
-		execute_commit_combat(attacks_data, randi())
+		# Local: Just execute
+		_execute_resolution(attacks_data, seed_val)
 
 @rpc("any_peer", "call_local", "reliable")
 func execute_commit_combat(attacks_data: Array, rng_seed: int):
@@ -1131,14 +1134,26 @@ func execute_commit_combat(attacks_data: Array, rng_seed: int):
 	
 	if current_phase != Phase.COMBAT:
 		print("[Security] Combat rejected: Wrong Phase (%s)" % current_phase)
-		# We might need to handle stuck state if we return here? 
-		# But this is an illegal call, so ignoring it is safe.
 		return
 
 	# Validate Sender owns the Firing Side
 	if not _validate_rpc_ownership(sender_id, firing_side_id):
 		return
 		
+
+	if multiplayer.is_server():
+		# Broadcast to all clients (Authority -> Clients)
+		# We use the SAME seed provided by the client to ensure fairness/sync
+		rpc("rpc_resolve_combat", attacks_data, rng_seed)
+	else:
+		# If a client somehow received this (shouldn't happen if we only rpc_id(1)), ignore or log
+		pass
+
+@rpc("authority", "call_local", "reliable")
+func rpc_resolve_combat(attacks_data: Array, rng_seed: int):
+	_execute_resolution(attacks_data, rng_seed)
+
+func _execute_resolution(attacks_data: Array, rng_seed: int):
 	current_combat_state = CombatState.RESOLVING
 	
 	# Sync RNG
@@ -1675,6 +1690,9 @@ func start_movement_phase():
 	
 	_update_phase_indicator() # NEW: Update UI for Movement Phase
 	
+	# Sync State at start of turn/phase to ensure damage/flags are correct
+	broadcast_game_state()
+	
 	# Find un-moved ships for ACTIVE side (Current Side Only)
 	for s in ships:
 		if not is_instance_valid(s): continue
@@ -1821,6 +1839,9 @@ func _start_combat_planning():
 	queued_attacks.clear()
 	selected_ship = null
 	combat_target = null
+	
+	# Sync State before planning to ensure odds/damage are correct
+	broadcast_game_state()
 	
 	# FIX: Explicitly hide Movement Panel to prevent overlap
 	if panel_movement:
@@ -2720,9 +2741,11 @@ func execute_commit_move(ship_name: String, path: Array, final_facing: int, orbi
 	# Use the logic from original _on_commit_move but applied to `ship` instead of `selected_ship`
 	
 	if _check_planet_collision(ship) or _check_boundary(ship):
-		# Ship Died
-		# Handle death logic (e.g. remove from list)
-		pass
+		# Ship Died - Stop processing and advance turn
+		ship.has_moved = true
+		if current_phase == Phase.MOVEMENT:
+			end_turn()
+		return
 	
 	# DOCKING LOGIC
 	_handle_docking_states(ship)
@@ -3895,6 +3918,38 @@ func rpc_add_attack(source_name: String, target_name: String, weapon_idx: int):
 		'weapon_idx': weapon_idx,
 		'weapon_name': weapon['name']
 	})
+	
+# STATE SYNC LOGIC
+func broadcast_game_state():
+	# Only Authority (Server/Host) should broadcast state
+	if multiplayer.has_multiplayer_peer() and not multiplayer.is_server():
+		return
+		
+	var state_data = {}
+	for s in ships:
+		if is_instance_valid(s):
+			state_data[s.name] = s.get_net_state()
+			
+	if multiplayer.has_multiplayer_peer():
+		rpc_sync_ship_states.rpc(state_data)
+	else:
+		# Local singleplayer (or just testing)
+		pass
+
+@rpc("authority", "call_local", "reliable")
+func rpc_sync_ship_states(data: Dictionary):
+	# log_message("Syncing Ship States...")
+	for ship_name in data:
+		var s_data = data[ship_name]
+		var s = _find_ship_by_name(ship_name)
+		if s:
+			s.apply_net_state(s_data)
+		else:
+			# Ship might be missing (desync?) result of destruction?
+			# In full sync we might want to spawn it?
+			# For now, just ignore.
+			pass
+
 	
 	_update_ui_state() # Update Status Label (Planned Attacks List)
 	_update_planning_ui_list()
