@@ -1638,6 +1638,15 @@ func _start_turn_for_side(sid: int):
 	for s in ships:
 		if is_instance_valid(s):
 			s.reset_turn_state()
+			
+			# Capture Start State for Undo
+			s.turn_start_state = {
+				"grid_position": s.grid_position,
+				"facing": s.facing,
+				"speed": s.speed,
+				"is_ms_active": s.is_ms_active,
+				"ms_orbit_start_hex": s.ms_orbit_start_hex
+			}
 	
 	start_movement_phase()
 
@@ -2395,32 +2404,60 @@ func _update_ui_state():
 		else: label_player_info.modulate = Color.GREEN
 
 func _on_undo():
-	# User Request: "Undo" button should restore ship to original position/state (Full Reset)
-	if selected_ship and selected_ship.has_moved:
-		log_message("Undoing Committed Move for %s" % selected_ship.name)
-		if not selected_ship.turn_start_state.is_empty():
-			var s = selected_ship.turn_start_state
-			selected_ship.grid_position = s["grid_position"]
-			selected_ship.facing = s["facing"]
-			selected_ship.speed = s["speed"]
-			selected_ship.is_ms_active = s["is_ms_active"]
-			selected_ship.ms_orbit_start_hex = s["ms_orbit_start_hex"]
-			selected_ship.has_moved = false
-			selected_ship.previous_path.clear() # Clear visual trail from the undone move
-			
-			# Note: We don't clear turn_start_state here, enabling repeated undos if needed (though pointless)
+	if not selected_ship: return
+	
+	# Case 1: Committed Move (Needs RPC / Full Reset)
+	if selected_ship.has_moved:
+		if multiplayer.has_multiplayer_peer():
+			rpc("rpc_undo_move", selected_ship.name)
 		else:
-			log_message("[Error] No turn start state found for undo!")
-			
-	log_message("Movement Reset")
-	
-	# Clear all plotting data and restore start state
+			rpc_undo_move(selected_ship.name)
+		return
+		
+	# Case 2: Plotting Phase (Local Reset)
+	log_message("Resetting Plot...")
 	_reset_plotting_state()
-	
-	# Visual Reset
 	_spawn_ghost()
 	_update_ui_state()
 	queue_redraw()
+
+@rpc("any_peer", "call_local", "reliable")
+func rpc_undo_move(ship_name: String):
+	var s_obj = _find_ship_by_name(ship_name)
+	if not s_obj: return
+	
+	# Security: Check Ownership
+	var sender = 1
+	if multiplayer.has_multiplayer_peer():
+		sender = multiplayer.get_remote_sender_id()
+		if sender == 0: sender = multiplayer.get_unique_id()
+		
+	if not _validate_rpc_ownership(sender, s_obj.side_id):
+		return
+
+	log_message("Undoing Move for %s" % s_obj.name)
+	
+	if not s_obj.turn_start_state.is_empty():
+		var state = s_obj.turn_start_state
+		s_obj.grid_position = state["grid_position"]
+		s_obj.facing = state["facing"]
+		s_obj.speed = state["speed"]
+		s_obj.is_ms_active = state["is_ms_active"]
+		s_obj.ms_orbit_start_hex = state["ms_orbit_start_hex"]
+		s_obj.has_moved = false
+		s_obj.previous_path.clear()
+	else:
+		log_message("[Error] No turn start state found for undo!")
+
+	# If this is the selected ship on this client, reset UI
+	if selected_ship == s_obj:
+		_reset_plotting_state()
+		_spawn_ghost()
+		_update_ui_state()
+		queue_redraw()
+	else:
+		# Remote update
+		s_obj.queue_redraw()
 
 
 var state_is_orbiting: bool = false # Temp state for UI
