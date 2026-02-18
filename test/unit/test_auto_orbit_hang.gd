@@ -11,6 +11,7 @@ func before_each():
 	# Create Station with Orbit Direction
 	station = Ship.new()
 	station.name = "Station"
+	station.ship_class = "Space Station"
 	station.grid_position = Vector3i(0, 0, 0)
 	station.ship_class = "Space Station"
 	station.side_id = 1

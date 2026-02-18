@@ -43,6 +43,7 @@ func test_undo_committed_move_restores_state():
 	var target = Vector3i(1, 0, -1)
 	_gm._handle_movement_click(target)
 	_gm._on_commit_move()
+	_gm.execute_all_movement() # Execute to set has_moved=true
 	
 	assert_true(_ship.has_moved, "Ship should be marked as moved")
 	assert_eq(_ship.grid_position, target, "Ship should be at target")

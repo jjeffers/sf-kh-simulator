@@ -78,6 +78,7 @@ func test_previous_path_saved_on_commit():
 	var facing = _gm.ghost_ship.facing
 	
 	_gm.execute_commit_move(_ship.name, path, facing, 0, false)
+	_gm.execute_all_movement() # Execute the committed move to save previous_path
 	
 	# Verify
 	assert_eq(_ship.previous_path.size(), 1, "Previous path should be saved")

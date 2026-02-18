@@ -4,7 +4,7 @@
 A. Side A Turn
 1. **Movement Phase**:
    - All ships and stations in orbit are moved 1 hex in the direction of their orbit (CW or CCW).
-   - Side A moves all ships.
+   - Side A moves all ships. (See the "Movement" section below.)
 2. **Combat Phase**:
    - **Passive Fire**: The non-moving side (Side B) plans and executes defensive fire.
    - **Active Fire**: The moving player plans and executes offensive fire.

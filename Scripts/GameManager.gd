@@ -312,7 +312,7 @@ func _process(delta):
 			selection_highlight.visible = false
 
 	# Ghost Ship Hover Preview (Moved from _unhandled_input for reliability)
-	if current_phase == Phase.MOVEMENT and ghost_ship and is_instance_valid(ghost_ship) and selected_ship and not selected_ship.has_moved:
+	if current_phase == Phase.MOVEMENT and ghost_ship and is_instance_valid(ghost_ship) and selected_ship and not selected_ship.has_moved and not selected_ship.has_orders:
 		var local_mouse = get_local_mouse_position()
 		var hex_hover = HexGrid.pixel_to_hex(local_mouse)
 		
@@ -622,30 +622,6 @@ func _setup_ui():
 	mini_map.set_anchors_and_offsets_preset(Control.PRESET_TOP_RIGHT, Control.PRESET_MODE_KEEP_SIZE, 20)
 	ui_layer.add_child(mini_map)
 	
-func _on_exec_move_pressed():
-	# Validate Phase
-	if current_phase != Phase.MOVEMENT: return
-	
-	# Validate Ownership
-	if my_side_id != 0 and my_side_id != current_side_id:
-		log_message("Not your turn to execute movement!")
-		return
-		
-	# Double check all moved?
-	var unmoved_count = 0
-	for s in ships:
-		if is_instance_valid(s) and s.side_id == current_side_id and not s.is_exploding and not s.has_moved:
-			unmoved_count += 1
-			
-	if unmoved_count > 0:
-		log_message("Cannot execute: %d ships still need to move!" % unmoved_count)
-		return
-		
-	# Proceed
-	if multiplayer.has_multiplayer_peer():
-		rpc_start_combat_passive.rpc()
-	else:
-		start_combat_passive()
 
 @rpc("any_peer", "call_local", "reliable")
 func rpc_start_combat_passive():
@@ -1417,9 +1393,23 @@ func _on_resolution_complete():
 	# So we end this player's combat subphase.
 	
 	if combat_subphase == 1:
+		# Passive Fire Done -> Start Active Fire
 		start_combat_active()
-	else:
-		end_turn_cycle()
+	elif combat_subphase == 2:
+		# Active Fire Done -> End of this Side's Turn -> Next Side
+		current_turn_order_index += 1
+		
+		if current_turn_order_index < turn_order.size():
+			if audio_phase_change and audio_phase_change.stream:
+				audio_phase_change.play()
+				
+			# Proceed to Next Side
+			_start_turn_for_side(turn_order[current_turn_order_index])
+		else:
+			# All Sides Done -> Check for End of Turn Cycle (Round)
+			# We need to call end_turn_cycle() or reset
+			# Assuming end_turn_cycle() handles Round increment and Loop restart
+			call("end_turn_cycle") # Use call() to avoid parser error if not immediately found (though it should be)
 
 func _spawn_hit_text(pos: Vector2, val: Variant):
 	var lbl = Label.new()
@@ -1525,7 +1515,9 @@ func _cycle_selection():
 		_reset_plotting_state()
 		
 		if audio_ship_select and audio_ship_select.stream: audio_ship_select.play()
-		_spawn_ghost()
+		
+		_load_plan_visualization(selected_ship)
+		
 		_update_camera()
 		_update_ship_visuals() # Re-sort stack
 		_update_ui_state()
@@ -1706,6 +1698,10 @@ func start_movement_phase():
 	# Find un-moved ships for ACTIVE side (Current Side Only)
 	for s in ships:
 		if not is_instance_valid(s): continue
+		# Reset Order flag for new phase
+		if s.side_id == current_side_id and not s.has_moved:
+			s.has_orders = false
+			
 		if s.side_id == current_side_id and not s.is_exploding and not s.has_moved:
 			pass # Accepted
 		else:
@@ -1762,12 +1758,25 @@ func start_movement_phase():
 			# Instant execution
 			_on_commit_move()
 			
-		return # Stop processing
+			# Apply LOCALLY immediately (Authority)
+			# This updates state without ending phase for others
+			_apply_movement_plan(auto_candidate)
+			
+			# Remove from available so we don't re-select it
+			available.erase(auto_candidate)
+			selected_ship = null
+			
+			_update_camera()
+			_update_ui_state()
 				
 
 	# FIX: Respect current selection if valid
 	# If we already have a selected ship that is VALID (available), don't change selection.
 	if selected_ship and selected_ship in available:
+		_update_ui_state()
+		return
+		
+	if available.size() == 0:
 		_update_ui_state()
 		return
 
@@ -2173,10 +2182,12 @@ func _update_ui_state():
 		panel_planning.visible = false
 		if panel_attack_queue: panel_attack_queue.visible = false
 
-
 		_update_movement_ui_list()
 		
-		_update_movement_ui_list()
+		# Execute Button: Always visible for active side during movement
+		var is_my_movement = (my_side_id == current_side_id) or (my_side_id == 0)
+		if btn_exec_move:
+			btn_exec_move.visible = is_my_movement
 		
 		# Default State: HIDE ship controls
 		btn_undo.visible = false
@@ -2186,9 +2197,9 @@ func _update_ui_state():
 		btn_ms_toggle.visible = false
 
 		if selected_ship:
-			# Undo available if plotting path exists OR if ship has already moved (to reset)
-			# Only for my side and if I am authoritative
-			var can_undo = (current_path.size() > 0) or (selected_ship.has_moved)
+			# Undo available if plotting path exists OR if ship has orders (to reset)
+			# NOT if has_moved (Executed)
+			var can_undo = (current_path.size() > 0) or (selected_ship.has_orders)
 			btn_undo.visible = can_undo
 			
 			var steps = current_path.size()
@@ -2201,9 +2212,11 @@ func _update_ui_state():
 				# Orbit moves are always 1 hex, regardless of ADF/Speed limits
 				is_valid = true
 				
-			var is_moved = selected_ship.has_moved
+			var is_locked = selected_ship.has_moved or selected_ship.has_orders
 			btn_commit.visible = true
-			btn_commit.disabled = not is_valid or is_moved
+			# Disable if invalid path OR already locked (Orders/Moved)
+			# Note: We can re-commit if we Undo first.
+			btn_commit.disabled = not is_valid or is_locked
 			
 			var is_stationary = (current_path.size() == 0 and start_speed == 0)
 
@@ -2278,9 +2291,9 @@ func _update_ui_state():
 				unmoved.append(s)
 		
 		if unmoved.size() > 0:
-			btn_exec_move.disabled = true
-			btn_exec_move.text = "Finish Moves (%d left)" % unmoved.size()
-			btn_exec_move.modulate = Color(0.5, 0.5, 0.5) # Grey
+			btn_exec_move.disabled = false # ALWAYS ALLOW EXECUTION
+			btn_exec_move.text = "EXECUTE MOVEMENT" # Text requested by user
+			btn_exec_move.modulate = Color(1, 0.8, 0.2) # Yellow-ish warning
 		else:
 			btn_exec_move.disabled = false
 			btn_exec_move.text = "EXECUTE MOVEMENT"
@@ -2409,13 +2422,22 @@ func _on_undo():
 	
 	# Case 1: Committed Move (Needs RPC / Full Reset)
 	if selected_ship.has_moved:
+		log_message("Requesting Undo for Committed Move...")
 		if multiplayer.has_multiplayer_peer():
-			rpc("rpc_undo_move", selected_ship.name)
+			rpc_undo_move.rpc_id(1, selected_ship.name)
 		else:
 			rpc_undo_move(selected_ship.name)
 		return
 		
-	# Case 2: Plotting Phase (Local Reset)
+	# Case 2: Planned Orders (Has Orders but not Moved)
+	if selected_ship.has_orders:
+		selected_ship.has_orders = false
+		selected_ship.planned_path.clear()
+		_update_movement_ui_list()
+		log_message("Orders cleared for %s" % selected_ship.name)
+		# Fallthrough to local reset to ensure UI is clean
+		
+	# Case 3: Plotting Phase (Local Reset)
 	log_message("Resetting Plot...")
 	_reset_plotting_state()
 	_spawn_ghost()
@@ -2569,46 +2591,74 @@ func _on_ms_toggled(pressed: bool):
 	_update_ui_state()
 
 func _update_movement_ui_list():
-	# Clear
 	for c in list_movement.get_children():
 		c.queue_free()
 		
-	# List all friendly ships with status
-	# Filter: My Side
-	var my_ships = ships.filter(func(s): return is_instance_valid(s) and s.side_id == current_side_id and not s.is_exploding)
+	# Find ships for active side
+	var my_ships = []
+	if current_side_id > 0:
+		my_ships = ships.filter(func(s): return is_instance_valid(s) and s.side_id == current_side_id and not s.is_exploding)
 	
 	for s in my_ships:
 		var btn = Button.new()
-		var status = "MOVED" if s.has_moved else "PLANNING"
-		var color_code = Color.GREEN if s.has_moved else Color.WHITE
+		var status = "WAITING"
+		var color_code = Color.WHITE
+		
+		# STATUS LOGIC
+		if s.has_moved:
+			status = "MOVED"
+			color_code = Color.CYAN # Done
+		elif s.has_orders:
+			# Check Danger (Planet Collision)
+			var is_dangerous = false
+			if s.planned_path.size() > 0:
+				for hex in s.planned_path:
+					if planet_hexes.has(hex):
+						is_dangerous = true
+						break
+			
+			if is_dangerous:
+				status = "DANGER"
+				color_code = Color.RED
+			else:
+				status = "PLANNED"
+				color_code = Color.GREEN # Ready
 		
 		# Highlight selected
 		if s == selected_ship:
 			btn.text = "> %s (%s) <" % [s.name, status]
-			btn.modulate = Color(1, 1, 0) # Yellow highlight
+			btn.modulate = Color.YELLOW
 		else:
 			btn.text = "%s (%s)" % [s.name, status]
 			btn.modulate = color_code
 			
-		
 		btn.pressed.connect(func():
-			# Select ship logic
 			if s != selected_ship:
-				_select_ship(s)
-			else:
-				# Just center camera if already selected
-				_update_camera()
+				selected_ship = s
+				_reset_plotting_state()
+				
+				selected_ship = s
+				_reset_plotting_state()
+				
+				# Load Plan VISUALIZATION
+				_load_plan_visualization(s)
+					
+				_update_ui_state()
+					
+				_update_ui_state()
+				_update_ship_visuals()
+				queue_redraw()
 		)
 		
-		# Disable only if we want to restrict selection. User asked for freedom.
-		# But visual feedback is good.
-		# if s.has_moved:
-		# 	btn.disabled = true
-			
 		list_movement.add_child(btn)
 	
-	# Reposition Minimap
-	call_deferred("_update_minimap_position")
+func execute_commit_move(ship_name: String, path: Array, final_facing: int, orbit_dir: int, is_orbiting: bool):
+	# Test Compatibility Wrapper
+	# Many tests call this directly to bypass UI/Selection state.
+	# We map it to the new register_movement_plan logic.
+	var typed_path: Array[Vector3i] = []
+	typed_path.assign(path)
+	register_movement_plan(ship_name, typed_path, final_facing, orbit_dir, is_orbiting)
 
 func _on_commit_move():
 	# Authority Check
@@ -2619,13 +2669,15 @@ func _on_commit_move():
 	# NETWORK: Send RPC
 	# We need to send: Ship Name (Unique ID), Path, Facing, Orbit Dir
 	var path_data = current_path # Array[Vector3i]
-	# Optimization: Could just send Path? Facing is derived from ghost.
-	# But ghost is local. We need to send ghost.facing.
+	
+	print("DEBUG: _on_commit_move for ", selected_ship.name)
+	print("DEBUG: Path size: ", path_data.size())
 	
 	if multiplayer.has_multiplayer_peer():
-		rpc("execute_commit_move", selected_ship.name, path_data, ghost_ship.facing, current_orbit_direction, state_is_orbiting)
+		rpc("register_movement_plan", selected_ship.name, path_data, ghost_ship.facing, current_orbit_direction, state_is_orbiting)
 	else:
-		execute_commit_move(selected_ship.name, path_data, ghost_ship.facing, current_orbit_direction, state_is_orbiting)
+		print("DEBUG: Calling register_movement_plan locally")
+		register_movement_plan(selected_ship.name, path_data, ghost_ship.facing, current_orbit_direction, state_is_orbiting)
 
 # --- Security Validation ---
 func _validate_rpc_ownership(sender_id: int, required_side_id: int) -> bool:
@@ -2685,18 +2737,15 @@ func _validate_move_path(ship: Ship, path: Array[Vector3i], _final_facing: int, 
 	return true
 
 @rpc("any_peer", "call_local", "reliable")
-func execute_commit_move(ship_name: String, path: Array, final_facing: int, orbit_dir: int, is_orbiting: bool):
-	# Find Ship
+func register_movement_plan(ship_name: String, path: Array, final_facing: int, orbit_dir: int, is_orbiting: bool):
 	var ship: Ship = null
 	for s in ships:
 		if is_instance_valid(s) and s.name == ship_name:
 			ship = s
 			break
 			
-	if not ship:
-		print("Error: Ship %s not found for move commit!" % ship_name)
-		return
-
+	if not ship: return
+	
 	# SECURITY CHECK
 	var sender_id = 1
 	if multiplayer.has_multiplayer_peer():
@@ -2706,6 +2755,10 @@ func execute_commit_move(ship_name: String, path: Array, final_facing: int, orbi
 	if not _validate_rpc_ownership(sender_id, ship.side_id):
 		return
 		
+	# Destruct Guard
+	if ship.is_destroyed:
+		return
+
 	# LOGIC VALIDATION (Anti-Cheat)
 	var typed_path: Array[Vector3i] = []
 	typed_path.assign(path)
@@ -2713,130 +2766,132 @@ func execute_commit_move(ship_name: String, path: Array, final_facing: int, orbi
 	if not _validate_move_path(ship, typed_path, final_facing, is_orbiting):
 		log_message("[Security] Move rejected: Invalid Path/Speed for %s" % ship.name)
 		return
-		
 
-	# Phase & State Validation
-	if current_phase != Phase.MOVEMENT:
-		print("[Security] Move rejected: Wrong Phase (%s)" % current_phase)
-		return
+	log_message("Orders Received for %s" % ship.name)
+	
+	# Store the Plan
+	ship.planned_path = typed_path
+	ship.planned_facing = final_facing
+	ship.planned_orbit_dir = orbit_dir
+	ship.has_orders = true
+	
+	# Logic from original commitment: Update local state if selected
+	if selected_ship == ship:
+		_reset_plotting_state()
+		_update_ui_state()
 		
-	if ship.has_moved:
-		print("[Security] Move rejected: Ship %s already moved" % ship.name)
-		return
+	# Update List UI
+	_update_movement_ui_list()
+	ship.queue_redraw()
+	queue_redraw() # Trigger map redraw to show new lines
 
-	# Apply State
-	ship.orbit_direction = orbit_dir
-	if not is_orbiting:
-		ship.orbit_direction = 0
-		
-	# Apply Move
-	ship.facing = final_facing
-	ship.speed = path.size()
-	ship.previous_path.assign(path) # Save for trails
-	
-	# Current Path for this client (for visual/logic if needed, though we just teleport usually)
-	# NOTE: collision checks happened on planner side. We assume valid if sent?
-	# Or we should re-validate? For now, trust the sender (simpler).
-	
-	# Teleport/Animate
-	# For "instant" update:
-	var collision_hex = Vector3i.ZERO
-	var collision_index = -1
-	
-	if path.size() > 0:
-		# Iterate path to check for planets
-		for i in range(path.size()):
-			var hex = path[i]
-			# Skip checking start hex (presumably safe)
-			if i == 0 and hex == ship.grid_position: continue
-			
-			if planet_hexes.has(hex):
-				collision_hex = hex
-				collision_index = i
-				log_message("[color=red]COLLISION: %s flew into a Planet at %s![/color]" % [ship.name, hex])
-				break
-		
-		# Teleport/Animate
-		if collision_index != -1:
-			# Truncate path to collision point
-			var truncated_path = path.slice(0, collision_index + 1)
-			ship.grid_position = truncated_path.back()
-			ship.facing = final_facing # Face death
-			
-			ship.trigger_explosion()
-			
-			# CLEANUP & ADVANCE TURN (Fix Freeze)
-			if ship == selected_ship:
-				if is_instance_valid(ghost_ship):
-					ghost_ship.queue_free()
-					ghost_ship = null
-				combat_action_taken = false
-				state_is_orbiting = false
-				current_path.clear()
-			
-			ship.has_moved = true
-			if current_phase == Phase.MOVEMENT:
-				end_turn()
-				
-			return
-		else:
-			ship.grid_position = path.back()
-	
-	# COLLISION / BOUNDARY CHECKS (Must run on all to sync death?)
-	# Use the logic from original _on_commit_move but applied to `ship` instead of `selected_ship`
-	
-	if _check_planet_collision(ship) or _check_boundary(ship):
-		# Ship Died - Stop processing and advance turn
-		ship.has_moved = true
-		if current_phase == Phase.MOVEMENT:
-			end_turn()
-		return
-	
-	# DOCKING LOGIC
-	_handle_docking_states(ship)
-	
-	# CLEANUP (If this was the active client, clear ghost)
-	if ship == selected_ship:
+func _load_plan_visualization(s: Ship):
+	if s.has_orders:
+		current_path = s.planned_path.duplicate()
+		# Re-create ghost for visualization
+		_spawn_ghost()
 		if is_instance_valid(ghost_ship):
-			ghost_ship.queue_free()
-			ghost_ship = null
-		combat_action_taken = false
-		state_is_orbiting = false
-		current_path.clear()
+			if s.planned_path.size() > 0:
+				ghost_ship.grid_position = s.planned_path.back()
+				ghost_ship.facing = s.planned_facing
+	else:
+		_spawn_ghost()
+
+
+func _on_exec_move_pressed():
+	# Authority Check
+	if my_side_id != 0 and my_side_id != current_side_id:
+		return
 		
-	_update_ship_visuals()
+	# Confirm? (Maybe later)
 	
-	# END TURN
-	# If I am the one moving, this triggers my local end_turn -> selects next or phases
-	# If I am remote, this updates state, then `end_turn` checks if more ships available?
-	# `end_turn` logic needs to see whose turn it is.
+	if multiplayer.has_multiplayer_peer():
+		rpc("request_execute_movement")
+	else:
+		execute_all_movement()
+
+@rpc("any_peer", "call_local", "reliable")
+func request_execute_movement():
+	# Security: Only Active Side can request end
+	var sender_id = 1
+	if multiplayer.has_multiplayer_peer():
+		sender_id = multiplayer.get_remote_sender_id()
+		if sender_id == 0: sender_id = multiplayer.get_unique_id()
+		
+	if not _validate_rpc_ownership(sender_id, current_side_id):
+		return
+		
+	# Call Authority Method
+	execute_all_movement()
+
+@rpc("authority", "call_local", "reliable")
+func execute_all_movement():
+	log_message("Executing Movement Phase for Side %s" % _get_side_name(current_side_id))
 	
-	# We need to ensure `selected_ship` updating happens correctly for the NEXT ship.
-	# If we just moved P1 Ship A. Next is P1 Ship B.
-	# `end_turn` calls `start_movement_phase` which picks `available[0]`.
-	# Since Ship A now has `has_moved = true` (Wait, we need to set that!), it won't be picked.
+	for s in ships:
+		if is_instance_valid(s) and s.side_id == current_side_id and not s.is_destroyed and s.has_orders:
+			# Apply Plan
+			_apply_movement_plan(s)
+			
+	_update_ui_state()
+	_update_movement_ui_list()
 	
-	ship.has_moved = true
+	# Phase Transition Logic
+	# Rule: Movement -> Combat (Passive) -> Combat (Active) -> Next Side
+	log_message("Movement Phase Complete for Side %d. Starting Combat." % current_side_id)
+	start_combat_passive()
+
+
+func _apply_movement_plan(s: Ship):
+	if not is_instance_valid(s): return
+
+	s.previous_path = s.planned_path # History
 	
-	# Orbit MS Check: Did we complete the loop?
-	# If MS active AND Orbiting AND Position == Start Hex
-	if ship.is_ms_active and ship.orbit_direction != 0:
-		if ship.ms_orbit_start_hex != Vector3i.MAX:
-			if ship.grid_position == ship.ms_orbit_start_hex:
-				ship.is_ms_active = false
-				ship.ms_orbit_start_hex = Vector3i.MAX
-				log_message("%s completes orbit; Screen drops." % ship.name)
+	if s.planned_path.size() > 0:
+		s.grid_position = s.planned_path.back()
+		s.facing = s.planned_facing
+	else:
+		# Hold Position (or invalid empty path treated as hold)
+		s.facing = s.planned_facing # Always apply facing change?
+		s.speed = 0 # Explicitly set speed to 0 for stationary moves
 	
-	# Force Phase Check / Next Ship
-	if current_phase == Phase.MOVEMENT:
-		# If this client is the ACTIVE player, they select next.
-		# If this client is PASSIVE, they just wait?
-		# `start_movement_phase` handles "If no ships left, go to Combat".
-		# We should ALL call end_turn() to advance state?
-		# Yes, because end_turn() -> start_movement_phase() -> checks for next ship.
-		# If P1 has ships left, they become selected.
-		# If not, switch to Combat.
-		end_turn()
+	# Orbit Logic
+	if s.planned_orbit_dir != 0:
+		s.orbit_direction = s.planned_orbit_dir
+	else:
+		s.orbit_direction = 0
+		
+	s.has_moved = true
+	s.has_orders = false
+	
+	# Handle Docking
+	if s.docked_guests.size() > 0:
+		for guest in s.docked_guests:
+			guest.grid_position = s.grid_position
+			guest.facing = s.facing
+			guest.queue_redraw()
+			
+	# Check Collisions (Planets)
+	var destroyed = false
+	for hex in s.planned_path:
+		if planet_hexes.has(hex):
+			destroyed = true
+			break
+	
+	if destroyed:
+		log_message("[color=red]%s crashed into a planet![/color]" % s.name)
+		s.take_hull_damage(9999)
+		s.has_moved = true
+		
+	# Orbit MS Check
+	if s.is_ms_active and s.orbit_direction != 0 and s.ms_orbit_start_hex != Vector3i.MAX:
+		if s.grid_position == s.ms_orbit_start_hex:
+			s.is_ms_active = false
+			s.ms_orbit_start_hex = Vector3i.MAX
+			log_message("%s completes orbit; Screen drops." % s.name)
+			
+	s.queue_redraw()
+
 
 func _handle_docking_states(ship: Ship):
 	# 1. Check for Auto-Docking
@@ -2936,8 +2991,41 @@ func _draw():
 			elif trail_points.size() == 1:
 				# Just a dot? Or finding neighbor?
 				pass
+
+	# Draw Planned Paths for OTHER ships (Visualization of Batch Orders)
+	# UPDATE: Now handles ANY ship with orders (Selected or not)
+	if current_phase == Phase.MOVEMENT:
+		for s in ships:
+			# If ship has orders, we draw the "Committed" plan.
+			# We skip if it has moved.
+			# We do NOT skip if s == selected_ship (unless it has NO orders)
+			if is_instance_valid(s) and s.has_orders and not s.has_moved:
+				# Only show my side (or if spectator/host)
+				if my_side_id != 0 and s.side_id != my_side_id: continue
+				
+				var plan_points = PackedVector2Array()
+				plan_points.append(HexGrid.hex_to_pixel(s.grid_position))
+				
+				var is_danger = false
+				for h in s.planned_path:
+					plan_points.append(HexGrid.hex_to_pixel(h))
+					if planet_hexes.has(h): is_danger = true
+				
+				# UPDATED VISUALS: Muted White, Thicker Line
+				var path_color = Color(1, 1, 1, 0.4) # Muted White
+				if is_danger: path_color = Color(1, 0, 0, 0.4) # Faint Red
+				
+				if plan_points.size() > 1:
+					draw_polyline(plan_points, path_color, 5.0)
+					
+					# Draw Ghost Ship Sprite at End
+					var end_pos = plan_points[plan_points.size() - 1]
+					# Use the new custom draw method on Ship
+					s.draw_sprite_custom(self, end_pos, s.planned_facing, 0.5)
 	
-	if is_instance_valid(ghost_ship) and current_path.size() > 0 and is_instance_valid(selected_ship):
+	# Active Plotting Visualization
+	# Only draw if selected ship DOES NOT have orders (i.e. we are actively plotting)
+	if is_instance_valid(ghost_ship) and current_path.size() > 0 and is_instance_valid(selected_ship) and not selected_ship.has_orders:
 		var points = PackedVector2Array()
 		points.append(HexGrid.hex_to_pixel(selected_ship.grid_position))
 		
@@ -2970,7 +3058,8 @@ func _draw():
 		
 	# Predictive Path Highlighting
 	# FIX: Ensure we have a ghost ship AND are in movement phase AND ship hasn't moved yet
-	if current_phase == Phase.MOVEMENT and is_instance_valid(ghost_ship) and is_instance_valid(selected_ship) and not selected_ship.has_moved:
+	# ALSO: Suppress if ship has planned orders (Visualization only) - User Request
+	if current_phase == Phase.MOVEMENT and is_instance_valid(ghost_ship) and is_instance_valid(selected_ship) and not selected_ship.has_moved and not selected_ship.has_orders:
 		# Re-verify start_speed is set (it should be set in start_movement_phase)
 		# But if ghost_ship was respawned, did we lose context?
 		# No, start_speed is a GM var.
@@ -3377,6 +3466,11 @@ func _handle_movement_click(hex: Vector3i):
 	print("DEBUG: _handle_movement_click called with hex: ", hex)
 	
 	if not selected_ship or not is_instance_valid(selected_ship):
+		return
+		
+	# FIX: Prevent modifying plan if already committed/ordered
+	if selected_ship.has_orders:
+		log_message("Ship has orders. Use Undo to change.")
 		return
 
 	# UX IMPROVEMENT 1: Self-Click to Decelerate (Speed 0)

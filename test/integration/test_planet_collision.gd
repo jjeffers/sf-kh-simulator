@@ -37,6 +37,9 @@ func test_planet_collision_destroys_ship():
 	# Mock the RPC call locally
 	gm.execute_commit_move(ship.name, path, 0, 0, false)
 	
+	# Execute the move
+	gm.execute_all_movement()
+	
 	# 4. Assertions
 	# Ship should be destroyed
 	assert_true(ship.is_destroyed, "Ship should be destroyed after entering planet hex")
