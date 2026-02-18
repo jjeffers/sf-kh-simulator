@@ -1639,14 +1639,15 @@ func _start_turn_for_side(sid: int):
 		if is_instance_valid(s):
 			s.reset_turn_state()
 			
-			# Capture Start State for Undo
-			s.turn_start_state = {
-				"grid_position": s.grid_position,
-				"facing": s.facing,
-				"speed": s.speed,
-				"is_ms_active": s.is_ms_active,
-				"ms_orbit_start_hex": s.ms_orbit_start_hex
-			}
+			# Capture Start State for Undo (Redundant if start_movement_phase does it, but good for safety)
+			if not s.has_moved and s.turn_start_state.is_empty():
+				s.turn_start_state = {
+					"grid_position": s.grid_position,
+					"facing": s.facing,
+					"speed": s.speed,
+					"is_ms_active": s.is_ms_active,
+					"ms_orbit_start_hex": s.ms_orbit_start_hex
+				}
 	
 	start_movement_phase()
 
@@ -2446,6 +2447,13 @@ func rpc_undo_move(ship_name: String):
 		s_obj.ms_orbit_start_hex = state["ms_orbit_start_hex"]
 		s_obj.has_moved = false
 		s_obj.previous_path.clear()
+		
+		# Recursively reset docked guests
+		if s_obj.docked_guests.size() > 0:
+			for guest in s_obj.docked_guests:
+				guest.grid_position = s_obj.grid_position
+				guest.facing = s_obj.facing
+				guest.queue_redraw()
 	else:
 		log_message("[Error] No turn start state found for undo!")
 
@@ -2932,10 +2940,33 @@ func _draw():
 	if is_instance_valid(ghost_ship) and current_path.size() > 0 and is_instance_valid(selected_ship):
 		var points = PackedVector2Array()
 		points.append(HexGrid.hex_to_pixel(selected_ship.grid_position))
+		
+		# Collision Check for Visualization
+		var collision_detected = false
+		var collision_hex = Vector3i.ZERO
+		
 		for h in current_path:
 			points.append(HexGrid.hex_to_pixel(h))
+			
+			if not collision_detected and h in planet_hexes:
+				collision_detected = true
+				collision_hex = h
+		
+		# Draw Path Line
+		var line_color = Color(1, 1, 1, 0.8) # Default White
+		if collision_detected:
+			line_color = Color(1, 0.5, 0, 0.8) # Orange/Red
+			
 		# Increased width and opacity for better visibility
-		draw_polyline(points, Color(1, 1, 1, 0.8), 5.0)
+		draw_polyline(points, line_color, 5.0)
+		
+		if collision_detected:
+			# Highlight Collision Hex
+			_draw_hex_outline(collision_hex, Color.RED, 4.0)
+			# Highlight Ghost Ship
+			ghost_ship.modulate = Color(1, 0.5, 0.5) # Reddish
+		else:
+			ghost_ship.modulate = Color.WHITE
 		
 	# Predictive Path Highlighting
 	# FIX: Ensure we have a ghost ship AND are in movement phase AND ship hasn't moved yet
