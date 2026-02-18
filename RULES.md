@@ -70,12 +70,17 @@ A number between 1 and 100 is randomly selected (roll a d100). Then the DTM from
  - During a repair trn
 
 ## Movement
+- Procedure: a side will *plan* all movement, but the ships do not move until the end of the planning phase, once the "Execute Movement" button is pressed. This is important because in future game updates, there may be hidden movement hazards that are only revealed when the movement is executed.
+- A planned movement is represented by 2 visual elements: a line connecting the starting hex to the destination hex, and a "ghost ship" in the end position which also includes the facing of the ship.
+- Ships that are "locked" into specific movement plans (proabably due to lack of navigation control) will generate a predetermined movement plan. If the ship has no ADF it cannot alter the number of hexes it will move (it must move the number of hexes equal to its speed). If a ship has no effective MR, then it cannot change facing, even at speed 0.
+- if a movement plan navigates a ship into a planet, the plan should be visual altered to show the impending ship destruction. The movement plan should have a red or orange plan line, and the hex where the ship will be destroyed should be highlighted in red or orange. The ship should also be highlighted in red or orange. Once the player "undoes" the movement plan, the ship should be returned to its original position and the movement plan should be removed. This warning is to help players recognize, but not prevent, poor planning. Note that in some cases (such as a loss of navigation control) this will unavoidable!
+
 - Driven by **ADF** (Acceleration/Deceleration Factor).
 - Ships can accelerate/decelerate by up to ADF in hexes.
 - A ship must move the minimum number of hexes which is their current speed minus their ADF.
 
 - **Turning**: A ship may change it's facing to any direction of it's speed is 0. Otherwise a ship may change facing by 1 hexside when they enter a new hex.
-  When planning movement the player may select a hex to move to and then use the the mouse to switch facings, left or right or straight ahead, if current MR allows it. An "undo" button will unwind the last segment of movement (direction and facing). Multiple undos will unwind the entire movement plan.
+  When planning movement the player may select a hex to move to and then use the the mouse to switch facings, left or right or straight ahead, if current MR allows it. An "undo" button will unwind the entire movement plan.
 
 - **Orbiting**: Special maneuver for ships starting their movement in a hex adjacent to a planet. The ship will orbit the planet clockwise or counter-clockwise, player's choice. The ship will orbit the planet until it decides to move out of the hex away from the planet.
 
