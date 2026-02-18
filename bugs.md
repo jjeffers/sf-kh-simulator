@@ -3,9 +3,8 @@
 ## 🚨 Critical / High Priority
 
 
-- [ ] [UI] When a player used the Undo button that change is not sent to all players, so another player on his team doesn't see the change.
 - [ ] [UI] When player uses the undo button with an assault carrier with docked fighters, the assault carrier is moved back but the fighters are left in the former end position, undocked. 
-- [ ] In a situation with multiple fighters, one player sees fighter #1 at position A, and the other fighter #2 at position B, while the other player on the same team sees fighter #1 at position B and fighter #2 at position A.
+
 
 ## 🐛 Backlog
 - [ ] 
@@ -23,3 +22,4 @@
 - [x] Fixed Scenario Hull Bug: Station Alpha in "Surprise Attack" had random hull (e.g. 130) instead of 25 because `overrides` only set `max_hull`, leaving `hull` to `configure_space_station` RNG. Fix: Added `"hull": 25` to overrides. (2026-02-17)
 - [x] Fixed Hit Odds Desync: Implemented Full State Synchronization (Ship.get_net_state / apply_net_state) and broadcast it at the start of Movement and Combat Planning phases. This ensures all clients see the same debuffs (CCS damage, etc.) when calculating hit chances. (2026-02-17)
 - [x] Fixed Damage Roll Desync: Refactored `execute_commit_combat` to use a "Request -> Broadcast" pattern. Only the Server initiates the resolution (via `rpc_resolve_combat`) after receiving a client request, ensuring all clients execute the combat resolution with the exact same RNG seed. Verified via `test_damage_sync.gd`. (2026-02-17)
+- [x] Fixed Undo Desync: Implemented `rpc_undo_move` to synchronize undo across all clients. Modified `start_movement_phase` to capture `turn_start_state` for all ships, ensuring reliable state restoration. Verified via `test_undo_sync.gd`. (2026-02-18)
