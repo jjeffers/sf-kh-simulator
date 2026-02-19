@@ -24,6 +24,7 @@ func before_each():
 	game_manager.current_side_id = 1
 	game_manager.current_phase = game_manager.Phase.MOVEMENT
 	game_manager.start_speed = 0
+	game_manager.turns_remaining = 1 # Allow at least 1 turn for non-stationary moves
 	
 	game_manager._spawn_ghost()
 

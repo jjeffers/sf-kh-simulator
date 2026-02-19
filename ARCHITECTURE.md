@@ -66,9 +66,12 @@ The primary game entity.
 2. **Game Start:**
    - All clients load the scenario using the *synced seed*.
    - This ensures procedural elements (like random spawn locations) are identical on all machines.
-3. **Turn Execution:**
-   - **Movement:** Players plot moves locally -> Click "Engage" -> sends `request_commit_move` -> Server validates -> broadcasts `execute_move`.
-   - **Combat:** Players plan attacks -> Click "Execute" -> sends plans to Server via RPC -> synced `queued_attacks` list -> Server (or Active Client) resolves.
+### 4. Networking
+*   **Authority**: Server is authoritative for game state (turn, phases, ship positions).
+*   **Pattern**: Clients request actions via RPC -> Server validates -> Server applies & broadcasts updates via RPC.
+    *   `register_movement_plan` -> `rpc_sync_movement_plan` (Broadcast)
+    *   `execute_commit_combat` -> `rpc_resolve_combat` (Broadcast)
+    *   `request_execute_movement` -> `execute_all_movement` (Server) -> `rpc_sync_ship_state` (Broadcast) -> synced `queued_attacks` list -> Server (or Active Client) resolves.
 
 ## Key Design Patterns & Gotchas
 - **Manager-Controller:** `GameManager` acts as the single source of truth for the game state.

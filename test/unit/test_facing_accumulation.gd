@@ -37,12 +37,13 @@ func before_each():
 	game_manager.ghost_ship.grid_position = forward_hex
 	game_manager.ghost_ship.facing = 1 # Still facing SE
 	game_manager.can_turn_this_step = true # Allowed to turn now
-	game_manager.step_entry_facing = 1 # Enter facing was 1
-	
 	# CRITICAL: We need to set the internal state that tracks "Original Facing" for this step.
 	# Since I haven't implemented it yet, the current code doesn't use it. 
 	# But once implemented, this test setup might need to set it.
 	# For now, I'll rely on the fact that I'll add `step_entry_facing` logic.
+	
+	# Fix: Initialize turns_remaining for the step
+	game_manager.turns_remaining = 1
 
 func test_moving_ship_cannot_turn_twice_in_one_step():
 	# 1. Turn Left (Valid)

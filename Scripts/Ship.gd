@@ -85,6 +85,7 @@ func get_net_state() -> Dictionary:
 		"current_mr_modifier": current_mr_modifier,
 		"has_moved": has_moved,
 		"has_fired": has_fired,
+		"is_docked": is_docked, # Sync Docking State
 		"grid_position": grid_position,
 		"facing": facing,
 		"orbit_direction": orbit_direction,
@@ -112,6 +113,13 @@ func apply_net_state(data: Dictionary):
 	
 	has_moved = data.get("has_moved", has_moved)
 	has_fired = data.get("has_fired", has_fired)
+	
+	# Docking Sync
+	var net_is_docked = data.get("is_docked", is_docked)
+	if is_docked and not net_is_docked:
+		undock() # Helper clears host and state
+	elif not is_docked and net_is_docked:
+		is_docked = true # Force state, though host ref might be missing (Client logic likely handles dock_at separately or assumes persistent setup)
 	
 	# Position/Movement
 	grid_position = data.get("grid_position", grid_position)

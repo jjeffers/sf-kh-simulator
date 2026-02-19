@@ -69,10 +69,11 @@ var start_ms_active: bool = false # Track initial state for cost logic
 
 # Ghost Ship Visualization State
 var ghost_head_pos: Vector3i
-var ghost_head_facing: int
+var ghost_head_facing: int = 0
 var path_preview_active: bool = false
+var test_force_online: bool = false # For Unit Testing Network Logic
 
-# Combat State
+# --- UI References ---
 var queued_attacks: Array = [] # Objects: {source, target, weapon_idx}
 var pending_resolutions: Array = []
 
@@ -312,7 +313,10 @@ func _process(delta):
 			selection_highlight.visible = false
 
 	# Ghost Ship Hover Preview (Moved from _unhandled_input for reliability)
-	if current_phase == Phase.MOVEMENT and ghost_ship and is_instance_valid(ghost_ship) and selected_ship and not selected_ship.has_moved and not selected_ship.has_orders:
+	# Authority Check: Only allow preview updates if it is my turn/ship
+	var is_my_turn_process = (my_side_id == current_side_id) or _has_admin_authority()
+	
+	if current_phase == Phase.MOVEMENT and is_my_turn_process and ghost_ship and is_instance_valid(ghost_ship) and selected_ship and not selected_ship.has_moved and not selected_ship.has_orders:
 		var local_mouse = get_local_mouse_position()
 		var hex_hover = HexGrid.pixel_to_hex(local_mouse)
 		
@@ -452,21 +456,21 @@ func _setup_ui():
 	
 	# Planning UI (Right Side)
 	panel_planning = PanelContainer.new()
-	panel_planning.anchor_left = 0.8
-	panel_planning.anchor_right = 1.0
-	panel_planning.anchor_top = 0.0
-	# Shift down for Label/Minimap space
-	panel_planning.offset_top = 80 # Leave space for Player Label
-	# panel_planning.anchor_bottom = 0.75 # Allow auto-sizing
+	# Fixed Top Right, Below Minimap (Margin 20)
+	# Minimap Bottom is 220 (20+200). So Panel Top should be ~240.
+	panel_planning.set_anchors_and_offsets_preset(Control.PRESET_TOP_RIGHT, Control.PRESET_MODE_MINSIZE, 20)
+	panel_planning.offset_top = 240 # Override top to be below minimap
+	panel_planning.grow_horizontal = Control.GROW_DIRECTION_BEGIN
+	panel_planning.custom_minimum_size.x = 220
 	panel_planning.visible = false
 	ui_layer.add_child(panel_planning)
 	
-	# Movement UI (Same position as Planning UI, shown during Movement phase)
+	# Movement UI (Same position as Planning UI)
 	panel_movement = PanelContainer.new()
-	panel_movement.anchor_left = 0.8
-	panel_movement.anchor_right = 1.0
-	panel_movement.anchor_top = 0.0
-	panel_movement.offset_top = 80
+	panel_movement.set_anchors_and_offsets_preset(Control.PRESET_TOP_RIGHT, Control.PRESET_MODE_MINSIZE, 20)
+	panel_movement.offset_top = 240
+	panel_movement.grow_horizontal = Control.GROW_DIRECTION_BEGIN
+	panel_movement.custom_minimum_size.x = 220
 	panel_movement.visible = false
 	ui_layer.add_child(panel_movement)
 	
@@ -1502,7 +1506,12 @@ func _update_phase_indicator():
 
 
 func _cycle_selection():
+	# Authority Check: Cannot cycle selection if it's not my turn (Movement)
+	# Combat cycling handle separately below?
 	if current_phase == Phase.MOVEMENT:
+		var is_my_turn = (my_side_id == current_side_id) or _has_admin_authority()
+		if not is_my_turn: return
+
 		# Filter: Active Player, !has_moved
 		var available = ships.filter(func(s): return is_instance_valid(s) and s.side_id == current_side_id and not s.has_moved)
 		if available.size() <= 1: return
@@ -2151,7 +2160,29 @@ func _update_camera(focus_target_override = null):
 func _spawn_ghost():
 	if ghost_ship:
 		ghost_ship.queue_free()
+		ghost_ship = null
 	
+	# Authority Check: Only spawn ghost if it's my turn/ship
+	# EXCEPTION: If ship has orders, we allow ghost for visualization (Networked Movement Visualization)
+	
+	
+	# Fix: Host Player (Side 1) should NOT bypass checks. Only Admin (Side 0) or Offline (Hotseat) can bypass.
+	var is_offline = (not multiplayer.has_multiplayer_peer()) and (not test_force_online)
+	var is_admin_or_offline = (my_side_id == 0) or is_offline
+	
+	if not is_admin_or_offline:
+		var has_orders = selected_ship.has_orders
+		var is_my_turn_active = (current_side_id == my_side_id)
+		var is_my_ship = (selected_ship.side_id == my_side_id)
+		
+		# Allow if:
+		# 1. Has Orders (Visualization)
+		# 2. My Turn AND My Ship (Plotting)
+		var allowed = has_orders or (is_my_turn_active and is_my_ship)
+		
+		if not allowed:
+			return
+
 	ghost_ship = Ship.new()
 	ghost_ship.name = "GhostShip"
 	ghost_ship.side_id = selected_ship.side_id
@@ -2195,6 +2226,11 @@ func _update_ui_state():
 		btn_orbit_cw.visible = false
 		btn_orbit_ccw.visible = false
 		btn_ms_toggle.visible = false
+		
+		# Turn Restriction: If not my turn, stop here (hide controls)
+		# Exception: Server/Offline always sees controls if needed (debug/hotseat)
+		if not is_my_movement and not _has_admin_authority():
+			return
 
 		if selected_ship:
 			# Undo available if plotting path exists OR if ship has orders (to reset)
@@ -2780,10 +2816,40 @@ func register_movement_plan(ship_name: String, path: Array, final_facing: int, o
 		_reset_plotting_state()
 		_update_ui_state()
 		
+	# SERVER BROADCAST: Ensure all OTHER clients get this plan
+	if multiplayer.has_multiplayer_peer() and multiplayer.is_server():
+		# valid_peers = all peers except sender? No, let's sync everyone to be safe/authoritative.
+		# Note: "call_local" on register_movement_plan already updated Server and Sender (if call_local used).
+		# But to reach Client C, we need this broadcast.
+		# We use call_remote to avoid re-triggering on Server?
+		# Or call_local to ensure Server/Sender matches?
+		# Let's use call_remote to others. 
+		# Actually, simplest is to broadcast to everyone via Authority, and clients trust Authority.
+		rpc_sync_movement_plan.rpc(ship_name, typed_path, final_facing, orbit_dir, is_orbiting)
+
 	# Update List UI
 	_update_movement_ui_list()
 	ship.queue_redraw()
 	queue_redraw() # Trigger map redraw to show new lines
+
+@rpc("authority", "call_remote", "reliable")
+func rpc_sync_movement_plan(ship_name: String, path: Array, final_facing: int, orbit_dir: int, is_orbiting: bool):
+	var ship = _find_ship_by_name(ship_name)
+	if not ship: return
+	
+	# Blindly trust server authority
+	ship.planned_path.assign(path)
+	ship.planned_facing = final_facing
+	ship.planned_orbit_dir = orbit_dir
+	ship.has_orders = true
+	
+	log_message("Synced Orders for %s" % ship.name)
+	
+	# Update Visuals
+	_update_movement_ui_list()
+	ship.queue_redraw()
+	queue_redraw()
+
 
 func _load_plan_visualization(s: Ship):
 	if s.has_orders:
@@ -2891,6 +2957,9 @@ func _apply_movement_plan(s: Ship):
 			log_message("%s completes orbit; Screen drops." % s.name)
 			
 	s.queue_redraw()
+	
+	# FIX: Update Docking State (Auto-Undock/Dock)
+	_handle_docking_states(s)
 
 
 func _handle_docking_states(ship: Ship):
@@ -2932,6 +3001,13 @@ func _check_boundary(ship: Ship) -> bool:
 		ship.queue_free()
 		return true
 	return false
+
+
+func _should_show_movement_plan(s: Ship) -> bool:
+	# Show ALL committed plans (Game Design Choice: Open Information once committed)
+	# Future: Add Fog of War logic here
+	if not s.has_orders: return false
+	return true
 
 
 func _draw():
@@ -3001,7 +3077,8 @@ func _draw():
 			# We do NOT skip if s == selected_ship (unless it has NO orders)
 			if is_instance_valid(s) and s.has_orders and not s.has_moved:
 				# Only show my side (or if spectator/host)
-				if my_side_id != 0 and s.side_id != my_side_id: continue
+				# UDPATE: User requests seeing ALL committed plans
+				if not _should_show_movement_plan(s): continue
 				
 				var plan_points = PackedVector2Array()
 				plan_points.append(HexGrid.hex_to_pixel(s.grid_position))
@@ -3859,29 +3936,7 @@ func _check_planet_collision(ship: Ship):
 	return false
 
 func _update_minimap_position():
-	var active_panel = null
-	if panel_planning and panel_planning.visible:
-		active_panel = panel_planning
-	elif panel_movement and panel_movement.visible:
-		active_panel = panel_movement
-		
-	if active_panel and mini_map:
-		if not active_panel.is_inside_tree() or not mini_map.is_inside_tree():
-			return
-			
-		var pp_rect = active_panel.get_global_rect()
-		var new_y = pp_rect.end.y + 20
-		# Clamp to screen?
-		var screen_h = get_viewport_rect().size.y
-		if new_y + 200 > screen_h:
-			new_y = screen_h - 220
-			
-		mini_map.position = Vector2(get_viewport_rect().size.x - 220, new_y)
-	else:
-		# Reset Minimap
-		if mini_map:
-			# mini_map.anchors_preset = Control.PRESET_TOP_RIGHT
-			mini_map.position = Vector2(get_viewport_rect().size.x - 220, 20)
+	pass
 
 func load_scenario(key: String, seed_val: int = 12345):
 	# Retrieve Scenario Data
@@ -4424,6 +4479,18 @@ func _handle_preview_extension(hex: Vector3i):
 			queue_redraw()
 
 func _is_server_or_offline() -> bool:
-	if not multiplayer.has_multiplayer_peer():
-		return true
+	# Server Authority (Logic/State)
+	if not multiplayer.has_multiplayer_peer(): return true
 	return multiplayer.is_server()
+
+func _has_admin_authority() -> bool:
+	# Admin Authority (Input/UI/Cheats)
+	# If simulating online for tests, enforce strict side check
+	if test_force_online: return (my_side_id == 0)
+	
+	# Offline = Full Control
+	if not multiplayer.has_multiplayer_peer(): return true
+	
+	# Online = Only Side 0 (Spectator/Admin) has full control
+	# Host (Side 1) is restricted like a normal player
+	return (my_side_id == 0)
