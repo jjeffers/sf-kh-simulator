@@ -1,6 +1,14 @@
 # Hex Space Combat Rules
 
-## Turn Sequence
+## Game Turn Sequence
+### Description
+- The game state is managed in a series of "game turns".
+- A "game turn" is split in half between the two sides. In each side's turn, the side will plan and execute movement, and then both sides will plan and execute combat.
+- A side that performs movment is the "moving side" and the other side is the "non-moving side".
+- Combat is resolved in two phases: passive fire and active fire. During passive fire, the non-moving side will plan and execute defensive fire. During active fire, the moving side will plan and execute offensive fire.
+- The game shuuld track the current game turn as well as the phase within that side's half of the game turn.
+
+### Procedure
 A. Side A Turn
 1. **Movement Phase**:
    - All ships and stations in orbit are moved 1 hex in the direction of their orbit (CW or CCW).
@@ -9,7 +17,6 @@ A. Side A Turn
    - **Passive Fire**: The non-moving side (Side B) plans and executes defensive fire.
    - **Active Fire**: The moving player plans and executes offensive fire.
   
-
 B. Side B Turn
 1. **Movement Phase**:
   - All ships and stations in orbit are moved 1 hex  in the direction of their orbit (CW or CCW).

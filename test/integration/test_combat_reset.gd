@@ -5,6 +5,7 @@ var station
 var enemy
 
 func before_each():
+	multiplayer.multiplayer_peer = null # Ensure offline state
 	game_manager = load("res://Scripts/GameManager.gd").new()
 	add_child_autofree(game_manager)
 
