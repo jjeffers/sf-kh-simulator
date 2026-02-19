@@ -82,7 +82,7 @@ var planet_hexes: Array[Vector3i] = []
 
 # Scenario Rules
 var current_scenario_rules: Array = []
-var turn_count: int = 0 # Track player turns
+var turn_count: int = 1 # Track player turns
 
 
 # Planning UI
@@ -1411,7 +1411,11 @@ func _on_resolution_complete():
 			_start_turn_for_side(turn_order[current_turn_order_index])
 		else:
 			# All Sides Done -> Check for End of Turn Cycle (Round)
-			# We need to call end_turn_cycle() or reset
+			# Check if we've completed a full game turn (all sides have had their turn)
+			if current_turn_order_index == turn_order.size(): # This condition is always true here, but good for clarity
+				# Both sides have completed their turns, increment game turn counter
+				turn_count += 1
+			
 			# Assuming end_turn_cycle() handles Round increment and Loop restart
 			call("end_turn_cycle") # Use call() to avoid parser error if not immediately found (though it should be)
 
@@ -1501,7 +1505,7 @@ func _update_phase_indicator():
 	if active_id != 0:
 		side_name = _get_side_name(active_id)
 		
-	var text = "Turn %d : %s : %s" % [turn_count, _get_phase_name(current_phase), side_name]
+	var text = "Turn %d, Active: %s, %s" % [turn_count, side_name, _get_phase_name(current_phase)]
 	label_phase_indicator.text = text
 
 
@@ -1627,7 +1631,8 @@ func start_turn_cycle():
 
 func _start_turn_for_side(sid: int):
 	current_side_id = sid
-	turn_count += 1
+	# turn_count increment moved to end_turn_cycle to track GAME turns, not individual side turns
+
 
 	log_message("=== Turn Start: Side %s ===" % _get_side_name(sid))
 	
@@ -2126,6 +2131,7 @@ func end_turn_cycle():
 			_end_round_cycle()
 
 func _end_round_cycle():
+	turn_count += 1
 	log_message("Round Complete. Starting New Round.")
 	# Reset Turn Order
 	current_turn_order_index = 0
@@ -2570,6 +2576,11 @@ func _on_orbit(direction: int):
 	
 	# Reset ghost
 	_spawn_ghost()
+	if not ghost_ship:
+		print("[DEBUG] _on_orbit: Failed to spawn ghost ship. Aborting orbit plot.")
+		state_is_orbiting = false
+		return
+		
 	ghost_ship.grid_position = target_hex
 	current_path = [target_hex]
 	
@@ -4363,7 +4374,6 @@ func _handle_mouse_facing(hex: Vector3i):
 # This replaces the fragile 'step_entry_facing' variable.
 func _get_step_entry_facing() -> int:
 	if current_path.size() == 0:
-		return selected_ship.facing # Start facing
 		return selected_ship.facing # Start facing
 
 

@@ -26,18 +26,18 @@ func test_phase_indicator_initial_state():
 
 func test_phase_indicator_updates_on_turn_start():
 	# Start Turn 1 for Side 1
-	game_manager.turn_count = 0
+	game_manager.turn_count = 1
 	game_manager.current_phase = game_manager.Phase.END # Ensure change
 	
 	# This calls start_movement_phase internally
 	game_manager._start_turn_for_side(1)
 	
 	var label = game_manager.label_phase_indicator
-	# Pattern: "Turn 1 : Movement : UPF"
+	# Pattern: "Turn 1, Active: UPF, Movement"
 	print("DEBUG LABEL (Turn Start): ", label.text)
 	assert_true(label.text.contains("Turn 1"), "Should show Turn 1")
+	assert_true(label.text.contains("Active: UPF"), "Should show Active: UPF")
 	assert_true(label.text.contains("Movement"), "Should show Movement phase")
-	assert_true(label.text.contains("UPF"), "Should show UPF side name")
 
 func test_phase_indicator_updates_on_combat_active():
 	game_manager.turn_count = 1
