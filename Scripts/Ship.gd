@@ -62,6 +62,12 @@ var orbit_direction: int = 0 # 0=None, 1=CW, -1=CCW
 # Undo State
 var turn_start_state: Dictionary = {}
 
+# Planned Movement State
+var has_orders: bool = false
+var planned_path: Array[Vector3i] = []
+var planned_facing: int = 0
+var planned_orbit_dir: int = 0
+
 func get_net_state() -> Dictionary:
 	return {
 		"hull": hull,
@@ -1305,3 +1311,52 @@ func get_texture() -> Texture2D:
 		"Space Station":
 			return texture_space_station
 	return texture_fighter # Fallback
+
+func draw_sprite_custom(canvas: CanvasItem, pos: Vector2, facing_dir: int, alpha: float):
+	var tex = get_texture()
+	if not tex and ship_class == "Battleship" and faction == "Sathar":
+		# Fallback vector for Sathar BB
+		var size = HexGrid.TILE_SIZE * 0.85
+		var points = PackedVector2Array([
+			Vector2(size, 0),
+			Vector2(-size * 0.8, -size * 0.4),
+			Vector2(-size * 0.5, 0),
+			Vector2(-size * 0.8, size * 0.4)
+		])
+		var color_mod = Color.WEB_GRAY if (max_hull > 0 and hull <= 0) else color
+		color_mod.a = alpha
+		
+		var draw_angle = facing_dir * (PI / 3.0) + (PI / 2.0)
+		canvas.draw_set_transform(pos, draw_angle, Vector2.ONE)
+		canvas.draw_colored_polygon(points, color_mod)
+		canvas.draw_set_transform(Vector2.ZERO, 0, Vector2.ONE)
+		return
+
+	if not tex: return
+
+	var target_size = HexGrid.TILE_SIZE
+	match ship_class:
+		"Fighter": target_size = HexGrid.TILE_SIZE * 0.6
+		"Assault Scout": target_size = HexGrid.TILE_SIZE * 0.7
+		"Frigate": target_size = HexGrid.TILE_SIZE * 0.9
+		"Destroyer": target_size = HexGrid.TILE_SIZE * 1.1
+		"Heavy Cruiser": target_size = HexGrid.TILE_SIZE * 1.4
+		"Battleship": target_size = HexGrid.TILE_SIZE * 1.7
+		"Assault Carrier": target_size = HexGrid.TILE_SIZE * 2.0
+		"Space Station":
+			var hp_scale_bonus = float(max_hull) / 200.0
+			target_size = HexGrid.TILE_SIZE * (1.0 + hp_scale_bonus)
+
+	var ref_size = max(tex.get_width(), tex.get_height())
+	var s = target_size / ref_size
+	var scale_vec = Vector2(s, s)
+	
+	var draw_angle = facing_dir * (PI / 3.0) + (PI / 2.0)
+	var tex_size = tex.get_size()
+	var rect = Rect2(-tex_size / 2, tex_size)
+	
+	var color_mod = Color(1, 1, 1, alpha)
+	
+	canvas.draw_set_transform(pos, draw_angle, scale_vec)
+	canvas.draw_texture_rect(tex, rect, false, color_mod)
+	canvas.draw_set_transform(Vector2.ZERO, 0, Vector2(1, 1))

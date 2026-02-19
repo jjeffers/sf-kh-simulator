@@ -3,11 +3,8 @@
 ## 🚨 Critical / High Priority
 
 
-- [ ] [UI] When player uses the undo button with an assault carrier with docked fighters, the assault carrier is moved back but the fighters are left in the former end position, undocked. 
-
-
 ## 🐛 Backlog
-- [ ] 
+- [ ] [UI] Disable navigation controls when it is not your turn. For example, if I'm side 1 and it's side 2's turn to do movement planning, I should not see navigation controls or movement guides for ships. 
 
 ## 🔍 Needs Investigation
 - [ ] 
@@ -23,3 +20,4 @@
 - [x] Fixed Hit Odds Desync: Implemented Full State Synchronization (Ship.get_net_state / apply_net_state) and broadcast it at the start of Movement and Combat Planning phases. This ensures all clients see the same debuffs (CCS damage, etc.) when calculating hit chances. (2026-02-17)
 - [x] Fixed Damage Roll Desync: Refactored `execute_commit_combat` to use a "Request -> Broadcast" pattern. Only the Server initiates the resolution (via `rpc_resolve_combat`) after receiving a client request, ensuring all clients execute the combat resolution with the exact same RNG seed. Verified via `test_damage_sync.gd`. (2026-02-17)
 - [x] Fixed Undo Desync: Implemented `rpc_undo_move` to synchronize undo across all clients. Modified `start_movement_phase` to capture `turn_start_state` for all ships, ensuring reliable state restoration. Verified via `test_undo_sync.gd`. (2026-02-18)
+- [x] Fixed Auto-Orbit Hang / Phase End: Refactored `start_movement_phase` to use a new `_apply_movement_plan` helper. This allows the Station to auto-orbit immediately *without* triggering `execute_all_movement` (which would prematurely end the phase for the side). Also fixed empty path handling. Verified via `test_auto_orbit_hang.gd`. (2026-02-18)

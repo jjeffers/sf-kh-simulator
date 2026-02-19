@@ -11,8 +11,8 @@ var target
 func before_each():
 	gm = game_manager_script.new()
 	add_child_autofree(gm)
-	gm.ships = []
-	gm.planet_hexes = []
+	gm.ships.clear()
+	gm.planet_hexes.clear()
 
 func test_planet_blocks_los():
 	# Setup: Shooter (0,0,0) -> Planet (1,-1,0) -> Target (2,-2,0)

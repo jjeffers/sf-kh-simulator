@@ -44,6 +44,7 @@ func test_self_click_decelerate_valid():
 	# Ensure GM knows start speed (usually set in start_movement_phase)
 	game_manager.start_speed = ship.speed
 	game_manager._handle_movement_click(Vector3i(0, 0, 0))
+	game_manager.execute_all_movement()
 	
 	# Assert committed
 	# If committed, ship.has_moved should be true
@@ -86,6 +87,7 @@ func test_ghost_click_commit():
 	
 	# 2. Click the Ghost (Target Hex)
 	game_manager._handle_movement_click(target)
+	game_manager.execute_all_movement()
 	
 	# Assert Committed
 	assert_true(ship.has_moved, "Ship should have moved via Ghost Click")

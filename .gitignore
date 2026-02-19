@@ -25,3 +25,7 @@ Thumbs.db
 *.console.exe
 
 .agent/godot_path.txt
+
+# New files
+*.uid
+*.TMP
