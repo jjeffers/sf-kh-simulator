@@ -25,7 +25,7 @@ const ZOOM_MAX = Vector2(2.0, 2.0)
 const ZOOM_SPEED = 0.1
 
 # Phase Enum
-enum Phase {START, MOVEMENT, COMBAT, END}
+enum Phase {START, MOVEMENT, COMBAT, REPAIR, END}
 # Combat State Enum
 enum CombatState {NONE, PLANNING, RESOLVING}
 
@@ -35,6 +35,14 @@ var current_combat_state: CombatState = CombatState.NONE
 # Combat Subphase: 0 = None, 1 = Passive Fire (First), 2 = Active Fire (Second)
 var combat_subphase: int = 0
 
+# Repair State
+var repair_subphase: int = 0 # 1 = Side 1 plan, 2 = Side 2 plan, 3 = Execute
+var repair_allocations: Dictionary = {} # { "ship_name": { "damage_key": DCR_amount } }
+
+# Repair UI Nodes
+var panel_repair: PanelContainer
+var list_repair: VBoxContainer
+var btn_repair_exec: Button
 # ... (UI Nodes omitted, they remain)
 
 # Movement State references need to be reset properly
@@ -636,6 +644,37 @@ func _setup_ui():
 	mini_map.set_anchors_and_offsets_preset(Control.PRESET_TOP_RIGHT, Control.PRESET_MODE_KEEP_SIZE, 20)
 	ui_layer.add_child(mini_map)
 	
+	_setup_repair_ui()
+
+func _setup_repair_ui():
+	panel_repair = PanelContainer.new()
+	panel_repair.set_anchors_and_offsets_preset(Control.PRESET_CENTER)
+	panel_repair.custom_minimum_size = Vector2(600, 450)
+	panel_repair.visible = false
+	ui_layer.add_child(panel_repair)
+	
+	var vbox = VBoxContainer.new()
+	panel_repair.add_child(vbox)
+	
+	var lbl = Label.new()
+	lbl.text = "DAMAGE CONTROL (DCR)"
+	lbl.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	lbl.add_theme_font_size_override("font_size", 24)
+	vbox.add_child(lbl)
+	
+	var scroll = ScrollContainer.new()
+	scroll.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	vbox.add_child(scroll)
+	
+	list_repair = VBoxContainer.new()
+	list_repair.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	scroll.add_child(list_repair)
+	
+	btn_repair_exec = Button.new()
+	btn_repair_exec.text = "EXECUTE REPAIRS"
+	btn_repair_exec.modulate = Color(0.2, 1.0, 0.2)
+	btn_repair_exec.pressed.connect(_on_repair_exec_pressed)
+	vbox.add_child(btn_repair_exec)
 
 @rpc("any_peer", "call_local", "reliable")
 func rpc_start_combat_passive():
@@ -2147,7 +2186,244 @@ func end_turn_cycle():
 			# Round Complete
 			_end_round_cycle()
 
+func start_repair_phase():
+	current_phase = Phase.REPAIR
+	combat_subphase = 0
+	repair_subphase = 1 # 1 = Side 1 plan, 2 = Side 2 plan, 3 = Execute
+	repair_allocations.clear()
+	
+	# Only start if multiplayer or host
+	if multiplayer.has_multiplayer_peer() and multiplayer.get_unique_id() != 1:
+		return # Clients wait for state sync
+		
+	log_message("[color=cyan]=== REPAIR TURN Phase ===[/color]")
+	_update_ui_state()
+	_update_repair_ui()
+
+func _update_repair_ui():
+	if not is_instance_valid(list_repair): return
+	
+	# Clear list
+	for c in list_repair.get_children():
+		c.queue_free()
+		
+	if repair_subphase == 3:
+		var lbl = Label.new()
+		lbl.text = "Executing Repairs..."
+		lbl.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+		list_repair.add_child(lbl)
+		return
+		
+	# Find ships for current side with damage
+	var has_damaged = false
+	for s in ships:
+		if not is_instance_valid(s) or s.side_id != repair_subphase or s.hull <= 0: continue
+		if s.ship_class == "Fighter" or s.ship_class == "Fighter Squadron": continue # Example ignore or maybe include?
+		
+		var damaged_systems = []
+		
+		# Hull
+		if s.hull < s.max_hull: damaged_systems.append({"key": "hull", "name": "Hull (%d/%d)" % [s.hull, s.max_hull]})
+		if s.current_adf_modifier > 0: damaged_systems.append({"key": "adf", "name": "ADF Loss (-%d)" % s.current_adf_modifier})
+		if s.current_mr_modifier > 0: damaged_systems.append({"key": "mr", "name": "MR Loss (-%d)" % s.current_mr_modifier})
+		if s.has_electrical_fire: damaged_systems.append({"key": "fire_elec", "name": "Electrical Fire"})
+		if s.has_disastrous_fire: damaged_systems.append({"key": "fire_dis", "name": "Disastrous Fire"})
+		
+		# Weapons
+		for i in range(s.weapons.size()):
+			if s.weapons[i].get("is_crippled", false):
+				damaged_systems.append({"key": "wpn_%d" % i, "name": "Crippled: %s" % s.weapons[i]["name"]})
+				
+		if damaged_systems.size() > 0:
+			has_damaged = true
+			var dcr_avail = s.current_dcr # Actually DCR isn't consumed until rolled, but allocating takes budget
+			
+			var ship_lbl = Label.new()
+			ship_lbl.text = "%s (DCR: %d)" % [s.name, dcr_avail]
+			ship_lbl.modulate = Color.CYAN
+			list_repair.add_child(ship_lbl)
+			
+			if not repair_allocations.has(s.name):
+				repair_allocations[s.name] = {}
+				
+			var ship_budget_used = 0
+			for val in repair_allocations[s.name].values():
+				ship_budget_used += val
+			
+			var rem_lbl = Label.new()
+			rem_lbl.text = "Budget Remaining: %d" % (dcr_avail - ship_budget_used)
+			rem_lbl.add_theme_font_size_override("font_size", 12)
+			list_repair.add_child(rem_lbl)
+			
+			for dmg in damaged_systems:
+				var hbox = HBoxContainer.new()
+				
+				var sys_lbl = Label.new()
+				sys_lbl.text = dmg["name"]
+				sys_lbl.custom_minimum_size.x = 200
+				hbox.add_child(sys_lbl)
+				
+				var slider = HSlider.new()
+				slider.min_value = 0
+				slider.max_value = 100
+				slider.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+				slider.custom_minimum_size.x = 150
+				slider.disabled = not (my_side_id == repair_subphase or my_side_id == 0)
+				slider.value = repair_allocations[s.name].get(dmg["key"], 0)
+				hbox.add_child(slider)
+				
+				var val_lbl = Label.new()
+				val_lbl.text = "%d%%" % slider.value
+				val_lbl.custom_minimum_size.x = 40
+				hbox.add_child(val_lbl)
+				
+				var max_budget_avail = (dcr_avail - ship_budget_used) + slider.value
+				
+				slider.value_changed.connect(func(v):
+					if v > max_budget_avail:
+						slider.value = max_budget_avail
+						v = max_budget_avail
+					val_lbl.text = "%d%%" % v
+					repair_allocations[s.name][dmg["key"]] = v
+					# Trigger a debounced re-calc if needed, or just allow it. DCR budget is dynamic.
+					# A proper recalculation of budget requires redraw, but live slider works for simple.
+					_update_repair_ui() # Full redraw can be slow, but it's safe for simple layouts
+				)
+				
+				list_repair.add_child(hbox)
+	
+	if not has_damaged:
+		var lbl = Label.new()
+		lbl.text = "No damaged systems or conditions."
+		list_repair.add_child(lbl)
+
+	
+func _on_repair_exec_pressed():
+	if repair_subphase == 1 or repair_subphase == 2:
+		log_message("Submitting Repair Allocations for Side %d" % repair_subphase)
+		
+		if multiplayer.has_multiplayer_peer() and my_side_id != 0:
+			rpc_submit_repair_allocations.rpc_id(1, repair_subphase, repair_allocations)
+		else:
+			rpc_submit_repair_allocations(repair_subphase, repair_allocations)
+
+
+@rpc("any_peer", "call_local", "reliable")
+func rpc_submit_repair_allocations(side_id: int, allocations: Dictionary):
+	# Allow server to process
+	if not _is_server_or_offline(): return
+	
+	if side_id == 1:
+		# Save P1, move to P2
+		repair_allocations = allocations
+		repair_subphase = 2
+		rpc_sync_repair_state.rpc(repair_subphase, repair_allocations)
+	elif side_id == 2:
+		# Merge P2 allocs
+		for s_name in allocations:
+			repair_allocations[s_name] = allocations[s_name]
+			
+		repair_subphase = 3
+		rpc_sync_repair_state.rpc(repair_subphase, repair_allocations)
+		_execute_all_repairs()
+
+@rpc("authority", "call_local", "reliable")
+func rpc_sync_repair_state(subphase: int, allocs: Dictionary):
+	repair_subphase = subphase
+	repair_allocations = allocs
+	_update_ui_state()
+	_update_repair_ui()
+
+func _execute_all_repairs():
+	# Loop through all ships, try repairs
+	for s in ships:
+		if not is_instance_valid(s): continue
+		if not repair_allocations.has(s.name): continue
+		
+		var allocs = repair_allocations[s.name]
+		var total_allocated = 0
+		for val in allocs.values(): total_allocated += int(val)
+		
+		if total_allocated > s.current_dcr:
+			log_message("[color=red]%s exceeded DCR budget! All repairs failed.[/color]" % s.name)
+			continue
+			
+		for key in allocs:
+			var chance = allocs[key]
+			if chance <= 0: continue
+			
+			var roll = randi() % 100 + 1
+			log_message("%s repairing %s... (DCR %d%%) Roll: %d" % [s.name, key, chance, roll])
+			
+			await get_tree().create_timer(1.0).timeout
+			
+			if roll >= 90:
+				log_message("[color=red]Repair Failed![/color]")
+				if roll >= 99:
+					log_message("[color=red]System permanently broken![/color]")
+					_mark_unrepairable(s, key)
+			elif roll <= chance:
+				log_message("[color=green]Repair Successful![/color]")
+				_apply_repair(s, key)
+			else:
+				log_message("[color=yellow]Repair Failed. Roll too high.[/color]")
+				
+	
+	# Done with repairs
+	# To avoid triggering _end_round_cycle's repair check again, we must increment turn_count here,
+	# or signal that repair is done.
+	if panel_repair: panel_repair.visible = false
+	
+	turn_count += 1
+	log_message("Round Complete (After Repair). Starting New Round.")
+	# Reset Turn Order
+	current_turn_order_index = 0
+	
+	# Reset ALL ships (Movement/Fired state)
+	for s in ships:
+		if is_instance_valid(s):
+			s.reset_turn_state()
+			
+	# Start Side 1 Again
+	_start_turn_for_side(turn_order[0])
+
+func _mark_unrepairable(s: Ship, key: String):
+	if key == "hull": pass # Can try hull again? Rules: "no further attempts possible".
+	elif key == "adf": s.unrepairable_adf_modifier += 1
+	elif key == "mr": s.unrepairable_mr_modifier += 1
+	elif key == "fire_elec": s.unrepairable_electrical_fire = true
+	elif key == "fire_dis": s.unrepairable_disastrous_fire = true
+	elif key.begins_with("wpn_"):
+		var idx = int(key.split("_")[1])
+		if idx < s.weapons.size():
+			s.weapons[idx]["unrepairable"] = true
+
+func _apply_repair(s: Ship, key: String):
+	if key == "hull":
+		var restore = randi() % 10 + 1
+		s.hull = min(s.max_hull, s.hull + restore)
+		s.hull_changed.emit(s.hull)
+	elif key == "adf":
+		if s.current_adf_modifier > s.unrepairable_adf_modifier: s.current_adf_modifier -= 1
+	elif key == "mr":
+		if s.current_mr_modifier > s.unrepairable_mr_modifier: s.current_mr_modifier -= 1
+	elif key == "fire_elec":
+		if not s.unrepairable_electrical_fire: s.has_electrical_fire = false
+	elif key == "fire_dis":
+		if not s.unrepairable_disastrous_fire: s.has_disastrous_fire = false
+	elif key.begins_with("wpn_"):
+		var idx = int(key.split("_")[1])
+		if idx < s.weapons.size() and not s.weapons[idx].get("unrepairable", false):
+			s.weapons[idx]["is_crippled"] = false
+	s.state_changed.emit()
+	s.queue_redraw()
+
 func _end_round_cycle():
+	# Trigger repair phase every 3 turns, before the turn increments.
+	if turn_count % 3 == 0 and current_phase != Phase.REPAIR:
+		call_deferred("start_repair_phase")
+		return
+
 	turn_count += 1
 	log_message("Round Complete. Starting New Round.")
 	# Reset Turn Order
@@ -2453,9 +2729,30 @@ func _update_ui_state():
 			panel_planning.visible = false
 				
 		label_status.text = txt
+	elif current_phase == Phase.REPAIR:
+		panel_movement.visible = false
+		panel_planning.visible = false
+		panel_attack_queue.visible = false
+		if panel_repair:
+			panel_repair.visible = true
+			
+		btn_undo.visible = false
+		btn_commit.visible = false
+		btn_orbit_cw.visible = false
+		btn_orbit_ccw.visible = false
+		
+		var side_n = get_side_name(repair_subphase)
+		if repair_subphase == 3:
+			label_status.text = "Repair Phase (Executing...)"
+			if btn_repair_exec: btn_repair_exec.visible = false
+		else:
+			label_status.text = "Repair Phase (%s Allocating)" % side_n
+			if btn_repair_exec: btn_repair_exec.visible = (repair_subphase == my_side_id or (my_side_id == 0))
 	elif current_phase == Phase.END:
 		panel_movement.visible = false
 		panel_planning.visible = false
+		if panel_repair:
+			panel_repair.visible = false
 		
 		btn_undo.visible = false
 		btn_commit.visible = false

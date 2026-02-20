@@ -91,6 +91,12 @@ func get_net_state() -> Dictionary:
 		"orbit_direction": orbit_direction,
 		"speed": speed,
 		"is_destroyed": is_destroyed, # Important for sync
+		"current_dcr": current_dcr,
+		"max_dcr": max_dcr,
+		"unrepairable_mr_modifier": unrepairable_mr_modifier,
+		"unrepairable_adf_modifier": unrepairable_adf_modifier,
+		"unrepairable_electrical_fire": unrepairable_electrical_fire,
+		"unrepairable_disastrous_fire": unrepairable_disastrous_fire,
 		"weapons": _get_weapon_states() # Needed for crippled/ammo
 	}
 
@@ -110,6 +116,13 @@ func apply_net_state(data: Dictionary):
 	
 	current_adf_modifier = data.get("current_adf_modifier", current_adf_modifier)
 	current_mr_modifier = data.get("current_mr_modifier", current_mr_modifier)
+	
+	current_dcr = data.get("current_dcr", current_dcr)
+	max_dcr = data.get("max_dcr", max_dcr)
+	unrepairable_mr_modifier = data.get("unrepairable_mr_modifier", unrepairable_mr_modifier)
+	unrepairable_adf_modifier = data.get("unrepairable_adf_modifier", unrepairable_adf_modifier)
+	unrepairable_electrical_fire = data.get("unrepairable_electrical_fire", unrepairable_electrical_fire)
+	unrepairable_disastrous_fire = data.get("unrepairable_disastrous_fire", unrepairable_disastrous_fire)
 	
 	has_moved = data.get("has_moved", has_moved)
 	has_fired = data.get("has_fired", has_fired)
@@ -148,6 +161,7 @@ func _get_weapon_states() -> Array:
 		states.append({
 			"ammo": w.get("ammo", 0),
 			"is_crippled": w.get("is_crippled", false),
+			"unrepairable": w.get("unrepairable", false),
 			"fired": w.get("fired", false)
 		})
 	return states
@@ -195,6 +209,7 @@ func _apply_weapon_states(states: Array):
 		var w = weapons[i]
 		w["ammo"] = s.get("ammo", w.get("ammo", 0))
 		w["is_crippled"] = s.get("is_crippled", w.get("is_crippled", false))
+		w["unrepairable"] = s.get("unrepairable", w.get("unrepairable", false))
 		w["fired"] = s.get("fired", w.get("fired", false))
 
 
@@ -218,6 +233,14 @@ var fire_damage_stack: int = 0 # 20, 40 etc.
 var ccs_damaged: bool = false
 var has_electrical_fire: bool = false
 var has_disastrous_fire: bool = false
+
+# Repair State (DCR)
+var current_dcr: int = 0
+var max_dcr: int = 0
+var unrepairable_mr_modifier: int = 0
+var unrepairable_adf_modifier: int = 0
+var unrepairable_electrical_fire: bool = false
+var unrepairable_disastrous_fire: bool = false
 
 signal ship_moved(new_pos)
 signal ship_destroyed
@@ -371,6 +394,8 @@ func configure_fighter():
 	icm_current = 0
 	ms_max = 0
 	ms_current = 0
+	max_dcr = 30
+	current_dcr = max_dcr
 	
 	weapons.clear()
 	weapons.append({
@@ -396,6 +421,8 @@ func configure_assault_scout():
 	mr = 4
 	ms_max = 0
 	ms_current = 0
+	max_dcr = 50
+	current_dcr = max_dcr
 	
 	weapons.clear()
 	# Laser Battery: Range 9, 360 Arc, 1d10
@@ -438,6 +465,8 @@ func configure_frigate():
 	icm_current = 4
 	ms_max = 1
 	ms_current = 1
+	max_dcr = 70
+	current_dcr = max_dcr
 	
 	weapons.clear()
 	# Laser Battery: Range 9
@@ -509,6 +538,8 @@ func configure_destroyer():
 	icm_current = 4
 	ms_max = 2
 	ms_current = 2
+	max_dcr = 75
+	current_dcr = max_dcr
 	
 	weapons.clear()
 	# Laser Battery: Range 9, 360 Arc, 1d10
@@ -579,6 +610,8 @@ func configure_heavy_cruiser():
 	icm_current = 8
 	ms_max = 1
 	ms_current = 1
+	max_dcr = 120
+	current_dcr = max_dcr
 	
 	weapons.clear()
 	# Laser Batteries (x3 - Separate entries)
@@ -650,6 +683,8 @@ func configure_battleship():
 	icm_current = 20
 	ms_max = 4
 	ms_current = 4
+	max_dcr = 200
+	current_dcr = max_dcr
 	
 	weapons.clear()
 	# Disruptor Canon
@@ -722,6 +757,8 @@ func configure_assault_carrier():
 	icm_current = 10
 	ms_max = 4
 	ms_current = 4
+	max_dcr = 150
+	current_dcr = max_dcr
 	
 	weapons.clear()
 	# Laser Battery
@@ -768,6 +805,8 @@ func configure_space_station(force_hull: int = -1):
 		hull = int(clamp(h, 20, 200))
 		
 	max_hull = hull
+	max_dcr = max_hull / 2
+	current_dcr = max_dcr
 	adf = 0
 	mr = 0
 	
