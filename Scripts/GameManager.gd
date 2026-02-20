@@ -2166,22 +2166,16 @@ func end_turn_cycle():
 			_end_round_cycle()
 
 func start_repair_phase():
-	current_phase = Phase.REPAIR
-	combat_subphase = 0
-	repair_subphase = 1 # 1 = Side 1 plan, 2 = Side 2 plan, 3 = Execute
+	# Only authority orchestrates the transition
+	if multiplayer.has_multiplayer_peer() and multiplayer.get_unique_id() != 1:
+		return 
+
 	repair_allocations.clear()
 	
-	log_message("[color=cyan]=== REPAIR TURN Phase ===[/color]")
-	
-	# Only start if multiplayer or host
-	if multiplayer.has_multiplayer_peer() and multiplayer.get_unique_id() != 1:
-		return # Clients wait for state sync
-		
 	if multiplayer.has_multiplayer_peer():
-		rpc_sync_repair_state.rpc(repair_subphase, repair_allocations)
+		rpc_sync_repair_state.rpc(1, repair_allocations)
 	else:
-		_update_ui_state()
-		_update_repair_ui()
+		rpc_sync_repair_state(1, repair_allocations)
 
 func _update_repair_ui():
 	if not is_instance_valid(list_repair): return
@@ -2277,17 +2271,12 @@ func _update_repair_ui():
 	
 	if not has_damaged:
 		var lbl = Label.new()
-		lbl.text = "No damaged systems or conditions. Auto-advancing..."
+		lbl.text = "No damaged systems or conditions. Press Execute Repairs to advance."
 		list_repair.add_child(lbl)
-
-		var current_subphase = repair_subphase
-		if _is_server_or_offline() and current_subphase != 3:
-			if btn_repair_exec and not btn_repair_exec.disabled:
-				btn_repair_exec.disabled = true
-				get_tree().create_timer(1.5).timeout.connect(func():
-					if current_phase == Phase.REPAIR and repair_subphase == current_subphase:
-						_on_repair_exec_pressed()
-				)
+		
+		# Ensure button is available to click to advance manually
+		if btn_repair_exec:
+			btn_repair_exec.disabled = false
 
 	
 func _on_repair_exec_pressed():
@@ -2328,6 +2317,11 @@ func rpc_submit_repair_allocations(side_id: int, allocations: Dictionary):
 
 @rpc("authority", "call_local", "reliable")
 func rpc_sync_repair_state(subphase: int, allocs: Dictionary):
+	if current_phase != Phase.REPAIR:
+		current_phase = Phase.REPAIR
+		combat_subphase = 0
+		log_message("[color=cyan]=== REPAIR TURN Phase ===[/color]")
+		
 	repair_subphase = subphase
 	repair_allocations = allocs
 	_update_ui_state()
