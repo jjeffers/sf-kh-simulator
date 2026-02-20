@@ -123,6 +123,16 @@ func _ready():
 	queue_redraw()
 	_spawn_planets()
 	_setup_network_identity()
+	
+	# Handle dynamic resolution changes gracefully
+	if not get_tree().get_root().size_changed.is_connected(_on_window_resized):
+		get_tree().get_root().size_changed.connect(_on_window_resized)
+
+func _on_window_resized():
+	# Redraw the grid to adjust to new window dimensions
+	queue_redraw()
+	# Update camera limits/centering if necessary
+	_update_camera()
 
 func _setup_background():
 	# Static Starfield using ParallaxBackground and Downloaded Texture
