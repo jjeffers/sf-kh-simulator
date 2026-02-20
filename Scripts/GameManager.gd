@@ -3096,11 +3096,12 @@ func _draw_weapon_ranges(ghost: Ship, source: Ship):
 			var end_right = end_center + right_vec
 			
 			var points = PackedVector2Array([
+				HexGrid.hex_to_pixel(ghost.grid_position),
 				HexGrid.hex_to_pixel(start_left),
 				HexGrid.hex_to_pixel(end_left),
 				HexGrid.hex_to_pixel(end_right),
 				HexGrid.hex_to_pixel(start_right),
-				HexGrid.hex_to_pixel(start_left) # Close loop
+				HexGrid.hex_to_pixel(ghost.grid_position) # Close loop
 			])
 			
 			draw_polyline(points, outline_color, 3.0)
