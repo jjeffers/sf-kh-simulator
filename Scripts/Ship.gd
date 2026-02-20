@@ -595,16 +595,17 @@ func configure_heavy_cruiser():
 			"fired": false
 		})
 		
-	# Laser Canon
+	# Disruptor Canon
 	weapons.append({
-		"name": "Laser Canon",
-		"type": "Laser Canon",
-		"range": 10,
+		"name": "Disruptor Canon",
+		"type": "Disruptor Canon",
+		"range": 9,
 		"arc": "FF",
 		"ammo": 999,
 		"max_ammo": 999,
-		"damage_dice": "2d10",
+		"damage_dice": "3d10",
 		"damage_bonus": 0,
+		"dtm": 20,
 		"fired": false
 	})
 	
@@ -651,20 +652,19 @@ func configure_battleship():
 	ms_current = 4
 	
 	weapons.clear()
-	# Laser Canons (x2)
-	for i in range(2):
-		weapons.append({
-			"name": "Laser Canon %d" % (i + 1),
-			"type": "Laser Canon",
-			"range": 10,
-			"arc": "FF",
-			"ammo": 999,
-			"max_ammo": 999,
-			"damage_dice": "2d10",
-			"damage_bonus": 0,
-			"dtm": 0,
-			"fired": false
-		})
+	# Disruptor Canon
+	weapons.append({
+		"name": "Disruptor Canon",
+		"type": "Disruptor Canon",
+		"range": 9,
+		"arc": "FF",
+		"ammo": 999,
+		"max_ammo": 999,
+		"damage_dice": "3d10",
+		"damage_bonus": 0,
+		"dtm": 20,
+		"fired": false
+	})
 		
 	# Laser Batteries (x4)
 	for i in range(4):
@@ -718,35 +718,34 @@ func configure_assault_carrier():
 	hull = max_hull
 	adf = 2
 	mr = 1
-	icm_max = 8
-	icm_current = 8
-	ms_max = 1
-	ms_current = 1
+	icm_max = 10
+	icm_current = 10
+	ms_max = 4
+	ms_current = 4
 	
 	weapons.clear()
-	# Laser Batteries (x2)
-	for i in range(2):
-		weapons.append({
-			"name": "Laser Battery %d" % (i + 1),
-			"type": "Laser",
-			"range": 9,
-			"arc": "360",
-			"ammo": 999,
-			"max_ammo": 999,
-			"damage_dice": "1d10",
-			"damage_bonus": 0,
-			"dtm": 0,
-			"fired": false
-		})
+	# Laser Battery
+	weapons.append({
+		"name": "Laser Battery",
+		"type": "Laser",
+		"range": 9,
+		"arc": "360",
+		"ammo": 999,
+		"max_ammo": 999,
+		"damage_dice": "1d10",
+		"damage_bonus": 0,
+		"dtm": 0,
+		"fired": false
+	})
 		
-	# Rocket Batteries (x6)
+	# Rocket Batteries (x8)
 	weapons.append({
 		"name": "Rocket Batteries",
 		"type": "Rocket Battery",
 		"range": 3,
 		"arc": "360",
-		"ammo": 6,
-		"max_ammo": 6,
+		"ammo": 8,
+		"max_ammo": 8,
 		"damage_dice": "2d10",
 		"damage_bonus": 0,
 		"dtm": - 10,

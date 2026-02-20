@@ -1056,12 +1056,19 @@ func _spawn_attack_fx(start: Vector2, end: Vector2, type: String) -> float:
 		return travel_time
 
 	else:
-		# Laser or Laser Canon
+		# Laser or Laser Canon or Disruptor Canon
 		var line = Line2D.new()
-		var is_canon = (type == "Laser Canon")
+		var is_disruptor = (type == "Disruptor Canon")
+		var is_canon = (type == "Laser Canon" or is_disruptor)
 		
 		line.width = 5.0 if is_canon else 3.0
-		line.default_color = Color.ORANGE if is_canon else Color(1, 0, 0, 1) # Canon Orange, Battery Red
+		
+		if is_disruptor:
+			line.default_color = Color(0.8, 0.4, 1.0, 1.0) # Purple/Whiteish
+		elif is_canon:
+			line.default_color = Color.ORANGE
+		else:
+			line.default_color = Color(1, 0, 0, 1) # Canon Orange, Battery Red
 		line.points = PackedVector2Array([start, end])
 		add_child(line)
 		
@@ -3039,7 +3046,7 @@ func _draw_weapon_ranges(ghost: Ship, source: Ship):
 	for key in sorted_keys:
 		var range_val = groups[key]["range"]
 		var w_name = groups[key]["name"]
-		var is_ff = (w_name == "Laser Canon" or w_name == "Assault Rocket")
+		var is_ff = (w_name == "Laser Canon" or w_name == "Assault Rocket" or w_name == "Disruptor Canon")
 		
 		var hexes = []
 		if is_ff:
@@ -3069,12 +3076,13 @@ func _draw_weapon_ranges(ghost: Ship, source: Ship):
 			elif w_name == "Torpedo": label_text = "Torpedoes"
 			elif w_name == "Assault Rocket": label_text = "Assault Rockets"
 			elif w_name == "Laser Canon": label_text = "Laser Canons"
+			elif w_name == "Disruptor Canon": label_text = "Disruptor Canons"
 			elif not w_name.ends_with("s"): label_text += "s"
 		
 		var full_label = "%d %s" % [count, label_text]
 		if count == 1: full_label = label_text
 
-		var is_ff = (w_name == "Laser Canon" or w_name == "Assault Rocket")
+		var is_ff = (w_name == "Laser Canon" or w_name == "Assault Rocket" or w_name == "Disruptor Canon")
 		var outline_color = Color(1, 0, 0, 0.8) # Bright Red
 		var label_pos = Vector2.ZERO
 		
@@ -3096,11 +3104,12 @@ func _draw_weapon_ranges(ghost: Ship, source: Ship):
 			var end_right = end_center + right_vec
 			
 			var points = PackedVector2Array([
+				HexGrid.hex_to_pixel(ghost.grid_position),
 				HexGrid.hex_to_pixel(start_left),
 				HexGrid.hex_to_pixel(end_left),
 				HexGrid.hex_to_pixel(end_right),
 				HexGrid.hex_to_pixel(start_right),
-				HexGrid.hex_to_pixel(start_left) # Close loop
+				HexGrid.hex_to_pixel(ghost.grid_position) # Close loop
 			])
 			
 			draw_polyline(points, outline_color, 3.0)
