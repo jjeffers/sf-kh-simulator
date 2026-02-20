@@ -2247,7 +2247,7 @@ func _update_repair_ui():
 				slider.max_value = 100
 				slider.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 				slider.custom_minimum_size.x = 150
-				slider.disabled = not (my_side_id == repair_subphase or my_side_id == 0)
+				slider.editable = (my_side_id == repair_subphase or my_side_id == 0)
 				slider.value = repair_allocations[s.name].get(dmg["key"], 0)
 				hbox.add_child(slider)
 				
