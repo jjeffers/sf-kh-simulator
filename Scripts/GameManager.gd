@@ -2171,13 +2171,17 @@ func start_repair_phase():
 	repair_subphase = 1 # 1 = Side 1 plan, 2 = Side 2 plan, 3 = Execute
 	repair_allocations.clear()
 	
+	log_message("[color=cyan]=== REPAIR TURN Phase ===[/color]")
+	
 	# Only start if multiplayer or host
 	if multiplayer.has_multiplayer_peer() and multiplayer.get_unique_id() != 1:
 		return # Clients wait for state sync
 		
-	log_message("[color=cyan]=== REPAIR TURN Phase ===[/color]")
-	_update_ui_state()
-	_update_repair_ui()
+	if multiplayer.has_multiplayer_peer():
+		rpc_sync_repair_state.rpc(repair_subphase, repair_allocations)
+	else:
+		_update_ui_state()
+		_update_repair_ui()
 
 func _update_repair_ui():
 	if not is_instance_valid(list_repair): return
@@ -2273,8 +2277,17 @@ func _update_repair_ui():
 	
 	if not has_damaged:
 		var lbl = Label.new()
-		lbl.text = "No damaged systems or conditions."
+		lbl.text = "No damaged systems or conditions. Auto-advancing..."
 		list_repair.add_child(lbl)
+
+		var current_subphase = repair_subphase
+		if (my_side_id == repair_subphase or my_side_id == 0) and current_subphase != 3:
+			if btn_repair_exec and not btn_repair_exec.disabled:
+				btn_repair_exec.disabled = true
+				get_tree().create_timer(1.5).timeout.connect(func():
+					if current_phase == Phase.REPAIR and repair_subphase == current_subphase:
+						_on_repair_exec_pressed()
+				)
 
 	
 func _on_repair_exec_pressed():
@@ -2600,14 +2613,26 @@ func _update_ui_state():
 		
 		# Find ANY unmoved ships for this side
 		var unmoved = []
+		var mandatory_unmoved = []
 		for s in ships:
-			if is_instance_valid(s) and s.side_id == current_side_id and not s.is_exploding and not s.has_moved:
-				unmoved.append(s)
+			if is_instance_valid(s) and s.side_id == current_side_id and not s.is_exploding and not s.has_moved and not s.has_orders:
+				if s.is_docked or s.ship_class == "Space Station":
+					continue
+				var eff_adf = s.get_effective_adf()
+				var min_speed = max(0, s.speed - eff_adf)
+				if min_speed > 0:
+					mandatory_unmoved.append(s)
+				else:
+					unmoved.append(s)
 		
-		if unmoved.size() > 0:
-			btn_exec_move.disabled = false # ALWAYS ALLOW EXECUTION
-			btn_exec_move.text = "EXECUTE MOVEMENT" # Text requested by user
-			btn_exec_move.modulate = Color(1, 0.8, 0.2) # Yellow-ish warning
+		if mandatory_unmoved.size() > 0:
+			btn_exec_move.disabled = true
+			btn_exec_move.text = "AWAITING MOVEMENT"
+			btn_exec_move.modulate = Color(1, 0.4, 0.4) # Red
+		elif unmoved.size() > 0:
+			btn_exec_move.disabled = false 
+			btn_exec_move.text = "EXECUTE MOVEMENT" 
+			btn_exec_move.modulate = Color(1, 0.8, 0.2) # Yellow warning
 		else:
 			btn_exec_move.disabled = false
 			btn_exec_move.text = "EXECUTE MOVEMENT"
@@ -2726,7 +2751,9 @@ func _update_ui_state():
 			if btn_repair_exec: btn_repair_exec.visible = false
 		else:
 			label_status.text = "Repair Phase (%s Allocating)" % side_n
-			if btn_repair_exec: btn_repair_exec.visible = (repair_subphase == my_side_id or (my_side_id == 0))
+			if btn_repair_exec:
+				btn_repair_exec.visible = (repair_subphase == my_side_id or (my_side_id == 0))
+				btn_repair_exec.disabled = false
 	elif current_phase == Phase.END:
 		panel_movement.visible = false
 		panel_planning.visible = false
