@@ -2413,8 +2413,9 @@ func _apply_repair(s: Ship, key: String):
 
 func _end_round_cycle():
 	# Trigger repair phase every 3 turns, before the turn increments.
-	if turn_count % 3 == 0 and current_phase != Phase.REPAIR:
-		call_deferred("start_repair_phase")
+	if turn_count > 0 and turn_count % 3 == 0:
+		if current_phase != Phase.REPAIR:
+			call_deferred("start_repair_phase")
 		return
 
 	turn_count += 1
