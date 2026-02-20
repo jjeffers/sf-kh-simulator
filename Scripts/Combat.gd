@@ -161,7 +161,7 @@ static func get_damage_effect(roll: int) -> Dictionary:
 	# Weapon Hits
 	if roll <= 62: return {"type": "Weapon", "list": ["Disruptor Canon", "Laser Canon", "Laser", "Rocket", "Rocket Battery"], "text": "Weapon Hit"}
 	if roll <= 64: return {"type": "Weapon", "list": ["Laser", "Rocket Battery", "Torpedo", "Rocket"], "text": "Weapon Hit"}
-	if roll <= 66: return {"type": "Weapon", "list": ["Laser Canon", "Disruptor Canon", "Rocket", "Torpedo", "Laser"], "text": "Weapon Hit"}
+	if roll <= 66: return {"type": "Weapon", "list": ["Disruptor Canon", "Laser Canon", "Rocket", "Torpedo", "Laser"], "text": "Weapon Hit"}
 	if roll <= 68: return {"type": "Weapon", "list": ["Torpedo", "Rocket", "Laser", "Rocket Battery"], "text": "Weapon Hit"}
 	if roll <= 70: return {"type": "Weapon", "list": ["Laser", "Rocket Battery", "Torpedo", "Rocket", "Laser Canon", "Disruptor Canon"], "text": "Weapon Hit"}
 	
