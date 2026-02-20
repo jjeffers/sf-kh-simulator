@@ -2281,7 +2281,7 @@ func _update_repair_ui():
 		list_repair.add_child(lbl)
 
 		var current_subphase = repair_subphase
-		if (my_side_id == repair_subphase or my_side_id == 0) and current_subphase != 3:
+		if _is_server_or_offline() and current_subphase != 3:
 			if btn_repair_exec and not btn_repair_exec.disabled:
 				btn_repair_exec.disabled = true
 				get_tree().create_timer(1.5).timeout.connect(func():
