@@ -1452,28 +1452,7 @@ func _on_resolution_complete():
 	# So we assume the user has planned EVERYTHING they want to.
 	# So we end this player's combat subphase.
 	
-	if combat_subphase == 1:
-		# Passive Fire Done -> Start Active Fire
-		start_combat_active()
-	elif combat_subphase == 2:
-		# Active Fire Done -> End of this Side's Turn -> Next Side
-		current_turn_order_index += 1
-		
-		if current_turn_order_index < turn_order.size():
-			if audio_phase_change and audio_phase_change.stream:
-				audio_phase_change.play()
-				
-			# Proceed to Next Side
-			_start_turn_for_side(turn_order[current_turn_order_index])
-		else:
-			# All Sides Done -> Check for End of Turn Cycle (Round)
-			# Check if we've completed a full game turn (all sides have had their turn)
-			if current_turn_order_index == turn_order.size(): # This condition is always true here, but good for clarity
-				# Both sides have completed their turns, increment game turn counter
-				turn_count += 1
-			
-			# Assuming end_turn_cycle() handles Round increment and Loop restart
-			call("end_turn_cycle") # Use call() to avoid parser error if not immediately found (though it should be)
+	call_deferred("end_turn_cycle")
 
 func _spawn_hit_text(pos: Vector2, val: Variant):
 	var lbl = Label.new()
