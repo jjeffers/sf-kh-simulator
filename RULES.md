@@ -108,8 +108,9 @@ Detailed specifications for all ship classes currently implemented.
 | **Assault Scout** | 15 | 5 | 4 | RH | 0 | 0 | Laser Battery, Assault Rockets (x4) |
 | **Frigate** | 40 | 3 | 3 | RH | 4 | 1 | Laser Battery, Laser Canon, Rocket Battery (x4), Torpedo (x2) |
 | **Destroyer** | 50 | 3 | 2 | RH | 4 | 2 | Laser Battery, Laser Canon, Rocket Battery (x6), Torpedo (x2) |
-| **Heavy Cruiser** | 80 | 1 | 1 | RH | 8 | 1 | Laser Battery (x3), Laser Canon, Rocket Battery (x8), Torpedo (x4) |
-| **Battleship** | 120 | 2 | 2 | RH | 20 | 4 | Laser Canon (x2), Laser Battery (x4), Rocket Battery (x10), Torpedo (x8) |
+| **Heavy Cruiser** | 80 | 1 | 1 | RH | 8 | 1 | Laser Battery (x3), Disruptor Canon, Rocket Battery (x8), Torpedo (x4) |
+| **Battleship** | 120 | 2 | 2 | RH | 20 | 4 | Disruptor Canon, Laser Battery (x4), Rocket Battery (x10), Torpedo (x8) |
+| **Assault Carrier** | 75 | 2 | 1 | RH | 10 | 4 | Laser Battery, Rocket Battery (x8) |
 | **Space Station** | 20-200 | 0 | 0 | RH | 2-8 | 1-4 | Laser Battery (1-3), Rocket Battery (2-12) |
 
 *Note: Space Station stats scale based on Hull points (Randomly generated).*
@@ -125,6 +126,7 @@ Combat mechanics and specifications for all weapon types.
 | :--- | :--- | :--- | :--- | :--- | :--- | :--- |
 | **Laser Battery** | Laser | 9 | RD | 1d10 | 80% | 0| - Reduced to 50% vs RH<br>- Reduced to 10% if Screen active |
 | **Laser Canon** | Laser | 10 | FF, RD | 2d10 | 80% | 0 | - Reduced to 60% vs RH<br>- Reduced to 20% if Screen active |
+| ***Disruptor Cannon*** | Laser | 9 | FF, RD | 3d10 | 80% | +20 | - Reduced to 60% vs RH<br>- Reduced to 35% if Screen active |
 | **Assault Rocket** | Rocket | 4 | FF, LTD, MPO | 2d10+4 | 80% | -10 | - Reduced to 60% vs RH<br>- Subject to ICM (-5% per) |
 | **Rocket Battery** | Rocket | 3 | LTD | 2d10 | 40% (Flat) | -10|  <br>- Subject to ICM (-3% per) |
 | **Torpedo** | Torpedo | 4 | LTD, MPO | 4d10 | 70% (Flat) | 20 | <br>- Subject to ICM (-10% per) |

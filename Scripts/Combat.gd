@@ -59,10 +59,12 @@ static func calculate_hit_chance(dist: int, weapon: Dictionary = {}, target: Shi
 	var target_has_ms = (target and target.get("is_ms_active"))
 	var source_has_ms = (source and source.get("is_ms_active"))
 	
-	if (target_has_ms or source_has_ms) and (weapon.get("type") == "Laser" or weapon.get("type") == "Laser Canon"):
+	if (target_has_ms or source_has_ms) and (weapon.get("type") == "Laser" or weapon.get("type") == "Laser Canon" or weapon.get("type") == "Disruptor Canon"):
 		# Override Base for Laser weapons
 		if weapon.get("type") == "Laser Canon":
 			base = 20
+		elif weapon.get("type") == "Disruptor Canon":
+			base = 35
 		else:
 			base = 10 # Battery
 	else:
@@ -72,14 +74,14 @@ static func calculate_hit_chance(dist: int, weapon: Dictionary = {}, target: Shi
 		if target and target.defense == "RH":
 			if weapon.get("type") == "Laser":
 				base = 50
-			elif weapon.get("type") == "Laser Canon":
+			elif weapon.get("type") == "Laser Canon" or weapon.get("type") == "Disruptor Canon":
 				base = 60 # "60% chance to hit a target with a reflective hull"
 
 	
 	# Standard / Laser / Laser Canon Rule: Range Diffusion (RD)
 	# -5% per hex
-	# ONLY if type is Laser or Laser Canon
-	if w_type == "Laser" or w_type == "Laser Canon":
+	# ONLY if type is Laser or Laser Canon or Disruptor Canon
+	if w_type == "Laser" or w_type == "Laser Canon" or w_type == "Disruptor Canon":
 		chance = base - (dist * RANGE_PENALTY)
 	else:
 		chance = base # Should not happen given early returns for Rockets/Torpedoes, but safe fallback
@@ -157,11 +159,11 @@ static func get_damage_effect(roll: int) -> Dictionary:
 	if roll <= 60: return {"type": "MR", "val": - 99, "text": "Steering Hit (All MR)"}
 	
 	# Weapon Hits
-	if roll <= 62: return {"type": "Weapon", "list": ["Laser Canon", "Laser", "Rocket", "Rocket Battery"], "text": "Weapon Hit"}
+	if roll <= 62: return {"type": "Weapon", "list": ["Disruptor Canon", "Laser Canon", "Laser", "Rocket", "Rocket Battery"], "text": "Weapon Hit"}
 	if roll <= 64: return {"type": "Weapon", "list": ["Laser", "Rocket Battery", "Torpedo", "Rocket"], "text": "Weapon Hit"}
-	if roll <= 66: return {"type": "Weapon", "list": ["Laser Canon", "Rocket", "Torpedo", "Laser"], "text": "Weapon Hit"}
+	if roll <= 66: return {"type": "Weapon", "list": ["Laser Canon", "Disruptor Canon", "Rocket", "Torpedo", "Laser"], "text": "Weapon Hit"}
 	if roll <= 68: return {"type": "Weapon", "list": ["Torpedo", "Rocket", "Laser", "Rocket Battery"], "text": "Weapon Hit"}
-	if roll <= 70: return {"type": "Weapon", "list": ["Laser", "Rocket Battery", "Torpedo", "Rocket", "Laser Canon"], "text": "Weapon Hit"}
+	if roll <= 70: return {"type": "Weapon", "list": ["Laser", "Rocket Battery", "Torpedo", "Rocket", "Laser Canon", "Disruptor Canon"], "text": "Weapon Hit"}
 	
 	if roll <= 74: return {"type": "System", "key": "ICM", "text": "Power Short Circuit (Lose ICMs)"}
 	if roll <= 80: return {"type": "Defense", "list": ["MS", "ICM"], "text": "Defense Hit (MS, ICM)"}
