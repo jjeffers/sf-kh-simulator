@@ -86,13 +86,16 @@ A number between 1 and 100 is randomly selected (roll a d100). Then the DTM from
 - Ships can accelerate/decelerate by up to ADF in hexes.
 - A ship must move the minimum number of hexes which is their current speed minus their ADF.
 
-- **Turning**: A ship may change it's facing to any direction of it's speed is 0. Otherwise a ship may change facing by 1 hexside when they enter a new hex.
-  When planning movement the player may select a hex to move to and then use the the mouse to switch facings, left or right or straight ahead, if current MR allows it. An "undo" button will unwind the entire movement plan.
+- **Turning**: 
+- Driven by MR (maneuver rating).
+- A ship may change it's facing to any direction of it's speed is 0. Otherwise a ship may change facing by 1 hexside when they enter a new hex.
+- When planning movement the player may select a hex to move to and then use the the mouse to switch facings, left or right or straight ahead, if current MR allows it. An "undo" button will unwind the entire movement plan.
+- A ship with speed 0 and and effective MR > 0 may freely rotate to any facing.
 
 - **Orbiting**: Special maneuver for ships starting their movement in a hex adjacent to a planet. The ship will orbit the planet clockwise or counter-clockwise, player's choice. The ship will orbit the planet until it decides to move out of the hex away from the planet.
 
 - **Planets**: 
-- Planets block attacks that pass through their hex.
+- Planets block attacks and attack planning that pass through their hex.
 - Ships entering a hex with a planet are destroyed.
 
 ## Ship Register
