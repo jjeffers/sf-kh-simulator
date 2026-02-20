@@ -70,11 +70,29 @@ A number between 1 and 100 is randomly selected (roll a d100). Then the DTM from
 - when a result indicates a type of fire but the ship already has a fire of that type it is instead a hull hit (roll normal hull hit damage)
 
 ### Damage Control
- - Every ship will have an attribute called "DCR", which represents capcity to repair damaged systems or removed conditions like fires.
- - Once every 3 turns both side will be prompted for DCR allocation. The amount of DCR allocated represents a % chance that crippled system will be repaired or damage repaired.
+ - Every ship will have an attribute called "DCR", which represents capacity to repair damaged systems or removed conditions like fires.
+ - Once every 3 game turns both sides will be prompted for DCR allocation. This occurs at the end of a game turn, after both sides have moved, etc.
+ - The amount of DCR allocated represents a % chance that crippled system will be repaired or damage repaired.
  - The maximum amount of DCR you can allocate to a system is 100.
- - The event for repair occurs after the 3rd full cycle of each side's movement and then combat. This is called a Repair Turn. 
- - During a repair trn
+ - The event for repair occurs after the 3rd full cycle of each side's movement and then combat. This is called a Repair Turn.
+ - Each side will have sperate repair turn phases, first 1 side, then the other. It does not matter which side goes first, but it must be the same side each turn.
+
+ #### Procedure 
+ - During a repair turn each each side will be presented with a list of ships that have damaged systems or conditions. The player will be prompted to allocate DCR to each ship. The DCR allocated to each ship will be used to repair the damaged systems or conditions.
+ - Each ship will present a list of damaged sytems and a DCR budget, which is the ship's current effective DCR. (Note tht DCR can be reduced from the start by damage table results.)
+ - Each side may allocate DCR to each damaged system or condition. 
+ - The DCR allocated must be between 0 and 100.
+ - Once all ships have DCR allocated, the side must click the "Execute Repair" button in the ship list to complete the repair turn.
+ - Each repair is then attempted in order of the ship list. There should be a brief delay between each repair attempt (like the attack resolution) and a message displayed on the outcome in the logs and on the display.
+ - A d100 is rolled for each repair attempt. If the roll is the DCR allocated or under, the repair is successful.
+ -- if the repair roll is 90-100, the repair always fails.
+ -- if the repair roll is 99 or 100, the repair fails and no futher repair attempts are possible for that system or condition.
+ #### Repair Systems Notes
+- MR repairs: each point of MR lost must be repaired separately.
+- ADF repairs: each point of ADF lost must be repaired separately.
+- Fire repairs: successfully repairing extinguishes the fire but not the damage the fire caused.
+- hull repairs: successfully repairing restores 1d10 hull points
+
 
 ## Movement
 - Procedure: a side will *plan* all movement, but the ships do not move until the end of the planning phase, once the "Execute Movement" button is pressed. This is important because in future game updates, there may be hidden movement hazards that are only revealed when the movement is executed.
@@ -102,16 +120,16 @@ A number between 1 and 100 is randomly selected (roll a d100). Then the DTM from
 
 Detailed specifications for all ship classes currently implemented.
 
-| Class | Hull | ADF | MR | Defense | ICM | MS | Weapons |
-| :--- | :--- | :--- | :--- | :--- | :--- | :--- | :--- |
-| **Fighter** | 8 | 5 | 5 | RH | 0 | 0 | Assault Rockets (x3) |
-| **Assault Scout** | 15 | 5 | 4 | RH | 0 | 0 | Laser Battery, Assault Rockets (x4) |
-| **Frigate** | 40 | 3 | 3 | RH | 4 | 1 | Laser Battery, Laser Canon, Rocket Battery (x4), Torpedo (x2) |
-| **Destroyer** | 50 | 3 | 2 | RH | 4 | 2 | Laser Battery, Laser Canon, Rocket Battery (x6), Torpedo (x2) |
-| **Heavy Cruiser** | 80 | 1 | 1 | RH | 8 | 1 | Laser Battery (x3), Disruptor Canon, Rocket Battery (x8), Torpedo (x4) |
-| **Battleship** | 120 | 2 | 2 | RH | 20 | 4 | Disruptor Canon, Laser Battery (x4), Rocket Battery (x10), Torpedo (x8) |
-| **Assault Carrier** | 75 | 2 | 1 | RH | 10 | 4 | Laser Battery, Rocket Battery (x8) |
-| **Space Station** | 20-200 | 0 | 0 | RH | 2-8 | 1-4 | Laser Battery (1-3), Rocket Battery (2-12) |
+| Class | Hull | ADF | MR | Defense | ICM | MS | Weapons | DCR|
+| :--- | :--- | :--- | :--- | :--- | :--- | :--- | :--- | :---|
+| **Fighter** | 8 | 5 | 5 | RH | 0 | 0 | Assault Rockets (x3) | 30 |
+| **Assault Scout** | 15 | 5 | 4 | RH | 0 | 0 | Laser Battery, Assault Rockets (x4) | 50 |
+| **Frigate** | 40 | 3 | 3 | RH | 4 | 1 | Laser Battery, Laser Canon, Rocket Battery (x4), Torpedo (x2) | 70 |
+| **Destroyer** | 50 | 3 | 2 | RH | 4 | 2 | Laser Battery, Laser Canon, Rocket Battery (x6), Torpedo (x2) | 75 |
+| **Heavy Cruiser** | 80 | 1 | 1 | RH | 8 | 1 | Laser Battery (x3), Disruptor Canon, Rocket Battery (x8), Torpedo (x4) | 120 |
+| **Battleship** | 120 | 2 | 2 | RH | 20 | 4 | Disruptor Canon, Laser Battery (x4), Rocket Battery (x10), Torpedo (x8) | 200 |
+| **Assault Carrier** | 75 | 2 | 1 | RH | 10 | 4 | Laser Battery, Rocket Battery (x8) 150 |
+| **Space Station** | 20-200 | 0 | 0 | RH | 2-8 | 1-4 | Laser Battery (1-3), Rocket Battery (2-12) | 1/2 hull points |
 
 *Note: Space Station stats scale based on Hull points (Randomly generated).*
 

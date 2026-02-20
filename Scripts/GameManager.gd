@@ -1945,9 +1945,9 @@ func _start_combat_planning():
 		)
 
 func _handle_auto_skip_combat():
-	# If we are the Server OR the Firing Side, we have authority to advance the state
+	# If we are the Server, we have authority to advance the state
 	# when there are no valid choices to make.
-	if _is_server_or_offline() or (my_side_id == firing_side_id) or (my_side_id == 0):
+	if _is_server_or_offline():
 		# Bypass _on_combat_commit authority check and call RPC directly
 		if multiplayer.has_multiplayer_peer():
 			rpc("execute_commit_combat", [], randi())
