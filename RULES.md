@@ -47,7 +47,7 @@ A number between 1 and 100 is randomly selected (roll a d100). Then the DTM from
 | 59-60 | Steering hit: lose entire MR |
 | 61-62 | Weapon hit: laser canon, laser battery, assault rockets, rocket battery |
 | 63-64 | Weapon hit: laser battery, rocket battery, torpedos, assault rockets |
-| 65-66 | Weapon hit: laser canon, assault rockets, torpedoes, laser battery |
+| 65-66 | Weapon hit: disruptor cannon, laser canon, assault rockets, torpedoes, laser battery |
 | 67-68 | Weapon hit: torpedoes, assault rockets, laser battery, rocket battery |
 | 69-70 | Weapon hit: laser battery, rocket battery, torpedoes, assault rockets, laser canon |
 | 71-74 | Power short circuit: lose ICMs |
