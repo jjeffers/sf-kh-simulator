@@ -2768,6 +2768,10 @@ func _validate_move_path(ship: Ship, path: Array[Vector3i], _final_facing: int, 
 		return true
 
 	var old_speed = ship.speed
+	# FIX: If docked, effective start speed is 0, regardless of what the ship memory says (bug resilience)
+	if ship.is_docked:
+		old_speed = 0
+		
 	var new_speed = path.size()
 	var eff_adf = ship.get_effective_adf()
 	var min_speed = max(0, old_speed - eff_adf)
@@ -2927,6 +2931,8 @@ func _apply_movement_plan(s: Ship):
 	if s.planned_path.size() > 0:
 		s.grid_position = s.planned_path.back()
 		s.facing = s.planned_facing
+		# FIX: Update Speed to match distance moved (Speed = Hexes Moved)
+		s.speed = s.planned_path.size()
 	else:
 		# Hold Position (or invalid empty path treated as hold)
 		s.facing = s.planned_facing # Always apply facing change?
@@ -3019,6 +3025,120 @@ func _should_show_movement_plan(s: Ship) -> bool:
 	# Future: Add Fog of War logic here
 	if not s.has_orders: return false
 	return true
+
+
+func _draw_weapon_ranges(ghost: Ship, source: Ship):
+	var groups = source.get_active_weapon_groups()
+	
+	# 1. Calculate Union of Hexes for Uniform Fill
+	var all_hexes = {}
+	var sorted_keys = groups.keys()
+	# Sort by range for labeling order (largest first)
+	sorted_keys.sort_custom(func(a, b): return groups[a]["range"] > groups[b]["range"])
+	
+	for key in sorted_keys:
+		var range_val = groups[key]["range"]
+		var w_name = groups[key]["name"]
+		var is_ff = (w_name == "Laser Canon" or w_name == "Assault Rocket")
+		
+		var hexes = []
+		if is_ff:
+			hexes = _get_ff_arc_hexes(ghost, range_val)
+		else:
+			hexes = _get_hexes_in_range(ghost.grid_position, range_val)
+			
+		for h in hexes:
+			all_hexes[h] = true
+			
+	# Draw Uniform Fill
+	var fill_color = Color(1, 0.2, 0.2, 0.2) # Non-additive uniform fill
+	for h in all_hexes:
+		_draw_filled_hex(h, fill_color)
+		
+	# 2. Draw Outlines & Labels per Group
+	for key in sorted_keys:
+		var range_val = groups[key]["range"]
+		var count = groups[key]["count"]
+		var w_name = groups[key]["name"]
+		
+		# Pluralize Label
+		var label_text = w_name
+		if count > 1:
+			if w_name == "Laser Battery": label_text = "Laser Batteries"
+			elif w_name == "Rocket Battery": label_text = "Rocket Batteries"
+			elif w_name == "Torpedo": label_text = "Torpedoes"
+			elif w_name == "Assault Rocket": label_text = "Assault Rockets"
+			elif w_name == "Laser Canon": label_text = "Laser Canons"
+			elif not w_name.ends_with("s"): label_text += "s"
+		
+		var full_label = "%d %s" % [count, label_text]
+		if count == 1: full_label = label_text
+
+		var is_ff = (w_name == "Laser Canon" or w_name == "Assault Rocket")
+		var outline_color = Color(1, 0, 0, 0.8) # Bright Red
+		var label_pos = Vector2.ZERO
+		
+		if is_ff:
+			# FF Polygon Outline (Wedge/Box)
+			# Corners: Start-Left, Start-Right, End-Right, End-Left
+			var fwd = HexGrid.get_direction_vec(ghost.facing)
+			var left_vec = HexGrid.get_direction_vec((ghost.facing - 1 + 6) % 6)
+			var right_vec = HexGrid.get_direction_vec((ghost.facing + 1) % 6)
+			
+			# Start at Range 1
+			var start_center = ghost.grid_position + fwd
+			var start_left = start_center + left_vec
+			var start_right = start_center + right_vec
+			
+			# End at Range Max
+			var end_center = ghost.grid_position + (fwd * range_val)
+			var end_left = end_center + left_vec
+			var end_right = end_center + right_vec
+			
+			var points = PackedVector2Array([
+				HexGrid.hex_to_pixel(start_left),
+				HexGrid.hex_to_pixel(end_left),
+				HexGrid.hex_to_pixel(end_right),
+				HexGrid.hex_to_pixel(start_right),
+				HexGrid.hex_to_pixel(start_left) # Close loop
+			])
+			
+			draw_polyline(points, outline_color, 3.0)
+			label_pos = HexGrid.hex_to_pixel(end_center)
+			
+		else:
+			# 360 Circle Outline
+			var center_pix = HexGrid.hex_to_pixel(ghost.grid_position)
+			# Radius: Distance to the center of a hex at 'range_val'
+			# Use Direction 0 (East) * range_val to gauge pixel radius
+			var radial_hex = ghost.grid_position + (Vector3i(1, 0, -1) * range_val) # Approx direction vector logic might differ
+			# Let's use HexGrid dist logic: 
+			# Distance center-to-center is  range_val * (sqrt(3) * TILE_SIZE) roughly?
+			# Actually HexGrid.hex_to_pixel(Vector3i(range, 0, -range)) gives X-dist.
+			# Let's use exact pixel distance to a hex at that range.
+			var sample_hex = ghost.grid_position + (HexGrid.get_direction_vec(0) * range_val)
+			var sample_pix = HexGrid.hex_to_pixel(sample_hex)
+			var radius = center_pix.distance_to(sample_pix)
+			
+			# Add half a hex size to enclose it?
+			radius += HexGrid.TILE_SIZE * 0.866 # sqrt(3)/2
+			
+			draw_arc(center_pix, radius, 0, TAU, 64, outline_color, 3.0)
+			
+			# Label Placement: NE Edge (Dir 5)
+			var dir_vec = HexGrid.get_direction_vec(5)
+			var label_hex = ghost.grid_position + (dir_vec * range_val)
+			label_pos = HexGrid.hex_to_pixel(label_hex)
+
+		# Draw Label
+		# FIX: Use existing label node to get theme font instead of static ThemeDB access which failed
+		var font_ref = label_phase_indicator.get_theme_font("font")
+		if not font_ref:
+			font_ref = SystemFont.new()
+			font_ref.font_names = ["Sans-Serif"]
+			
+		draw_string_outline(font_ref, label_pos + Vector2(0, 5), full_label, HORIZONTAL_ALIGNMENT_CENTER, -1, 14, 2, Color.BLACK)
+		draw_string(font_ref, label_pos + Vector2(0, 5), full_label, HORIZONTAL_ALIGNMENT_CENTER, -1, 14, Color(1, 0.9, 0.9, 0.9))
 
 
 func _draw():
@@ -3225,6 +3345,19 @@ func _draw():
 					var start = HexGrid.hex_to_pixel(selected_ship.grid_position)
 					draw_line(start, visible_target_pos, Color(1, 1, 0, 0.5), 2.0)
 					draw_circle(visible_target_pos, 5.0, Color(1, 1, 0, 0.5))
+
+	# Weapon Range Highlight (Combat Phase) - ONLY IN PLANNING
+	if current_phase == Phase.COMBAT and selected_ship and selected_ship.weapons.size() > 0 and current_combat_state == CombatState.PLANNING:
+		var weapon = selected_ship.weapons[selected_ship.current_weapon_index]
+# [REMOVED LINES for brevity in replacement, will keep standard logic] we rely on context.
+# Wait, I am inserting BEFORE this block but the prompt implies I am replacing lines 3230...
+# actually I want to KEEP the Combat Phase logic and ADD the Movement Phase logic.
+# Step 1: Add the Movement Phase logic inside _draw
+# Step 2: Add the helper function
+	
+	# NEW: Weapon Range Visualization during Movement Planning (Ghost)
+	if current_phase == Phase.MOVEMENT and is_instance_valid(ghost_ship) and is_instance_valid(selected_ship) and not selected_ship.has_orders:
+		_draw_weapon_ranges(ghost_ship, selected_ship)
 
 	# Weapon Range Highlight (Combat Phase) - ONLY IN PLANNING
 	if current_phase == Phase.COMBAT and selected_ship and selected_ship.weapons.size() > 0 and current_combat_state == CombatState.PLANNING:
@@ -3757,7 +3890,7 @@ func _trigger_icm_decision(attacker_name: String, weapon_name: String, weapon_ty
 	var update_text = func(icm_count: int):
 		var reduction = Combat.calculate_icm_reduction(weapon_type, icm_count)
 		var final_chance = max(0, current_chance - reduction)
-		lbl.text = "INCOMING FIRE DETECTED!\n%s firing %s\nBase Chance: %d%% -> Adjusted: %d%%" % [attacker_name, weapon_name, current_chance, final_chance]
+		lbl.text = "INCOMING FIRE DETECTED!\nTarget: %s\n%s firing %s\nBase Chance: %d%% -> Adjusted: %d%%" % [target.name, attacker_name, weapon_name, current_chance, final_chance]
 	
 	update_text.call(0)
 	lbl.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
@@ -4146,6 +4279,10 @@ func rpc_add_attack(source_name: String, target_name: String, weapon_idx: int):
 		'weapon_idx': weapon_idx,
 		'weapon_name': weapon['name']
 	})
+	
+	_update_ui_state()
+	_update_planning_ui_list()
+	queue_redraw()
 	
 # STATE SYNC LOGIC
 func broadcast_game_state():

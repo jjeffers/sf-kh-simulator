@@ -152,6 +152,37 @@ func _get_weapon_states() -> Array:
 		})
 	return states
 
+func get_active_weapon_groups() -> Dictionary:
+	var groups = {}
+	for w in weapons:
+		if w.get("is_crippled", false): continue
+		if w.get("ammo", 0) <= 0: continue
+		
+		var t = w.get("type", "Unknown")
+		var r = w.get("range", 0)
+		# Use type + range as key to group identical weapons
+		var key = "%s_%d" % [t, r]
+		
+		if not groups.has(key):
+			# Map type to display name
+			var display_name = t
+			# Simple heuristics for nicer names based on type
+			if t == "Laser": display_name = "Laser Battery"
+			elif t == "Rocket": display_name = "Assault Rocket"
+			elif t == "Rocket Battery": display_name = "Rocket Battery"
+			elif t == "Torpedo": display_name = "Torpedo"
+			elif t == "Laser Canon": display_name = "Laser Canon"
+			
+			groups[key] = {
+				"count": 0,
+				"range": r,
+				"name": display_name
+			}
+		
+		groups[key]["count"] += 1
+		
+	return groups
+
 func _apply_weapon_states(states: Array):
 	if states.size() != weapons.size():
 		# Weapon count mismatch? 
@@ -1280,6 +1311,7 @@ func dock_at(station: Ship) -> bool:
 		
 		# Align position purely for visuals/logic consistency
 		grid_position = station.grid_position
+		speed = 0 # FIX: Ensure speed is reset to 0 when docked
 		# Visual tweak: maybe slight offset or smaller scale? 
 		# For now, just sharing the hex is enough. z_index handles visibility.
 		# Ships are drawn in tree order. Active player ships usually last.

@@ -23,6 +23,7 @@ Thumbs.db
 *.pck
 *.zip
 *.console.exe
+*.x86_64
 
 .agent/godot_path.txt
 
