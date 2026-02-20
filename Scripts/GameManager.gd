@@ -2503,6 +2503,7 @@ func _update_ui_state():
 	if current_phase == Phase.MOVEMENT:
 		panel_movement.visible = true
 		panel_planning.visible = false
+		if panel_repair: panel_repair.visible = false
 		if panel_attack_queue: panel_attack_queue.visible = false
 
 		_update_movement_ui_list()
@@ -2616,15 +2617,23 @@ func _update_ui_state():
 		var unmoved = []
 		var mandatory_unmoved = []
 		for s in ships:
-			if is_instance_valid(s) and s.side_id == current_side_id and not s.is_exploding and not s.has_moved and not s.has_orders:
+			if is_instance_valid(s) and s.side_id == current_side_id and not s.is_exploding and not s.has_moved:
 				if s.is_docked or s.ship_class == "Space Station":
 					continue
+					
 				var eff_adf = s.get_effective_adf()
 				var min_speed = max(0, s.speed - eff_adf)
-				if min_speed > 0:
-					mandatory_unmoved.append(s)
+				
+				if s.has_orders:
+					var is_orbiting_maneuver = (s.planned_orbit_dir != 0)
+					if not is_orbiting_maneuver and s.planned_path.size() < min_speed:
+						mandatory_unmoved.append(s)
+					# If orders are valid (length >= min_speed or orbiting), it doesn't block
 				else:
-					unmoved.append(s)
+					if min_speed > 0:
+						mandatory_unmoved.append(s)
+					else:
+						unmoved.append(s)
 		
 		if mandatory_unmoved.size() > 0:
 			btn_exec_move.disabled = true
@@ -2693,6 +2702,7 @@ func _update_ui_state():
 		
 	elif current_phase == Phase.COMBAT:
 		panel_movement.visible = false
+		if panel_repair: panel_repair.visible = false
 		
 		btn_undo.visible = false
 		btn_commit.visible = false
@@ -2740,6 +2750,7 @@ func _update_ui_state():
 		panel_attack_queue.visible = false
 		if panel_repair:
 			panel_repair.visible = true
+			panel_repair.position = (get_viewport_rect().size - panel_repair.custom_minimum_size) / 2.0
 			
 		btn_undo.visible = false
 		btn_commit.visible = false
