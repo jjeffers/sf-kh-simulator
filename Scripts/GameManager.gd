@@ -2294,7 +2294,7 @@ func _on_repair_exec_pressed():
 	if repair_subphase == 1 or repair_subphase == 2:
 		log_message("Submitting Repair Allocations for Side %d" % repair_subphase)
 		
-		if multiplayer.has_multiplayer_peer() and my_side_id != 0:
+		if multiplayer.has_multiplayer_peer() and not _is_server_or_offline():
 			rpc_submit_repair_allocations.rpc_id(1, repair_subphase, repair_allocations)
 		else:
 			rpc_submit_repair_allocations(repair_subphase, repair_allocations)
@@ -2309,14 +2309,21 @@ func rpc_submit_repair_allocations(side_id: int, allocations: Dictionary):
 		# Save P1, move to P2
 		repair_allocations = allocations
 		repair_subphase = 2
-		rpc_sync_repair_state.rpc(repair_subphase, repair_allocations)
+		if multiplayer.has_multiplayer_peer():
+			rpc_sync_repair_state.rpc(repair_subphase, repair_allocations)
+		else:
+			rpc_sync_repair_state(repair_subphase, repair_allocations)
 	elif side_id == 2:
 		# Merge P2 allocs
 		for s_name in allocations:
 			repair_allocations[s_name] = allocations[s_name]
 			
 		repair_subphase = 3
-		rpc_sync_repair_state.rpc(repair_subphase, repair_allocations)
+		if multiplayer.has_multiplayer_peer():
+			rpc_sync_repair_state.rpc(repair_subphase, repair_allocations)
+		else:
+			rpc_sync_repair_state(repair_subphase, repair_allocations)
+			
 		_execute_all_repairs()
 
 @rpc("authority", "call_local", "reliable")
