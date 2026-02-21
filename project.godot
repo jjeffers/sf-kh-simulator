@@ -24,6 +24,10 @@ config/icon="res://icon.svg"
 NetworkManager="*res://Scripts/NetworkManager.gd"
 MusicManager="*res://Scripts/MusicManager.gd"
 
+[debug]
+
+gdscript/warnings/exclude_addons=true
+
 [display]
 
 window/size/viewport_width=1880

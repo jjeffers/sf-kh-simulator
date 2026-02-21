@@ -25,7 +25,7 @@ const ZOOM_MAX = Vector2(2.0, 2.0)
 const ZOOM_SPEED = 0.1
 
 # Phase Enum
-enum Phase {START, MOVEMENT, COMBAT, END}
+enum Phase {START, MOVEMENT, COMBAT, REPAIR, END}
 # Combat State Enum
 enum CombatState {NONE, PLANNING, RESOLVING}
 
@@ -35,6 +35,14 @@ var current_combat_state: CombatState = CombatState.NONE
 # Combat Subphase: 0 = None, 1 = Passive Fire (First), 2 = Active Fire (Second)
 var combat_subphase: int = 0
 
+# Repair State
+var repair_subphase: int = 0 # 1 = Side 1 plan, 2 = Side 2 plan, 3 = Execute
+var repair_allocations: Dictionary = {} # { "ship_name": { "damage_key": DCR_amount } }
+
+# Repair UI Nodes
+var panel_repair: PanelContainer
+var list_repair: VBoxContainer
+var btn_repair_exec: Button
 # ... (UI Nodes omitted, they remain)
 
 # Movement State references need to be reset properly
@@ -66,6 +74,7 @@ var can_turn_this_step: bool = false # "Use it or lose it" flag
 var turn_taken_this_step: int = 0 # -1 Left, 0 None, 1 Right
 var combat_action_taken: bool = false # Lock to prevent click spam
 var start_ms_active: bool = false # Track initial state for cost logic
+var _e_key_last_press: int = 0
 
 # Ghost Ship Visualization State
 var ghost_head_pos: Vector3i
@@ -310,6 +319,13 @@ func _process(delta):
 
 	if Input.is_action_just_pressed("ui_focus_next"): # TAB usually
 		_cycle_selection()
+		
+	if Input.is_key_pressed(KEY_E):
+		# Create a cooldown/debounce since is_key_pressed fires every frame
+		if Time.get_ticks_msec() - _e_key_last_press > 250:
+			_e_key_last_press = Time.get_ticks_msec()
+			if current_phase == Phase.COMBAT:
+				_cycle_targets()
 
 	if selection_highlight:
 		if is_instance_valid(selected_ship):
@@ -392,13 +408,14 @@ func _setup_ui():
 	vbox.add_child(label_status)
 	
 	# New Ship Status Panel
-	# ship_status_panel = ShipStatusPanel.new() # Removed class_name, use load/preload
 	var panel_script = load("res://Scripts/ShipStatusPanel.gd")
 	if panel_script is GDScript:
 		ship_status_panel = panel_script.new()
 		vbox.add_child(ship_status_panel)
 	else:
 		push_error("CRITICAL: Failed to load ShipStatusPanel.gd! UI will be incomplete.")
+
+	_build_repair_panel(vbox)
 
 
 	var hbox = HBoxContainer.new()
@@ -502,6 +519,13 @@ func _setup_ui():
 	btn_exec_move.visible = false
 	btn_exec_move.pressed.connect(func(): _on_exec_move_pressed())
 	pm_vbox.add_child(btn_exec_move)
+	
+	btn_repair_exec = Button.new()
+	btn_repair_exec.text = "EXECUTE REPAIRS"
+	btn_repair_exec.modulate = Color(0.2, 1.0, 0.2)
+	btn_repair_exec.visible = false
+	btn_repair_exec.pressed.connect(_on_repair_exec_pressed)
+	pm_vbox.add_child(btn_repair_exec)
 	
 	var pp_vbox = VBoxContainer.new()
 	panel_planning.add_child(pp_vbox)
@@ -620,6 +644,11 @@ func _setup_ui():
 	audio_ship_select.stream = load("res://Assets/Audio/short-departure.mp3")
 	add_child(audio_ship_select)
 
+	audio_repair_roll = AudioStreamPlayer.new()
+	if not OS.get_cmdline_args().has("--headless"):
+		audio_repair_roll.stream = load("res://Assets/Audio/glitch-sound-short.mp3")
+	add_child(audio_repair_roll)
+
 	# MiniMap
 	# Add last to be on top? Or managing layout?
 	# Top Right, fixed size
@@ -635,7 +664,32 @@ func _setup_ui():
 	# Make sure it stays anchored
 	mini_map.set_anchors_and_offsets_preset(Control.PRESET_TOP_RIGHT, Control.PRESET_MODE_KEEP_SIZE, 20)
 	ui_layer.add_child(mini_map)
+
+func _build_repair_panel(parent: Container):
+	print("[DEBUG] _build_repair_panel called")
+	log_message("[DEBUG] Initializing repair_panel")
+	panel_repair = PanelContainer.new()
+	panel_repair.custom_minimum_size = Vector2(300, 300)
+	panel_repair.visible = false
+	parent.add_child(panel_repair)
 	
+	var vbox = VBoxContainer.new()
+	panel_repair.add_child(vbox)
+	
+	var lbl = Label.new()
+	lbl.text = "DAMAGE CONTROL (DCR)"
+	lbl.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	lbl.add_theme_font_size_override("font_size", 16)
+	vbox.add_child(lbl)
+	
+	var scroll = ScrollContainer.new()
+	scroll.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	scroll.custom_minimum_size = Vector2(0, 200)
+	vbox.add_child(scroll)
+	
+	list_repair = VBoxContainer.new()
+	list_repair.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	scroll.add_child(list_repair)
 
 @rpc("any_peer", "call_local", "reliable")
 func rpc_start_combat_passive():
@@ -661,6 +715,7 @@ var audio_beep: AudioStreamPlayer
 var audio_action_complete: AudioStreamPlayer
 var audio_phase_change: AudioStreamPlayer
 var audio_ship_select: AudioStreamPlayer
+var audio_repair_roll: AudioStreamPlayer
 var mini_map: MiniMap
 
 var combat_log: RichTextLabel
@@ -1413,28 +1468,7 @@ func _on_resolution_complete():
 	# So we assume the user has planned EVERYTHING they want to.
 	# So we end this player's combat subphase.
 	
-	if combat_subphase == 1:
-		# Passive Fire Done -> Start Active Fire
-		start_combat_active()
-	elif combat_subphase == 2:
-		# Active Fire Done -> End of this Side's Turn -> Next Side
-		current_turn_order_index += 1
-		
-		if current_turn_order_index < turn_order.size():
-			if audio_phase_change and audio_phase_change.stream:
-				audio_phase_change.play()
-				
-			# Proceed to Next Side
-			_start_turn_for_side(turn_order[current_turn_order_index])
-		else:
-			# All Sides Done -> Check for End of Turn Cycle (Round)
-			# Check if we've completed a full game turn (all sides have had their turn)
-			if current_turn_order_index == turn_order.size(): # This condition is always true here, but good for clarity
-				# Both sides have completed their turns, increment game turn counter
-				turn_count += 1
-			
-			# Assuming end_turn_cycle() handles Round increment and Loop restart
-			call("end_turn_cycle") # Use call() to avoid parser error if not immediately found (though it should be)
+	call_deferred("end_turn_cycle")
 
 func _spawn_hit_text(pos: Vector2, val: Variant):
 	var lbl = Label.new()
@@ -1507,6 +1541,7 @@ func _get_phase_name(p: int) -> String:
 		Phase.START: return "Setup"
 		Phase.MOVEMENT: return "Movement"
 		Phase.COMBAT: return "Combat"
+		Phase.REPAIR: return "Repair"
 		Phase.END: return "End"
 		_: return "Unknown"
 
@@ -1523,6 +1558,13 @@ func _update_phase_indicator():
 		side_name = _get_side_name(active_id)
 		
 	var text = "Turn %d, Active: %s, %s" % [turn_count, side_name, _get_phase_name(current_phase)]
+	
+	if current_phase == Phase.REPAIR:
+		var rep_side = "Executing"
+		if repair_subphase != 3:
+			rep_side = _get_side_name(repair_subphase)
+		text = "End of Turn %d - Repair, Active: %s" % [turn_count, rep_side]
+		
 	label_phase_indicator.text = text
 
 
@@ -1552,30 +1594,62 @@ func _cycle_selection():
 		_update_ship_visuals() # Re-sort stack
 		_update_ui_state()
 
-	elif current_phase == Phase.COMBAT:
-		# Cycling TARGETS? Or Cycling SHOOTERS?
-		# Standard UI implies we have a "Selected Ship" that is acting.
-		# But combat cycling usually means cycling TARGETS for the selected shooter.
-		# Let's support BOTH via context? No, TAB usually cycles what you "control".
-		# Actually, user might want to switch which ship is FIRING if they have multiple available.
-		# But `_check_combat_availability` locks us into one.
-		# Let's allow cycling the SHOOTER if multiple are available?
-		# Or cycling the TARGET if a shooter is selected?
-		# DECISION: Tab cycles TARGETS for the current shooter.
-		# Changing shooter: Click on friendly ship?
-		# Update target cycling
-		if not selected_ship: return
-		var valid_targets = _get_valid_targets(selected_ship)
+		# The E hotkey now handles Target cycling during Combat Phase
+		# TAB still cycles friendly ships if multiple have not fired yet.
+		available = ships.filter(func(s): return is_instance_valid(s) and s.side_id == firing_side_id and not s.has_fired and s.hull > 0)
+		if available.size() <= 1: return
 		
-		if valid_targets.size() <= 1: return
+		var combat_idx = available.find(selected_ship)
+		var next_combat_idx = (combat_idx + 1) % available.size()
+		selected_ship = available[next_combat_idx]
 		
-		var target_idx = valid_targets.find(combat_target)
-		var next_target_idx = (target_idx + 1) % valid_targets.size()
-		combat_target = valid_targets[next_target_idx]
+		# Reset combat_target selection
+		combat_target = null
 		
-		queue_redraw()
-		log_message("Targeting: %s" % combat_target.name)
-		_update_ship_visuals() # Ensure target pops to top
+		if audio_ship_select and audio_ship_select.stream: audio_ship_select.play()
+		_update_ui_state()
+
+	elif current_phase == Phase.REPAIR:
+		var is_my_repair_phase = (repair_subphase == my_side_id) or (my_side_id == 0)
+		if not is_my_repair_phase: return
+		
+		var my_ships = ships.filter(func(s): return is_instance_valid(s) and s.side_id == repair_subphase and not s.is_exploding and s.hull > 0)
+		var damaged_ships = []
+		for s in my_ships:
+			var has_damage = (s.hull < s.max_hull) or (s.current_adf_modifier > 0) or (s.current_mr_modifier > 0) or s.has_electrical_fire or s.has_disastrous_fire
+			if not has_damage:
+				for w in s.weapons:
+					if w.get("is_crippled", false):
+						has_damage = true
+						break
+			if has_damage:
+				damaged_ships.append(s)
+		
+		if damaged_ships.size() <= 1: return
+		
+		var idx = damaged_ships.find(selected_ship)
+		var next_idx = (idx + 1) % damaged_ships.size()
+		selected_ship = damaged_ships[next_idx]
+		
+		if audio_ship_select and audio_ship_select.stream: audio_ship_select.play()
+		_update_ui_state()
+		_update_repair_ui()
+		_update_camera()
+		
+func _cycle_targets():
+	if current_phase != Phase.COMBAT: return
+	if not selected_ship: return
+	
+	var valid_targets = _get_valid_targets(selected_ship)
+	if valid_targets.size() <= 1: return
+	
+	var target_idx = valid_targets.find(combat_target)
+	var next_target_idx = (target_idx + 1) % valid_targets.size()
+	combat_target = valid_targets[next_target_idx]
+	
+	queue_redraw()
+	log_message("Targeting: %s" % combat_target.name)
+	_update_ship_visuals() # Ensure target pops to top
 
 func _update_ship_visuals():
 	var grid_counts = {}
@@ -1672,8 +1746,15 @@ func _start_turn_for_side(sid: int):
 					"ms_orbit_start_hex": s.ms_orbit_start_hex
 				}
 	
+	# Check for scenario phase overrides on the first turn
+	if turn_count == 1:
+		for rule in current_scenario_rules:
+			if rule.get("type") == "start_phase_override":
+				if rule.get("phase") == Phase.REPAIR:
+					start_repair_phase()
+					return
+					
 	start_movement_phase()
-
 	# Fire Damage Phase (after Turn Start reset)
 	# Fire Damage Phase (after Turn Start reset)
 	# AUTHORITY ONLY: Calculate and broadcast fire damage results to ensure sync
@@ -1893,10 +1974,11 @@ func _start_combat_planning():
 	# Sync State before planning to ensure odds/damage are correct
 	broadcast_game_state()
 	
-	# FIX: Explicitly hide Movement Panel to prevent overlap
+	# FIX: Explicitly hide Movement and Repair Panels to prevent overlap
 	if panel_movement:
 		panel_movement.visible = false
-		
+	if panel_repair:
+		panel_repair.visible = false
 	# Reset "fired" state visually for planning (actual state reset happens differently)
 
 	# Actually, we need to track "planned usage".
@@ -1927,9 +2009,9 @@ func _start_combat_planning():
 		)
 
 func _handle_auto_skip_combat():
-	# If we are the Server OR the Firing Side, we have authority to advance the state
+	# If we are the Server, we have authority to advance the state
 	# when there are no valid choices to make.
-	if _is_server_or_offline() or (my_side_id == firing_side_id) or (my_side_id == 0):
+	if _is_server_or_offline():
 		# Bypass _on_combat_commit authority check and call RPC directly
 		if multiplayer.has_multiplayer_peer():
 			rpc("execute_commit_combat", [], randi())
@@ -2022,6 +2104,7 @@ func _update_planning_ui_list():
 	# We already checked my_ships.size() > 0 which effectively checks for valid ships to show
 	if my_ships.size() > 0:
 		panel_planning.visible = true
+		if panel_repair: panel_repair.visible = false
 	
 	# Reposition Minimap
 	if panel_planning.visible:
@@ -2147,7 +2230,356 @@ func end_turn_cycle():
 			# Round Complete
 			_end_round_cycle()
 
+func start_repair_phase():
+	# Only authority orchestrates the transition
+	if multiplayer.has_multiplayer_peer() and multiplayer.get_unique_id() != 1:
+		return 
+
+	repair_allocations.clear()
+	
+	if multiplayer.has_multiplayer_peer():
+		rpc_sync_repair_state.rpc(1, repair_allocations)
+	else:
+		rpc_sync_repair_state(1, repair_allocations)
+
+func _update_repair_ui():
+	print("[DEBUG] _update_repair_ui called - Subphase: %d, my_side_id: %d" % [repair_subphase, my_side_id])
+	log_message("[DEBUG] Updating Repair UI for Phase: %d" % repair_subphase)
+	if not is_instance_valid(list_repair): 
+		print("[DEBUG] _update_repair_ui aborted: list_repair is invalid!")
+		return
+	
+	# Clear list
+	for c in list_repair.get_children():
+		c.queue_free()
+		
+	if repair_subphase == 3:
+		var lbl = Label.new()
+		lbl.text = "Executing Repairs..."
+		lbl.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+		list_repair.add_child(lbl)
+		return
+	if not is_instance_valid(selected_ship) or selected_ship.side_id != repair_subphase or selected_ship.hull <= 0:
+		var lbl = Label.new()
+		lbl.text = "Select a damaged friendly ship to allocate DCR."
+		if repair_subphase != my_side_id and my_side_id != 0:
+			var sn = get_side_name(repair_subphase)
+			lbl.text = "Awaiting %s to finish damage allocation..." % sn
+		lbl.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+		list_repair.add_child(lbl)
+		
+		if btn_repair_exec:
+			btn_repair_exec.disabled = false
+		return
+		
+	var s = selected_ship
+	var damaged_systems = []
+	
+	# Hull
+	if s.hull < s.max_hull: damaged_systems.append({"key": "hull", "name": "Hull (%d/%d)" % [s.hull, s.max_hull]})
+	for i in range(s.current_adf_modifier): damaged_systems.append({"key": "adf_%d" % i, "name": "ADF Loss"})
+	for i in range(s.current_mr_modifier): damaged_systems.append({"key": "mr_%d" % i, "name": "MR Loss"})
+	if s.has_electrical_fire: damaged_systems.append({"key": "fire_elec", "name": "Electrical Fire"})
+	if s.has_disastrous_fire: damaged_systems.append({"key": "fire_dis", "name": "Disastrous Fire"})
+	
+	# Weapons
+	for i in range(s.weapons.size()):
+		if s.weapons[i].get("is_crippled", false):
+			damaged_systems.append({"key": "wpn_%d" % i, "name": "Crippled: %s" % s.weapons[i]["name"]})
+			
+	if damaged_systems.size() > 0:
+		var dcr_avail = s.current_dcr 
+		
+		var ship_lbl = Label.new()
+		ship_lbl.text = "%s (Total DCR: %d)" % [s.name, dcr_avail]
+		ship_lbl.modulate = Color.CYAN
+		list_repair.add_child(ship_lbl)
+		
+		if not repair_allocations.has(s.name):
+			repair_allocations[s.name] = {}
+			
+		var ship_budget_used = 0
+		for val in repair_allocations[s.name].values():
+			ship_budget_used += val
+		
+		var rem_lbl = Label.new()
+		rem_lbl.text = "Budget Remaining: %d" % (dcr_avail - ship_budget_used)
+		rem_lbl.add_theme_font_size_override("font_size", 12)
+		list_repair.add_child(rem_lbl)
+		
+		for dmg in damaged_systems:
+			var hbox = HBoxContainer.new()
+			
+			var sys_lbl = Label.new()
+			sys_lbl.text = dmg["name"]
+			sys_lbl.custom_minimum_size.x = 200
+			hbox.add_child(sys_lbl)
+			
+			var spin = SpinBox.new()
+			spin.min_value = 0
+			spin.max_value = 100
+			spin.step = 1
+			spin.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+			spin.custom_minimum_size.x = 100
+			spin.editable = (my_side_id == repair_subphase or my_side_id == 0)
+			spin.value = repair_allocations[s.name].get(dmg["key"], 0)
+			spin.suffix = "%"
+			hbox.add_child(spin)
+			
+			var max_budget_avail = (dcr_avail - ship_budget_used) + spin.value
+			
+			spin.value_changed.connect(func(v):
+				if v > max_budget_avail:
+					spin.value = max_budget_avail
+					v = max_budget_avail
+				repair_allocations[s.name][dmg["key"]] = v
+				_update_repair_ui() # Full redraw refreshes limits automatically
+			)
+			
+			list_repair.add_child(hbox)
+	else:
+		var lbl = Label.new()
+		lbl.text = "%s has no damaged systems." % s.name
+		lbl.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+		list_repair.add_child(lbl)
+		
+	if btn_repair_exec:
+		btn_repair_exec.disabled = false
+		
+	print("[DEBUG] _update_repair_ui FINISHED. Items in list_repair: %d" % list_repair.get_child_count())
+
+func _update_repair_ui_list():
+	for c in list_movement.get_children():
+		c.queue_free()
+		
+	# Find damaged ships for active side
+	var my_ships = []
+	if repair_subphase > 0:
+		my_ships = ships.filter(func(s): return is_instance_valid(s) and s.side_id == repair_subphase and not s.is_exploding and s.hull > 0)
+	
+	# Only keep ships that actually have damage to repair
+	var damaged_ships = []
+	for s in my_ships:
+		# Check if ship has ANY damaged system
+		var has_damage = (s.hull < s.max_hull) or (s.current_adf_modifier > 0) or (s.current_mr_modifier > 0) or s.has_electrical_fire or s.has_disastrous_fire
+		if not has_damage:
+			for w in s.weapons:
+				if w.get("is_crippled", false):
+					has_damage = true
+					break
+		if has_damage:
+			damaged_ships.append(s)
+			
+	if damaged_ships.size() == 0:
+		var lbl = Label.new()
+		lbl.text = "No damaged ships."
+		list_movement.add_child(lbl)
+		
+	for s in damaged_ships:
+		var btn = Button.new()
+		var color_code = Color.ORANGE
+		
+		# Check if allocation was completed
+		var is_fully_allocated = false
+		if repair_allocations.has(s.name):
+			var allocated = 0
+			for val in repair_allocations[s.name].values():
+				allocated += val
+			is_fully_allocated = (allocated == s.current_dcr)
+			
+		if is_fully_allocated:
+			color_code = Color.GREEN
+			
+		# Highlight selected
+		if s == selected_ship:
+			btn.text = "> %s <" % s.name
+			btn.modulate = Color.YELLOW
+		else:
+			btn.text = s.name
+			btn.modulate = color_code
+			
+		btn.pressed.connect(func():
+			if current_phase == Phase.REPAIR and (repair_subphase == my_side_id or my_side_id == 0):
+				selected_ship = s
+				_update_ui_state()
+				_update_repair_ui()
+				_update_camera()
+		)
+		list_movement.add_child(btn)
+func _on_repair_exec_pressed():
+	if repair_subphase == 1 or repair_subphase == 2:
+		log_message("Submitting Repair Allocations for Side %d" % repair_subphase)
+		
+		if multiplayer.has_multiplayer_peer() and not _is_server_or_offline():
+			rpc_submit_repair_allocations.rpc_id(1, repair_subphase, repair_allocations)
+		else:
+			rpc_submit_repair_allocations(repair_subphase, repair_allocations)
+
+
+@rpc("any_peer", "call_local", "reliable")
+func rpc_submit_repair_allocations(side_id: int, allocations: Dictionary):
+	# Allow server to process
+	if not _is_server_or_offline(): return
+	
+	if side_id == 1:
+		# Process P1 repairs immediately
+		if multiplayer.has_multiplayer_peer():
+			rpc_execute_repairs_for_side.rpc(1, allocations)
+		await rpc_execute_repairs_for_side(1, allocations)
+			
+		# Save P1, move to P2
+		repair_allocations = allocations
+		repair_subphase = 2
+		if multiplayer.has_multiplayer_peer():
+			rpc_sync_repair_state.rpc(repair_subphase, repair_allocations)
+		else:
+			rpc_sync_repair_state(repair_subphase, repair_allocations)
+	elif side_id == 2:
+		# Process P2 repairs immediately
+		if multiplayer.has_multiplayer_peer():
+			rpc_execute_repairs_for_side.rpc(2, allocations)
+		await rpc_execute_repairs_for_side(2, allocations)
+			
+		# Merge P2 allocs
+		for s_name in allocations:
+			repair_allocations[s_name] = allocations[s_name]
+			
+		repair_subphase = 3
+		if multiplayer.has_multiplayer_peer():
+			rpc_sync_repair_state.rpc(repair_subphase, repair_allocations)
+		else:
+			rpc_sync_repair_state(repair_subphase, repair_allocations)
+			
+		_conclude_repair_phase()
+
+@rpc("authority", "call_local", "reliable")
+func rpc_sync_repair_state(subphase: int, allocs: Dictionary):
+	if current_phase != Phase.REPAIR:
+		current_phase = Phase.REPAIR
+		combat_subphase = 0
+		log_message("[color=cyan]=== REPAIR TURN Phase ===[/color]")
+		
+	repair_subphase = subphase
+	repair_allocations = allocs
+	
+	if audio_phase_change and audio_phase_change.stream:
+		audio_phase_change.play()
+		
+	_update_ui_state()
+	_update_repair_ui()
+
+@rpc("authority", "call_remote", "reliable")
+func rpc_execute_repairs_for_side(side_id: int, allocs_for_side: Dictionary):
+	# Loop through all ships, try repairs synchronously on both peers.
+	for s in ships:
+		if not is_instance_valid(s): continue
+		if s.side_id != side_id: continue
+		if not allocs_for_side.has(s.name): continue
+		
+		var ship_allocs = allocs_for_side[s.name]
+		var total_allocated = 0
+		for val in ship_allocs.values(): total_allocated += int(val)
+		
+		if total_allocated == 0: continue
+		
+		_update_camera(s) # Focus on ship being repaired
+		await get_tree().create_timer(1.0).timeout
+		var target_pos = HexGrid.hex_to_pixel(s.grid_position)
+		
+		if total_allocated > s.current_dcr:
+			log_message("[color=red]%s exceeded DCR budget! All repairs failed.[/color]" % s.name)
+			_spawn_hit_text(target_pos, "BUDGET EXCEEDED")
+			await get_tree().create_timer(1.5).timeout
+			continue
+			
+		for key in ship_allocs:
+			var chance = ship_allocs[key]
+			if chance <= 0: continue
+			
+			var roll = randi() % 100 + 1
+			log_message("%s repairing %s... (DCR %d%%) Roll: %d" % [s.name, key, chance, roll])
+			
+			var display_name = key.to_upper()
+			if key.begins_with("adf_"): display_name = "ADF"
+			elif key.begins_with("mr_"): display_name = "MR"
+			elif key.begins_with("wpn_"): display_name = "WPN"
+			
+			var pre_text = "%s (%d%%)\nRoll: %d\n" % [display_name, chance, roll]
+			if audio_repair_roll and audio_repair_roll.stream:
+				audio_repair_roll.play()
+			
+			if roll >= 90:
+				log_message("[color=red]Repair Failed![/color]")
+				if roll >= 99:
+					log_message("[color=red]System permanently broken![/color]")
+					_spawn_hit_text(target_pos, pre_text + "CRITICAL FAIL")
+					_mark_unrepairable(s, key)
+				else:
+					_spawn_hit_text(target_pos, pre_text + "FAILED")
+			elif roll <= chance:
+				log_message("[color=green]Repair Successful![/color]")
+				_spawn_hit_text(target_pos, pre_text + "REPAIRED!")
+				_apply_repair(s, key)
+			else:
+				log_message("[color=yellow]Repair Failed. Roll too high.[/color]")
+				_spawn_hit_text(target_pos, pre_text + "FAILED")
+			
+			await get_tree().create_timer(2.0).timeout
+
+func _conclude_repair_phase():
+	if panel_repair: panel_repair.visible = false
+	
+	turn_count += 1
+	log_message("Round Complete (After Repair). Starting New Round.")
+	# Reset Turn Order
+	current_turn_order_index = 0
+	
+	# Reset ALL ships (Movement/Fired state)
+	for s in ships:
+		if is_instance_valid(s):
+			s.reset_turn_state()
+			
+	# Start Side 1 Again
+	_start_turn_for_side(turn_order[0])
+
+func _mark_unrepairable(s: Ship, key: String):
+	if key == "hull": pass # Can try hull again? Rules: "no further attempts possible".
+	elif key.begins_with("adf_"): s.unrepairable_adf_modifier += 1
+	elif key.begins_with("mr_"): s.unrepairable_mr_modifier += 1
+	elif key == "fire_elec": s.unrepairable_electrical_fire = true
+	elif key == "fire_dis": s.unrepairable_disastrous_fire = true
+	elif key.begins_with("wpn_"):
+		var idx = int(key.split("_")[1])
+		if idx < s.weapons.size():
+			s.weapons[idx]["unrepairable"] = true
+
+func _apply_repair(s: Ship, key: String):
+	if key == "hull":
+		var restore = randi() % 10 + 1
+		s.hull = min(s.max_hull, s.hull + restore)
+		s.hull_changed.emit(s.hull)
+	elif key.begins_with("adf_"):
+		if s.current_adf_modifier > s.unrepairable_adf_modifier: s.current_adf_modifier -= 1
+	elif key.begins_with("mr_"):
+		if s.current_mr_modifier > s.unrepairable_mr_modifier: s.current_mr_modifier -= 1
+	elif key == "fire_elec":
+		if not s.unrepairable_electrical_fire: s.has_electrical_fire = false
+	elif key == "fire_dis":
+		if not s.unrepairable_disastrous_fire: s.has_disastrous_fire = false
+	elif key.begins_with("wpn_"):
+		var idx = int(key.split("_")[1])
+		if idx < s.weapons.size() and not s.weapons[idx].get("unrepairable", false):
+			s.weapons[idx]["is_crippled"] = false
+	s.state_changed.emit()
+	s.queue_redraw()
+
 func _end_round_cycle():
+	# Trigger repair phase every 3 turns, before the turn increments.
+	if turn_count > 0 and turn_count % 3 == 0:
+		if current_phase != Phase.REPAIR:
+			call_deferred("start_repair_phase")
+		return
+
 	turn_count += 1
 	log_message("Round Complete. Starting New Round.")
 	# Reset Turn Order
@@ -2227,6 +2659,8 @@ func _spawn_ghost():
 func _update_ui_state():
 	if not ui_layer: return
 	
+	_update_phase_indicator()
+	
 	# Reset Panels should be handled per-phase to avoid flicker
 	# panel_planning.visible = false 
 	# panel_movement.visible = false
@@ -2234,6 +2668,7 @@ func _update_ui_state():
 	if current_phase == Phase.MOVEMENT:
 		panel_movement.visible = true
 		panel_planning.visible = false
+		if panel_repair: panel_repair.visible = false
 		if panel_attack_queue: panel_attack_queue.visible = false
 
 		_update_movement_ui_list()
@@ -2345,20 +2780,40 @@ func _update_ui_state():
 		
 		# Find ANY unmoved ships for this side
 		var unmoved = []
+		var mandatory_unmoved = []
 		for s in ships:
 			if is_instance_valid(s) and s.side_id == current_side_id and not s.is_exploding and not s.has_moved:
-				unmoved.append(s)
+				if s.is_docked or s.ship_class == "Space Station":
+					continue
+					
+				var eff_adf = s.get_effective_adf()
+				var min_speed = max(0, s.speed - eff_adf)
+				
+				if s.has_orders:
+					var is_orbiting_maneuver = (s.planned_orbit_dir != 0)
+					if not is_orbiting_maneuver and s.planned_path.size() < min_speed:
+						mandatory_unmoved.append(s)
+					# If orders are valid (length >= min_speed or orbiting), it doesn't block
+				else:
+					if min_speed > 0:
+						mandatory_unmoved.append(s)
+					else:
+						unmoved.append(s)
 		
-		if unmoved.size() > 0:
-			btn_exec_move.disabled = false # ALWAYS ALLOW EXECUTION
-			btn_exec_move.text = "EXECUTE MOVEMENT" # Text requested by user
-			btn_exec_move.modulate = Color(1, 0.8, 0.2) # Yellow-ish warning
+		if mandatory_unmoved.size() > 0:
+			btn_exec_move.disabled = true
+			btn_exec_move.text = "AWAITING MOVEMENT"
+			btn_exec_move.modulate = Color(1, 0.4, 0.4) # Red
+		elif unmoved.size() > 0:
+			btn_exec_move.disabled = false 
+			btn_exec_move.text = "EXECUTE MOVEMENT" 
+			btn_exec_move.modulate = Color(1, 0.8, 0.2) # Yellow warning
 		else:
 			btn_exec_move.disabled = false
 			btn_exec_move.text = "EXECUTE MOVEMENT"
 			btn_exec_move.modulate = Color(1, 0.6, 0.2) # Orange
 			
-	# Update Status Panel
+	# Update Status Panel GLOBALLY
 	if ship_status_panel:
 		if selected_ship:
 			ship_status_panel.update_from_ship(selected_ship)
@@ -2381,12 +2836,10 @@ func _update_ui_state():
 					current_connected_ship.state_changed.disconnect(_on_ship_state_changed)
 			current_connected_ship = null
 
-
+	if current_phase == Phase.MOVEMENT:
 		if selected_ship:
-			# ShipStatusPanel handles detailed ship stats.
-			# label_status handles Phase/Global info.
+			# label_status handles Phase/Global info for movement
 			var txt = ""
-			# Only show relevant phase info not covered by panel
 			if start_speed == 0:
 				txt += "Speed 0: Free Rotation Mode\n"
 			elif state_is_orbiting:
@@ -2395,12 +2848,10 @@ func _update_ui_state():
 			if selected_ship.is_ms_active:
 				txt += "[COLOR=blue]Masking Screen ACTIVE[/COLOR]\n"
 
-			# Restore is_valid calc for UI feedback
 			var eff_adf = selected_ship.get_effective_adf()
 			var min_speed = max(0, start_speed - eff_adf)
 			var max_speed = start_speed + eff_adf
 			var is_valid = current_path.size() >= min_speed and current_path.size() <= max_speed
-
 
 			if not is_valid and not state_is_orbiting:
 				txt += "\n(Invalid Speed)"
@@ -2409,9 +2860,9 @@ func _update_ui_state():
 		else:
 			label_status.text = ""
 
-		
 	elif current_phase == Phase.COMBAT:
 		panel_movement.visible = false
+		if panel_repair: panel_repair.visible = false
 		
 		btn_undo.visible = false
 		btn_commit.visible = false
@@ -2453,9 +2904,39 @@ func _update_ui_state():
 			panel_planning.visible = false
 				
 		label_status.text = txt
+	elif current_phase == Phase.REPAIR:
+		var is_my_repair_phase = (repair_subphase == my_side_id) or (my_side_id == 0)
+		panel_movement.visible = is_my_repair_phase
+		if is_my_repair_phase:
+			_update_repair_ui_list()
+			
+		panel_planning.visible = false
+		panel_attack_queue.visible = false
+		if panel_repair:
+			panel_repair.visible = is_my_repair_phase
+			if is_my_repair_phase:
+				panel_repair.move_to_front()
+		else:
+			print("[DEBUG] ERROR: panel_repair is null in _update_ui_state during Phase.REPAIR")
+		btn_undo.visible = false
+		btn_commit.visible = false
+		btn_orbit_cw.visible = false
+		btn_orbit_ccw.visible = false
+		
+		var side_n = get_side_name(repair_subphase)
+		if repair_subphase == 3:
+			label_status.text = "Repair Phase (Executing...)"
+			if btn_repair_exec: btn_repair_exec.visible = false
+		else:
+			label_status.text = "Repair Phase (%s Allocating)" % side_n
+			if btn_repair_exec:
+				btn_repair_exec.visible = (repair_subphase == my_side_id or (my_side_id == 0))
+				btn_repair_exec.disabled = false
 	elif current_phase == Phase.END:
 		panel_movement.visible = false
 		panel_planning.visible = false
+		if panel_repair:
+			panel_repair.visible = false
 		
 		btn_undo.visible = false
 		btn_commit.visible = false
@@ -3717,7 +4198,7 @@ func _handle_movement_click(hex: Vector3i):
 	# If clicking own hex, and we haven't plotted a path yet.
 	if hex == selected_ship.grid_position and current_path.is_empty():
 		# Check if valid to stop (Speed - ADF <= 0)
-		var min_speed = max(0, start_speed - selected_ship.adf)
+		var min_speed = max(0, start_speed - selected_ship.get_effective_adf())
 		if min_speed == 0:
 			log_message("Requesting Full Stop (Speed 0)...")
 			# Commit Empty Path = Stay in place

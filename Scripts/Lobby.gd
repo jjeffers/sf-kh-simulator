@@ -20,17 +20,21 @@ func _ready():
 	# Initial Refresh
 	if multiplayer.is_server():
 		# Initialize scenario list
+		var preselected = NetworkManager.lobby_data.get("scenario", "")
 		opt_scenario.clear()
 		var idx = 0
+		var selected_idx = 0
 		for key in ScenarioManager.SCENARIOS:
 			var s_name = ScenarioManager.SCENARIOS[key].get("name", key)
 			opt_scenario.add_item(s_name, idx)
 			# Store key as metadata if possible, or just use index mapping
 			opt_scenario.set_item_metadata(idx, key)
+			if key == preselected:
+				selected_idx = idx
 			idx += 1
 		
-		opt_scenario.select(0)
-		NetworkManager.lobby_data["scenario"] = opt_scenario.get_item_metadata(0)
+		opt_scenario.select(selected_idx)
+		NetworkManager.lobby_data["scenario"] = opt_scenario.get_item_metadata(selected_idx)
 		
 	_refresh_ui()
 	
@@ -40,6 +44,32 @@ func _ready():
 	else:
 		btn_start.pressed.connect(_on_start_pressed)
 		opt_scenario.item_selected.connect(_on_scenario_selected)
+
+	# CLI Automation
+	var args = OS.get_cmdline_args()
+	var auto_start = false
+	var wait_players = 1
+	for i in range(args.size()):
+		if args[i] == "--side" and i + 1 < args.size():
+			var s_id = args[i + 1].to_int()
+			if s_id == 1:
+				call_deferred("_on_join_team_1_pressed")
+			elif s_id == 2:
+				call_deferred("_on_join_team_2_pressed")
+		if args[i] == "--host" or args[i] == "--start":
+			auto_start = true
+		if args[i] == "--wait" and i + 1 < args.size():
+			wait_players = args[i + 1].to_int()
+			
+	if auto_start and multiplayer.is_server():
+		if NetworkManager.players.size() >= wait_players:
+			# Wait slightly for team assignment RPCs to resolve locally
+			get_tree().create_timer(0.5).timeout.connect(_on_start_pressed)
+		else:
+			var start_callable = func(id, info):
+				if NetworkManager.players.size() >= wait_players:
+					get_tree().create_timer(0.5).timeout.connect(_on_start_pressed)
+			NetworkManager.player_connected.connect(start_callable)
 
 func _on_refresh(_id = 0, _info = {}):
 	_refresh_ui()

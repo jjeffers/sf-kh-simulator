@@ -1,15 +1,21 @@
 # Bug Tracker
 
 ## 🚨 Critical / High Priority
-
+- [ ] 
 
 ## 🐛 Backlog
- 
+- Add graphical explosion effect on ship death
+- Implement 3D visual modes for combat rendering
+- Create map editor tool
 
 ## 🔍 Needs Investigation
 - [ ] 
 
 ## ✅ Fixed
+- [x] Fixed input behavior: Mapped TAB to properly cycle through targets in `Phase.REPAIR` alongside its Movement behavior. Mapped E to target cycling through hostile entities during `Phase.COMBAT`. (2026-02-21)
+- [x] Fixed command-line handling: Passed `--host` and `--scenario` arguments inside `MainMenu.gd` now bypass the Lobby connection UI to rapidly launch offline multiplayer games. (2026-02-21)
+- [x] Overhauled the Repair Phase UI so `panel_repair` displays damage controls for only the actively clicked ship. (2026-02-21)
+- [x] Fixed an issue where the `start_speed - eff_adf = min_speed` calculation incorrectly fetched the flat `.adf` statistic instead of checking for active damage modifiers in `GameManager.gd`. (2026-02-21)
 - [x] Fixed stack selection bug: Clicking on an enemy stack with a friendly ship selected now correctly targets the enemy if a weapon is active. (2026-02-16)
 - [x] Fixed speed 0 facing constraint bug: Moving 1 hex after free rotation resulted in invalid turning constraints due to incorrect entry facing calculation. (2026-02-16)
 - [x] Fixed Infinite Ammo Bug where ammo count of -1 was treated as insufficient ammo. (2026-02-17)

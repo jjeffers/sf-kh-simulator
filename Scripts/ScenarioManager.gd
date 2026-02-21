@@ -39,6 +39,31 @@ const SCENARIOS = {
 		],
 		"special_rules": [],
 		"planets": [Vector3i(0, 0, 0)]
+	},
+	"simple_test": {
+		"name": "Simple Test",
+		"description": "A simple test scenario to test the game engine.",
+		"sides": {
+			0: {"name": "UPF", "color": Color.GREEN, "role": "Defender"},
+			1: {"name": "Sathar", "color": Color.RED, "role": "Attacker"}
+		},
+		"ships": [],
+		"special_rules": []
+	},
+	"repair_test": {
+		"name": "Repair Test",
+		"description": "A scenario specifically for testing the Repair Phase UI. Ships start damaged.",
+		"sides": {
+			0: {"name": "UPF", "color": Color.GREEN, "role": "Defender"},
+			1: {"name": "Sathar", "color": Color.RED, "role": "Attacker"}
+		},
+		"ships": [],
+		"special_rules": [
+			{
+				"type": "start_phase_override",
+				"phase": 3 # Phase.REPAIR
+			}
+		]
 	}
 }
 
@@ -272,5 +297,96 @@ static func generate_scenario(key: String, rng_seed: int) -> Dictionary:
 
 		scen["ships"] = ships
 		scen["planets"] = [Vector3i(0, 0, 0)]
+		
+	elif key == "simple_test":
+		ships.append({
+			"name": "Vigilant",
+			"class": "Frigate",
+			"faction": "UPF",
+			"side_index": 0,
+			"position": Vector3i(-3, 0, 3), # 3 hexes West
+			"facing": 0, # East
+			"start_speed": 3
+		})
+		ships.append({
+			"name": "Defiant",
+			"class": "Frigate",
+			"faction": "UPF",
+			"side_index": 0,
+			"position": Vector3i(-3, 1, 2), # Adjacent to Vigilant
+			"facing": 0, # East
+			"start_speed": 3
+		})
+		ships.append({
+			"name": "Savage",
+			"class": "Frigate",
+			"faction": "Sathar",
+			"side_index": 1,
+			"position": Vector3i(3, 0, -3), # 3 hexes East
+			"facing": 3, # West
+			"start_speed": 3
+		})
+		ships.append({
+			"name": "Stinger",
+			"class": "Frigate",
+			"faction": "Sathar",
+			"side_index": 1,
+			"position": Vector3i(3, -1, -2), # Adjacent to Savage
+			"facing": 3, # West
+			"start_speed": 3
+		})
+		scen["ships"] = ships
+		
+	elif key == "repair_test":
+		ships.append({
+			"name": "Mended Heart",
+			"class": "Heavy Cruiser",
+			"faction": "UPF",
+			"side_index": 0,
+			"position": Vector3i(-2, 0, 2),
+			"facing": 0,
+			"start_speed": 0,
+			"overrides": {
+				"hull": 15, # Damaged hull
+				"current_adf_modifier": 1 # Damaged ADF
+			}
+		})
+		ships.append({
+			"name": "Scraped Knee",
+			"class": "Frigate",
+			"faction": "UPF",
+			"side_index": 0,
+			"position": Vector3i(-2, 1, 1),
+			"facing": 0,
+			"start_speed": 0,
+			"overrides": {
+				"hull": 20, # Normal hull, but has a fire
+				"has_electrical_fire": true,
+				"current_adf_modifier": 3
+			}
+		})
+		ships.append({
+			"name": "Pristine",
+			"class": "Scout",
+			"faction": "UPF",
+			"side_index": 0,
+			"position": Vector3i(-1, 0, 1),
+			"facing": 0,
+			"start_speed": 0
+		})
+		ships.append({
+			"name": "Shattered",
+			"class": "Destroyer",
+			"faction": "Sathar",
+			"side_index": 1,
+			"position": Vector3i(2, 0, -2),
+			"facing": 3,
+			"start_speed": 0,
+			"overrides": {
+				"hull": 5, # Very damaged
+				"has_disastrous_fire": true
+			}
+		})
+		scen["ships"] = ships
 		
 	return scen

@@ -17,6 +17,25 @@ func _ready():
 	MusicManager.play_music("res://Assets/Audio/Orbital Siege.mp3", -12.0, 2.0)
 	
 	_load_last_server()
+	
+	# Parse Command Line for Auto-Host Testing
+	var args = OS.get_cmdline_args()
+	for i in range(args.size()):
+		if args[i] == "--host":
+			print("[MainMenu] Auto-Hosting local match...")
+			# Give the tree a frame to settle, then host
+			call_deferred("_on_host_pressed")
+			
+		elif args[i] == "--join":
+			print("[MainMenu] Auto-Joining match...")
+			if i + 1 < args.size() and not args[i+1].begins_with("--"):
+				address_input.text = args[i+1]
+			call_deferred("_on_join_pressed")
+			
+		elif args[i] == "--scenario" and i + 1 < args.size():
+			var scen_name = args[i + 1]
+			print("[MainMenu] Pre-loading scenario:", scen_name)
+			NetworkManager.lobby_data["scenario"] = scen_name
 
 func _on_host_pressed():
 	_save_last_server(address_input.text)
