@@ -647,6 +647,8 @@ func _setup_ui():
 	_setup_repair_ui()
 
 func _setup_repair_ui():
+	print("[DEBUG] _setup_repair_ui called")
+	log_message("[DEBUG] Initializing repair_panel")
 	panel_repair = PanelContainer.new()
 	panel_repair.set_anchors_and_offsets_preset(Control.PRESET_CENTER)
 	panel_repair.custom_minimum_size = Vector2(600, 450)
@@ -2179,7 +2181,11 @@ func start_repair_phase():
 		rpc_sync_repair_state(1, repair_allocations)
 
 func _update_repair_ui():
-	if not is_instance_valid(list_repair): return
+	print("[DEBUG] _update_repair_ui called - Subphase: %d, my_side_id: %d" % [repair_subphase, my_side_id])
+	log_message("[DEBUG] Updating Repair UI for Phase: %d" % repair_subphase)
+	if not is_instance_valid(list_repair): 
+		print("[DEBUG] _update_repair_ui aborted: list_repair is invalid!")
+		return
 	
 	# Clear list
 	for c in list_repair.get_children():
@@ -2286,6 +2292,8 @@ func _update_repair_ui():
 		# Ensure button is available to click to advance manually
 		if btn_repair_exec:
 			btn_repair_exec.disabled = false
+			
+	print("[DEBUG] _update_repair_ui FINISHED. Items in list_repair: %d" % list_repair.get_child_count())
 func _on_repair_exec_pressed():
 	if repair_subphase == 1 or repair_subphase == 2:
 		log_message("Submitting Repair Allocations for Side %d" % repair_subphase)
@@ -2759,9 +2767,12 @@ func _update_ui_state():
 		panel_planning.visible = false
 		panel_attack_queue.visible = false
 		if panel_repair:
+			print("[DEBUG] panel_repair explicitly set to VISIBLE in _update_ui_state")
+			log_message("[DEBUG] Repair panel visibility set to true.")
 			panel_repair.visible = true
 			panel_repair.move_to_front()
-			
+		else:
+			print("[DEBUG] ERROR: panel_repair is null in _update_ui_state during Phase.REPAIR")
 		btn_undo.visible = false
 		btn_commit.visible = false
 		btn_orbit_cw.visible = false
