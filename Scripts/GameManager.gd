@@ -2275,7 +2275,7 @@ func _update_repair_ui():
 		
 		var is_my_repair_turn = (repair_subphase == my_side_id or my_side_id == 0)
 		if is_my_repair_turn:
-			lbl.text = "No damaged systems or conditions. Auto-skipping..."
+			lbl.text = "No damaged systems or conditions. Press Execute Repairs to advance."
 		else:
 			var sn = get_side_name(repair_subphase)
 			lbl.text = "Awaiting %s to finish damage allocation..." % sn
@@ -2286,22 +2286,6 @@ func _update_repair_ui():
 		# Ensure button is available to click to advance manually
 		if btn_repair_exec:
 			btn_repair_exec.disabled = false
-			
-		if _is_server_or_offline():
-			var expected_sub = repair_subphase
-			get_tree().create_timer(1.5).timeout.connect(func():
-				if current_phase == Phase.REPAIR and repair_subphase == expected_sub:
-					_handle_auto_skip_repair(expected_sub)
-			)
-
-func _handle_auto_skip_repair(expected_subphase: int):
-	if not _is_server_or_offline(): return
-	if repair_subphase != expected_subphase or current_phase != Phase.REPAIR: return
-	
-	if repair_subphase == 1 or repair_subphase == 2:
-		log_message("Auto-skipping Repair Allocations for Side %d" % repair_subphase)
-		# Server executes directly
-		rpc_submit_repair_allocations(repair_subphase, {})
 func _on_repair_exec_pressed():
 	if repair_subphase == 1 or repair_subphase == 2:
 		log_message("Submitting Repair Allocations for Side %d" % repair_subphase)
