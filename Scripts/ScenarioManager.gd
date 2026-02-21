@@ -294,11 +294,29 @@ static func generate_scenario(key: String, rng_seed: int) -> Dictionary:
 			"start_speed": 3
 		})
 		ships.append({
+			"name": "Defiant",
+			"class": "Frigate",
+			"faction": "UPF",
+			"side_index": 0,
+			"position": Vector3i(-3, 1, 2), # Adjacent to Vigilant
+			"facing": 0, # East
+			"start_speed": 3
+		})
+		ships.append({
 			"name": "Savage",
 			"class": "Frigate",
 			"faction": "Sathar",
 			"side_index": 1,
 			"position": Vector3i(3, 0, -3), # 3 hexes East
+			"facing": 3, # West
+			"start_speed": 3
+		})
+		ships.append({
+			"name": "Stinger",
+			"class": "Frigate",
+			"faction": "Sathar",
+			"side_index": 1,
+			"position": Vector3i(3, -1, -2), # Adjacent to Savage
 			"facing": 3, # West
 			"start_speed": 3
 		})
