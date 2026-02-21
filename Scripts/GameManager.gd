@@ -2759,9 +2759,6 @@ func _update_ui_state():
 		panel_planning.visible = false
 		panel_attack_queue.visible = false
 		if panel_repair:
-			panel_repair.size = panel_repair.custom_minimum_size
-			panel_repair.position = (get_viewport_rect().size - panel_repair.size) / 2.0
-			panel_repair.z_index = 10
 			panel_repair.visible = true
 			panel_repair.move_to_front()
 			
