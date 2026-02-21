@@ -547,14 +547,15 @@ func _setup_ui():
 
 	# Combat Log
 	# Combat Log
-	var log_panel = PanelContainer.new()
+	panel_log_container = PanelContainer.new()
+	panel_log_container.visible = false
 	# Explicit anchors for bottom 25% of screen
-	log_panel.anchor_left = 0.0
-	log_panel.anchor_right = 1.0
-	log_panel.anchor_top = 0.75
-	log_panel.anchor_bottom = 1.0
-	log_panel.modulate.a = 0.8
-	ui_layer.add_child(log_panel)
+	panel_log_container.anchor_left = 0.0
+	panel_log_container.anchor_right = 1.0
+	panel_log_container.anchor_top = 0.75
+	panel_log_container.anchor_bottom = 1.0
+	panel_log_container.modulate.a = 0.8
+	ui_layer.add_child(panel_log_container)
 	
 	combat_log = RichTextLabel.new()
 	combat_log.scroll_following = true
@@ -562,7 +563,7 @@ func _setup_ui():
 	combat_log.text = "[color=yellow]System Initialized.[/color]\n" # Debug text
 	combat_log.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	combat_log.size_flags_vertical = Control.SIZE_EXPAND_FILL
-	log_panel.add_child(combat_log)
+	panel_log_container.add_child(combat_log)
 	
 	# Game Over Panel
 	panel_game_over = PanelContainer.new()
@@ -719,6 +720,7 @@ var audio_repair_roll: AudioStreamPlayer
 var mini_map: MiniMap
 
 var combat_log: RichTextLabel
+var panel_log_container: PanelContainer
 
 # Game Over UI
 var panel_game_over: PanelContainer
@@ -2281,6 +2283,9 @@ func _update_repair_ui():
 	for i in range(s.current_mr_modifier): damaged_systems.append({"key": "mr_%d" % i, "name": "MR Loss"})
 	if s.has_electrical_fire: damaged_systems.append({"key": "fire_elec", "name": "Electrical Fire"})
 	if s.has_disastrous_fire: damaged_systems.append({"key": "fire_dis", "name": "Disastrous Fire"})
+	if s.ccs_damaged: damaged_systems.append({"key": "ccs", "name": "CCS (Computer)"})
+	if s.icm_max < s.base_icm_max: damaged_systems.append({"key": "icm", "name": "ICM Launcher"})
+	if s.ms_max < s.base_ms_max: damaged_systems.append({"key": "ms", "name": "Masking Screen"})
 	
 	# Weapons
 	for i in range(s.weapons.size()):
@@ -2322,7 +2327,23 @@ func _update_repair_ui():
 			spin.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 			spin.custom_minimum_size.x = 100
 			spin.editable = (my_side_id == repair_subphase or my_side_id == 0)
-			spin.value = repair_allocations[s.name].get(dmg["key"], 0)
+			
+			var dk = dmg["key"]
+			var is_unrepairable = false
+			if dk == "fire_elec" and s.unrepairable_electrical_fire: is_unrepairable = true
+			elif dk == "fire_dis" and s.unrepairable_disastrous_fire: is_unrepairable = true
+			elif dk == "ccs" and s.unrepairable_ccs: is_unrepairable = true
+			elif dk == "icm" and s.unrepairable_icm: is_unrepairable = true
+			elif dk == "ms" and s.unrepairable_ms: is_unrepairable = true
+			
+			if is_unrepairable:
+				sys_lbl.modulate = Color(1, 0, 0, 0.5)
+				sys_lbl.text += " (DESTROYED)"
+				spin.editable = false
+				spin.value = 0
+			else:
+				spin.value = repair_allocations[s.name].get(dmg["key"], 0)
+				
 			spin.suffix = "%"
 			hbox.add_child(spin)
 			
@@ -2362,6 +2383,7 @@ func _update_repair_ui_list():
 	for s in my_ships:
 		# Check if ship has ANY damaged system
 		var has_damage = (s.hull < s.max_hull) or (s.current_adf_modifier > 0) or (s.current_mr_modifier > 0) or s.has_electrical_fire or s.has_disastrous_fire
+		has_damage = has_damage or s.ccs_damaged or (s.icm_max < s.base_icm_max) or (s.ms_max < s.base_ms_max)
 		if not has_damage:
 			for w in s.weapons:
 				if w.get("is_crippled", false):
@@ -2550,6 +2572,9 @@ func _mark_unrepairable(s: Ship, key: String):
 	elif key.begins_with("mr_"): s.unrepairable_mr_modifier += 1
 	elif key == "fire_elec": s.unrepairable_electrical_fire = true
 	elif key == "fire_dis": s.unrepairable_disastrous_fire = true
+	elif key == "ccs": s.unrepairable_ccs = true
+	elif key == "icm": s.unrepairable_icm = true
+	elif key == "ms": s.unrepairable_ms = true
 	elif key.begins_with("wpn_"):
 		var idx = int(key.split("_")[1])
 		if idx < s.weapons.size():
@@ -2568,6 +2593,16 @@ func _apply_repair(s: Ship, key: String):
 		if not s.unrepairable_electrical_fire: s.has_electrical_fire = false
 	elif key == "fire_dis":
 		if not s.unrepairable_disastrous_fire: s.has_disastrous_fire = false
+	elif key == "ccs":
+		if not s.unrepairable_ccs: s.ccs_damaged = false
+	elif key == "icm":
+		if not s.unrepairable_icm: 
+			s.icm_max = s.base_icm_max
+			s.icm_current = s.icm_max
+	elif key == "ms":
+		if not s.unrepairable_ms:
+			s.ms_max = s.base_ms_max
+			s.ms_current = s.ms_max
 	elif key.begins_with("wpn_"):
 		var idx = int(key.split("_")[1])
 		if idx < s.weapons.size() and not s.weapons[idx].get("unrepairable", false):
@@ -3945,6 +3980,14 @@ func draw_hex(hex: Vector3i):
 
 
 func _unhandled_input(event):
+	# Universal Global Hotkeys
+	if event is InputEventKey and event.pressed and not event.echo:
+		if event.keycode == KEY_QUOTELEFT or event.keycode == KEY_ASCIITILDE:
+			if is_instance_valid(panel_log_container):
+				panel_log_container.visible = !panel_log_container.visible
+			get_viewport().set_input_as_handled()
+			return
+
 	# Client-Side View Controls (Always Allowed)
 	if event is InputEventMouseButton and event.pressed:
 		# Zoom Handling
@@ -4624,6 +4667,8 @@ func load_scenario(key: String, seed_val: int = 12345):
 			_:
 				log_message("Unknown class %s, defaulting to Scout" % cls)
 				s.configure_assault_scout()
+				
+		s.finalize_configuration()
 		
 		# Base Properties
 		s.name = data.get("name", "Ship")
