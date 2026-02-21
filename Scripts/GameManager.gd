@@ -547,14 +547,15 @@ func _setup_ui():
 
 	# Combat Log
 	# Combat Log
-	var log_panel = PanelContainer.new()
+	panel_log_container = PanelContainer.new()
+	panel_log_container.visible = false
 	# Explicit anchors for bottom 25% of screen
-	log_panel.anchor_left = 0.0
-	log_panel.anchor_right = 1.0
-	log_panel.anchor_top = 0.75
-	log_panel.anchor_bottom = 1.0
-	log_panel.modulate.a = 0.8
-	ui_layer.add_child(log_panel)
+	panel_log_container.anchor_left = 0.0
+	panel_log_container.anchor_right = 1.0
+	panel_log_container.anchor_top = 0.75
+	panel_log_container.anchor_bottom = 1.0
+	panel_log_container.modulate.a = 0.8
+	ui_layer.add_child(panel_log_container)
 	
 	combat_log = RichTextLabel.new()
 	combat_log.scroll_following = true
@@ -562,7 +563,7 @@ func _setup_ui():
 	combat_log.text = "[color=yellow]System Initialized.[/color]\n" # Debug text
 	combat_log.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	combat_log.size_flags_vertical = Control.SIZE_EXPAND_FILL
-	log_panel.add_child(combat_log)
+	panel_log_container.add_child(combat_log)
 	
 	# Game Over Panel
 	panel_game_over = PanelContainer.new()
@@ -719,6 +720,7 @@ var audio_repair_roll: AudioStreamPlayer
 var mini_map: MiniMap
 
 var combat_log: RichTextLabel
+var panel_log_container: PanelContainer
 
 # Game Over UI
 var panel_game_over: PanelContainer
@@ -3978,6 +3980,14 @@ func draw_hex(hex: Vector3i):
 
 
 func _unhandled_input(event):
+	# Universal Global Hotkeys
+	if event is InputEventKey and event.pressed and not event.echo:
+		if event.keycode == KEY_QUOTELEFT or event.keycode == KEY_ASCIITILDE:
+			if is_instance_valid(panel_log_container):
+				panel_log_container.visible = !panel_log_container.visible
+			get_viewport().set_input_as_handled()
+			return
+
 	# Client-Side View Controls (Always Allowed)
 	if event is InputEventMouseButton and event.pressed:
 		# Zoom Handling
