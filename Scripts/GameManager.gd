@@ -2423,34 +2423,32 @@ func rpc_submit_repair_allocations(side_id: int, allocations: Dictionary):
 	
 	if side_id == 1:
 		# Process P1 repairs immediately
-		if multiplayer.has_multiplayer_peer():
-			rpc_execute_repairs_for_side.rpc(1, allocations)
-		await rpc_execute_repairs_for_side(1, allocations)
-			
+		var seed_val = randi()
 		# Save P1, move to P2
 		repair_allocations = allocations
 		repair_subphase = 2
+		
 		if multiplayer.has_multiplayer_peer():
 			rpc_sync_repair_state.rpc(repair_subphase, repair_allocations)
+			rpc_execute_repairs_for_side.rpc(1, allocations, seed_val, false)
 		else:
 			rpc_sync_repair_state(repair_subphase, repair_allocations)
-	elif side_id == 2:
-		# Process P2 repairs immediately
-		if multiplayer.has_multiplayer_peer():
-			rpc_execute_repairs_for_side.rpc(2, allocations)
-		await rpc_execute_repairs_for_side(2, allocations)
+			rpc_execute_repairs_for_side(1, allocations, seed_val, false)
 			
+	elif side_id == 2:
 		# Merge P2 allocs
 		for s_name in allocations:
 			repair_allocations[s_name] = allocations[s_name]
 			
 		repair_subphase = 3
+		var seed_val = randi()
+		
 		if multiplayer.has_multiplayer_peer():
 			rpc_sync_repair_state.rpc(repair_subphase, repair_allocations)
+			rpc_execute_repairs_for_side.rpc(2, allocations, seed_val, true)
 		else:
 			rpc_sync_repair_state(repair_subphase, repair_allocations)
-			
-		_conclude_repair_phase()
+			rpc_execute_repairs_for_side(2, allocations, seed_val, true)
 
 @rpc("authority", "call_local", "reliable")
 func rpc_sync_repair_state(subphase: int, allocs: Dictionary):
@@ -2468,8 +2466,9 @@ func rpc_sync_repair_state(subphase: int, allocs: Dictionary):
 	_update_ui_state()
 	_update_repair_ui()
 
-@rpc("authority", "call_remote", "reliable")
-func rpc_execute_repairs_for_side(side_id: int, allocs_for_side: Dictionary):
+@rpc("authority", "call_local", "reliable")
+func rpc_execute_repairs_for_side(side_id: int, allocs_for_side: Dictionary, rng_seed: int, is_final_side: bool):
+	seed(rng_seed)
 	# Loop through all ships, try repairs synchronously on both peers.
 	for s in ships:
 		if not is_instance_valid(s): continue
@@ -2525,6 +2524,9 @@ func rpc_execute_repairs_for_side(side_id: int, allocs_for_side: Dictionary):
 				_spawn_hit_text(target_pos, pre_text + "FAILED")
 			
 			await get_tree().create_timer(2.0).timeout
+
+	if is_final_side:
+		_conclude_repair_phase()
 
 func _conclude_repair_phase():
 	if panel_repair: panel_repair.visible = false

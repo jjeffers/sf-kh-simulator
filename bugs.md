@@ -7,6 +7,9 @@
 - Add graphical explosion effect on ship death
 - Implement 3D visual modes for combat rendering
 - Create map editor tool
+- Repair Panel Missing Systems: When a ship has a damaged masking screen defense, CCS damage, or ICM systems destroyed, they don't show up in the DCR repair panel. 
+- Repair Panel Unrepairable Display: If systems didn't show up because of a previous failed repair with a roll of 96-100, we should still show the damaged system but disallow any DCR allocation to visually indicate its permanent destruction.
+
 
 ## 🔍 Needs Investigation
 - [ ] 
