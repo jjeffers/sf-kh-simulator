@@ -1525,6 +1525,7 @@ func _get_phase_name(p: int) -> String:
 		Phase.START: return "Setup"
 		Phase.MOVEMENT: return "Movement"
 		Phase.COMBAT: return "Combat"
+		Phase.REPAIR: return "Repair"
 		Phase.END: return "End"
 		_: return "Unknown"
 
