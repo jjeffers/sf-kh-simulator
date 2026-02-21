@@ -15,6 +15,7 @@
 - [ ] 
 
 ## ✅ Fixed
+- [x] Fixed multiplayer synchronization of destroyed ships: Clients receiving network packets where `is_destroyed` transitioned to `true` were manually overwriting the bool locally without firing the `ship_destroyed` event. Ship replication now natively triggers `trigger_explosion()` automatically, globally culling 0-hull vessels across all clients' UIs. (2026-02-21)
 - [x] Fixed input behavior: Mapped TAB to properly cycle through targets in `Phase.REPAIR` alongside its Movement behavior. Mapped E to target cycling through hostile entities during `Phase.COMBAT`. (2026-02-21)
 - [x] Fixed command-line handling: Passed `--host` and `--scenario` arguments inside `MainMenu.gd` now bypass the Lobby connection UI to rapidly launch offline multiplayer games. (2026-02-21)
 - [x] Overhauled the Repair Phase UI so `panel_repair` displays damage controls for only the actively clicked ship. (2026-02-21)
