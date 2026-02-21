@@ -39,6 +39,16 @@ const SCENARIOS = {
 		],
 		"special_rules": [],
 		"planets": [Vector3i(0, 0, 0)]
+	},
+	"simple_test": {
+		"name": "Simple Test",
+		"description": "A simple test scenario to test the game engine.",
+		"sides": {
+			0: {"name": "UPF", "color": Color.GREEN, "role": "Defender"},
+			1: {"name": "Sathar", "color": Color.RED, "role": "Attacker"}
+		},
+		"ships": [],
+		"special_rules": []
 	}
 }
 
@@ -272,5 +282,26 @@ static func generate_scenario(key: String, rng_seed: int) -> Dictionary:
 
 		scen["ships"] = ships
 		scen["planets"] = [Vector3i(0, 0, 0)]
+		
+	elif key == "simple_test":
+		ships.append({
+			"name": "Vigilant",
+			"class": "Frigate",
+			"faction": "UPF",
+			"side_index": 0,
+			"position": Vector3i(-3, 0, 3), # 3 hexes West
+			"facing": 0, # East
+			"start_speed": 3
+		})
+		ships.append({
+			"name": "Savage",
+			"class": "Frigate",
+			"faction": "Sathar",
+			"side_index": 1,
+			"position": Vector3i(3, 0, -3), # 3 hexes East
+			"facing": 3, # West
+			"start_speed": 3
+		})
+		scen["ships"] = ships
 		
 	return scen
