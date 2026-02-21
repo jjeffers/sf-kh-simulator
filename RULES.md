@@ -252,3 +252,19 @@ Setup: if there is a planet present, ships should not spawn in the same hex as t
 
 ## Winning Conditions
 - Scenarios may have specific victory conditios, but generally destroying all enemy ships is the goal.
+
+
+### Simple Test
+**Description:** A simple test scenario to test the game engine.
+
+**UPF (Defenders):**
+- **Vigilant** (Frigate)
+  - **Soawn**: 3 hexes to the left of the center.
+  - Faction: UPF.
+
+**Sathar (Invaders):**
+- **Spawn:** 3 hexes to the right of the center.
+- **Savage** (Frigate)
+  - Location: Edge hex.
+  - Faction: Sathar.
+
