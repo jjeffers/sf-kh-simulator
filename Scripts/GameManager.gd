@@ -2666,7 +2666,7 @@ func _update_ui_state():
 			btn_exec_move.text = "EXECUTE MOVEMENT"
 			btn_exec_move.modulate = Color(1, 0.6, 0.2) # Orange
 			
-	# Update Status Panel
+	# Update Status Panel GLOBALLY
 	if ship_status_panel:
 		if selected_ship:
 			ship_status_panel.update_from_ship(selected_ship)
@@ -2689,12 +2689,10 @@ func _update_ui_state():
 					current_connected_ship.state_changed.disconnect(_on_ship_state_changed)
 			current_connected_ship = null
 
-
+	if current_phase == Phase.MOVEMENT:
 		if selected_ship:
-			# ShipStatusPanel handles detailed ship stats.
-			# label_status handles Phase/Global info.
+			# label_status handles Phase/Global info for movement
 			var txt = ""
-			# Only show relevant phase info not covered by panel
 			if start_speed == 0:
 				txt += "Speed 0: Free Rotation Mode\n"
 			elif state_is_orbiting:
@@ -2703,12 +2701,10 @@ func _update_ui_state():
 			if selected_ship.is_ms_active:
 				txt += "[COLOR=blue]Masking Screen ACTIVE[/COLOR]\n"
 
-			# Restore is_valid calc for UI feedback
 			var eff_adf = selected_ship.get_effective_adf()
 			var min_speed = max(0, start_speed - eff_adf)
 			var max_speed = start_speed + eff_adf
 			var is_valid = current_path.size() >= min_speed and current_path.size() <= max_speed
-
 
 			if not is_valid and not state_is_orbiting:
 				txt += "\n(Invalid Speed)"
@@ -2717,7 +2713,6 @@ func _update_ui_state():
 		else:
 			label_status.text = ""
 
-		
 	elif current_phase == Phase.COMBAT:
 		panel_movement.visible = false
 		if panel_repair: panel_repair.visible = false
