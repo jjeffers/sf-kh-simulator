@@ -1914,10 +1914,11 @@ func _start_combat_planning():
 	# Sync State before planning to ensure odds/damage are correct
 	broadcast_game_state()
 	
-	# FIX: Explicitly hide Movement Panel to prevent overlap
+	# FIX: Explicitly hide Movement and Repair Panels to prevent overlap
 	if panel_movement:
 		panel_movement.visible = false
-		
+	if panel_repair:
+		panel_repair.visible = false
 	# Reset "fired" state visually for planning (actual state reset happens differently)
 
 	# Actually, we need to track "planned usage".
@@ -2043,6 +2044,7 @@ func _update_planning_ui_list():
 	# We already checked my_ships.size() > 0 which effectively checks for valid ships to show
 	if my_ships.size() > 0:
 		panel_planning.visible = true
+		if panel_repair: panel_repair.visible = false
 	
 	# Reposition Minimap
 	if panel_planning.visible:
