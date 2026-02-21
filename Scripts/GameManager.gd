@@ -2271,7 +2271,15 @@ func _update_repair_ui():
 	
 	if not has_damaged:
 		var lbl = Label.new()
-		lbl.text = "No damaged systems or conditions. Press Execute Repairs to advance."
+		
+		var is_my_repair_turn = (repair_subphase == my_side_id or my_side_id == 0)
+		if is_my_repair_turn:
+			lbl.text = "No damaged systems or conditions. Press Execute Repairs to advance."
+		else:
+			var sn = get_side_name(repair_subphase)
+			lbl.text = "Awaiting %s to finish damage allocation..." % sn
+			
+		lbl.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 		list_repair.add_child(lbl)
 		
 		# Ensure button is available to click to advance manually
@@ -2496,6 +2504,8 @@ func _spawn_ghost():
 
 func _update_ui_state():
 	if not ui_layer: return
+	
+	_update_phase_indicator()
 	
 	# Reset Panels should be handled per-phase to avoid flicker
 	# panel_planning.visible = false 
@@ -2750,8 +2760,11 @@ func _update_ui_state():
 		panel_planning.visible = false
 		panel_attack_queue.visible = false
 		if panel_repair:
+			panel_repair.size = panel_repair.custom_minimum_size
+			panel_repair.position = (get_viewport_rect().size - panel_repair.size) / 2.0
+			panel_repair.z_index = 10
 			panel_repair.visible = true
-			panel_repair.position = (get_viewport_rect().size - panel_repair.custom_minimum_size) / 2.0
+			panel_repair.move_to_front()
 			
 		btn_undo.visible = false
 		btn_commit.visible = false
