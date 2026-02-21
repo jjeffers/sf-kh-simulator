@@ -12,6 +12,7 @@
 - [ ] 
 
 ## ✅ Fixed
+- [x] Fixed DCR Graphical Sync: Hooked Masking Screens, CCS, and ICM internal property variables to explicitly expose them as sliders on the DCR interface instead of dropping them off the system. Added `(DESTROYED)` visual locks for systems that fail repair rolls permanently. (2026-02-21)
 - [x] Fixed input behavior: Mapped TAB to properly cycle through targets in `Phase.REPAIR` alongside its Movement behavior. Mapped E to target cycling through hostile entities during `Phase.COMBAT`. (2026-02-21)
 - [x] Fixed command-line handling: Passed `--host` and `--scenario` arguments inside `MainMenu.gd` now bypass the Lobby connection UI to rapidly launch offline multiplayer games. (2026-02-21)
 - [x] Overhauled the Repair Phase UI so `panel_repair` displays damage controls for only the actively clicked ship. (2026-02-21)

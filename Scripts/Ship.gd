@@ -33,8 +33,10 @@ var max_hull: int = 15
 var hull: int = 15
 var icm_max: int = 0
 var icm_current: int = 0
+var base_icm_max: int = 0
 var ms_max: int = 0
 var ms_current: int = 0
+var base_ms_max: int = 0
 var is_ms_active: bool = false: set = _set_ms_active
 var ms_orbit_start_hex: Vector3i = Vector3i.MAX # Sentinel for orbit MS logic
 
@@ -74,8 +76,10 @@ func get_net_state() -> Dictionary:
 		"max_hull": max_hull,
 		"icm_current": icm_current,
 		"icm_max": icm_max,
+		"base_icm_max": base_icm_max,
 		"ms_current": ms_current,
 		"ms_max": ms_max,
+		"base_ms_max": base_ms_max,
 		"is_ms_active": is_ms_active,
 		"ccs_damaged": ccs_damaged,
 		"has_electrical_fire": has_electrical_fire,
@@ -97,6 +101,9 @@ func get_net_state() -> Dictionary:
 		"unrepairable_adf_modifier": unrepairable_adf_modifier,
 		"unrepairable_electrical_fire": unrepairable_electrical_fire,
 		"unrepairable_disastrous_fire": unrepairable_disastrous_fire,
+		"unrepairable_icm": unrepairable_icm,
+		"unrepairable_ms": unrepairable_ms,
+		"unrepairable_ccs": unrepairable_ccs,
 		"weapons": _get_weapon_states() # Needed for crippled/ammo
 	}
 
@@ -105,8 +112,10 @@ func apply_net_state(data: Dictionary):
 	max_hull = data.get("max_hull", max_hull)
 	icm_current = data.get("icm_current", icm_current)
 	icm_max = data.get("icm_max", icm_max)
+	base_icm_max = data.get("base_icm_max", base_icm_max)
 	ms_current = data.get("ms_current", ms_current)
 	ms_max = data.get("ms_max", ms_max)
+	base_ms_max = data.get("base_ms_max", base_ms_max)
 	is_ms_active = data.get("is_ms_active", is_ms_active)
 	
 	ccs_damaged = data.get("ccs_damaged", ccs_damaged)
@@ -123,6 +132,9 @@ func apply_net_state(data: Dictionary):
 	unrepairable_adf_modifier = data.get("unrepairable_adf_modifier", unrepairable_adf_modifier)
 	unrepairable_electrical_fire = data.get("unrepairable_electrical_fire", unrepairable_electrical_fire)
 	unrepairable_disastrous_fire = data.get("unrepairable_disastrous_fire", unrepairable_disastrous_fire)
+	unrepairable_icm = data.get("unrepairable_icm", unrepairable_icm)
+	unrepairable_ms = data.get("unrepairable_ms", unrepairable_ms)
+	unrepairable_ccs = data.get("unrepairable_ccs", unrepairable_ccs)
 	
 	has_moved = data.get("has_moved", has_moved)
 	has_fired = data.get("has_fired", has_fired)
@@ -241,6 +253,14 @@ var unrepairable_mr_modifier: int = 0
 var unrepairable_adf_modifier: int = 0
 var unrepairable_electrical_fire: bool = false
 var unrepairable_disastrous_fire: bool = false
+var unrepairable_icm: bool = false
+var unrepairable_ms: bool = false
+var unrepairable_ccs: bool = false
+
+func finalize_configuration():
+	# Maps starting constants to track irreversible mechanical failure UI
+	base_icm_max = icm_max
+	base_ms_max = ms_max
 
 signal ship_moved(new_pos)
 signal ship_destroyed
