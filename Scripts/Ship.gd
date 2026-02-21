@@ -152,7 +152,12 @@ func apply_net_state(data: Dictionary):
 	orbit_direction = data.get("orbit_direction", orbit_direction)
 	speed = data.get("speed", speed)
 	
-	is_destroyed = data.get("is_destroyed", false) # Handling logic elsewhere might be needed if it transitions
+	var net_is_destroyed = data.get("is_destroyed", is_destroyed)
+	if net_is_destroyed and not is_destroyed:
+		trigger_explosion()
+	elif net_is_destroyed:
+		is_destroyed = true
+		
 	if is_destroyed and hull > 0: hull = 0 # Safety
 	
 	if data.has("weapons"):
@@ -162,10 +167,7 @@ func apply_net_state(data: Dictionary):
 	queue_redraw()
 	binding_pos_update()
 	if is_destroyed and not is_exploding:
-		# If we sync a destroyed state but aren't dead locally, just vanish?
-		# trigger_explosion() might be too noisy for sync.
-		modulate = Color(0.5, 0.5, 0.5, 0.5) # Dim it
-		# Or hide?
+		visible = false
 
 func _get_weapon_states() -> Array:
 	var states = []
