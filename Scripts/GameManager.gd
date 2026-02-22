@@ -1613,9 +1613,12 @@ func _cycle_selection():
 		_update_ship_visuals() # Re-sort stack
 		_update_ui_state()
 
-		# The E hotkey now handles Target cycling during Combat Phase
-		# TAB still cycles friendly ships if multiple have not fired yet.
-		available = ships.filter(func(s): return is_instance_valid(s) and s.side_id == firing_side_id and not s.has_fired and s.hull > 0)
+	elif current_phase == Phase.COMBAT:
+		# Authority Check: Only cycle if it is my turn to fire
+		if my_side_id != 0 and my_side_id != firing_side_id: return
+		
+		# TAB cycles friendly ships if multiple have not fired yet.
+		var available = ships.filter(func(s): return is_instance_valid(s) and s.side_id == firing_side_id and not s.has_fired and s.hull > 0)
 		if available.size() <= 1: return
 		
 		var combat_idx = available.find(selected_ship)
