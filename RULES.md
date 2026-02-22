@@ -55,11 +55,18 @@ A number between 1 and 100 is randomly selected (roll a d100). Then the DTM from
 | 81-84 | Defense hit: ICMs, masking screens |
 | 85-91 | Combat Control System hit: -10% on all attacks |
 | 92-97 | Navigation hit: ADF and MR become 0 |
-| 98-116 | Electrical fire: roll addition damage at +20 each turn |
+| 98-105 | Electrical fire: roll addition damage at +20 each turn |
+| 106-116 | Damage control hit: lose 1/2 of DCR
 | 117+ | Disastrous fire: lose all ADF and MR, -10% on all attacks, roll additional damage at +20 each turn. |
 
 #### Damage Table Notes
-- hull hits deduct from target ship hull points
+- hull hits deduct from target ship hull points.
+    -- **Hull Integrity Check**:
+      - If a ships hull points are reduced to 50% of it's original hull points, the ship may break apart due to strucutural failure.
+      1. Subtract 50% of the ships original hull points (rounded down) from the total hull damage taken.
+      2. Multiply the result of step 1 by the ADF plus MR points used in the current movement plan.
+      3. The result of step 2 is the % chance the ship will be destroyed from breaking apart.
+      - A ship in danger of breaking up should shade the movement plan in red and display the break up % for the controlling side to see near the end position of the movement plan.
 - drive hits deduct from ADF as noted in the table
 - steering hits deduct from MR as noted in the table
 - weapon hits cripple weapons systems in the order they are listed. If a weapon is already damaged, then the next weapon in the list is crippled. A ship with mulitple of the same weapon system will only have one crippled (laser battery, laser canon, etc).

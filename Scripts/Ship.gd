@@ -147,8 +147,8 @@ func apply_net_state(data: Dictionary):
 		is_docked = true # Force state, though host ref might be missing (Client logic likely handles dock_at separately or assumes persistent setup)
 	
 	# Position/Movement
-	grid_position = data.get("grid_position", grid_position)
-	facing = data.get("facing", facing)
+	_set_grid_position(data.get("grid_position", grid_position))
+	_set_facing(data.get("facing", facing))
 	orbit_direction = data.get("orbit_direction", orbit_direction)
 	speed = data.get("speed", speed)
 	
@@ -232,6 +232,17 @@ func get_effective_adf() -> int:
 
 func get_effective_mr() -> int:
 	return max(0, mr - current_mr_modifier)
+
+# Hull Integrity Rule Integration
+func get_hull_integrity_risk(adf_used: int, mr_used: int) -> int:
+	var threshold = floor(max_hull / 2.0)
+	if hull > threshold:
+		return 0 # Safe
+		
+	var damage_taken = max_hull - hull
+	var base_risk = damage_taken - threshold
+	return int(base_risk * (adf_used + mr_used))
+
 
 # Class and Weapons
 var ship_class: String = "Scout"
