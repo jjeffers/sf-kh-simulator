@@ -22,11 +22,13 @@ func test_ship_list_filtering_sathar_passive_fire():
 	var s1 = ship_script.new()
 	s1.side_id = 1
 	s1.name = "UPF_Ship"
+	gm.add_child(s1)
 	gm.ships.append(s1)
 	
 	var s2 = ship_script.new()
 	s2.side_id = 2
 	s2.name = "Sathar_Ship"
+	gm.add_child(s2)
 	gm.ships.append(s2)
 	
 	# Scenario: Side 1 (UPF) moved. Now Side 2 (Sathar) is firing in Passive Phase.
@@ -62,11 +64,13 @@ func test_ship_list_filtering_upf_active_fire():
 	var s1 = ship_script.new()
 	s1.side_id = 1
 	s1.name = "UPF_Ship"
+	gm.add_child(s1)
 	gm.ships.append(s1)
 	
 	var s2 = ship_script.new()
 	s2.side_id = 2
 	s2.name = "Sathar_Ship"
+	gm.add_child(s2)
 	gm.ships.append(s2)
 
 	# Scenario: Side 1 (UPF) is the ACTIVE player.

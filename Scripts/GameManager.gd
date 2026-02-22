@@ -2005,8 +2005,7 @@ func _start_combat_planning():
 	
 	log_message("Combat Planning: Side %d" % firing_side_id)
 	
-	_update_camera()
-	_update_ui_state()
+	_update_ship_visuals()
 	_update_camera()
 	_update_ui_state()
 	_update_planning_ui_list()
@@ -3475,10 +3474,37 @@ func execute_all_movement():
 	start_combat_passive()
 
 
+func _calculate_mr_used_for_plan(start_pos: Vector3i, start_facing: int, path: Array[Vector3i], final_facing: int) -> int:
+	var mr = 0
+	var current_facing = start_facing
+	var current_pos = start_pos
+	
+	if path.size() == 0:
+		var diff = posmod(final_facing - start_facing, 6)
+		mr += min(diff, 6 - diff)
+		return mr
+		
+	for i in range(path.size()):
+		var next_hex = path[i]
+		var move_dir = HexGrid.get_hex_direction(current_pos, next_hex)
+		
+		var diff = posmod(move_dir - current_facing, 6)
+		mr += min(diff, 6 - diff)
+		
+		current_facing = move_dir
+		current_pos = next_hex
+		
+	var final_diff = posmod(final_facing - current_facing, 6)
+	mr += min(final_diff, 6 - final_diff)
+	
+	return mr
+
 func _apply_movement_plan(s: Ship):
 	if not is_instance_valid(s): return
 
 	s.previous_path = s.planned_path # History
+	var start_pos = s.grid_position
+	var start_facing = s.facing
 	
 	if s.planned_path.size() > 0:
 		s.grid_position = s.planned_path.back()
@@ -3498,6 +3524,24 @@ func _apply_movement_plan(s: Ship):
 		
 	s.has_moved = true
 	s.has_orders = false
+	
+	# HULL INTEGRITY CHECK
+	if s.planned_orbit_dir == 0 and not s.is_destroyed:
+		var old_speed = s.speed
+		if s.is_docked: old_speed = 0
+		var adf_used = abs(old_speed - s.planned_path.size())
+		var mr_used = _calculate_mr_used_for_plan(start_pos, start_facing, s.planned_path, s.planned_facing)
+		
+		var risk = s.get_hull_integrity_risk(adf_used, mr_used)
+		if risk > 0:
+			# Use seeded RNG for multiplayer sync if available, or just randi
+			# execute_all_movement is called on Authority.
+			var roll = randi() % 100 + 1
+			log_message("[color=yellow]Hull Integrity Check for %s: Roll %d vs %d%% Risk[/color]" % [s.name, roll, risk])
+			if roll <= risk:
+				log_message("[color=red]CRITICAL: %s broke apart due to structural failure during maneuvering![/color]" % s.name)
+				s.take_hull_damage(9999)
+				return # Stop processing this ship
 	
 	# Handle Docking
 	if s.docked_guests.size() > 0:
@@ -3802,10 +3846,19 @@ func _draw():
 				collision_detected = true
 				collision_hex = h
 		
+		# Hull Integrity Risk Check
+		var risk = 0
+		if is_instance_valid(selected_ship) and not state_is_orbiting:
+			var adf_used = abs(start_speed - current_path.size())
+			var mr_used = _calculate_mr_used_for_plan(selected_ship.grid_position, selected_ship.facing, current_path, ghost_ship.facing)
+			risk = selected_ship.get_hull_integrity_risk(adf_used, mr_used)
+
 		# Draw Path Line
 		var line_color = Color(1, 1, 1, 0.8) # Default White
 		if collision_detected:
 			line_color = Color(1, 0.5, 0, 0.8) # Orange/Red
+		elif risk > 0:
+			line_color = Color(1, 0, 0, 0.8) # Red Risk
 			
 		# Increased width and opacity for better visibility
 		draw_polyline(points, line_color, 5.0)
@@ -3815,6 +3868,14 @@ func _draw():
 			_draw_hex_outline(collision_hex, Color.RED, 4.0)
 			# Highlight Ghost Ship
 			ghost_ship.modulate = Color(1, 0.5, 0.5) # Reddish
+		elif risk > 0:
+			ghost_ship.modulate = Color(1, 0.2, 0.2) # Deep Red
+			
+			# Draw Risk Label
+			var font = ThemeDB.fallback_font
+			var tip = points[points.size() - 1]
+			draw_string_outline(font, tip + Vector2(-30, -35), "%d%% Breakup Risk" % risk, HORIZONTAL_ALIGNMENT_CENTER, -1, 16, 2, Color.BLACK)
+			draw_string(font, tip + Vector2(-30, -35), "%d%% Breakup Risk" % risk, HORIZONTAL_ALIGNMENT_CENTER, -1, 16, Color.RED)
 		else:
 			ghost_ship.modulate = Color.WHITE
 		
@@ -4903,6 +4964,7 @@ func rpc_sync_ship_states(data: Dictionary):
 			pass
 
 	
+	_update_ship_visuals()
 	_update_ui_state() # Update Status Label (Planned Attacks List)
 	_update_planning_ui_list()
 	queue_redraw()
