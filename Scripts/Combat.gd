@@ -101,6 +101,54 @@ static func calculate_hit_chance(dist: int, weapon: Dictionary = {}, target: Shi
 		
 	return max(0, chance)
 
+# Returns the best hex along a target's previous path for reactive fire { "chance": int, "hex": Vector3i, "distance": int, "is_head_on": bool }
+static func get_best_defensive_fire_hex(source: Ship, target: Ship, weapon: Dictionary, icm_count: int = 0) -> Dictionary:
+	var best_chance = -1
+	var best_hex = target.grid_position
+	# Fallback distance
+	var best_dist = -1 # Will be set in loop, or safely defaults
+	var best_head_on = false
+	
+	# The possible hexes are the current position AND all hexes in previous_path
+	var possible_hexes = [target.grid_position]
+	possible_hexes.append_array(target.previous_path)
+	
+	for hex in possible_hexes:
+		# Assuming HexGrid is an Autoload or Globally accessible Class
+		var dist = HexGrid.hex_distance(source.grid_position, hex)
+		
+		var is_head_on = false
+		if weapon.get("arc") == "FF":
+			if hex == source.grid_position:
+				is_head_on = true
+			else:
+				var fwd_vec = HexGrid.get_direction_vec(source.facing)
+				var check = source.grid_position + fwd_vec
+				for i in range(weapon.get("range", 0)):
+					if check == hex:
+						is_head_on = true
+						break
+					check += fwd_vec
+					
+		var chance = calculate_hit_chance(dist, weapon, target, is_head_on, icm_count, source)
+		
+		# Better chance, or identical chance but closer (edge case) tie breaker? 
+		# We'll just take the strictly better chance, or if chance is same, it doesn't matter much.
+		# Let's say if chance is same, we might want the closest distance just for logic? 
+		# Just strictly > best_chance is enough, it will take the first best spot chronologically (since path is ordered).
+		if chance > best_chance:
+			best_chance = chance
+			best_hex = hex
+			best_dist = dist
+			best_head_on = is_head_on
+			
+	return {
+		"chance": best_chance,
+		"hex": best_hex,
+		"distance": best_dist,
+		"is_head_on": best_head_on
+	}
+
 # Returns result dict: {success: bool, chance: int, roll: int}
 static func get_hit_roll_details(dist: int, weapon: Dictionary = {}, target: Ship = null, is_head_on: bool = false, icm_count: int = 0, source: Ship = null) -> Dictionary:
 	var chance = calculate_hit_chance(dist, weapon, target, is_head_on, icm_count, source)

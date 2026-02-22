@@ -1329,6 +1329,13 @@ func _process_next_attack():
 					is_head_on = true
 					break
 				check += fwd_vec
+				
+	# If this is Passive Fire (Reactive Fire), we use the best hex along their path
+	if combat_subphase == 1 and target.side_id == current_side_id:
+		var best_hex_info = Combat.get_best_defensive_fire_hex(source, target, weapon, 0)
+		d = best_hex_info["distance"]
+		is_head_on = best_hex_info["is_head_on"]
+		# The target visually stays where it is, but the odds use the best hex.
 	
 	# ICM INTERRUPT
 	var icm_used = 0
@@ -2172,24 +2179,28 @@ func _update_attack_queue_ui():
 		var weapon = source.weapons[atk["weapon_idx"]]
 		var weapon_name = atk["weapon_name"]
 		
-		# Calc Hit Chance
-		var dist = HexGrid.hex_distance(source.grid_position, target.grid_position)
-		
-		# Head On Logic (Replicated from Resolution for estimation)
-		var is_head_on = false
-		if weapon.get("arc") == "FF":
-			if target.grid_position == source.grid_position:
-				is_head_on = true
-			else:
-				var fwd_vec = HexGrid.get_direction_vec(source.facing)
-				var check = source.grid_position + fwd_vec
-				for i in range(weapon["range"]):
-					if check == target.grid_position:
-						is_head_on = true
-						break
-					check += fwd_vec
-		
-		var chance = Combat.calculate_hit_chance(dist, weapon, target, is_head_on, 0, source)
+		var chance = 0
+		if combat_subphase == 1 and target.side_id == current_side_id:
+			var best_hex_info = Combat.get_best_defensive_fire_hex(source, target, weapon, 0)
+			chance = best_hex_info["chance"]
+		else:
+			# Calc Hit Chance standard
+			var dist = HexGrid.hex_distance(source.grid_position, target.grid_position)
+			
+			# Head On Logic (Replicated from Resolution for estimation)
+			var is_head_on = false
+			if weapon.get("arc") == "FF":
+				if target.grid_position == source.grid_position:
+					is_head_on = true
+				else:
+					var fwd_vec = HexGrid.get_direction_vec(source.facing)
+					var check = source.grid_position + fwd_vec
+					for i in range(weapon["range"]):
+						if check == target.grid_position:
+							is_head_on = true
+							break
+						check += fwd_vec
+			chance = Combat.calculate_hit_chance(dist, weapon, target, is_head_on, 0, source)
 		
 		var row = HBoxContainer.new()
 		list_attack_queue.add_child(row)
@@ -2939,10 +2950,27 @@ func _update_ui_state():
 				# Show Hit Chance
 				if selected_ship and selected_ship.weapons.size() > 0:
 					var w = selected_ship.weapons[selected_ship.current_weapon_index]
-					var dist = HexGrid.hex_distance(selected_ship.grid_position, combat_target.grid_position)
-					# Quick Calc
-					var is_head_on = false
-					var chance = Combat.calculate_hit_chance(dist, w, combat_target, is_head_on, 0, selected_ship)
+					var chance = 0
+					if combat_subphase == 1 and combat_target.side_id == current_side_id:
+						var best_hex_info = Combat.get_best_defensive_fire_hex(selected_ship, combat_target, w, 0)
+						chance = best_hex_info["chance"]
+					else:
+						# Calc Hit Chance standard
+						var dist = HexGrid.hex_distance(selected_ship.grid_position, combat_target.grid_position)
+						var is_head_on = false
+						if w.get("arc") == "FF":
+							if combat_target.grid_position == selected_ship.grid_position:
+								is_head_on = true
+							else:
+								var fwd_vec = HexGrid.get_direction_vec(selected_ship.facing)
+								var check = selected_ship.grid_position + fwd_vec
+								for i in range(w.get("range", 0)):
+									if check == combat_target.grid_position:
+										is_head_on = true
+										break
+									check += fwd_vec
+						chance = Combat.calculate_hit_chance(dist, w, combat_target, is_head_on, 0, selected_ship)
+						
 					txt += "\nHit Chance: %d%%" % chance
 		
 		# SUMMARY OF PLANNED ATTACKS (Left Side) - Now handled by panel_attack_queue
@@ -3750,6 +3778,18 @@ func _draw():
 			if abs(s) > map_radius: continue
 			var hex = Vector3i(q, r, s)
 			draw_hex(hex)
+			
+	# Draw Eligible Hexes for Defensive Fire
+	if current_phase == Phase.COMBAT and combat_subphase == 1 and current_combat_state == CombatState.PLANNING:
+		var is_my_planning = (firing_side_id == my_side_id) or (my_side_id == 0)
+		if is_my_planning:
+			for ship in ships:
+				if is_instance_valid(ship) and ship.side_id == current_side_id and not ship.is_destroyed:
+					# Use `_draw_filled_hex` if available, else a raw poly fill
+					var fill_color = Color(1.0, 0.0, 0.0, 0.2)
+					_draw_filled_hex(ship.grid_position, fill_color)
+					for h in ship.previous_path:
+						_draw_filled_hex(h, fill_color)
 	
 	# Draw Previous Turn Trails (Faint Gray)
 	for s in ships:
