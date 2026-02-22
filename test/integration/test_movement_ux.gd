@@ -21,6 +21,8 @@ func before_each():
 	# Set max speed high enough
 	ship.mr = 2
 	
+	if ship.get_parent() == null:
+		_game_manager.add_child(ship)
 	game_manager.ships.append(ship)
 	game_manager.add_child(ship)
 	

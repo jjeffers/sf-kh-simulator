@@ -17,6 +17,8 @@ func test_station_orbit_validation():
 	station.grid_position = Vector3i(1, -1, 0)
 	station.speed = 0
 	
+	if station.get_parent() == null:
+		_game_manager.add_child(station)
 	game_manager.ships.append(station)
 	game_manager.add_child(station)
 	

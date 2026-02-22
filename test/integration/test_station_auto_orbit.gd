@@ -24,6 +24,8 @@ func before_each():
 	station.side_id = 2 # UPF
 	station.orbit_direction = 1 # CW
 	station.grid_position = Vector3i(0, 1, -1)
+	if station.get_parent() == null:
+		_game_manager.add_child(station)
 	game_manager.ships.append(station)
 	game_manager.add_child(station)
 	
@@ -33,6 +35,8 @@ func before_each():
 	defiant.side_id = 2 # UPF
 	defiant.grid_position = Vector3i(0, 1, -1)
 	defiant.dock_at(station) # Defiant starts docked
+	if defiant.get_parent() == null:
+		_game_manager.add_child(defiant)
 	game_manager.ships.append(defiant)
 	game_manager.add_child(defiant)
 	

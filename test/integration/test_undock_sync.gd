@@ -22,6 +22,7 @@ func test_undock_movement_registration():
 	_station.ship_class = "Space Station"
 	_station.side_id = 1
 	_station.grid_position = Vector3i(0, 0, 0)
+	_game_manager.add_child(_station)
 	_game_manager.ships.append(_station)
 	
 	_scout = Ship.new()
@@ -31,6 +32,7 @@ func test_undock_movement_registration():
 	_scout.grid_position = Vector3i(0, 0, 0)
 	_scout.adf = 5
 	_scout.speed = 10 # Simulate high entry speed (or bugged state)
+	_game_manager.add_child(_scout)
 	_game_manager.ships.append(_scout)
 	
 	# Manually dock

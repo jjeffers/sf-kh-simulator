@@ -25,7 +25,11 @@ jobs:
           chmod +x godot
 
       - name: Import Assets
-        run: ./godot --headless --editor --quit-after 30
+        run: ./godot --path . --headless --export-pack "Linux" /dev/null || true
+
+      - name: Godot Import/Compile Warmup
+        run: ./godot --path . --headless --editor --quit-after 20
+
 
       - name: Run GUT Tests
         run: |

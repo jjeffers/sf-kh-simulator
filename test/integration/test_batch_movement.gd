@@ -23,23 +23,27 @@ func test_batch_movement_flow():
 	add_child_autofree(gm)
 	
 	# Setup Ships
-	var s1 = Ship.new()
+	var s1 = load("res://Scripts/Ship.gd").new()
 	s1.name = "Ship1"
 	s1.side_id = 1
 	s1.grid_position = Vector3i(0, 0, 0)
 	s1.facing = 0
 	s1.speed = 0
 	s1.adf = 2
+	if s1.get_parent() == null:
+		_game_manager.add_child(s1)
 	gm.ships.append(s1)
 	gm.add_child(s1)
 	
-	var s2 = Ship.new()
+	var s2 = load("res://Scripts/Ship.gd").new()
 	s2.name = "Ship2"
 	s2.side_id = 1 # Same side
 	s2.grid_position = Vector3i(2, 0, -2)
 	s2.facing = 0
 	s2.speed = 0
 	s2.adf = 2
+	if s2.get_parent() == null:
+		_game_manager.add_child(s2)
 	gm.ships.append(s2)
 	gm.add_child(s2)
 	
@@ -63,7 +67,7 @@ func test_batch_movement_flow():
 	gm.ghost_head_facing = 0
 	
 	# Ensure ghost_ship is valid for commit
-	gm.ghost_ship = Ship.new()
+	gm.ghost_ship = load("res://Scripts/Ship.gd").new()
 	gm.ghost_ship.name = "GhostShip"
 	gm.ghost_ship.facing = 0
 	gm.add_child(gm.ghost_ship)
@@ -87,7 +91,7 @@ func test_batch_movement_flow():
 	gm.ghost_head_facing = 0
 	
 	# Manually spawn ghost since _spawn_ghost fails without ship_scene
-	gm.ghost_ship = Ship.new()
+	gm.ghost_ship = load("res://Scripts/Ship.gd").new()
 	gm.ghost_ship.name = "GhostShip2"
 	gm.ghost_ship.facing = 0
 	gm.add_child(gm.ghost_ship)
@@ -112,10 +116,12 @@ func test_undo_planning():
 	gm.name = "GameManager"
 	add_child_autofree(gm)
 	
-	var s1 = Ship.new()
+	var s1 = load("res://Scripts/Ship.gd").new()
 	s1.name = "ShipUndo"
 	s1.side_id = 1
 	s1.grid_position = Vector3i(0, 0, 0)
+	if s1.get_parent() == null:
+		_game_manager.add_child(s1)
 	gm.ships.append(s1)
 	gm.add_child(s1)
 	
@@ -130,7 +136,7 @@ func test_undo_planning():
 	gm.current_path = invalid_path
 	
 	# Manually spawn ghost since _spawn_ghost fails without ship_scene
-	gm.ghost_ship = Ship.new()
+	gm.ghost_ship = load("res://Scripts/Ship.gd").new()
 	gm.ghost_ship.facing = 0
 	gm.add_child(gm.ghost_ship)
 	

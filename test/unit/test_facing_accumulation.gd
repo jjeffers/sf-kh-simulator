@@ -16,6 +16,8 @@ func before_each():
 	ship.speed = 1 # Moving
 	ship.adf = 1
 	
+	if ship.get_parent() == null:
+		_game_manager.add_child(ship)
 	game_manager.ships.append(ship)
 	game_manager.add_child(ship)
 	game_manager.selected_ship = ship

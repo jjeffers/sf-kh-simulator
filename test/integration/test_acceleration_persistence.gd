@@ -26,6 +26,8 @@ func before_each():
 	_ship.facing = 0
 	_ship.speed = 0
 	_ship.side_id = 1
+	if _ship.get_parent() == null:
+		_game_manager.add_child(_ship)
 	_game_manager.ships.append(_ship)
 	
 	# Network setup for the test
@@ -81,6 +83,8 @@ func test_icm_dialog_shows_target_name():
 	target.side_id = 1
 	target.icm_max = 3
 	target.icm_current = 3
+	if target.get_parent() == null:
+		_game_manager.add_child(target)
 	_game_manager.ships.append(target)
 	
 	# Trigger ICM Decision

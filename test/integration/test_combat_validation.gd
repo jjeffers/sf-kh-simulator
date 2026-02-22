@@ -39,6 +39,8 @@ func test_valid_target_in_range():
 	shooter.weapons = [
 		{"name": "Laser", "type": "Laser", "range": 10, "arc": "360", "ammo": 99, "fired": false}
 	]
+	if shooter.get_parent() == null:
+		_game_manager.add_child(shooter)
 	_gm.ships.append(shooter)
 	
 	# Setup P2 Target
@@ -46,6 +48,8 @@ func test_valid_target_in_range():
 	target.side_id = 2
 	target.name = "Target"
 	target.grid_position = Vector3i(1, 0, -1) # Adjacent
+	if target.get_parent() == null:
+		_game_manager.add_child(target)
 	_gm.ships.append(target)
 	
 	# Action
@@ -70,6 +74,8 @@ func test_docked_ship_can_fire_lasers():
 	shooter.weapons = [
 		{"name": "Laser", "type": "Laser", "range": 10, "arc": "360", "ammo": 99, "fired": false}
 	]
+	if shooter.get_parent() == null:
+		_game_manager.add_child(shooter)
 	_gm.ships.append(shooter)
 	
 	# Setup P2 Target
@@ -77,6 +83,8 @@ func test_docked_ship_can_fire_lasers():
 	target.side_id = 2
 	target.name = "Target"
 	target.grid_position = Vector3i(1, 0, -1) # Adjacent
+	if target.get_parent() == null:
+		_game_manager.add_child(target)
 	_gm.ships.append(target)
 	
 	# Action

@@ -19,11 +19,15 @@ func test_rpc_add_attack():
 	s1.side_id = 1
 	s1.current_weapon_index = 0
 	s1.weapons = [ {"name": "Laser", "type": "Laser", "range": 5, "arc": "360", "ammo": 10}]
+	if s1.get_parent() == null:
+		_game_manager.add_child(s1)
 	_gm.ships.append(s1)
 	
 	var s2 = ShipScript.new()
 	s2.name = "Target1"
 	s2.side_id = 2
+	if s2.get_parent() == null:
+		_game_manager.add_child(s2)
 	_gm.ships.append(s2)
 	
 	# Execute RPC (Direct call to simulate receipt)
@@ -41,10 +45,14 @@ func test_rpc_remove_attack():
 	var s1 = ShipScript.new()
 	s1.name = "Ship1"
 	s1.weapons = [ {"name": "Laser", "type": "Laser", "range": 5, "arc": "360", "ammo": 10}]
+	if s1.get_parent() == null:
+		_game_manager.add_child(s1)
 	_gm.ships.append(s1)
 	
 	var s2 = ShipScript.new()
 	s2.name = "Target1"
+	if s2.get_parent() == null:
+		_game_manager.add_child(s2)
 	_gm.ships.append(s2)
 	
 	# Add first

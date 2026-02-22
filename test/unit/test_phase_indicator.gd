@@ -18,6 +18,8 @@ func before_each():
 	friendly_ship.side_id = 1
 	friendly_ship.faction = "UPF"
 	friendly_ship.grid_position = Vector3i(0, 0, 0)
+	if friendly_ship.get_parent() == null:
+		_game_manager.add_child(friendly_ship)
 	game_manager.ships.append(friendly_ship)
 	game_manager.add_child(friendly_ship)
 

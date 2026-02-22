@@ -13,16 +13,18 @@ func before_each():
 	game_manager._ready()
 	
 	# Create Station
-	station = Ship.new()
+	station = load("res://Scripts/Ship.gd").new()
 	station.name = "Station"
 	station.grid_position = Vector3i(0, 0, 0)
 	station.ship_class = "Space Station"
 	station.side_id = 1
+	if station.get_parent() == null:
+		_game_manager.add_child(station)
 	game_manager.ships.append(station)
 	game_manager.add_child(station)
 	
 	# Create Docked Ship (Speed 0)
-	ship = Ship.new()
+	ship = load("res://Scripts/Ship.gd").new()
 	ship.name = "DockedShip"
 	ship.grid_position = Vector3i(0, 0, 0) # Same hex
 	ship.ship_class = "Frigate"
@@ -31,6 +33,8 @@ func before_each():
 	ship.speed = 0
 	ship.is_docked = true
 	ship.docked_host = station
+	if ship.get_parent() == null:
+		_game_manager.add_child(ship)
 	game_manager.ships.append(ship)
 	game_manager.add_child(ship)
 	

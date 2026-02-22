@@ -29,12 +29,16 @@ func test_turn_cycle_switch():
 	s1.name = "Ship1"
 	s1.side_id = 1
 	s1.has_moved = false
+	if s1.get_parent() == null:
+		_game_manager.add_child(s1)
 	_gm.ships.append(s1)
 	
 	var s2 = ShipScript.new()
 	s2.name = "Ship2"
 	s2.side_id = 2
 	s2.has_moved = false
+	if s2.get_parent() == null:
+		_game_manager.add_child(s2)
 	_gm.ships.append(s2)
 	autofree(s1)
 	autofree(s2)
@@ -66,6 +70,8 @@ func test_ship_destruction_handling():
 	s1.name = "Victim"
 	s1.side_id = 2
 	s1.hull = 5
+	if s1.get_parent() == null:
+		_game_manager.add_child(s1)
 	_gm.ships.append(s1)
 	_gm.add_child(s1) # Needs to be in tree for queue_free/signals?
 	

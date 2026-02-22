@@ -46,6 +46,8 @@ func test_repair_ui_list_filtering():
 	undamaged_ship.side_id = 1
 	undamaged_ship.max_hull = 20
 	undamaged_ship.hull = 20
+	if undamaged_ship.get_parent() == null:
+		_game_manager.add_child(undamaged_ship)
 	_gm.ships.append(undamaged_ship)
 	
 	var damaged_ship1 = ShipScript.new()
@@ -53,6 +55,8 @@ func test_repair_ui_list_filtering():
 	damaged_ship1.side_id = 1
 	damaged_ship1.max_hull = 20
 	damaged_ship1.hull = 15
+	if damaged_ship1.get_parent() == null:
+		_game_manager.add_child(damaged_ship1)
 	_gm.ships.append(damaged_ship1)
 	
 	var damaged_ship2 = ShipScript.new()
@@ -60,6 +64,8 @@ func test_repair_ui_list_filtering():
 	damaged_ship2.side_id = 1
 	damaged_ship2.max_hull = 20
 	damaged_ship2.hull = 10
+	if damaged_ship2.get_parent() == null:
+		_game_manager.add_child(damaged_ship2)
 	_gm.ships.append(damaged_ship2)
 	
 	var damaged_enemy = ShipScript.new()
@@ -67,6 +73,8 @@ func test_repair_ui_list_filtering():
 	damaged_enemy.side_id = 2
 	damaged_enemy.max_hull = 20
 	damaged_enemy.hull = 5
+	if damaged_enemy.get_parent() == null:
+		_game_manager.add_child(damaged_enemy)
 	_gm.ships.append(damaged_enemy)
 	
 	# Trigger the UI update
@@ -90,6 +98,8 @@ func test_repair_ui_select_ship():
 	damaged_ship.max_hull = 20
 	damaged_ship.hull = 15
 	damaged_ship.current_dcr = 50
+	if damaged_ship.get_parent() == null:
+		_game_manager.add_child(damaged_ship)
 	_gm.ships.append(damaged_ship)
 	
 	# Setup fake selection

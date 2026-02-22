@@ -7,7 +7,7 @@ func before_each():
 	game_manager = GameManager.new()
 	add_child(game_manager)
 	
-	ship = Ship.new()
+	ship = load("res://Scripts/Ship.gd").new()
 	game_manager.add_child(ship)
 	ship.side_id = 1
 	

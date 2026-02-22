@@ -21,6 +21,8 @@ func before_each():
 	_sender.side_id = 1
 	_sender.grid_position = Vector3i(0, 0, 0)
 	_sender.configure_heavy_cruiser() # Has multiple weapons
+	if _sender.get_parent() == null:
+		_game_manager.add_child(_sender)
 	_gm.ships.append(_sender)
 	
 	_ghost = ShipScript.new()

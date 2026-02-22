@@ -26,6 +26,8 @@ func test_planet_collision_destroys_ship():
 	ship.side_id = 1
 	ship.max_hull = 100
 	ship.hull = 100
+	if ship.get_parent() == null:
+		_game_manager.add_child(ship)
 	gm.ships.append(ship)
 	add_child_autofree(ship)
 	
@@ -59,6 +61,8 @@ func test_planet_collision_avoids_safe_path():
 	ship.name = "SafeShip"
 	ship.grid_position = Vector3i(0, 0, 0)
 	ship.side_id = 1 # Must match current_side_id
+	if ship.get_parent() == null:
+		_game_manager.add_child(ship)
 	gm.ships.append(ship)
 	
 	# FIX: Parent to GM to prevent GUT double-free/ownership issues
