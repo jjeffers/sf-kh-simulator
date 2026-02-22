@@ -27,6 +27,10 @@ jobs:
       - name: Import Assets
         run: ./godot --headless --editor --quit-after 30
 
+      - name: Prep Audio Driver
+        run: ./godot --headless --audio-driver Dummy -s addons/gut/gut_cmdln.gd
+
+
       - name: Run GUT Tests
         run: |
           ./godot --headless -s addons/gut/gut_cmdln.gd -gdir=test -ginclude_subdirs -gexit
