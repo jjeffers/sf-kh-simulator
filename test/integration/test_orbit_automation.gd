@@ -39,6 +39,8 @@ func test_auto_orbit_authority_logic():
 	station.adf = 0
 	station.mr = 0
 	station.speed = 0
+	if station.get_parent() == null:
+		_game_manager.add_child(station)
 	_gm.ships.append(station)
 	_gm.add_child(station)
 	
@@ -63,6 +65,8 @@ func test_auto_orbit_race_condition_protection():
 	station.side_id = 1
 	station.grid_position = Vector3i(0, 0, 0)
 	station.orbit_direction = 1
+	if station.get_parent() == null:
+		_game_manager.add_child(station)
 	_gm.ships.append(station)
 	_gm.add_child(station)
 	

@@ -25,6 +25,8 @@ func test_second_turn_combat_skip():
 	s1.side_id = 1
 	s1.grid_position = Vector3i(0, 0, 0)
 	s1.weapons = [ {"name": "Laser", "type": "Laser", "range": 5, "arc": "360", "ammo": 10, "damage_dice": "1d10", "damage_bonus": 0}]
+	if s1.get_parent() == null:
+		_game_manager.add_child(s1)
 	_gm.ships.append(s1)
 	
 	var s2 = ShipScript.new()
@@ -32,6 +34,8 @@ func test_second_turn_combat_skip():
 	s2.side_id = 2
 	s2.grid_position = Vector3i(2, 0, 0) # Distance 2, in range
 	s2.weapons = [ {"name": "Laser", "type": "Laser", "range": 5, "arc": "360", "ammo": 10, "damage_dice": "1d10", "damage_bonus": 0}]
+	if s2.get_parent() == null:
+		_game_manager.add_child(s2)
 	_gm.ships.append(s2)
 	
 	# --- TURN 1 Logic ---

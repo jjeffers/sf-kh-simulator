@@ -25,12 +25,16 @@ func test_full_turn_loop():
 	s1.name = "P1_Ship"
 	s1.side_id = 1
 	s1.grid_position = Vector3i(0, 0, 0)
+	if s1.get_parent() == null:
+		_game_manager.add_child(s1)
 	_gm.ships.append(s1)
 	
 	var s2 = ShipScript.new()
 	s2.name = "P2_Ship"
 	s2.side_id = 2
 	s2.grid_position = Vector3i(10, -10, 0)
+	if s2.get_parent() == null:
+		_game_manager.add_child(s2)
 	_gm.ships.append(s2)
 	
 	# Start P1 Move

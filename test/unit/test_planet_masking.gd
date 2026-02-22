@@ -8,20 +8,24 @@ func before_each():
 	_gm = load("res://Scripts/GameManager.gd").new()
 	add_child(_gm)
 	
-	_shooter = Ship.new()
+	_shooter = load("res://Scripts/Ship.gd").new()
 	_shooter.name = "Shooter"
 	_shooter.side_id = 1
 	_shooter.configure_assault_scout() # Has Laser Battery (Range 9)
 	_gm.add_child(_shooter)
 	
-	_target = Ship.new()
+	_target = load("res://Scripts/Ship.gd").new()
 	_target.name = "Target"
 	_target.side_id = 2
 	_target.configure_assault_scout()
 	_gm.add_child(_target)
 	
 	_gm.ships.clear()
+	if _shooter.get_parent() == null:
+		_game_manager.add_child(_shooter)
 	_gm.ships.append(_shooter)
+	if _target.get_parent() == null:
+		_game_manager.add_child(_target)
 	_gm.ships.append(_target)
 
 func after_each():

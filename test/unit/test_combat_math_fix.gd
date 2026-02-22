@@ -41,8 +41,8 @@ func after_all():
 	Combat.queue_free()
 
 func test_assault_rocket_flat_chance():
-	var shooter = Ship.new()
-	var target = Ship.new()
+	var shooter = load("res://Scripts/Ship.gd").new()
+	var target = load("res://Scripts/Ship.gd").new()
 	target.defense = "None"
 	
 	print("\n--- Testing Rocket Flat Chance ---")
@@ -60,8 +60,8 @@ func test_assault_rocket_flat_chance():
 	shooter.free()
 
 func test_assault_rocket_vs_rh():
-	var shooter = Ship.new()
-	var target = Ship.new()
+	var shooter = load("res://Scripts/Ship.gd").new()
+	var target = load("res://Scripts/Ship.gd").new()
 	target.defense = "RH"
 	
 	print("\n--- Testing Rocket vs RH ---")
@@ -79,8 +79,8 @@ func test_assault_rocket_vs_rh():
 	shooter.free()
 
 func test_laser_range_diffusion():
-	var shooter = Ship.new()
-	var target = Ship.new()
+	var shooter = load("res://Scripts/Ship.gd").new()
+	var target = load("res://Scripts/Ship.gd").new()
 	target.defense = "None"
 	
 	print("\n--- Testing Laser Range Diffusion ---")

@@ -36,6 +36,8 @@ func test_combat_target_validation():
 		"damage_bonus": 0,
 		"fired": false
 	}]
+	if defiant.get_parent() == null:
+		_game_manager.add_child(defiant)
 	game_manager.ships.append(defiant)
 	game_manager.add_child(defiant)
 	
@@ -44,6 +46,8 @@ func test_combat_target_validation():
 	enemy.name = "Enemy"
 	enemy.side_id = 2
 	enemy.grid_position = Vector3i(0, 5, -5)
+	if enemy.get_parent() == null:
+		_game_manager.add_child(enemy)
 	game_manager.ships.append(enemy)
 	game_manager.add_child(enemy)
 	

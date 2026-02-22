@@ -24,6 +24,8 @@ func test_turn_continues_after_casualty():
 	attacker.name = "Attacker"
 	attacker.side_id = 1
 	attacker.grid_position = Vector3i(0, 0, 0)
+	if attacker.get_parent() == null:
+		_game_manager.add_child(attacker)
 	_gm.ships.append(attacker)
 	_gm.add_child(attacker)
 	
@@ -31,6 +33,8 @@ func test_turn_continues_after_casualty():
 	victim.name = "Victim"
 	victim.side_id = 2
 	victim.grid_position = Vector3i(1, -1, 0) # Adjacent
+	if victim.get_parent() == null:
+		_game_manager.add_child(victim)
 	_gm.ships.append(victim)
 	_gm.add_child(victim)
 	

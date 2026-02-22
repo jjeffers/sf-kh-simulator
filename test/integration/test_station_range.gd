@@ -20,6 +20,8 @@ func test_station_rocket_battery_range_limit():
 	station.grid_position = Vector3i(0, 0, 0)
 	station.side_id = 1
 	station.configure_space_station() # Should set RB range to 3
+	if station.get_parent() == null:
+		_game_manager.add_child(station)
 	gm.ships.append(station)
 	gm.add_child(station)
 	
@@ -28,6 +30,8 @@ func test_station_rocket_battery_range_limit():
 	target.name = "Target Ship"
 	target.grid_position = Vector3i(10, 0, -10)
 	target.side_id = 2
+	if target.get_parent() == null:
+		_game_manager.add_child(target)
 	gm.ships.append(target)
 	gm.add_child(target)
 	

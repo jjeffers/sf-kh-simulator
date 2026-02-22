@@ -29,6 +29,8 @@ func test_teleport_exploit():
 	ship.grid_position = Vector3i(0, 0, 0)
 	ship.speed = 2
 	ship.adf = 1
+	if ship.get_parent() == null:
+		_game_manager.add_child(ship)
 	_gm.ships.append(ship)
 	_gm.add_child(ship)
 	
@@ -53,6 +55,8 @@ func test_speed_limit_exploit():
 	ship.grid_position = Vector3i(0, 0, 0)
 	ship.speed = 2
 	ship.adf = 1
+	if ship.get_parent() == null:
+		_game_manager.add_child(ship)
 	_gm.ships.append(ship)
 	_gm.add_child(ship)
 	

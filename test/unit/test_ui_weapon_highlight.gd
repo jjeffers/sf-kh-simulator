@@ -9,7 +9,7 @@ func before_each():
 	panel = PanelScript.new()
 	add_child(panel)
 	
-	ship = Ship.new()
+	ship = load("res://Scripts/Ship.gd").new()
 	ship.configure_fighter() # Has Assault Rockets
 	# Add a second weapon for testing selection
 	ship.weapons.append({

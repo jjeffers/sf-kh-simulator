@@ -23,6 +23,8 @@ func before_each():
 	_ship.adf = 2
 	_ship.speed = 0 # Start stationary to avoid auto-orbit
 	_ship.facing = 0 # East
+	if _ship.get_parent() == null:
+		_game_manager.add_child(_ship)
 	_gm.ships.append(_ship)
 	_gm.add_child(_ship)
 	
@@ -90,6 +92,8 @@ func test_select_ship_click():
 	s2.name = "OtherShip"
 	s2.grid_position = Vector3i(-2, 2, 0)
 	s2.side_id = 1
+	if s2.get_parent() == null:
+		_game_manager.add_child(s2)
 	_gm.ships.append(s2)
 	_gm.add_child(s2)
 	

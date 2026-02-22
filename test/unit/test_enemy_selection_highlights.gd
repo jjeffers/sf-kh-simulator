@@ -20,6 +20,8 @@ func before_each():
 	_enemy_ship.name = "EnemyShip"
 	_enemy_ship.side_id = 2
 	_enemy_ship.has_orders = false # Not committed yet
+	if _enemy_ship.get_parent() == null:
+		_game_manager.add_child(_enemy_ship)
 	_gm.ships.append(_enemy_ship)
 	_gm.add_child(_enemy_ship)
 

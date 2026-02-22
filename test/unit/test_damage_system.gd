@@ -4,7 +4,7 @@ var ship: Ship
 var combat_script = load("res://Scripts/Combat.gd")
 
 func before_each():
-	ship = Ship.new()
+	ship = load("res://Scripts/Ship.gd").new()
 	ship.configure_fighter() # Hull 8, ADF 5, MR 5
 
 func after_each():

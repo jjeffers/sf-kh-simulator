@@ -26,21 +26,29 @@ func before_each():
 	_ship_valid = Ship.new()
 	_ship_valid.name = "ValidShip"
 	_ship_valid.side_id = 1
+	if _ship_valid.get_parent() == null:
+		_game_manager.add_child(_ship_valid)
 	_gm.ships.append(_ship_valid)
 	
 	_ship_danger = Ship.new()
 	_ship_danger.name = "DangerShip"
 	_ship_danger.side_id = 1
+	if _ship_danger.get_parent() == null:
+		_game_manager.add_child(_ship_danger)
 	_gm.ships.append(_ship_danger)
 	
 	_ship_moved = Ship.new()
 	_ship_moved.name = "MovedShip"
 	_ship_moved.side_id = 1
+	if _ship_moved.get_parent() == null:
+		_game_manager.add_child(_ship_moved)
 	_gm.ships.append(_ship_moved)
 	
 	_ship_waiting = Ship.new()
 	_ship_waiting.name = "WaitingShip"
 	_ship_waiting.side_id = 1
+	if _ship_waiting.get_parent() == null:
+		_game_manager.add_child(_ship_waiting)
 	_gm.ships.append(_ship_waiting)
 	
 	# Setup Context

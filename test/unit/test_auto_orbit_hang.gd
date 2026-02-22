@@ -9,7 +9,7 @@ func before_each():
 	game_manager._ready()
 	
 	# Create Station with Orbit Direction
-	station = Ship.new()
+	station = load("res://Scripts/Ship.gd").new()
 	station.name = "Station"
 	station.ship_class = "Space Station"
 	station.grid_position = Vector3i(0, 0, 0)
@@ -18,6 +18,8 @@ func before_each():
 	station.orbit_direction = 1 # CW
 	station.speed = 0 # Station shouldn't move
 	
+	if station.get_parent() == null:
+		_game_manager.add_child(station)
 	game_manager.ships.append(station)
 	game_manager.add_child(station)
 
