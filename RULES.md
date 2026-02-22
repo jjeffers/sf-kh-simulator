@@ -54,14 +54,15 @@ A number between 1 and 100 is randomly selected (roll a d100). Then the DTM from
 | 53    | Drive hit: lose all ADF |
 | 54-58 | Steering hit: lose 1 MR |
 | 59-60 | Steering hit: lose entire MR |
-| 61-62 | Weapon hit: laser canon, laser battery, assault rockets, rocket battery |
-| 63-64 | Weapon hit: laser battery, rocket battery, torpedos, assault rockets |
+| 61-62 | Weapon hit: laser canon, laser battery, proton battery, electron battery, assault rockets, rocket battery |
+| 63-64 | Weapon hit: proton battery, electron battery, laser battery, rocket battery, torpedos, assault rockets |
 | 65-66 | Weapon hit: disruptor cannon, laser canon, assault rockets, torpedoes, laser battery |
-| 67-68 | Weapon hit: torpedoes, assault rockets, laser battery, rocket battery |
-| 69-70 | Weapon hit: laser battery, rocket battery, torpedoes, assault rockets, laser canon |
+| 67-68 | Weapon hit: torpedoes, assault rockets, electron battery, proton battery, laser battery, rocket battery |
+| 69-70 | Weapon hit: laser battery, rocket battery, torpedoes, assault rockets, proton battery, electron battery, laser canon |
 | 71-74 | Power short circuit: lose ICMs |
-| 75-80 | Defense hit: masking screens, ICMs |
-| 81-84 | Defense hit: ICMs, masking screens |
+| 75-77 | Defense hit: proton screen, electron screen, stasis screen, masking screens, ICMs |
+| 78-80 | Defense hit: masking screens, ICMs, stasis screen, proton screen, electron screen |
+| 81-84 | Defense hit: ICMs, stasis screen, proton screen, electron screen, masking screens |
 | 85-91 | Combat Control System hit: -10% on all attacks |
 | 92-97 | Navigation hit: ADF and MR become 0 |
 | 98-105 | Electrical fire: roll addition damage at +20 each turn |
@@ -140,12 +141,13 @@ Detailed specifications for all ship classes currently implemented.
 | :--- | :--- | :--- | :--- | :--- | :--- | :--- | :--- | :---|
 | **Fighter** | 8 | 5 | 5 | RH | 0 | 0 | Assault Rockets (x3) | 30 |
 | **Assault Scout** | 15 | 5 | 4 | RH | 0 | 0 | Laser Battery, Assault Rockets (x4) | 50 |
-| **Frigate** | 40 | 3 | 3 | RH | 4 | 1 | Laser Battery, Laser Canon, Rocket Battery (x4), Torpedo (x2) | 70 |
-| **Destroyer** | 50 | 3 | 2 | RH | 4 | 2 | Laser Battery, Laser Canon, Rocket Battery (x6), Torpedo (x2) | 75 |
-| **Heavy Cruiser** | 80 | 1 | 1 | RH | 8 | 1 | Laser Battery (x3), Disruptor Canon, Rocket Battery (x8), Torpedo (x4) | 120 |
-| **Battleship** | 120 | 2 | 2 | RH | 20 | 4 | Disruptor Canon, Laser Battery (x4), Rocket Battery (x10), Torpedo (x8) | 200 |
+| **Frigate** | 40 | 3 | 3 | RH, ICMs (x4) | 4 | 1 | Laser Battery, Laser Canon, Rocket Battery (x4), Torpedo (x2) | 70 |
+| **Destroyer** | 50 | 3 | 2 | RH | 5 | 2 | Laser Battery, Laser Canon, Electron Battery, Rocket Battery (x6), Torpedo (x2) | 75 |
+| **Light Cruiser** | 70 | 3 | 2 | RH, ES, SS | 8 | 1 | Disruptor Canon, laser battery, electron battery, proton battery, Rocket Battery (x6), Torpedo (x4) | 100 |
+| **Heavy Cruiser** | 80 | 1 | 1 | RH, PS, SS | 8 | 1 | Laser Battery (x2), proton battery, electron battery, Disruptor Canon, Rocket Battery (x8), Torpedo (x4) | 120 |
+| **Battleship** | 120 | 2 | 2 | RH, PS, ES, SS | 12 | 4 | Disruptor Canon, Laser Battery (x3), proton battery, electron battery (x2), Rocket Battery (x10), Torpedo (x8) | 200 |
 | **Assault Carrier** | 75 | 2 | 1 | RH | 10 | 4 | Laser Battery, Rocket Battery (x8) 150 |
-| **Space Station** | 20-200 | 0 | 0 | RH | 2-8 | 1-4 | Laser Battery (1-3), Rocket Battery (2-12) | 1/2 hull points |
+| **Space Station** | 20-200 | 0 | 0 | RH, ES, SS, PS | 2-8 | 1-4 | 1 electron battery or 1 proton battery or 1 laser battery pe 50 hull points, Rocket Battery (2-12) | 1/2 hull points |
 
 *Note: Space Station stats scale based on Hull points (Randomly generated).*
 
@@ -156,16 +158,18 @@ Combat mechanics and specifications for all weapon types.
 - **Head-On Attack:** +10% Hit Chance for forward firing weapons (FF) if the target is in the row of hexes directly forward of a firing ship.
 - **Max Range:** 10 Hexes (Hard cap).
 
-| Weapon | Type | Range | Attributes | Damage | Base Chance | DTM | Special Rules |
-| :--- | :--- | :--- | :--- | :--- | :--- | :--- |
-| **Laser Battery** | Laser | 9 | RD | 1d10 | 80% | 0| - Reduced to 50% vs RH<br>- Reduced to 10% if Screen active |
-| **Laser Canon** | Laser | 10 | FF, RD | 2d10 | 80% | 0 | - Reduced to 60% vs RH<br>- Reduced to 20% if Screen active |
-| ***Disruptor Cannon*** | Laser | 9 | FF, RD | 3d10 | 80% | +20 | - Reduced to 60% vs RH<br>- Reduced to 35% if Screen active |
-| **Assault Rocket** | Rocket | 4 | FF, LTD, MPO | 2d10+4 | 80% | -10 | - Reduced to 60% vs RH<br>- Subject to ICM (-5% per) |
-| **Rocket Battery** | Rocket | 3 | LTD | 2d10 | 40% (Flat) | -10|  <br>- Subject to ICM (-3% per) |
-| **Torpedo** | Torpedo | 4 | LTD, MPO | 4d10 | 70% (Flat) | 20 | <br>- Subject to ICM (-10% per) |
+| Weapon | Type | Range | Attributes | Damage | base % | % vs RH | % vs PS | % vs ES | %vs SS | % vs MS | DTM | Special Rules |
+| :--- | :--- | :--- | :--- | :--- | :--- | :--- | :--- | :--- | :--- | 
+| **Laser Battery** | Laser | 9 | RD | 1d10 | 65 | 50 | 65 | 65 | 65 | 20| 0 | 1/2 damage on hull hits if target has masking screen |
+| **Laser Canon** | Laser | 10 | FF, RD | 2d10 | 75 | 60 | 75 | 75 | 25 | 0 | 1/2 damage on hull hits if target has masking screen |
+| **Electron Beam Battery** | Laser | 10 | RD | 1d10 | 60 | 60 | 25 | 70 | 40 | 50| 10 | 1/2 damage on hull hits if target has a proton screen |
+| **Proton Beam Battery** | Laser | 12 | RD | 1d10 | 60 | 60 | 70 | 26 | 40 | 50| 10 | 1/2 damage on hull hits if target has an electron screen |
+| ***Disruptor Cannon*** | Laser | 9 | FF, RD | 3d10 | 60 | 60 |50 | 50 | 40 | 50 | 20 | |
+| **Assault Rocket** | Rocket | 4 | FF, LTD, MPO | 2d10+4 | 60 | 60 | 60 | 60 | 60 | 60 | -10 | - Reduced to 60% vs RH<br>- Subject to ICM (-5% per) |
+| **Rocket Battery** | Rocket | 3 | LTD | 2d10 | 40 | 40 | 40 | 40 | 40 | 40 | -10|  <br>- Subject to ICM (-3% per) |
+| **Torpedo** | Torpedo | 4 | LTD, MPO | 4d10 | 50 | 50 | 50 | 50 |75 | 50 | -20 | <br>- Subject to ICM (-10% per) |
 
-RD = Range Diffusion (weapon accuracy degrades 5% per hex), FF = Forward Fire, MPO = Moving player only (not valid for defensive fire), LTD = Limited Ammunition (limited number of uses)
+RD = Range Diffusion (weapon accuracy degrades 5% per hex), FF = Forward Fire, MPO = Moving player only (not valid for defensive fire), LTD = Limited Ammunition (limited number of uses), PR = proton screen, ES = electron scrren, SS = stasis screen, MS = masking screen, RH = reflective hull
 
 
 A weapon's chance to hit is not effected by distance unless it has the RD attribute.
@@ -194,6 +198,17 @@ Mechanics for damage mitigation and avoidance.
 - **Laser Battery:** Base hit chance reduced to 10%.
 - **Laser Canon:** Base hit chance reduced to 20%.
 - **Notes:** Supersedes Reflective Hull effects when active.
+
+### Defensive Energy Screen
+- **Description:**: A powered energy field of charged particles.
+- **Types:**:
+  - Proton Screen: effective in blocking proton and disruptor beams, but attracts electron beams.
+  - Electron Screen: effective in blocking electron and disruptor beams, but attracts proton beams.
+  - Stasis Screen: Moderately effective against electric beams weapons but attracts the homing systems or torpedoes, assault rockets, and rocket batteries.
+- **Activation:**
+  - A ship may select one or no active defensive screens to energize during movement planning. This will be repeseneted by a selection in the ship status panel. This selection can only be made during movement planning.
+  - A ship may only activate screens one at a time.
+  - A ship may only activate screens ir is equipped with. (Some ships have no defensive energy screens.)
 
 ### Interceptor Missiles ("ICMs")
 - **Effect:** Automated point-defense system against ballistic projectiles.

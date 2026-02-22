@@ -40,6 +40,9 @@ var base_ms_max: int = 0
 var is_ms_active: bool = false: set = _set_ms_active
 var ms_orbit_start_hex: Vector3i = Vector3i.MAX # Sentinel for orbit MS logic
 
+var equipped_screens: Array[String] = []
+var active_screen: String = "None": set = _set_active_screen
+
 var is_selected: bool = false: set = _set_is_selected
 
 var ms_particles: CPUParticles2D = null
@@ -81,6 +84,8 @@ func get_net_state() -> Dictionary:
 		"ms_max": ms_max,
 		"base_ms_max": base_ms_max,
 		"is_ms_active": is_ms_active,
+		"equipped_screens": equipped_screens,
+		"active_screen": active_screen,
 		"ccs_damaged": ccs_damaged,
 		"has_electrical_fire": has_electrical_fire,
 		"has_disastrous_fire": has_disastrous_fire,
@@ -117,6 +122,8 @@ func apply_net_state(data: Dictionary):
 	ms_max = data.get("ms_max", ms_max)
 	base_ms_max = data.get("base_ms_max", base_ms_max)
 	is_ms_active = data.get("is_ms_active", is_ms_active)
+	equipped_screens = data.get("equipped_screens", equipped_screens)
+	active_screen = data.get("active_screen", active_screen)
 	
 	ccs_damaged = data.get("ccs_damaged", ccs_damaged)
 	has_electrical_fire = data.get("has_electrical_fire", has_electrical_fire)
@@ -173,7 +180,13 @@ func _get_weapon_states() -> Array:
 	var states = []
 	for w in weapons:
 		states.append({
+			"name": w.get("name", "Unknown"),
+			"type": w.get("type", "Unknown"),
+			"range": w.get("range", 0),
 			"ammo": w.get("ammo", 0),
+			"max_ammo": w.get("max_ammo", 0),
+			"damage_dice": w.get("damage_dice", "1d10"),
+			"damage_bonus": w.get("damage_bonus", 0),
 			"is_crippled": w.get("is_crippled", false),
 			"unrepairable": w.get("unrepairable", false),
 			"fired": w.get("fired", false)
@@ -221,7 +234,13 @@ func _apply_weapon_states(states: Array):
 	for i in range(min(states.size(), weapons.size())):
 		var s = states[i]
 		var w = weapons[i]
+		w["name"] = s.get("name", w.get("name", "Unknown"))
+		w["type"] = s.get("type", w.get("type", "Unknown"))
+		w["range"] = s.get("range", w.get("range", 0))
 		w["ammo"] = s.get("ammo", w.get("ammo", 0))
+		w["max_ammo"] = s.get("max_ammo", w.get("max_ammo", 0))
+		w["damage_dice"] = s.get("damage_dice", w.get("damage_dice", "1d10"))
+		w["damage_bonus"] = s.get("damage_bonus", w.get("damage_bonus", 0))
 		w["is_crippled"] = s.get("is_crippled", w.get("is_crippled", false))
 		w["unrepairable"] = s.get("unrepairable", w.get("unrepairable", false))
 		w["fired"] = s.get("fired", w.get("fired", false))
@@ -500,6 +519,8 @@ func configure_frigate():
 	ms_current = 1
 	max_dcr = 70
 	current_dcr = max_dcr
+	equipped_screens = ["ICMs (x4)"] # Note: Frigate doesn't actually have screens per table, just ICMs. Storing literal if needed, but keeping empty for Energy Screens.
+	equipped_screens.clear()
 	
 	weapons.clear()
 	# Laser Battery: Range 9
@@ -598,6 +619,20 @@ func configure_destroyer():
 		"max_ammo": 999,
 		"damage_dice": "2d10",
 		"damage_bonus": 0,
+		"dtm": 0,
+		"fired": false
+	})
+	
+	weapons.append({
+		"name": "Electron Battery",
+		"type": "Electron Beam Battery",
+		"range": 10,
+		"arc": "360",
+		"ammo": 999,
+		"max_ammo": 999,
+		"damage_dice": "1d10",
+		"damage_bonus": 0,
+		"dtm": 10,
 		"fired": false
 	})
 	
@@ -632,6 +667,97 @@ func configure_destroyer():
 		
 	current_weapon_index = 0
 	
+func configure_light_cruiser():
+	ship_class = "Light Cruiser"
+	defense = "RH"
+	max_hull = 70
+	hull = max_hull
+	adf = 3
+	mr = 2
+	icm_max = 8
+	icm_current = 8
+	ms_max = 1
+	ms_current = 1
+	equipped_screens = ["ES", "SS"]
+	max_dcr = 100
+	current_dcr = max_dcr
+	
+	weapons.clear()
+	weapons.append({
+		"name": "Disruptor Canon",
+		"type": "Disruptor Cannon",
+		"range": 9,
+		"arc": "FF",
+		"ammo": 999,
+		"max_ammo": 999,
+		"damage_dice": "3d10",
+		"damage_bonus": 0,
+		"dtm": 20,
+		"fired": false
+	})
+	weapons.append({
+		"name": "Laser Battery",
+		"type": "Laser",
+		"range": 9,
+		"arc": "360",
+		"ammo": 999,
+		"max_ammo": 999,
+		"damage_dice": "1d10",
+		"damage_bonus": 0,
+		"dtm": 0,
+		"fired": false
+	})
+	weapons.append({
+		"name": "Electron Battery",
+		"type": "Electron Beam Battery",
+		"range": 10,
+		"arc": "360",
+		"ammo": 999,
+		"max_ammo": 999,
+		"damage_dice": "1d10",
+		"damage_bonus": 0,
+		"dtm": 10,
+		"fired": false
+	})
+	weapons.append({
+		"name": "Proton Battery",
+		"type": "Proton Beam Battery",
+		"range": 12,
+		"arc": "360",
+		"ammo": 999,
+		"max_ammo": 999,
+		"damage_dice": "1d10",
+		"damage_bonus": 0,
+		"dtm": 10,
+		"fired": false
+	})
+	weapons.append({
+		"name": "Rocket Batteries",
+		"type": "Rocket Battery",
+		"range": 3,
+		"arc": "360",
+		"ammo": 6,
+		"max_ammo": 6,
+		"damage_dice": "2d10",
+		"damage_bonus": 0,
+		"dtm": -10,
+		"fired": false
+	})
+	weapons.append({
+		"name": "Torpedoes",
+		"type": "Torpedo",
+		"range": 4,
+		"arc": "360",
+		"ammo": 4,
+		"max_ammo": 4,
+		"damage_dice": "4d10",
+		"damage_bonus": 0,
+		"dtm": 20,
+		"fired": false
+	})
+	
+	current_weapon_index = 0
+
 func configure_heavy_cruiser():
 	ship_class = "Heavy Cruiser"
 	defense = "RH"
@@ -643,12 +769,13 @@ func configure_heavy_cruiser():
 	icm_current = 8
 	ms_max = 1
 	ms_current = 1
+	equipped_screens = ["PS", "SS"]
 	max_dcr = 120
 	current_dcr = max_dcr
 	
 	weapons.clear()
-	# Laser Batteries (x3 - Separate entries)
-	for i in range(3):
+	# Laser Batteries (x2)
+	for i in range(2):
 		weapons.append({
 			"name": "Laser Battery %d" % (i + 1),
 			"type": "Laser",
@@ -672,6 +799,32 @@ func configure_heavy_cruiser():
 		"damage_dice": "3d10",
 		"damage_bonus": 0,
 		"dtm": 20,
+		"fired": false
+	})
+	
+	weapons.append({
+		"name": "Proton Battery",
+		"type": "Proton Beam Battery",
+		"range": 12,
+		"arc": "360",
+		"ammo": 999,
+		"max_ammo": 999,
+		"damage_dice": "1d10",
+		"damage_bonus": 0,
+		"dtm": 10,
+		"fired": false
+	})
+	
+	weapons.append({
+		"name": "Electron Battery",
+		"type": "Electron Beam Battery",
+		"range": 10,
+		"arc": "360",
+		"ammo": 999,
+		"max_ammo": 999,
+		"damage_dice": "1d10",
+		"damage_bonus": 0,
+		"dtm": 10,
 		"fired": false
 	})
 	
@@ -712,10 +865,11 @@ func configure_battleship():
 	hull = max_hull
 	adf = 2
 	mr = 2
-	icm_max = 20
-	icm_current = 20
+	icm_max = 12
+	icm_current = 12
 	ms_max = 4
 	ms_current = 4
+	equipped_screens = ["PS", "ES", "SS"]
 	max_dcr = 200
 	current_dcr = max_dcr
 	
@@ -746,6 +900,33 @@ func configure_battleship():
 			"damage_dice": "1d10",
 			"damage_bonus": 0,
 			"dtm": 0,
+			"fired": false
+		})
+		
+	weapons.append({
+		"name": "Proton Battery",
+		"type": "Proton Beam Battery",
+		"range": 12,
+		"arc": "360",
+		"ammo": 999,
+		"max_ammo": 999,
+		"damage_dice": "1d10",
+		"damage_bonus": 0,
+		"dtm": 10,
+		"fired": false
+	})
+
+	for i in range(2):
+		weapons.append({
+			"name": "Electron Battery %d" % (i + 1),
+			"type": "Electron Beam Battery",
+			"range": 10,
+			"arc": "360",
+			"ammo": 999,
+			"max_ammo": 999,
+			"damage_dice": "1d10",
+			"damage_bonus": 0,
+			"dtm": 10,
 			"fired": false
 		})
 		
@@ -854,6 +1035,8 @@ func configure_space_station(force_hull: int = -1):
 	ms_max = int(clamp(floor(hull / 50.0) + 1, 1, 4))
 	ms_current = ms_max
 	
+	equipped_screens = ["ES", "SS", "PS"]
+	
 	weapons.clear()
 	
 	# Laser Batteries: floor(H / 60) + 1, clamp 1-3
@@ -869,6 +1052,37 @@ func configure_space_station(force_hull: int = -1):
 			"damage_dice": "1d10",
 			"damage_bonus": 0,
 			"dtm": 0,
+			"fired": false
+		})
+		
+	# Space Station gets 1 electron, proton, or laser per 50 hp. 
+	# Given standard simplicity let's configure 1 of each for a 150HP station, or random.
+	# Let's add 1 of each to make it balanced, scaled.
+	var special_beams = int(floor(hull / 50.0))
+	if special_beams > 0:
+		weapons.append({
+			"name": "Electron Battery",
+			"type": "Electron Beam Battery",
+			"range": 10,
+			"arc": "360",
+			"ammo": 999,
+			"max_ammo": 999,
+			"damage_dice": "1d10",
+			"damage_bonus": 0,
+			"dtm": 10,
+			"fired": false
+		})
+	if special_beams > 1:
+		weapons.append({
+			"name": "Proton Battery",
+			"type": "Proton Beam Battery",
+			"range": 12,
+			"arc": "360",
+			"ammo": 999,
+			"max_ammo": 999,
+			"damage_dice": "1d10",
+			"damage_bonus": 0,
+			"dtm": 10,
 			"fired": false
 		})
 		
@@ -988,6 +1202,9 @@ func _set_grid_position(v: Vector3i):
 	position = HexGrid.hex_to_pixel(v)
 	ship_moved.emit(v)
 
+func _set_active_screen(val: String):
+	active_screen = val
+	state_changed.emit()
 
 var is_ghost: bool = false
 var is_exploding: bool = false

@@ -88,12 +88,12 @@ func test_laser_range_diffusion():
 	# Range 0
 	var w = {"name": "Laser", "type": "Laser", "range": 10}
 	var c0 = Combat.calculate_hit_chance(0, w, target)
-	assert_eq(c0, 80, "Laser at Range 0 should be 80%")
+	assert_eq(c0, 65, "Laser at Range 0 should be 65%")
 	
 	# Range 5
 	var c5 = Combat.calculate_hit_chance(5, w, target)
-	# 80 - (5 * 5) = 80 - 25 = 55
-	assert_eq(c5, 55, "Laser at Range 5 should be 55%")
+	# 65 - (5 * 5) = 65 - 25 = 40
+	assert_eq(c5, 40, "Laser at Range 5 should be 40%")
 	
 	_log_result("test_laser_range_diffusion [PASS]")
 	target.free()
