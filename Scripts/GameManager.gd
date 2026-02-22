@@ -2691,7 +2691,7 @@ func _spawn_ghost():
 		if not allowed:
 			return
 
-	ghost_ship = Ship.new()
+	ghost_ship = load("res://Scripts/Ship.gd").new()
 	ghost_ship.name = "GhostShip"
 	ghost_ship.side_id = selected_ship.side_id
 	ghost_ship.ship_class = selected_ship.ship_class # Copy visual class
@@ -4751,7 +4751,7 @@ func load_scenario(key: String, seed_val: int = 12345):
 	# Instantiate Ships (Pass 1)
 	var ship_list = scen_dataset.get("ships", [])
 	for data in ship_list:
-		var s = Ship.new()
+		var s = load("res://Scripts/Ship.gd").new()
 		add_child(s)
 		
 		# Configure Class
