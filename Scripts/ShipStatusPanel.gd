@@ -244,6 +244,10 @@ func update_from_ship(ship):
 	
 	var idx = 0
 	for w in ship.weapons:
+		if w.get("is_crippled", false) or w.get("unrepairable", false):
+			idx += 1
+			continue
+			
 		var w_lbl = Label.new()
 		var w_name = w.get("name", "Unknown Weapon")
 		w_lbl.text = "• %s" % w_name

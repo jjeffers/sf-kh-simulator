@@ -4,10 +4,6 @@
 - [ ] 
 
 ## 🐛 Backlog
-- Add graphical explosion effect on ship death
-- Implement 3D visual modes for combat rendering
-- Create map editor tool
-- Repair Panel Missing Systems: When a ship has a damaged masking screen defense, CCS damage, or ICM systems destroyed, they don't show up in the DCR repair panel. 
 - Repair Panel Unrepairable Display: If systems didn't show up because of a previous failed repair with a roll of 96-100, we should still show the damaged system but disallow any DCR allocation to visually indicate its permanent destruction.
 
 
@@ -15,6 +11,7 @@
 - [ ] 
 
 ## ✅ Fixed
+- [x] Implemented dynamic crippled weapon filtering for Ship Status UI: Appended a boolean guard into `ShipStatusPanel.gd`'s weapon enumeration block to intercept and `continue` past any weapons possessing active `is_crippled` or `unrepairable` flags, hiding them organically from the player's view structure. (2026-02-21)
 - [x] Fixed multiplayer synchronization of destroyed ships: Clients receiving network packets where `is_destroyed` transitioned to `true` were manually overwriting the bool locally without firing the `ship_destroyed` event. Ship replication now natively triggers `trigger_explosion()` automatically, globally culling 0-hull vessels across all clients' UIs. (2026-02-21)
 - [x] Implemented Game Log Tilde (~) Toggle: Refactored `panel_log_container` into `GameManager.gd`'s top-level scope. Set the chat log to be hidden by default (`visible = false`). Intercepted `KEY_QUOTELEFT` / `KEY_ASCIITILDE` in `_unhandled_input()` to map an absolute global visibility toggle. (2026-02-21)
 - [x] Fixed DCR Graphical Sync: Hooked Masking Screens, CCS, and ICM internal property variables to explicitly expose them as sliders on the DCR interface instead of dropping them off the system. Added `(DESTROYED)` visual locks for systems that fail repair rolls permanently. (2026-02-21)
