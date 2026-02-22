@@ -25,6 +25,15 @@ B. Side B Turn
    - **Passive Fire**: The non-moving side (Side A) plans and executes defensive fire.
    - **Active Fire**: The moving player plans and executes offensive fire.
 
+### Reactive Fire aka Defensive Fire
+- During the passive fire phase, the non-moving side may fire weapons at the moving side.
+- The non-moving side may fire at a ship at any of the hexes the target ship travelled through during the movement phase.
+- For example a non-moving ship may fire at a moving ship that approached to within weapon range during the movement phase, even if the target ship is no longer in range at the end of the movement phase.
+- In the attack planning the eligible hexes for firing should be shaded in red. 
+- The attack odds should reflect the most favorable odds for the firing side. For example, if range is a variable factor, such as with weapons with range diffusion, the attack odds should reflect the most favorable range for the firing side.
+- When the attack is resolved, the animations still are drawn with respect to the target ships end position.
+
+
 IMPORTANT: damage is counted as it occurs, it's possible for ships to destroyed during a combat phase. Damage take effect immediately!
 
 ## Damage Effects
