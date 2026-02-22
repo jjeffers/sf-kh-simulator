@@ -220,7 +220,7 @@ static func generate_scenario(key: String, rng_seed: int) -> Dictionary:
 				"weapons": [
 					{"name": "Laser Battery 1", "type": "Laser", "range": 9, "arc": "360", "ammo": 999, "max_ammo": 999, "damage_dice": "1d10", "damage_bonus": 0, "fired": false},
 					{"name": "Laser Battery 2", "type": "Laser", "range": 9, "arc": "360", "ammo": 999, "max_ammo": 999, "damage_dice": "1d10", "damage_bonus": 0, "fired": false},
-					{"name": "Laser Battery 3", "type": "Laser", "range": 9, "arc": "360", "ammo": 999, "max_ammo": 999, "damage_dice": "1d10", "damage_bonus": 0, "fired": false},
+					{"name": "Laser Battery ", "type": "Laser", "range": 9, "arc": "360", "ammo": 999, "max_ammo": 999, "damage_dice": "1d10", "damage_bonus": 0, "fired": false},
 					{"name": "Rocket Battery Swarm", "type": "Rocket Battery", "range": 3, "arc": "360", "ammo": 12, "max_ammo": 12, "damage_dice": "2d10", "damage_bonus": 0, "fired": false}
 				]
 			}
@@ -385,6 +385,21 @@ static func generate_scenario(key: String, rng_seed: int) -> Dictionary:
 			"overrides": {
 				"hull": 5, # Very damaged
 				"has_disastrous_fire": true
+			}
+		})
+		ships.append({
+			"name": "Broken Bone",
+			"class": "Heavy Cruiser",
+			"faction": "Sathar",
+			"side_index": 1,
+			"position": Vector3i(2, 1, -3),
+			"facing": 3,
+			"start_speed": 0,
+			"overrides": {
+				"hull": 20,
+				"icm_max": 0,
+				"icm_current": 0,
+				"ccs_damaged": true
 			}
 		})
 		scen["ships"] = ships

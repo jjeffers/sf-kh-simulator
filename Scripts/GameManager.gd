@@ -1335,24 +1335,42 @@ func _process_next_attack():
 	var w_type = weapon.get("type")
 	
 	# DOCKING RULE: Docked Ships cannot use ICMs
-	var can_use_icm = (target.icm_current > 0)
-	# if target.is_docked: can_use_icm = false # User requested prompt even if docked.
+	# Find ALL friendly ships in the same hex with ICMs available
+	var eligible_ships = []
+	for s in ships:
+		if is_instance_valid(s) and s.side_id == target.side_id and s.grid_position == target.grid_position:
+			if s.icm_current > 0 and not s.is_destroyed: # and not s.is_docked? (Rule assumes docked ships cannot use ICMs?)
+				# Assuming docked ships cannot use ICMs based on previous rule
+				if not s.is_docked:
+					eligible_ships.append(s)
+					
+	# Fallback if no eligible ships
+	var can_use_icm = eligible_ships.size() > 0
 
 	if can_use_icm and w_type in ["Torpedo", "Rocket", "Rocket Battery"]:
 		# Calculate hit chance to show player
 		var raw_chance = Combat.calculate_hit_chance(d, weapon, target, is_head_on, 0, source)
 		
-		# Prompt UI
-		_trigger_icm_decision(source.name, weapon["name"], w_type, raw_chance, target)
+		# Prompt UI (Pass array of ships)
+		_trigger_icm_decision(source.name, weapon["name"], w_type, raw_chance, target, eligible_ships)
 		
-		# Wait for signal
-		var decision_count = await icm_decision_made
+		# Wait for signal (Returns Dictionary now: { ship_name: amount })
+		var allocations = await icm_decision_made
 		
-		if decision_count > 0:
-			icm_used = decision_count
-			target.icm_current -= icm_used
-			log_message("%s launches %d ICMs!" % [target.name, icm_used])
-			_spawn_icm_fx(target, source.position)
+		# Calculate total and deduct from each
+		for s_name in allocations.keys():
+			var amt = allocations[s_name]
+			if amt > 0:
+				icm_used += amt
+				# Find the ship and deduct
+				for s in eligible_ships:
+					if s.name == s_name:
+						s.icm_current -= amt
+						_spawn_icm_fx(s, source.position)
+						break
+						
+		if icm_used > 0:
+			log_message("Shared Defense launches %d total ICMs!" % icm_used)
 			await get_tree().create_timer(1.0).timeout # Wait for counter-fire FX
 	
 	
@@ -1367,10 +1385,9 @@ func _process_next_attack():
 	var travel_time = _spawn_attack_fx(start_pos, target_pos, weapon.get("type", "Laser"))
 	
 	if icm_used > 0:
-		log_message("%s launches %d ICMs!" % [target.name, icm_used])
-		# Launch ICMs to intercept near target
-		# They should arrive slightly before the full travel time (e.g. at 80% marks)
-		_spawn_icm_fx(target, source.position, travel_time)
+		# ICMs already fired from each source above, but maybe log again or wait?
+		# Original code did _spawn_icm_fx here again. We moved the fx to the allocation loop above.
+		pass
 	
 	if hit:
 		# 1. Roll for Hull Damage Amount (Standard, used if result is Hull Hit)
@@ -4400,10 +4417,14 @@ func posmod(a, b):
 	if res < 0 and b > 0: res += b
 	return res
 
-func _trigger_icm_decision(attacker_name: String, weapon_name: String, weapon_type: String, current_chance: int, target: Ship):
+func _trigger_icm_decision(attacker_name: String, weapon_name: String, weapon_type: String, current_chance: int, target: Ship, eligible_ships: Array = []):
 	# Create modal UI
 	if panel_icm: panel_icm.queue_free()
 	
+	# Fallback if eligible_ships not properly passed (for older tests/code)
+	if eligible_ships.is_empty():
+		eligible_ships = [target]
+		
 	panel_icm = PanelContainer.new()
 	ui_layer.add_child(panel_icm)
 	panel_icm.set_anchors_preset(Control.PRESET_CENTER)
@@ -4431,13 +4452,6 @@ func _trigger_icm_decision(attacker_name: String, weapon_name: String, weapon_ty
 	panel_icm.add_child(vbox)
 	
 	var lbl = Label.new()
-	# Initial Text
-	var update_text = func(icm_count: int):
-		var reduction = Combat.calculate_icm_reduction(weapon_type, icm_count)
-		var final_chance = max(0, current_chance - reduction)
-		lbl.text = "INCOMING FIRE DETECTED!\nTarget: %s\n%s firing %s\nBase Chance: %d%% -> Adjusted: %d%%" % [target.name, attacker_name, weapon_name, current_chance, final_chance]
-	
-	update_text.call(0)
 	lbl.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	vbox.add_child(lbl)
 	
@@ -4445,45 +4459,71 @@ func _trigger_icm_decision(attacker_name: String, weapon_name: String, weapon_ty
 	var is_target_owner = (target.side_id == my_side_id) or (my_side_id == 0) # Debug/0 can also decide
 	
 	if is_target_owner:
-		var lbl_ammo = Label.new()
-		lbl_ammo.text = "ICMs Available: %d" % target.icm_current
-		vbox.add_child(lbl_ammo)
+		var ship_spinboxes = {} # Dictionary of ship_name -> SpinBox node
 		
-		var hbox = HBoxContainer.new()
-		vbox.add_child(hbox)
+		# Initial Text updater
+		var update_text = func():
+			var total_icm = 0
+			for spin in ship_spinboxes.values():
+				total_icm += int(spin.value)
+				
+			var reduction = Combat.calculate_icm_reduction(weapon_type, total_icm)
+			var final_chance = max(0, current_chance - reduction)
+			lbl.text = "INCOMING FIRE DETECTED!\nTarget: %s\n%s firing %s\nBase Chance: %d%% -> Adjusted: %d%%" % [target.name, attacker_name, weapon_name, current_chance, final_chance]
+		
+		# Add a row for each eligible ship
+		for ship in eligible_ships:
+			var hbox = HBoxContainer.new()
+			vbox.add_child(hbox)
+			
+			var lbl_ship = Label.new()
+			lbl_ship.text = "%s (Available: %d)" % [ship.name, ship.icm_current]
+			lbl_ship.custom_minimum_size = Vector2(200, 0)
+			hbox.add_child(lbl_ship)
+			
+			var spin = SpinBox.new()
+			spin.min_value = 0
+			spin.max_value = ship.icm_current
+			spin.value = 0
+			spin.select_all_on_focus = true
+			hbox.add_child(spin)
+			
+			spin.value_changed.connect(func(_val): update_text.call())
+			ship_spinboxes[ship.name] = spin
+			
+		# Call once to set initial text
+		update_text.call()
+
+		var btn_box = HBoxContainer.new()
+		btn_box.alignment = BoxContainer.ALIGNMENT_CENTER
+		vbox.add_child(btn_box)
 		
 		var btn_fire = Button.new()
-		btn_fire.text = "LAUNCH ICM !"
-		hbox.add_child(btn_fire)
-		
-		var spin = SpinBox.new()
-		spin.min_value = 0
-		spin.max_value = target.icm_current
-		spin.value = 0
-		spin.select_all_on_focus = true
-		hbox.add_child(spin)
-		
-		spin.value_changed.connect(func(val):
-			update_text.call(int(val))
-		)
+		btn_fire.text = "LAUNCH ICM(s)!"
+		btn_box.add_child(btn_fire)
 		
 		var btn_skip = Button.new()
 		btn_skip.text = "DO NOT FIRE"
-		vbox.add_child(btn_skip)
+		btn_box.add_child(btn_skip)
 		
 		# Connect signals
 		btn_fire.pressed.connect(func():
-			var count = int(spin.value)
-			if count > 0:
-				_submit_icm_decision(count)
-			else:
-				_submit_icm_decision(0)
+			var allocations = {}
+			for s_name in ship_spinboxes:
+				var val = int(ship_spinboxes[s_name].value)
+				if val > 0:
+					allocations[s_name] = val
+					
+			_submit_icm_decision(allocations)
 		)
 		
-		btn_skip.pressed.connect(func(): _submit_icm_decision(0))
+		btn_skip.pressed.connect(func(): _submit_icm_decision({}))
 		
 	else:
 		# Waiting Message
+		var reduction = Combat.calculate_icm_reduction(weapon_type, 0)
+		var final_chance = max(0, current_chance - reduction)
+		lbl.text = "INCOMING FIRE DETECTED!\nTarget: %s\n%s firing %s\nBase Chance: %d%% -> Adjusted: %d%%" % [target.name, attacker_name, weapon_name, current_chance, final_chance]
 		var lbl_wait = Label.new()
 		lbl_wait.text = "\n(Waiting for Defender to decide on ICMs...)"
 		lbl_wait.add_theme_color_override("font_color", Color.YELLOW)
@@ -4502,19 +4542,19 @@ func get_side_name(side_id: int) -> String:
 			
 	return "Side %d" % side_id
 
-func _submit_icm_decision(count: int):
+func _submit_icm_decision(allocations: Dictionary):
 	# Send RPC to broadcast decision
-	rpc("broadcast_icm_decision", count)
+	rpc("broadcast_icm_decision", allocations)
 
 @rpc("any_peer", "call_local", "reliable")
-func broadcast_icm_decision(count: int):
+func broadcast_icm_decision(allocations: Dictionary):
 	# Close UI on all clients
 	if panel_icm:
 		panel_icm.queue_free()
 		panel_icm = null
 		
 	# Resume combat resolution logic on all clients (locally)
-	icm_decision_made.emit(count)
+	icm_decision_made.emit(allocations)
 
 func _on_ship_destroyed(ship: Ship):
 	ships.erase(ship)

@@ -186,6 +186,7 @@ Mechanics for damage mitigation and avoidance.
   - **vs Torpedo:** -10% Hit Chance per ICM point.
   - **vs Assault Rocket:** -5% Hit Chance per ICM point.
   - **vs Rocket Battery:** -3% Hit Chance per ICM point.
+- Ships in the same hex as a ship targeted by torpedoes, assault rockets, or rocket batteries may fire ICMs at the incoming projectiles. When the ICM dialog is opened, all ships in the same hex as the targeted ship will be listed and can contribute ICMs to the defense. The dialog will show the current ICMs available for each ship and the total ICMs available for the defense. As the ICMs are allocated, the attack odds reduction will be shown in the dialog.
 
 ## Scenarios
 
