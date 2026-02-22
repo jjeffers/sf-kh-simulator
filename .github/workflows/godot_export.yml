@@ -33,7 +33,7 @@ jobs:
 
       - name: Run GUT Tests
         run: |
-          ./godot --headless -s addons/gut/gut_cmdln.gd -gdir=test -ginclude_subdirs -gexit
+          ./godot --path . --headless -s addons/gut/gut_cmdln.gd -gdir=test -ginclude_subdirs -gexit
 
   export-game:
     name: Export Game
