@@ -61,6 +61,7 @@ var label_phase_indicator: Label # NEW: Phase Indicator Label
 var btn_orbit_cw: Button
 var btn_orbit_ccw: Button
 var btn_ms_toggle: CheckBox
+var opt_active_screen: OptionButton
 var btn_exec_move: Button # NEW: Manual Phase Transition
 
 # Movement State
@@ -455,6 +456,12 @@ func _setup_ui():
 	btn_ms_toggle.toggled.connect(_on_ms_toggled)
 	btn_ms_toggle.visible = false
 	vbox.add_child(btn_ms_toggle)
+	
+	# Active Screen Dropdown
+	opt_active_screen = OptionButton.new()
+	opt_active_screen.item_selected.connect(_on_active_screen_selected)
+	opt_active_screen.visible = false
+	vbox.add_child(opt_active_screen)
 	
 	# Attack Queue Panel
 	panel_attack_queue = PanelContainer.new()
@@ -1130,7 +1137,13 @@ func _spawn_attack_fx(start: Vector2, end: Vector2, type: String) -> float:
 		
 		line.width = 5.0 if is_canon else 3.0
 		
-		if is_disruptor:
+		if type == "Proton Beam Battery":
+			line.default_color = Color(0.2, 1.0, 0.5, 1.0) # Bright Green
+			line.width = 4.0
+		elif type == "Electron Beam Battery":
+			line.default_color = Color(0.2, 0.5, 1.0, 1.0) # Bright Blue
+			line.width = 4.0
+		elif is_disruptor:
 			line.default_color = Color(0.8, 0.4, 1.0, 1.0) # Purple/Whiteish
 		elif is_canon:
 			line.default_color = Color.ORANGE
@@ -1414,6 +1427,20 @@ func _process_next_attack():
 		await get_tree().create_timer(damage_delay).timeout
 		
 		if is_instance_valid(target):
+			# Check for Screen Half Damage Logic
+			var w_type_full = weapon.get("type", "")
+			var tgt_screen = target.get("active_screen") if (target.get("active_screen") and target.get("active_screen") != "None") else "None"
+			if target.get("is_ms_active"): tgt_screen = "MS"
+			
+			var apply_half = false
+			if tgt_screen == "MS" and w_type_full in ["Laser", "Laser Canon"]: apply_half = true
+			if tgt_screen == "PS" and w_type_full == "Electron Beam Battery": apply_half = true
+			if tgt_screen == "ES" and w_type_full == "Proton Beam Battery": apply_half = true
+			
+			if apply_half:
+				hull_dmg_roll = max(1, int(float(hull_dmg_roll) / 2.0))
+				log_message("[color=yellow]Screen reduces hull damage by half![/color]")
+				
 			var res = target.apply_damage_effect(effect, hull_dmg_roll)
 			log_message("%s: %s" % [target.name, res.get("text")])
 			
@@ -1460,11 +1487,13 @@ func _process_next_attack():
 			# Only show hull damage number if it was a hull hit? 
 			# Or always show "CRIT" or something?
 			# For now, show hull dmg if > 0
+				# Check for Screen Half Damage Logic
 			if effect.get("type") == "Hull":
 				var final_dmg = int(hull_dmg_roll * effect.get("mult", 1.0))
 				_spawn_hit_text(target_pos, final_dmg)
 			else:
 				_spawn_hit_text(target_pos, effect.get("text", "HIT")) # overload spawn_hit_text to accept string?
+			
 			
 			if audio_hit.stream: audio_hit.play()
 	else:
@@ -2731,7 +2760,13 @@ func _update_ui_state():
 	# Reset Panels should be handled per-phase to avoid flicker
 	# panel_planning.visible = false 
 	# panel_movement.visible = false
-	
+	# Update Ship Status Panel
+	if ship_status_panel:
+		if is_instance_valid(selected_ship):
+			ship_status_panel.update_from_ship(selected_ship)
+		else:
+			ship_status_panel.visible = false
+
 	if current_phase == Phase.MOVEMENT:
 		panel_movement.visible = true
 		panel_planning.visible = false
@@ -2751,6 +2786,7 @@ func _update_ui_state():
 		btn_orbit_cw.visible = false
 		btn_orbit_ccw.visible = false
 		btn_ms_toggle.visible = false
+		if opt_active_screen: opt_active_screen.visible = false
 		
 		# Turn Restriction: If not my turn, stop here (hide controls)
 		# Exception: Server/Offline always sees controls if needed (debug/hotseat)
@@ -2832,101 +2868,50 @@ func _update_ui_state():
 						log_message("Maneuver Dropped Screen")
 				else:
 					# If not active, can we Activate it?
-					# Only if move is valid (Straight line) OR if we haven't moved yet (Stationary start is valid?)
-					# Actually, user plans move then activates. If plot is invalid, disable button.
 					btn_ms_toggle.disabled = not ms_valid_move
 					if not ms_valid_move:
-						btn_ms_toggle.tooltip_text = "Must maintain Speed and Heading to deploy"
+						btn_ms_toggle.tooltip_text = "Requires straight-line movement matching current speed."
 					else:
-						btn_ms_toggle.tooltip_text = "Deploy Masking Screen (Cost: 1)"
-			else:
-				btn_ms_toggle.visible = false
-
-		# Execute Movement Button Logic
-		btn_exec_move.visible = true
-		
-		# Find ANY unmoved ships for this side
-		var unmoved = []
-		var mandatory_unmoved = []
-		for s in ships:
-			if is_instance_valid(s) and s.side_id == current_side_id and not s.is_exploding and not s.has_moved:
-				if s.is_docked or s.ship_class == "Space Station":
-					continue
-					
-				var eff_adf = s.get_effective_adf()
-				var min_speed = max(0, s.speed - eff_adf)
+						btn_ms_toggle.tooltip_text = ""
+						
+			# Regular Energy Screen Check
+			if selected_ship.equipped_screens.size() > 0:
+				opt_active_screen.visible = true
+				var current_sel = "None"
+				if selected_ship.active_screen:
+					current_sel = selected_ship.active_screen
 				
-				if s.has_orders:
-					var is_orbiting_maneuver = (s.planned_orbit_dir != 0)
-					if not is_orbiting_maneuver and s.planned_path.size() < min_speed:
-						mandatory_unmoved.append(s)
-					# If orders are valid (length >= min_speed or orbiting), it doesn't block
+				# Re-populate options safely without disrupting selection unless required
+				var options = ["None"]
+				for screen in selected_ship.equipped_screens:
+					options.append(screen)
+				
+				# Update dropdown ONLY if items changed or empty to prevent signal looping
+				if opt_active_screen.item_count != options.size():
+					opt_active_screen.clear()
+					for screen in options:
+						opt_active_screen.add_item(screen)
+						
+				# Set selected state
+				for i in range(opt_active_screen.item_count):
+					if opt_active_screen.get_item_text(i) == current_sel:
+						opt_active_screen.select(i)
+						break
+				
+				# Can only change screens during movement planning (unless locked)
+				# Rule: "Players select any defense screens they wish to deploy during movement planning."
+				# MS disables Energy Screens? The RULES say: "Note that ships cannot combine masking screens with energy screens."
+				if selected_ship.is_ms_active:
+					opt_active_screen.disabled = true
+					# Auto-drop energy screen if MS is active
+					if selected_ship.active_screen != "None":
+						selected_ship.active_screen = "None"
+						opt_active_screen.select(0)
 				else:
-					if min_speed > 0:
-						mandatory_unmoved.append(s)
-					else:
-						unmoved.append(s)
-		
-		if mandatory_unmoved.size() > 0:
-			btn_exec_move.disabled = true
-			btn_exec_move.text = "AWAITING MOVEMENT"
-			btn_exec_move.modulate = Color(1, 0.4, 0.4) # Red
-		elif unmoved.size() > 0:
-			btn_exec_move.disabled = false 
-			btn_exec_move.text = "EXECUTE MOVEMENT" 
-			btn_exec_move.modulate = Color(1, 0.8, 0.2) # Yellow warning
-		else:
-			btn_exec_move.disabled = false
-			btn_exec_move.text = "EXECUTE MOVEMENT"
-			btn_exec_move.modulate = Color(1, 0.6, 0.2) # Orange
-			
-	# Update Status Panel GLOBALLY
-	if ship_status_panel:
-		if selected_ship:
-			ship_status_panel.update_from_ship(selected_ship)
-			ship_status_panel.visible = true
-			
-			# Signal Connection Management
-			if selected_ship != current_connected_ship:
-				if current_connected_ship and is_instance_valid(current_connected_ship):
-					if current_connected_ship.state_changed.is_connected(_on_ship_state_changed):
-						current_connected_ship.state_changed.disconnect(_on_ship_state_changed)
-				
-				current_connected_ship = selected_ship
-				if not current_connected_ship.state_changed.is_connected(_on_ship_state_changed):
-					current_connected_ship.state_changed.connect(_on_ship_state_changed)
-		else:
-			ship_status_panel.visible = false
-			# Disconnect if we deselected
-			if current_connected_ship and is_instance_valid(current_connected_ship):
-				if current_connected_ship.state_changed.is_connected(_on_ship_state_changed):
-					current_connected_ship.state_changed.disconnect(_on_ship_state_changed)
-			current_connected_ship = null
-
-	if current_phase == Phase.MOVEMENT:
-		if selected_ship:
-			# label_status handles Phase/Global info for movement
-			var txt = ""
-			if start_speed == 0:
-				txt += "Speed 0: Free Rotation Mode\n"
-			elif state_is_orbiting:
-				txt += "Orbiting: Free Rotation Mode\n"
-			
-			if selected_ship.is_ms_active:
-				txt += "[COLOR=blue]Masking Screen ACTIVE[/COLOR]\n"
-
-			var eff_adf = selected_ship.get_effective_adf()
-			var min_speed = max(0, start_speed - eff_adf)
-			var max_speed = start_speed + eff_adf
-			var is_valid = current_path.size() >= min_speed and current_path.size() <= max_speed
-
-			if not is_valid and not state_is_orbiting:
-				txt += "\n(Invalid Speed)"
-				
-			label_status.text = txt
-		else:
-			label_status.text = ""
-
+					opt_active_screen.disabled = is_locked
+			else:
+				opt_active_screen.visible = false
+						
 	elif current_phase == Phase.COMBAT:
 		panel_movement.visible = false
 		if panel_repair: panel_repair.visible = false
@@ -3176,6 +3161,43 @@ func _on_orbit(direction: int):
 	_update_ui_state()
 
 var current_orbit_direction: int = 0
+
+func _on_active_screen_selected(index: int):
+	# Authority check: Only player who owns the ship can change this
+	if current_phase != Phase.MOVEMENT or (my_side_id != current_side_id and my_side_id != 0): return
+	if not selected_ship or selected_ship.has_moved or selected_ship.has_orders: return
+	
+	var text = opt_active_screen.get_item_text(index)
+	selected_ship.active_screen = text
+	
+	if multiplayer.has_multiplayer_peer() and not _is_server_or_offline():
+		rpc_update_screen_state.rpc_id(1, selected_ship.name, text)
+	elif _is_server_or_offline():
+		rpc_update_screen_state(selected_ship.name, text)
+	
+	log_message("%s set Active Screen: %s" % [selected_ship.name, text])
+	
+@rpc("any_peer", "call_local", "reliable")
+func rpc_update_screen_state(ship_name: String, screen_type: String):
+	if multiplayer.has_multiplayer_peer() and multiplayer.is_server():
+		var sender_id = multiplayer.get_remote_sender_id()
+		var player_side = 0
+		if NetworkManager and NetworkManager.lobby_data.has("teams") and NetworkManager.lobby_data["teams"].has(sender_id):
+			player_side = NetworkManager.lobby_data["teams"][sender_id]
+			
+		var s = _find_ship_by_name(ship_name)
+		if s and s.side_id == player_side:
+			s.active_screen = screen_type
+			rpc_sync_screen_state.rpc(ship_name, screen_type)
+	elif not multiplayer.has_multiplayer_peer():
+		# Hotseat
+		var s = _find_ship_by_name(ship_name)
+		if s: s.active_screen = screen_type
+
+@rpc("authority", "call_local", "reliable")
+func rpc_sync_screen_state(ship_name: String, screen_type: String):
+	var s = _find_ship_by_name(ship_name)
+	if s: s.active_screen = screen_type
 
 func _on_ms_toggled(pressed: bool):
 	# Authority Check

@@ -31,9 +31,12 @@ func test_best_defensive_fire_hex():
 	# Dist 8 => 80 - 40 = 40%
 	# Best should be Dist 5 (55%)
 	
+	# Base 65. Range 5 penalty = 25 (-25). Total 40.
+	# It shouldn't use dist 8 (-40 => 25) or dist 10 (-50 => 15).
+	
 	var best_hex_info = Combat.get_best_defensive_fire_hex(source, target, weapon)
 	
-	assert_eq(best_hex_info["chance"], 55, "Best chance should be computed from closest hex in path.")
+	assert_eq(best_hex_info["chance"], 40, "Best chance should be computed from closest hex in path.")
 	assert_eq(best_hex_info["distance"], 5, "Best distance should be 5.")
 	assert_eq(best_hex_info["hex"], Vector3i(5, 0, -5), "Best hex should be at dist 5.")
 	

@@ -299,6 +299,16 @@ func update_from_ship(ship):
 			ms_lbl.text += " (%d)" % ship.ms_current
 		defenses_vbox.add_child(ms_lbl)
 
+	# Energy Screens
+	if ship.get("equipped_screens") and ship.equipped_screens.size() > 0:
+		for screen in ship.equipped_screens:
+			if screen == "None": continue
+			var es_lbl = Label.new()
+			es_lbl.text = "• %s" % screen
+			if ship.get("active_screen") == screen:
+				es_lbl.text += " (ACTIVE)"
+				es_lbl.add_theme_color_override("font_color", Color.CYAN)
+			defenses_vbox.add_child(es_lbl)
 		
 	# Alerts
 	# Clear old alerts (keep title)

@@ -52,36 +52,73 @@ static func calculate_hit_chance(dist: int, weapon: Dictionary = {}, target: Shi
 		if icm_count > 0: chance -= calculate_icm_reduction("Rocket Battery", icm_count)
 		return max(0, chance)
 	
-	# Base Chance Calculation
-	var base = BASE_HIT_CHANCE # 80
+	# Base Chance Calculation and Target Defenses (RULES.md)
+	var base = 65 # Default fallback
+	var w_type_full = weapon.get("type", "")
 	
-	# Masking Screen Logic (Defense & Reciprocal)
-	var target_has_ms = (target and target.get("is_ms_active"))
-	var source_has_ms = (source and source.get("is_ms_active"))
-	
-	if (target_has_ms or source_has_ms) and (weapon.get("type") == "Laser" or weapon.get("type") == "Laser Canon" or weapon.get("type") == "Disruptor Canon"):
-		# Override Base for Laser weapons
-		if weapon.get("type") == "Laser Canon":
-			base = 20
-		elif weapon.get("type") == "Disruptor Canon":
-			base = 35
-		else:
-			base = 10 # Battery
-	else:
-		# Standard Laser vs Reflective Hull (RH) only if NO Screen (Screen overrides RH?)
-		# Usually defensive systems don't stack poorly, but Prompt says "reduce the base chance... to 20%".
-		# This strongly implies replacement.
-		if target and target.defense == "RH":
-			if weapon.get("type") == "Laser":
-				base = 50
-			elif weapon.get("type") == "Laser Canon" or weapon.get("type") == "Disruptor Canon":
-				base = 60 # "60% chance to hit a target with a reflective hull"
+	match w_type_full:
+		"Laser":
+			base = 65
+		"Laser Canon":
+			base = 75
+		"Electron Beam Battery":
+			base = 60
+		"Proton Beam Battery":
+			base = 60
+		"Disruptor Cannon", "Disruptor Canon": # Handle string matching
+			base = 60
+			
+	# Apply Defenses (Base modifier)
+	var active_defense = "None"
+	if target:
+		if target.get("is_ms_active"):
+			active_defense = "MS" # MS overrides others in practice
+		elif target.get("active_screen") and target.get("active_screen") != "None":
+			active_defense = target.get("active_screen")
+		elif target.defense == "RH": # Fallback to RH if no active screen/MS
+			active_defense = "RH"
+			
+	match active_defense:
+		"RH":
+			match w_type_full:
+				"Laser": base = 50
+				"Laser Canon": base = 60
+				"Electron Beam Battery": base = 60
+				"Proton Beam Battery": base = 60
+				"Disruptor Cannon", "Disruptor Canon": base = 60
+		"PS":
+			match w_type_full:
+				"Laser": base = 65
+				"Laser Canon": base = 75
+				"Electron Beam Battery": base = 25
+				"Proton Beam Battery": base = 70
+				"Disruptor Cannon", "Disruptor Canon": base = 50
+		"ES":
+			match w_type_full:
+				"Laser": base = 65
+				"Laser Canon": base = 75
+				"Electron Beam Battery": base = 70
+				"Proton Beam Battery": base = 26
+				"Disruptor Cannon", "Disruptor Canon": base = 50
+		"SS":
+			match w_type_full:
+				"Laser": base = 65
+				"Laser Canon": base = 25
+				"Electron Beam Battery": base = 40
+				"Proton Beam Battery": base = 40
+				"Disruptor Cannon", "Disruptor Canon": base = 40
+		"MS":
+			match w_type_full:
+				"Laser": base = 20
+				"Laser Canon": base = 0
+				"Electron Beam Battery": base = 50
+				"Proton Beam Battery": base = 50
+				"Disruptor Cannon", "Disruptor Canon": base = 50
 
 	
 	# Standard / Laser / Laser Canon Rule: Range Diffusion (RD)
 	# -5% per hex
-	# ONLY if type is Laser or Laser Canon or Disruptor Canon
-	if w_type == "Laser" or w_type == "Laser Canon" or w_type == "Disruptor Canon":
+	if w_type_full in ["Laser", "Laser Canon", "Electron Beam Battery", "Proton Beam Battery", "Disruptor Cannon", "Disruptor Canon"]:
 		chance = base - (dist * RANGE_PENALTY)
 	else:
 		chance = base # Should not happen given early returns for Rockets/Torpedoes, but safe fallback
@@ -207,15 +244,16 @@ static func get_damage_effect(roll: int) -> Dictionary:
 	if roll <= 60: return {"type": "MR", "val": - 99, "text": "Steering Hit (All MR)"}
 	
 	# Weapon Hits
-	if roll <= 62: return {"type": "Weapon", "list": ["Disruptor Canon", "Laser Canon", "Laser", "Rocket", "Rocket Battery"], "text": "Weapon Hit"}
-	if roll <= 64: return {"type": "Weapon", "list": ["Laser", "Rocket Battery", "Torpedo", "Rocket"], "text": "Weapon Hit"}
+	if roll <= 62: return {"type": "Weapon", "list": ["Laser Canon", "Laser", "Proton Beam Battery", "Electron Beam Battery", "Rocket", "Rocket Battery"], "text": "Weapon Hit"}
+	if roll <= 64: return {"type": "Weapon", "list": ["Proton Beam Battery", "Electron Beam Battery", "Laser", "Rocket Battery", "Torpedo", "Rocket"], "text": "Weapon Hit"}
 	if roll <= 66: return {"type": "Weapon", "list": ["Disruptor Canon", "Laser Canon", "Rocket", "Torpedo", "Laser"], "text": "Weapon Hit"}
-	if roll <= 68: return {"type": "Weapon", "list": ["Torpedo", "Rocket", "Laser", "Rocket Battery"], "text": "Weapon Hit"}
-	if roll <= 70: return {"type": "Weapon", "list": ["Laser", "Rocket Battery", "Torpedo", "Rocket", "Laser Canon", "Disruptor Canon"], "text": "Weapon Hit"}
+	if roll <= 68: return {"type": "Weapon", "list": ["Torpedo", "Rocket", "Electron Beam Battery", "Proton Beam Battery", "Laser", "Rocket Battery"], "text": "Weapon Hit"}
+	if roll <= 70: return {"type": "Weapon", "list": ["Laser", "Rocket Battery", "Torpedo", "Rocket", "Proton Beam Battery", "Electron Beam Battery", "Laser Canon", "Disruptor Canon"], "text": "Weapon Hit"}
 	
 	if roll <= 74: return {"type": "System", "key": "ICM", "text": "Power Short Circuit (Lose ICMs)"}
-	if roll <= 80: return {"type": "Defense", "list": ["MS", "ICM"], "text": "Defense Hit (MS, ICM)"}
-	if roll <= 84: return {"type": "Defense", "list": ["ICM", "MS"], "text": "Defense Hit (ICM, MS)"}
+	if roll <= 77: return {"type": "Defense", "list": ["PS", "ES", "SS", "MS", "ICM"], "text": "Defense Hit (PS, ES, SS, MS, ICM)"}
+	if roll <= 80: return {"type": "Defense", "list": ["MS", "ICM", "SS", "PS", "ES"], "text": "Defense Hit (MS, ICM, SS, PS, ES)"}
+	if roll <= 84: return {"type": "Defense", "list": ["ICM", "SS", "PS", "ES", "MS"], "text": "Defense Hit (ICM, SS, PS, ES, MS)"}
 	
 	if roll <= 91: return {"type": "System", "key": "CCS", "text": "Combat Control System Hit (-10% Hit Chance)"}
 	if roll <= 97: return {"type": "Navigation", "text": "Navigation Hit (ADF=0, MR=0)"}

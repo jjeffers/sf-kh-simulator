@@ -12,11 +12,15 @@ func test_hit_chance_calculation():
 	s_target.defense = "None"
 	s_target.is_ms_active = false
 	
-	# Case 1: Laser Battery vs None (Base 80)
-	# Dist 4: 80 - (4*5) = 60
+	# Case 1: Laser Battery vs None (Base 65)
+	# Dist 4: 65 - (4*5) = 45
 	var w_laser = {"type": "Laser", "range": 10}
 	var chance = Combat.calculate_hit_chance(4, w_laser, s_target, false, 0, s_source)
-	assert_eq(chance, 60, "Laser at Range 4 (Base 80) should be 60%")
+	assert_eq(chance, 45, "Laser at Range 4 (Base 65) should be 45%")
+	
+	# Head On (+10)
+	chance = Combat.calculate_hit_chance(4, w_laser, s_target, true, 0, s_source)
+	assert_eq(chance, 55, "Laser Head On at Range 4 should be 55%")
 	
 	# Case 2: Laser vs Reflective Hull (Base 50)
 	s_target.defense = "RH"
