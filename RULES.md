@@ -147,7 +147,9 @@ A number between 1 and 100 is randomly selected (roll a d100). Then the DTM from
 
 **Re-arming**:
 - fighters and assault scouts may re-arm with assault rockets if they remain docked with a sace station or assault carrier for one full game turn
-- a fighter or assault scout may re-arm twice per game
+- a fighter or assault scout may re-arm as many times as the space station or assault carrier has remaining re-arm capacity.
+- An assault carrier carries x20 re-arm capacity.
+- A space station carries re-arm capacity of x2 per fighter group stationed.
 
 ## Ship Register
 

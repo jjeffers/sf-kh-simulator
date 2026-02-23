@@ -53,6 +53,7 @@ var docked_host: Ship = null
 var docked_guests: Array[Ship] = []
 var rearm_count: int = 0
 var turns_docked_since_action: int = 0
+var rearm_capacity: int = 0
 
 # Scenario Specific
 var evacuation_turns: int = 0
@@ -111,6 +112,7 @@ func get_net_state() -> Dictionary:
 		"unrepairable_icm": unrepairable_icm,
 		"unrepairable_ms": unrepairable_ms,
 		"unrepairable_ccs": unrepairable_ccs,
+		"rearm_capacity": rearm_capacity,
 		"weapons": _get_weapon_states() # Needed for crippled/ammo
 	}
 
@@ -144,6 +146,7 @@ func apply_net_state(data: Dictionary):
 	unrepairable_icm = data.get("unrepairable_icm", unrepairable_icm)
 	unrepairable_ms = data.get("unrepairable_ms", unrepairable_ms)
 	unrepairable_ccs = data.get("unrepairable_ccs", unrepairable_ccs)
+	rearm_capacity = data.get("rearm_capacity", rearm_capacity)
 	
 	has_moved = data.get("has_moved", has_moved)
 	has_fired = data.get("has_fired", has_fired)
@@ -975,6 +978,7 @@ func configure_assault_carrier():
 	ms_current = 4
 	max_dcr = 150
 	current_dcr = max_dcr
+	rearm_capacity = 20
 	
 	weapons.clear()
 	# Laser Battery
@@ -1625,11 +1629,11 @@ func undock():
 	turns_docked_since_action = 0
 
 func rearm_assault_rockets() -> bool:
-	if not is_docked or turns_docked_since_action < 1:
+	if not is_docked or not is_instance_valid(docked_host) or turns_docked_since_action < 1:
 		return false
 	if ship_class not in ["Fighter", "Assault Scout"]:
 		return false
-	if rearm_count >= 2:
+	if docked_host.rearm_capacity <= 0:
 		return false
 
 	var rearmed = false
@@ -1639,8 +1643,8 @@ func rearm_assault_rockets() -> bool:
 			rearmed = true
 	
 	if rearmed:
-		rearm_count += 1
-		turns_docked_since_action = 0 # Optional: Reset the timer if another action is needed, but practically limits to 1 rearm per turn anyway
+		docked_host.rearm_capacity -= 1
+		turns_docked_since_action = 0 # Reset the timer if another action is needed
 		return true
 	return false
 

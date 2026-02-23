@@ -98,6 +98,7 @@ func test_rearm_mechanics():
 	var station = load("res://Scripts/Ship.gd").new()
 	station.name = "TestStation"
 	station.configure_space_station()
+	station.rearm_capacity = 2 # Manually set for test since GM pass 3 isn't run here
 	gm.ships.append(station)
 	gm.add_child(station)
 
@@ -128,7 +129,7 @@ func test_rearm_mechanics():
 	# Attempt rearm 1
 	assert_true(fighter.rearm_assault_rockets(), "Rearm succeeds after 1 full turn")
 	assert_eq(fighter.weapons[0]["ammo"], 4, "Ammo replenished")
-	assert_eq(fighter.rearm_count, 1, "Rearm count incremented")
+	assert_eq(station.rearm_capacity, 1, "Station Capacity decremented")
 	assert_eq(fighter.turns_docked_since_action, 0, "Timer resets after rearm")
 	
 	# Use rockets again
@@ -142,10 +143,11 @@ func test_rearm_mechanics():
 	
 	# Attempt rearm 2
 	assert_true(fighter.rearm_assault_rockets(), "Rearm 2 succeeds")
+	assert_eq(station.rearm_capacity, 0, "Station Capacity decremented to 0")
 	
 	# Use rockets again
 	fighter.weapons[0]["ammo"] = 0
 	fighter.reset_turn_state()
 	
 	# Attempt rearm 3
-	assert_false(fighter.rearm_assault_rockets(), "Cannot rearm 3 times")
+	assert_false(fighter.rearm_assault_rockets(), "Cannot rearm, Station out of capacity")
