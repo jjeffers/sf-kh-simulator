@@ -1,4 +1,0 @@
-
---- GRAVITY TURN DEBUG ---
-Ghost Pos: (0, -1, 1) | Planet Pos: (0, 0, 0)
-Ideal Facing: 1 | Dir Checked: 2
