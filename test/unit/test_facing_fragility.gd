@@ -6,6 +6,7 @@ var ship: Node2D
 func before_each():
 	game_manager = load("res://Scripts/GameManager.gd").new()
 	add_child(game_manager)
+	game_manager.planet_hexes.clear()
 	
 	ship = float_ship()
 	game_manager.selected_ship = ship

@@ -7,6 +7,7 @@ func before_each():
 	game_manager = load("res://Scripts/GameManager.gd").new()
 	add_child_autofree(game_manager)
 	game_manager.ships.clear()
+	game_manager.planet_hexes.clear()
 	
 	ship = load("res://Scripts/Ship.gd").new()
 	ship.name = "TestShip"

@@ -49,18 +49,33 @@ func _ready():
 	var args = OS.get_cmdline_args()
 	var auto_start = false
 	var wait_players = 1
+	var auto_side_id = 0
 	for i in range(args.size()):
 		if args[i] == "--side" and i + 1 < args.size():
-			var s_id = args[i + 1].to_int()
-			if s_id == 1:
-				call_deferred("_on_join_team_1_pressed")
-			elif s_id == 2:
-				call_deferred("_on_join_team_2_pressed")
+			auto_side_id = args[i + 1].to_int()
 		if args[i] == "--host" or args[i] == "--start":
 			auto_start = true
 		if args[i] == "--wait" and i + 1 < args.size():
 			wait_players = args[i + 1].to_int()
 			
+	if auto_side_id > 0:
+		var join_func = func():
+			if auto_side_id == 1:
+				_on_join_team_1_pressed()
+			elif auto_side_id == 2:
+				_on_join_team_2_pressed()
+			
+		if multiplayer.has_multiplayer_peer() and multiplayer.get_unique_id() != 0:
+			join_func.call_deferred()
+		else:
+			# If joining as client, we need to wait for the connection success signal
+			# NetworkManager emits player_connected for self when OK
+			var wait_con = func(id, info): return
+			wait_con = func(id, info):
+				if id == multiplayer.get_unique_id():
+					join_func.call_deferred()
+			NetworkManager.player_connected.connect(wait_con)
+
 	if auto_start and multiplayer.is_server():
 		if NetworkManager.players.size() >= wait_players:
 			# Wait slightly for team assignment RPCs to resolve locally
