@@ -1,5 +1,5 @@
 {
-	"dirs": ["test/unit"],
+	"dirs": ["test/unit", "test/integration"],
 	"prefix": "test_",
 	"suffix": ".gd",
 	"include_subdirs": true

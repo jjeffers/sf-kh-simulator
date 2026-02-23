@@ -54,7 +54,9 @@ Added a new scenario "The Last Stand" featuring a massive Sathar fleet attacking
 ### Movement UX Improvements
 - **Self-Click Deceleration**: Players can now click their own ship's hex during movement planning to request a full stop (Speed 0), provided their ADF allows it.
 - **Ghost-Click Commit**: Clicking the "Ghost Ship" (the projected end position of a plotted move) now commits the move, serving as an intuitive "Confirm" action on the map.
-
+- **Speed Bleed-off Fix**: Fixed a bug where plotting 0 movement would incorrectly reset a ship's speed to 0 instantly regardless of ADF. Stationary plots now correctly bleed off speed by the ship's effective ADF value per turn.
+- **Skipped Turn Speed Bleed-off**: Fixed a bug where a player manually pressing "Execute Movement" *without* plotting a stationary move for their ship would bypass the movement phase for that ship, failing to bleed off speed. Ships without explicit orders now automatically execute a stationary hold to properly decrease speed over time. If the ship has a minimum required speed due to high momentum (Speed > ADF), it will automatically plot a straight-forward move equal to its minimum speed instead of holding position.
+- **Re-arm Ammo Refill Fix**: Fixed a bug where Fighter Assault Rockets were failing to refill upon clicking "Re-arm" due to an incorrect weapon type lookup key.
 
 ## Damage System Implementation
 
@@ -79,3 +81,26 @@ We have replaced the simple hull damage model with a detailed damage table syste
   - Weapon crippling logic (matching types).
   - Fire damage accumulation.
 - Ran full test suite, confirming 5/5 passes for damage system tests.
+
+## Docking and Re-arming
+
+We have introduced Docking and Re-arming mechanics to allow ships to resupply mid-combat.
+
+### Key Features
+- **Docking Mechanics**: Fighters and Assault Scouts (and other ships) can dock at Space Stations or Assault Carriers.
+  - A "Dock" button appears when a ship ends movement in the same hex as a valid host, with Speed 0 or an Effective ADF greater than its current Speed.
+  - Docked ships have their Speed set to `0` and move automatically alongside their host ship.
+  - Plotting movement automatically undocks the ship.
+  - The UI updates dynamically to offer "Dock" or "Undock".
+- **Combat Logic Restrictions**:
+  - Docked Fighters and Assault Scouts cannot be targeted by enemy attacks.
+  - Any docked ship cannot use Forward Firing weapons, Torpedoes, or Assault Rockets.
+- **Re-arming**:
+  - Docked Fighters and Assault Scouts tracking `turns_docked_since_action` gain the ability to rearm.
+  - A new "Re-arm" button appears when a ship has remained docked for one full turn cycle.
+  - Clicking "Re-arm" replenishes its Assault Rockets strictly.
+  - This can be done up to a maximum of 2 times per game.
+
+### Verification
+- **Automated Tests**: Created `test/integration/test_docking_rearming.gd` with 4 dedicated scenarios testing conditions, UI flow, parent-child movement mirroring, undocking triggers, and exact turn lockouts for rearming.
+- Validated alongside the complete game test suite (50+ passes).

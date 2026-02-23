@@ -19,7 +19,7 @@ func test_undock_movement_registration():
 	# Setup: 1 Host (Station), 1 Guest (Scout) docked
 	_station = Ship.new()
 	_station.name = "Station"
-	_station.ship_class = "Space Station"
+	_station.configure_space_station() # Sets class and arrays
 	_station.side_id = 1
 	_station.grid_position = Vector3i(0, 0, 0)
 	_game_manager.add_child(_station)
@@ -31,9 +31,10 @@ func test_undock_movement_registration():
 	_scout.side_id = 1
 	_scout.grid_position = Vector3i(0, 0, 0)
 	_scout.adf = 5
-	_scout.speed = 10 # Simulate high entry speed (or bugged state)
+	_scout.speed = 4 # Speed must be < ADF to dock
 	_game_manager.add_child(_scout)
 	_game_manager.ships.append(_scout)
+	
 	
 	# Manually dock
 	_scout.dock_at(_station)

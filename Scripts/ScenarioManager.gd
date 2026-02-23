@@ -75,6 +75,16 @@ const SCENARIOS = {
 		"ships": [],
 		"special_rules": [],
 		"planets": [Vector3i(0, 0, 0)]
+	},
+	"test_docking": {
+		"name": "Test Docking",
+		"description": "Verify docking, docked movement, and re-arming mechanics.",
+		"sides": {
+			0: {"name": "UPF", "color": Color.GREEN, "role": "Defender"},
+			1: {"name": "Sathar", "color": Color.RED, "role": "Attacker"}
+		},
+		"ships": [],
+		"special_rules": []
 	}
 }
 
@@ -435,6 +445,65 @@ static func generate_scenario(key: String, rng_seed: int) -> Dictionary:
 			"position": Vector3i(-2, 1, 1),
 			"facing": 0,
 			"start_speed": 4
+		})
+		scen["ships"] = ships
+
+	elif key == "test_docking":
+		# UPF (Defender, Side 0)
+		# Carrier at (-5, 5, 0), moving SE (facing 1), speed 2
+		var upf_carrier_pos = Vector3i(-5, 5, 0)
+		ships.append({
+			"name": "UPF Carrier", "class": "Assault Carrier", "faction": "UPF", "side_index": 0,
+			"position": upf_carrier_pos, "facing": 1, "start_speed": 2
+		})
+		
+		# Fighters around UPF Carrier (Dist 3)
+		ships.append({
+			"name": "UPF Fighter Full", "class": "Fighter", "faction": "UPF", "side_index": 0,
+			"position": upf_carrier_pos + Vector3i(0, -3, 3), "facing": 1, "start_speed": 2
+		})
+		ships.append({
+			"name": "UPF Fighter Used", "class": "Fighter", "faction": "UPF", "side_index": 0,
+			"position": upf_carrier_pos + Vector3i(3, 0, -3), "facing": 1, "start_speed": 2,
+			"overrides": {
+				"weapons": [ { "name": "Assault Rockets", "type": "Rocket", "range": 4, "arc": "FF", "ammo": 2, "max_ammo": 3, "damage_dice": "2d10", "damage_bonus": 4, "dtm": -10, "fired": false } ]
+			}
+		})
+		ships.append({
+			"name": "UPF Fighter Empty", "class": "Fighter", "faction": "UPF", "side_index": 0,
+			"position": upf_carrier_pos + Vector3i(-3, 0, 3), "facing": 1, "start_speed": 2,
+			"overrides": {
+				"weapons": [ { "name": "Assault Rockets", "type": "Rocket", "range": 4, "arc": "FF", "ammo": 0, "max_ammo": 3, "damage_dice": "2d10", "damage_bonus": 4, "dtm": -10, "fired": false } ]
+			}
+		})
+		
+		# Sathar (Attacker, Side 1)
+		# Carrier at (5, -5, 0) which is 10 hexes away from (-5, 5, 0).
+		# Facing NW (facing 4), speed 2
+		var sat_carrier_pos = Vector3i(5, -5, 0)
+		ships.append({
+			"name": "Sathar Carrier", "class": "Assault Carrier", "faction": "Sathar", "side_index": 1,
+			"position": sat_carrier_pos, "facing": 4, "start_speed": 2
+		})
+		
+		# Fighters around Sathar Carrier (Dist 3)
+		ships.append({
+			"name": "Sathar Fighter Full", "class": "Fighter", "faction": "Sathar", "side_index": 1,
+			"position": sat_carrier_pos + Vector3i(0, 3, -3), "facing": 4, "start_speed": 2
+		})
+		ships.append({
+			"name": "Sathar Fighter Used", "class": "Fighter", "faction": "Sathar", "side_index": 1,
+			"position": sat_carrier_pos + Vector3i(-3, 0, 3), "facing": 4, "start_speed": 2,
+			"overrides": {
+				"weapons": [ { "name": "Assault Rockets", "type": "Rocket", "range": 4, "arc": "FF", "ammo": 1, "max_ammo": 3, "damage_dice": "2d10", "damage_bonus": 4, "dtm": -10, "fired": false } ]
+			}
+		})
+		ships.append({
+			"name": "Sathar Fighter Empty", "class": "Fighter", "faction": "Sathar", "side_index": 1,
+			"position": sat_carrier_pos + Vector3i(3, 0, -3), "facing": 4, "start_speed": 2,
+			"overrides": {
+				"weapons": [ { "name": "Assault Rockets", "type": "Rocket", "range": 4, "arc": "FF", "ammo": 0, "max_ammo": 3, "damage_dice": "2d10", "damage_bonus": 4, "dtm": -10, "fired": false } ]
+			}
 		})
 		scen["ships"] = ships
 

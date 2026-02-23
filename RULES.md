@@ -134,6 +134,21 @@ A number between 1 and 100 is randomly selected (roll a d100). Then the DTM from
 - Ships entering a hex with a planet are destroyed.
 - Planets generate a gravity well that affects ship movement. Each hex adjacent to a planet can be treated as containing a gravity well. If a ship traverses any adjecent hex, they ship is turned 1 facing towards the planet. A ship must have an effective MR of 1 or greater to resist this turn. This forced facing change occurs once despite the number of adjecent hexes traversed. 
 
+**Docking**:
+- a ship may dock with a space station if it has a speed 0 in the same hex as the space station. 
+- fighter may dock with an assault carrier if it has a speed 0 in the same hex as the assault carrier
+- For docking purposes, a speed of 0 means if the ship ends the movement phase in the same hex as the space station or assault carrier and has an effective ADF > the ships's current speed.
+- If a ship is able to dock, then there should be a UI option to "dock" the ship. 
+- To undock, a ship simply has to use an "undock" button in the UI, or plot movement away from the space station or assault carrier.
+- Once docked, a docked ship moves with the space station or assault carrier as the space station or assault carrier moves.
+- A docked ship may not fire FF weapons.
+- Docked fighters and assault scouts may not be targeted by attacks when docked.
+
+
+**Re-arming**:
+- fighters and assault scouts may re-arm with assault rockets if they remain docked with a sace station or assault carrier for one full game turn
+- a fighter or assault scout may re-arm twice per game
+
 ## Ship Register
 
 Detailed specifications for all ship classes currently implemented.
