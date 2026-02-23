@@ -5100,6 +5100,12 @@ func load_scenario(key: String, seed_val: int = 12345):
 				if s:
 					s.dock_at(host)
 					log_message("%s docked at %s" % [s.name, host.name])
+					
+	# Pass 3: Initialize Space Station Rearm Capacity
+	# A space station carries a re-arm capacity of x2 per fighter group stationed
+	for s in ships:
+		if is_instance_valid(s) and s.ship_class == "Space Station":
+			s.rearm_capacity = s.docked_guests.size() * 2
 
 	_update_ship_visuals()
 
