@@ -51,6 +51,8 @@ var ms_particles: CPUParticles2D = null
 var is_docked: bool = false
 var docked_host: Ship = null
 var docked_guests: Array[Ship] = []
+var rearm_count: int = 0
+var turns_docked_since_action: int = 0
 
 # Scenario Specific
 var evacuation_turns: int = 0
@@ -1200,6 +1202,9 @@ func _set_grid_position(v: Vector3i):
 	# Position update is now handled by GameManager's stack update or explicit call
 	# But we set a default here just in case, though it might be overridden immediately
 	position = HexGrid.hex_to_pixel(v)
+	for guest in docked_guests:
+		if is_instance_valid(guest):
+			guest.grid_position = v
 	ship_moved.emit(v)
 
 func _set_active_screen(val: String):
@@ -1554,6 +1559,10 @@ func reset_turn_state():
 	# Don't reset movement points here, they are reset when phase starts
 	# But we should reset energy or other per-turn counters if any
 	reset_weapons()
+	if is_docked:
+		turns_docked_since_action += 1
+	else:
+		turns_docked_since_action = 0
 
 func get_docking_capacity() -> int:
 	if ship_class == "Space Station": return 999
@@ -1582,27 +1591,28 @@ func get_display_name() -> String:
 	
 	return "%s %s" % [abbrev, name]
 
+func can_dock_with(station: Ship) -> bool:
+	if not is_instance_valid(station) or station == self:
+		return false
+	if station.ship_class not in ["Space Station", "Assault Carrier"]:
+		return false
+	if station.docked_guests.size() >= station.get_docking_capacity():
+		return false
+	if grid_position != station.grid_position:
+		return false
+	return speed == 0 or get_effective_adf() > speed
+
 func dock_at(station: Ship) -> bool:
-	if is_instance_valid(station) and station != self:
-		# Capacity Check
-		if station.docked_guests.size() >= station.get_docking_capacity():
-			return false
-			
+	if can_dock_with(station):
 		is_docked = true
 		docked_host = station
 		if not station.docked_guests.has(self):
 			station.docked_guests.append(self)
 		
-		# Re-arm Logic
-		if ship_class == "Fighter" and station.ship_class in ["Assault Carrier", "Space Station"]:
-			replenish_ammo()
-		
 		# Align position purely for visuals/logic consistency
 		grid_position = station.grid_position
 		speed = 0 # FIX: Ensure speed is reset to 0 when docked
-		# Visual tweak: maybe slight offset or smaller scale? 
-		# For now, just sharing the hex is enough. z_index handles visibility.
-		# Ships are drawn in tree order. Active player ships usually last.
+		turns_docked_since_action = 0
 		return true
 	return false
 		
@@ -1612,6 +1622,27 @@ func undock():
 	
 	is_docked = false
 	docked_host = null
+	turns_docked_since_action = 0
+
+func rearm_assault_rockets() -> bool:
+	if not is_docked or turns_docked_since_action < 1:
+		return false
+	if ship_class not in ["Fighter", "Assault Scout"]:
+		return false
+	if rearm_count >= 2:
+		return false
+
+	var rearmed = false
+	for w in weapons:
+		if w["type"] == "Rocket":
+			w["ammo"] = w["max_ammo"]
+			rearmed = true
+	
+	if rearmed:
+		rearm_count += 1
+		turns_docked_since_action = 0 # Optional: Reset the timer if another action is needed, but practically limits to 1 rearm per turn anyway
+		return true
+	return false
 
 func get_texture() -> Texture2D:
 	match ship_class:

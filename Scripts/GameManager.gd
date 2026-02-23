@@ -63,6 +63,8 @@ var btn_orbit_ccw: Button
 var btn_ms_toggle: CheckBox
 var opt_active_screen: OptionButton
 var btn_exec_move: Button # NEW: Manual Phase Transition
+var btn_dock: Button
+var btn_rearm: Button
 
 # Movement State
 var ghost_ship: Ship = null
@@ -453,6 +455,22 @@ func _setup_ui():
 	btn_orbit_ccw.pressed.connect(func(): _on_orbit(-1))
 	btn_orbit_ccw.visible = false
 	orbit_box.add_child(btn_orbit_ccw)
+	
+	# Docking / Re-arming Buttons
+	var dock_box = HBoxContainer.new()
+	vbox.add_child(dock_box)
+	
+	btn_dock = Button.new()
+	btn_dock.text = "Dock"
+	btn_dock.pressed.connect(_on_dock_pressed)
+	btn_dock.visible = false
+	dock_box.add_child(btn_dock)
+	
+	btn_rearm = Button.new()
+	btn_rearm.text = "Re-arm"
+	btn_rearm.pressed.connect(_on_rearm_pressed)
+	btn_rearm.visible = false
+	dock_box.add_child(btn_rearm)
 	
 	# MS Toggle
 	btn_ms_toggle = CheckBox.new()
@@ -2805,6 +2823,8 @@ func _update_ui_state():
 		btn_orbit_cw.visible = false
 		btn_orbit_ccw.visible = false
 		btn_ms_toggle.visible = false
+		if btn_dock: btn_dock.visible = false
+		if btn_rearm: btn_rearm.visible = false
 		if opt_active_screen: opt_active_screen.visible = false
 		
 		# Turn Restriction: If not my turn, stop here (hide controls)
@@ -2848,6 +2868,28 @@ func _update_ui_state():
 			
 			btn_orbit_cw.visible = can_orbit
 			btn_orbit_ccw.visible = can_orbit
+			
+			# Docking UI Check
+			if selected_ship.is_docked:
+				btn_dock.visible = true
+				btn_dock.text = "Undock"
+				
+				if selected_ship.ship_class in ["Fighter", "Assault Scout"]:
+					var can_rearm = selected_ship.turns_docked_since_action >= 1 and selected_ship.rearm_count < 2
+					btn_rearm.visible = can_rearm
+					if can_rearm:
+						btn_rearm.disabled = false
+						btn_rearm.tooltip_text = "Restores Assault Rockets"
+			else:
+				if is_stationary:
+					var can_dock = false
+					for s in ships:
+						if selected_ship.can_dock_with(s):
+							can_dock = true
+							break
+					if can_dock:
+						btn_dock.visible = true
+						btn_dock.text = "Dock"
 			
 			# MS Toggle Check
 			# Visible if ship has Max MS > 0
@@ -3330,6 +3372,28 @@ func execute_commit_move(ship_name: String, path: Array, final_facing: int, orbi
 	typed_path.assign(path)
 	register_movement_plan(ship_name, typed_path, final_facing, orbit_dir, is_orbiting)
 
+func _on_dock_pressed():
+	if not selected_ship: return
+	if selected_ship.is_docked:
+		selected_ship.undock()
+		log_message("%s undocked." % selected_ship.get_display_name())
+	else:
+		for s in ships:
+			if selected_ship.dock_at(s):
+				if audio_action_complete: audio_action_complete.play()
+				log_message("%s docked at %s." % [selected_ship.get_display_name(), s.get_display_name()])
+				break
+	_update_ui_state()
+	queue_redraw()
+
+func _on_rearm_pressed():
+	if not selected_ship: return
+	if selected_ship.rearm_assault_rockets():
+		if audio_action_complete: audio_action_complete.play()
+		log_message("%s rearmed Assault Rockets (Used %d/2)." % [selected_ship.get_display_name(), selected_ship.rearm_count])
+		btn_rearm.visible = false 
+		if ship_status_panel: ship_status_panel.update_from_ship(selected_ship)
+
 func _on_commit_move():
 	# Authority Check
 	if my_side_id != 0 and current_side_id != my_side_id:
@@ -3450,6 +3514,11 @@ func register_movement_plan(ship_name: String, path: Array, final_facing: int, o
 	ship.planned_orbit_dir = orbit_dir
 	ship.has_orders = true
 	
+	# Auto-undock on plot
+	if ship.is_docked and typed_path.size() > 0:
+		ship.undock()
+		log_message("%s auto-undocked for maneuver." % ship.get_display_name())
+	
 	# Logic from original commitment: Update local state if selected
 	if selected_ship == ship:
 		_reset_plotting_state()
@@ -3534,7 +3603,24 @@ func execute_all_movement():
 	log_message("Executing Movement Phase for Side %s" % _get_side_name(current_side_id))
 	
 	for s in ships:
-		if is_instance_valid(s) and s.side_id == current_side_id and not s.is_destroyed and s.has_orders:
+		if is_instance_valid(s) and s.side_id == current_side_id and not s.is_destroyed:
+			# If a ship did not receive orders (player pressed Execute Movement without plotting)
+			if not s.has_orders:
+				var min_speed = max(0, s.speed - s.get_effective_adf())
+				var auto_path: Array[Vector3i] = []
+				var current_hex = s.grid_position
+				var dir_vec = HexGrid.get_direction_vec(s.facing)
+				
+				# If the ship is moving too fast to stop, it MUST move straight forward
+				for i in range(min_speed):
+					current_hex += dir_vec
+					auto_path.append(current_hex)
+					
+				s.planned_path = auto_path
+				s.planned_facing = s.facing
+				s.planned_orbit_dir = 0
+				s.has_orders = true
+				
 			# Apply Plan
 			_apply_movement_plan(s)
 			
@@ -3578,16 +3664,20 @@ func _apply_movement_plan(s: Ship):
 	s.previous_path = s.planned_path # History
 	var start_pos = s.grid_position
 	var start_facing = s.facing
+	var old_speed = s.speed
+	if s.is_docked: old_speed = 0
 	
+	var new_speed = 0
 	if s.planned_path.size() > 0:
 		s.grid_position = s.planned_path.back()
 		s.facing = s.planned_facing
-		# FIX: Update Speed to match distance moved (Speed = Hexes Moved)
-		s.speed = s.planned_path.size()
+		new_speed = s.planned_path.size()
 	else:
 		# Hold Position (or invalid empty path treated as hold)
 		s.facing = s.planned_facing # Always apply facing change?
-		s.speed = 0 # Explicitly set speed to 0 for stationary moves
+		new_speed = max(0, old_speed - s.get_effective_adf())
+		
+	s.speed = new_speed
 	
 	# Orbit Logic
 	if s.planned_orbit_dir != 0:
@@ -3600,9 +3690,7 @@ func _apply_movement_plan(s: Ship):
 	
 	# HULL INTEGRITY CHECK
 	if s.planned_orbit_dir == 0 and not s.is_destroyed:
-		var old_speed = s.speed
-		if s.is_docked: old_speed = 0
-		var adf_used = abs(old_speed - s.planned_path.size())
+		var adf_used = abs(old_speed - new_speed)
 		var mr_used = _calculate_mr_used_for_plan(start_pos, start_facing, s.planned_path, s.planned_facing)
 		
 		var risk = s.get_hull_integrity_risk(adf_used, mr_used)
