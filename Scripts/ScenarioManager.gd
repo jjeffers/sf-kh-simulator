@@ -64,6 +64,17 @@ const SCENARIOS = {
 				"phase": 3 # Phase.REPAIR
 			}
 		]
+	},
+	"test_gravity": {
+		"name": "Test Gravity",
+		"description": "A scenario for testing Gravity Wells. Ships start near a planet.",
+		"sides": {
+			0: {"name": "UPF", "color": Color.GREEN, " role": "Defender"},
+			1: {"name": "Sathar", "color": Color.RED, "role": "Attacker"}
+		},
+		"ships": [],
+		"special_rules": [],
+		"planets": [Vector3i(0, 0, 0)]
 	}
 }
 
@@ -404,4 +415,27 @@ static func generate_scenario(key: String, rng_seed: int) -> Dictionary:
 		})
 		scen["ships"] = ships
 		
+	elif key == "test_gravity":
+		# Ship 1: UPF Assault Scout at (2,-1,-1) [distance 2], facing 3 (West) towards planet (0,0,0)
+		ships.append({
+			"name": "Test UPF",
+			"class": "Assault Scout",
+			"faction": "UPF",
+			"side_index": 0,
+			"position": Vector3i(2, -1, -1),
+			"facing": 3,
+			"start_speed": 4
+		})
+		# Ship 2: Sathar Destroyer at (-2,1,1) [distance 2], facing 0 (East) towards planet (0,0,0)
+		ships.append({
+			"name": "Test Sathar",
+			"class": "Destroyer",
+			"faction": "Sathar",
+			"side_index": 1,
+			"position": Vector3i(-2, 1, 1),
+			"facing": 0,
+			"start_speed": 4
+		})
+		scen["ships"] = ships
+
 	return scen

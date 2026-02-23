@@ -81,6 +81,10 @@ var _e_key_last_press: int = 0
 var ghost_head_pos: Vector3i
 var ghost_head_facing: int = 0
 var path_preview_active: bool = false
+var has_suffered_gravity_this_turn: bool = false # TRACKER: Gravity adjacency forced turn penalty
+var mr_expenditures: Array[Dictionary] = [] # Stores {"pos": Vector3i, "text": String}
+var gravity_penalty_applied_this_turn: bool = false
+var free_gravity_turn_used: bool = false
 var test_force_online: bool = false # For Unit Testing Network Logic
 
 # --- UI References ---
@@ -1564,7 +1568,10 @@ func _reset_plotting_state():
 	turn_taken_this_step = 0
 	state_is_orbiting = false
 	current_orbit_direction = 0
-	state_is_orbiting = false
+	has_suffered_gravity_this_turn = false
+	gravity_penalty_applied_this_turn = false
+	free_gravity_turn_used = false
+	mr_expenditures.clear()
 	combat_action_taken = false
 	step_entry_facing = selected_ship.facing # Init to current facing
 
@@ -1985,7 +1992,8 @@ func _push_history_state():
 		"can_turn": can_turn_this_step,
 		"turn_taken": turn_taken_this_step,
 		"is_orbiting": state_is_orbiting,
-		"orbit_dir": current_orbit_direction
+		"orbit_dir": current_orbit_direction,
+		"has_suffered_gravity": has_suffered_gravity_this_turn
 	}
 	movement_history.push_back(state)
 	btn_undo.visible = true # Ensure undo is visible if history exists
@@ -2710,9 +2718,20 @@ func _update_camera(focus_target_override = null):
 
 func _spawn_ghost():
 	if ghost_ship:
+		if test_force_online:
+			# Tests pre-instantiate and track the ghost_ship object directly.
+			# Destroying it breaks test references.
+			ghost_head_pos = ghost_ship.grid_position
+			ghost_head_facing = ghost_ship.facing
+			path_preview_active = false
+			return
+			
 		ghost_ship.queue_free()
 		ghost_ship = null
 	
+	if not selected_ship or not is_instance_valid(selected_ship):
+		return
+		
 	# Authority Check: Only spawn ghost if it's my turn/ship
 	# EXCEPTION: If ship has orders, we allow ghost for visualization (Networked Movement Visualization)
 	
@@ -3319,6 +3338,7 @@ func _on_commit_move():
 		
 	# NETWORK: Send RPC
 	# We need to send: Ship Name (Unique ID), Path, Facing, Orbit Dir
+	
 	var path_data = current_path # Array[Vector3i]
 	
 	print("DEBUG: _on_commit_move for ", selected_ship.name)
@@ -4091,6 +4111,16 @@ func _draw():
 		draw_line(pos + Vector2(-length, 0), pos + Vector2(length, 0), Color.RED, 2.0)
 		draw_line(pos + Vector2(0, -length), pos + Vector2(0, length), Color.RED, 2.0)
 
+	# MR Expenditures Visual Feedback
+	if current_phase == Phase.MOVEMENT and mr_expenditures.size() > 0:
+		var font = ThemeDB.fallback_font
+		for exp_entry in mr_expenditures:
+			var center = HexGrid.hex_to_pixel(exp_entry["pos"])
+			var offset = Vector2(0, -35) # Draw above the hex
+			draw_string_outline(font, center + offset, exp_entry["text"], HORIZONTAL_ALIGNMENT_CENTER, -1, 16, 2, Color.BLACK)
+			draw_string(font, center + offset, exp_entry["text"], HORIZONTAL_ALIGNMENT_CENTER, -1, 16, Color.RED)
+
+
 func _draw_hex_outline(hex: Vector3i, color: Color, width: float):
 	var center = HexGrid.hex_to_pixel(hex)
 	var size = HexGrid.TILE_SIZE
@@ -4512,10 +4542,55 @@ func _handle_ghost_input(hex: Vector3i):
 	# Execute Move (Loop for each step)
 
 	var current_pos = ghost_head_pos
+	
 	for i in range(dist):
+		var prev_hex = current_pos
 		var next_hex = current_pos + forward_vec
+		
+		# Apply Movement First
 		current_pos = next_hex
 		current_path.append(next_hex)
+		
+		# ---- GRAVITY EXIT PENALTY LOGIC ----
+		# Check if we JUST EXITED a gravity well hex.
+		# This happens if `prev_hex` is adjacent to a planet.
+		# Cost applies ON the current_pos (the first hex after passing through the well hex).
+		if not gravity_penalty_applied_this_turn:
+			var prev_is_in_well = false
+			var planet_pos = Vector3i.ZERO
+			for p in planet_hexes:
+				if HexGrid.hex_distance(prev_hex, p) == 1:
+					prev_is_in_well = true
+					planet_pos = p
+					break
+			
+			if prev_is_in_well:
+				gravity_penalty_applied_this_turn = true
+				
+				# Deduct 1 MR
+				turns_remaining -= 1
+				
+				# Record expenditure text visually at the CURRENT hex (after passing through)
+				mr_expenditures.append({"pos": current_pos, "text": "-1 MR (Gravity) (%d of %d)" % [turns_remaining, selected_ship.mr] })
+				
+				# INVOLUNTARY FACING CHANGE: If MR < 0, forced turn toward planet
+				if turns_remaining < 0:
+					log_message("Gravity overwhelmed MR! Involuntary Facing Change down gravity well.")
+					# Calculate direction to planet from our CURRENT hex
+					var line_to_planet = HexGrid.get_line_coords(current_pos, planet_pos)
+					var forced_facing = -1
+					if line_to_planet.size() > 1:
+						forced_facing = HexGrid.get_hex_direction(current_pos, line_to_planet[1])
+					
+					if forced_facing != -1 and forced_facing != ghost_head_facing:
+						# Update the ghost's facing immediately
+						ghost_ship.facing = forced_facing
+						ghost_head_facing = ghost_ship.facing
+						
+						# Update the forward vector for the REST of this movement segment.
+						# The NEXT loop iteration will use this new vector.
+						forward_vec = HexGrid.get_direction_vec(ghost_head_facing)
+		
 		# "Usage" of turn opportunity:
 		# Logic: You only get the turn opportunity for the FINAL hex entered in this sequence.
 		# Intermediate hexes: You moved out of them without turning, so opportunity lost.
@@ -4542,6 +4617,24 @@ func posmod(a, b):
 	var res = a % b
 	if res < 0 and b > 0: res += b
 	return res
+
+func _spawn_floating_text(text: String, grid_pos: Vector2, color: Color = Color.WHITE):
+	var lbl = Label.new()
+	lbl.text = text
+	lbl.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	lbl.add_theme_color_override("font_color", color)
+	lbl.add_theme_color_override("font_outline_color", Color.BLACK)
+	lbl.add_theme_constant_override("outline_size", 4)
+	
+	lbl.position = grid_pos - Vector2(100, 40) # Center offset
+	lbl.custom_minimum_size = Vector2(200, 50)
+	lbl.z_index = 100
+	ui_layer.add_child(lbl)
+	
+	var tween = create_tween()
+	tween.tween_property(lbl, "position", grid_pos - Vector2(100, 100), 1.5).set_ease(Tween.EASE_OUT).set_trans(Tween.TRANS_QUAD)
+	tween.parallel().tween_property(lbl, "modulate:a", 0.0, 1.5).set_ease(Tween.EASE_IN)
+	tween.tween_callback(lbl.queue_free)
 
 func _trigger_icm_decision(attacker_name: String, weapon_name: String, weapon_type: String, current_chance: int, target: Ship, eligible_ships: Array = []):
 	# Create modal UI
@@ -5206,7 +5299,70 @@ func _handle_mouse_facing(hex: Vector3i):
 		
 	# Undo/Push History
 	_push_history_state()
+	
+	# CONDITIONAL GRAVITY COST: Check if turning inward after a penalty
+	var is_inward_gravity_turn = false
+	if move_cost == 1 and gravity_penalty_applied_this_turn and not free_gravity_turn_used:
+		var closest_planet_pos = Vector3i.ZERO
+		var min_dist = 999
+		for p in planet_hexes:
+			var d = HexGrid.hex_distance(ghost_ship.grid_position, p)
+			if d < min_dist:
+				min_dist = d
+				closest_planet_pos = p
+				
+		var line_to_planet = HexGrid.get_line_coords(ghost_ship.grid_position, closest_planet_pos)
+		if line_to_planet.size() > 1:
+			var ideal_facing = HexGrid.get_hex_direction(ghost_ship.grid_position, line_to_planet[1])
+			
+			# We don't always demand absolute equality. The user can only turn 60 degrees.
+			# We need to know if the new direction (dir_idx) is CLOSER to ideal_facing
+			# than the previous facing (ghost_ship.facing).
+			
+			var old_dist = min((ghost_ship.facing - ideal_facing + 6) % 6, (ideal_facing - ghost_ship.facing + 6) % 6)
+			var new_dist = min((dir_idx - ideal_facing + 6) % 6, (ideal_facing - dir_idx + 6) % 6)
+			
+			if new_dist < old_dist:
+				is_inward_gravity_turn = true
+				move_cost = 0
+				free_gravity_turn_used = true
+				
+				# Refund the -1 MR penalty that was automatically deducted when entering this hex
+				turns_remaining += 1
+
 	turns_remaining -= move_cost
+	
+	if move_cost == 1:
+		mr_expenditures.append({"pos": ghost_ship.grid_position, "text": "-1 MR (%d of %d)" % [turns_remaining, selected_ship.mr] })
+	elif is_inward_gravity_turn:
+		# Remove the previous -1 MR (Gravity) penalty display at this hex so it doesn't overlap
+		for i in range(mr_expenditures.size() - 1, -1, -1):
+			if mr_expenditures[i]["pos"] == ghost_ship.grid_position and mr_expenditures[i]["text"].begins_with("-1 MR (Gravity)"):
+				mr_expenditures.remove_at(i)
+				break
+		mr_expenditures.append({"pos": ghost_ship.grid_position, "text": "0 MR (Gravity) (%d of %d)" % [turns_remaining, selected_ship.mr] })
+	elif move_cost == -1:
+		# Find and remove the latest MR expenditure at this location
+		var removed_gravity_text = false
+		for i in range(mr_expenditures.size() - 1, -1, -1):
+			if mr_expenditures[i]["pos"] == ghost_ship.grid_position:
+				if mr_expenditures[i]["text"].begins_with("0 MR (Gravity)"):
+					removed_gravity_text = true
+				mr_expenditures.remove_at(i)
+				break
+				
+		if removed_gravity_text:
+			# The turn we just undid was our free inward gravity turn.
+			# Restore the usage flag and place the original penalty back.
+			free_gravity_turn_used = false
+			
+			# Since undoing a turn normally grants +1 MR (from move_cost = -1),
+			# but this was a free turn, we must deduct 1 MR to negate that faulty refund.
+			# We must also deduct an additional 1 MR to re-apply the gravity penalty.
+			turns_remaining -= 2
+			
+			mr_expenditures.append({"pos": ghost_ship.grid_position, "text": "-1 MR (Gravity) (%d of %d)" % [turns_remaining, selected_ship.mr]})
+				
 	# turn_taken_this_step is no longer needed/maintained!
 	# We rely on ghost_ship.facing vs entry_facing.
 		

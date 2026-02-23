@@ -9,6 +9,7 @@ var _ship = null
 func before_each():
 	_gm = GameManagerScript.new()
 	add_child(_gm)
+	_gm.planet_hexes.clear()
 	
 	_ship = ShipScript.new()
 	_ship.name = "TestShip"

@@ -132,6 +132,7 @@ A number between 1 and 100 is randomly selected (roll a d100). Then the DTM from
 - **Planets**: 
 - Planets block attacks and attack planning that pass through their hex.
 - Ships entering a hex with a planet are destroyed.
+- Planets generate a gravity well that affects ship movement. Each hex adjacent to a planet can be treated as containing a gravity well. If a ship traverses any adjecent hex, they ship is turned 1 facing towards the planet. A ship must have an effective MR of 1 or greater to resist this turn. This forced facing change occurs once despite the number of adjecent hexes traversed. 
 
 ## Ship Register
 
