@@ -2538,10 +2538,11 @@ func _update_deployment_ui():
 		btn_deploy_ship.text = "DEPLOY SHIP"
 
 func _update_deploy_preview():
-	if not is_deploying_ship or not is_instance_valid(selected_ship):
+	if not is_deploying_ship or not is_instance_valid(selected_ship) or not deploy_hex_selected:
 		if is_instance_valid(ghost_ship):
 			ghost_ship.queue_free()
 			ghost_ship = null
+		queue_redraw()
 		return
 		
 	if not is_instance_valid(ghost_ship):
@@ -4277,6 +4278,24 @@ func _draw():
 			for i in range(deploy_speed_val):
 				current_check_hex += forward_vec
 				_draw_hex_outline(current_check_hex, Color(0, 1, 1, 0.6), 4.0) # Cyan for deployment speed
+				
+	# Draw projected speed vectors for already deployed ships
+	if current_phase == Phase.DEPLOYMENT:
+		for s in ships:
+			if is_instance_valid(s) and s.is_deployed and s.side_id == deployment_subphase:
+				if s.ship_class != "Space Station" and s.ship_class != "Station" and s.speed > 0:
+					var start_pos = HexGrid.hex_to_pixel(s.grid_position)
+					var forward_vec = HexGrid.get_direction_vec(s.facing)
+					var end_pos = HexGrid.hex_to_pixel(s.grid_position + forward_vec * s.speed)
+					
+					draw_line(start_pos, end_pos, Color(1, 1, 1, 0.6), 3.0, true)
+					
+					var angle = (end_pos - start_pos).angle()
+					var arrow_size = 15.0
+					var p1 = end_pos - Vector2(cos(angle - PI/6), sin(angle - PI/6)) * arrow_size
+					var p2 = end_pos - Vector2(cos(angle + PI/6), sin(angle + PI/6)) * arrow_size
+					var arrow_pts = PackedVector2Array([end_pos, p1, p2])
+					draw_polygon(arrow_pts, PackedColorArray([Color(1, 1, 1, 0.6)]))
 			
 	# Draw Eligible Hexes for Defensive Fire
 	if current_phase == Phase.COMBAT and combat_subphase == 1 and current_combat_state == CombatState.PLANNING:
