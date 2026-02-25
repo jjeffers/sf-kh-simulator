@@ -4406,7 +4406,7 @@ func _draw():
 	
 	# Active Plotting Visualization
 	# Only draw if selected ship DOES NOT have orders (i.e. we are actively plotting)
-	if is_instance_valid(ghost_ship) and current_path.size() > 0 and is_instance_valid(selected_ship) and not selected_ship.has_orders:
+	if current_phase == Phase.MOVEMENT and is_instance_valid(ghost_ship) and current_path.size() > 0 and is_instance_valid(selected_ship) and not selected_ship.has_orders:
 		var points = PackedVector2Array()
 		points.append(HexGrid.hex_to_pixel(selected_ship.grid_position))
 		
