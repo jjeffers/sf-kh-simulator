@@ -542,6 +542,42 @@ static func get_valid_deployment_hexes(side_id: int, ships: Array, planets: Arra
 					var dist = HexGrid.hex_distance(Vector3i.ZERO, Vector3i(x, y, z))
 					if dist == spawn_dist:
 						valid_hexes.append(Vector3i(x, y, z))
+						
+	elif scen_key == "the_last_stand":
+		if side_id == 2:
+			# Attackers (Sathar): Must deploy exactly 34 hexes from center.
+			var spawn_dist = 34
+			var ring_hexes: Array[Vector3i] = []
+			# Generate a ring of hexes
+			for x in range(-spawn_dist, spawn_dist + 1):
+				for y in range(max(-spawn_dist, -x-spawn_dist), min(spawn_dist, -x+spawn_dist) + 1):
+					var z = -x - y
+					var dist = HexGrid.hex_distance(Vector3i.ZERO, Vector3i(x, y, z))
+					if dist == spawn_dist:
+						ring_hexes.append(Vector3i(x, y, z))
+			
+			# Further restrict to within 2 hexes of any ALREADY deployed Sathar ship
+			var deployed_sathar: Array[Vector3i] = []
+			for s in ships:
+				if is_instance_valid(s) and s.side_id == 2 and s.is_deployed and s != ship:
+					deployed_sathar.append(s.grid_position)
+					
+			if deployed_sathar.size() > 0:
+				for h in ring_hexes:
+					var valid = false
+					for ds in deployed_sathar:
+						if HexGrid.hex_distance(h, ds) <= 2:
+							valid = true
+							break
+					if valid:
+						valid_hexes.append(h)
+			else:
+				# If no ships deployed yet, any hex on the ring is valid
+				valid_hexes = ring_hexes
+				
+		else:
+			# UPF can deploy anywhere
+			pass
 
 	# Wait, if valid_hexes is empty, we just let them deploy anywhere.
 	return valid_hexes

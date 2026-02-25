@@ -289,8 +289,9 @@ When both sides have completed deployment, the game should proceed to the first 
   - Faction: Sathar.
 
 **Setup:**
-  - As noted the defenders are deployed as docked at the station.
-  - The attackers may deploy together or an adjacent hexes 34 hexes from the center.
+ - UPF sets up first.
+- The defenders are deployed as docked at the station.
+- The attackers may deploy together or an adjacent hexes 34 hexes from the center.
   
 - **Venemous** (Destroyer)
 - **Perdition** (Heavy Cruiser)
@@ -305,6 +306,13 @@ When both sides have completed deployment, the game should proceed to the first 
 
 ### The Last Stand
 **Description:** A massive Sathar fleet assaults Fortress K'zdit. UPF must hold the line.
+
+**Setup:**
+- The UPF sets up first.
+- The planet is placed near the center of the map.
+- The space station is placed in orbit around the planet.
+- The UPF forces may be deployed anywhere on the map and given any starting speed and facing.
+- The Sathar forces must deploy 34 hexes from the center of the map, but all Sathar ships must be within 2 hexes of each other. Sathar ships may be placed with any starting speed and facing.
 
 **UPF (Defenders):**
 - **Fortress K'zdit** (Space Station - Custom)
