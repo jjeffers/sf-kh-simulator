@@ -320,19 +320,22 @@ func setup_game(seed_val: int, scen_key: String):
 	log_message("Game Setup Received: Seed %d" % seed_val)
 	load_scenario(scen_key, seed_val)
 	_load_planets_from_scenario(scen_key)
-	start_deployment_phase()
+	start_deployment_phase(scen_key)
 
-func start_deployment_phase():
+func start_deployment_phase(scen_key: String = ""):
 	current_phase = Phase.DEPLOYMENT
 	log_message("[color=cyan]=== DEPLOYMENT Phase ===[/color]")
 	has_deployed_side_1 = false
 	has_deployed_side_2 = false
 	
-	# Mark all ships as undeployed initially, except those pre-deployed by scenario logic.
-	# We rely on is_deployed var in Ship.gd.
-	
-	# Defender usually deploys first. By default, Side 2 is Defender.
-	deployment_subphase = 2
+	# UPF (Side 1) sets up first in these specific scenarios as Defenders.
+	if scen_key == "":
+		scen_key = NetworkManager.lobby_data.get("scenario", "simple_test")
+		
+	if scen_key == "surprise_attack" or scen_key == "the_last_stand":
+		deployment_subphase = 1
+	else:
+		deployment_subphase = 2
 	
 	_update_ui_state()
 	_update_deployment_ui()
