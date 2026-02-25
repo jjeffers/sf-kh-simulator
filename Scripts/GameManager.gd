@@ -2635,7 +2635,15 @@ func _on_deploy_complete_pressed():
 func rpc_submit_deployment(side_id: int, deployment_data: Dictionary):
 	if not _is_server_or_offline(): return
 	
-	# Apply final positions
+	# Apply and broadcast the final placed positions to everyone
+	if multiplayer.has_multiplayer_peer():
+		rpc_apply_deployment_data.rpc(side_id, deployment_data)
+	else:
+		rpc_apply_deployment_data(side_id, deployment_data)
+
+@rpc("authority", "call_local", "reliable")
+func rpc_apply_deployment_data(side_id: int, deployment_data: Dictionary):
+	# Apply final positions locally for UI/render matching
 	for s in ships:
 		if is_instance_valid(s) and s.side_id == side_id and deployment_data.has(s.name):
 			var d = deployment_data[s.name]
@@ -2650,14 +2658,16 @@ func rpc_submit_deployment(side_id: int, deployment_data: Dictionary):
 	elif side_id == 2:
 		has_deployed_side_2 = true
 
-	# Next steps
-	if has_deployed_side_1 and has_deployed_side_2:
-		# All deployed, start the game
-		rpc_finalize_deployment.rpc()
-	else:
-		# Someone is missing
-		var next_side = 1 if side_id == 2 else 2
-		rpc_sync_deployment_state.rpc(next_side)
+	# Only the host determines the state transition logic
+	if _is_server_or_offline():
+		# Next steps
+		if has_deployed_side_1 and has_deployed_side_2:
+			# All deployed, start the game
+			rpc_finalize_deployment.rpc()
+		else:
+			# Someone is missing
+			var next_side = 1 if side_id == 2 else 2
+			rpc_sync_deployment_state.rpc(next_side)
 
 @rpc("authority", "call_local", "reliable")
 func rpc_sync_deployment_state(subphase: int):
