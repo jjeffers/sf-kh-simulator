@@ -328,12 +328,20 @@ func start_deployment_phase(scen_key: String = ""):
 	has_deployed_side_1 = false
 	has_deployed_side_2 = false
 	
-	# UPF (Side 1) sets up first in these specific scenarios as Defenders.
+	# UPF sets up first in these specific scenarios as Defenders.
 	if scen_key == "":
 		scen_key = NetworkManager.lobby_data.get("scenario", "simple_test")
 		
 	if scen_key == "surprise_attack" or scen_key == "the_last_stand":
-		deployment_subphase = 1
+		# Dynamically determine which side is UPF
+		var scen = ScenarioManager.get_scenario(scen_key)
+		var upf_side_id = 2 # Default fallback
+		if scen.has("sides"):
+			for idx in scen["sides"]:
+				if scen["sides"][idx].get("name") == "UPF":
+					upf_side_id = idx + 1
+					break
+		deployment_subphase = upf_side_id
 	else:
 		deployment_subphase = 2
 	
