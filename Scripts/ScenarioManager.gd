@@ -103,24 +103,16 @@ static func generate_scenario(key: String, rng_seed: int) -> Dictionary:
 	var ships = []
 	
 	if key == "surprise_attack":
-		# Station Setup
-		# Random neighbor of (0,0,0)
-		var center_neighbors = [
-			Vector3i(1, 0, -1), Vector3i(1, -1, 0), Vector3i(0, -1, 1),
-			Vector3i(-1, 0, 1), Vector3i(-1, 1, 0), Vector3i(0, 1, -1)
-		]
-		var station_pos = center_neighbors[rng.randi() % center_neighbors.size()]
-		var station_orbit_dir = 1 if rng.randf() > 0.5 else -1
-		print("[SCENARIO] Station Alpha Pos: %s, Orbit: %d" % [station_pos, station_orbit_dir])
-		
-		# Station Ship Def
+		# Defender Setup
+		# Station Alpha is placed by the player during Deployment phase.
+		# We start it at an arbitrary position until then.
 		var station = {
 			"name": "Station Alpha",
 			"class": "Station",
 			"faction": "UPF",
 			"side_index": 1, # Defender
-			"position": station_pos,
-			"orbit_direction": station_orbit_dir,
+			"position": Vector3i.ZERO,
+			"orbit_direction": 1,
 			"overrides": {
 				"max_hull": 25,
 				"hull": 25,
@@ -142,12 +134,13 @@ static func generate_scenario(key: String, rng_seed: int) -> Dictionary:
 		ships.append(station)
 		
 		# Defender Ships (Start Docked)
+		# These will follow the station and be automatically deployed when the station is deployed.
 		ships.append({
 			"name": "Defiant",
 			"class": "Frigate",
 			"faction": "UPF",
 			"side_index": 1, # Defender
-			"position": station_pos,
+			"position": Vector3i.ZERO,
 			"docked_at": "Station Alpha",
 			"color": Color.CYAN
 		})
@@ -157,7 +150,7 @@ static func generate_scenario(key: String, rng_seed: int) -> Dictionary:
 			"class": "Assault Scout",
 			"faction": "UPF",
 			"side_index": 1, # Defender
-			"position": station_pos,
+			"position": Vector3i.ZERO,
 			"docked_at": "Station Alpha",
 			"color": Color.CYAN
 		})
@@ -508,3 +501,47 @@ static func generate_scenario(key: String, rng_seed: int) -> Dictionary:
 		scen["ships"] = ships
 
 	return scen
+
+static func get_valid_deployment_hexes(side_id: int, ships: Array, planets: Array, ship = null) -> Array[Vector3i]:
+	# Default: Deploy anywhere. Scenarios could inject specific logic based on NetworkManager overrides.
+	# For Surprise Attack (hardcoded example):
+	var lobby = NetworkManager.lobby_data
+	var scen_key = lobby.get("scenario", "surprise_attack")
+	
+	var valid_hexes: Array[Vector3i] = []
+	
+	if ship and (ship.ship_class == "Space Station" or ship.ship_class == "Station"):
+		for p in planets:
+			valid_hexes.append_array(HexGrid.get_neighbors(p))
+		if planets.size() > 0:
+			return valid_hexes
+	
+	if scen_key == "surprise_attack":
+		if side_id == 2:
+			# Defenders (UPF): Must deploy near Station Alpha.
+			# Or if pre-deployed, this might not even be called if no ships are undeployed.
+			# But if they do, say within 3 hexes of station.
+			var station_pos = Vector3i.ZERO
+			for s in ships:
+				if is_instance_valid(s) and s.name == "Station Alpha":
+					station_pos = s.grid_position
+					break
+					
+			# Generate all hexes within radius 3
+			for x in range(-3, 4):
+				for y in range(max(-3, -x-3), min(3, -x+3) + 1):
+					var z = -x - y
+					valid_hexes.append(station_pos + Vector3i(x, y, z))
+		else:
+			# Attackers: Must deploy exactly 34 hexes from center.
+			var spawn_dist = 34
+			# Generate a ring of hexes
+			for x in range(-spawn_dist, spawn_dist + 1):
+				for y in range(max(-spawn_dist, -x-spawn_dist), min(spawn_dist, -x+spawn_dist) + 1):
+					var z = -x - y
+					var dist = HexGrid.hex_distance(Vector3i.ZERO, Vector3i(x, y, z))
+					if dist == spawn_dist:
+						valid_hexes.append(Vector3i(x, y, z))
+
+	# Wait, if valid_hexes is empty, we just let them deploy anywhere.
+	return valid_hexes

@@ -151,7 +151,7 @@ A number between 1 and 100 is randomly selected (roll a d100). Then the DTM from
 - An assault carrier carries x20 re-arm capacity.
 - A space station carries re-arm capacity of x2 per fighter group stationed.
 
-## Ship Register
+## Ship Registry
 
 Detailed specifications for all ship classes currently implemented.
 
@@ -243,6 +243,30 @@ Available game scenarios and their configurations.
 
 Setup: if there is a planet present, ships should not spawn in the same hex as the planet.
 
+### Setup Phase
+
+Each side is given a chance to deploy their ships on the map. Unless otherwise specifed the defenders deploy first, then the attackers deploy. 
+
+Typically each side may setup their ships with whatever starting speed and facing they desire.
+
+Attackers typically must deploy at a distance of 34 hexes from the center of the map.
+
+Scenarios may specify deployment constraints (e.g. starting positions, speeds, facings, etc.) for space stations, planets, and ships.
+
+#### Deployment UI
+Each deploying side should see a list of ships available to deploy, similar to the ship list seen in movement planning.
+
+Once a ship is selected, the side should be able to select a hex to deploy the ship in. The hex must be within the deployment zone for that side. The side may set a starting speed and facing for the ship. 
+
+- Space stations are typically placed in orbit around planets. The deployment UI should highlihght the available hexes for placement (all hexes adjacent to the planet).
+
+There should be a button to confirm the deployment of the current ship ("DEPLOY SHIP") or right click, and a button to confirm the deployment of all ships ("COMPLETE DEPLOYMENT").
+
+Once the first side completes deployment, the other side should be notified and given a chance to deploy their ships.
+
+When both sides have completed deployment, the game should proceed to the first turn.
+
+
 ### Surprise Attack!
 **Description:** Attackers ambush Station Alpha. The Defiant must evacuate the station and then escape.
 
@@ -259,20 +283,20 @@ Setup: if there is a planet present, ships should not spawn in the same hex as t
   - Faction: UPF.
 
 **Attackers (Side B):**
-- **Spawn:** Random map edge (Distance 24).
 - **Venemous** (Destroyer)
-  - Location: Edge hex.
-  - Heading: Facing toward the center.
-  - Starting Speed: 10
   - Faction: Sathar.
 - **Perdition** (Heavy Cruiser)
-  - Location: Adjacent to Venemous (Diagonal formation).
-  - Heading: Facing toards the center.
-  - Starting Speed: 10
   - Faction: Sathar.
 
+**Setup:**
+  - As noted the defenders are deployed as docked at the station.
+  - The attackers may deploy together or an adjacent hexes 34 hexes from the center.
+  
+- **Venemous** (Destroyer)
+- **Perdition** (Heavy Cruiser)
+
 **Special Rules**
- - The UPF frigate Defiant must dock for 3 turns to complete evacuation. After the 3rd turn the station is considered evacuated.
+ - The UPF frigate Defiant must dock for 3 gae turns to complete evacuation. After the 3rd game turn the station is considered evacuated.
  - Once evacuated the station may no longer fire weapons or activate screens.
 
 **Objectives:**
