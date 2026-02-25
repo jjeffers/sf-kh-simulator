@@ -2585,6 +2585,8 @@ func _on_deploy_ship_pressed():
 		
 	selected_ship.grid_position = deploy_tentative_hex
 	selected_ship.facing = deploy_facing_val
+	if selected_ship.ship_class == "Space Station" or selected_ship.ship_class == "Station":
+		deploy_speed_val = 0
 	selected_ship.speed = deploy_speed_val
 	selected_ship.is_deployed = true
 	selected_ship.position = HexGrid.hex_to_pixel(selected_ship.grid_position)
