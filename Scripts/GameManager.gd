@@ -129,7 +129,7 @@ var list_attack_queue: VBoxContainer # NEW
 var btn_clear_all: Button # NEW: Clear All Attacks Button
 
 # ICM UI
-signal icm_decision_made(count: int)
+signal icm_decision_made(allocations: Dictionary)
 var panel_icm: PanelContainer
 
 # Visuals
@@ -328,12 +328,20 @@ func start_deployment_phase(scen_key: String = ""):
 	has_deployed_side_1 = false
 	has_deployed_side_2 = false
 	
-	# UPF (Side 1) sets up first in these specific scenarios as Defenders.
+	# UPF sets up first in these specific scenarios as Defenders.
 	if scen_key == "":
 		scen_key = NetworkManager.lobby_data.get("scenario", "simple_test")
 		
 	if scen_key == "surprise_attack" or scen_key == "the_last_stand":
-		deployment_subphase = 1
+		# Dynamically determine which side is UPF
+		var scen = ScenarioManager.get_scenario(scen_key)
+		var upf_side_id = 2 # Default fallback
+		if scen.has("sides"):
+			for idx in scen["sides"]:
+				if scen["sides"][idx].get("name") == "UPF":
+					upf_side_id = idx + 1
+					break
+		deployment_subphase = upf_side_id
 	else:
 		deployment_subphase = 2
 	
@@ -2577,6 +2585,8 @@ func _on_deploy_ship_pressed():
 		
 	selected_ship.grid_position = deploy_tentative_hex
 	selected_ship.facing = deploy_facing_val
+	if selected_ship.ship_class == "Space Station" or selected_ship.ship_class == "Station":
+		deploy_speed_val = 0
 	selected_ship.speed = deploy_speed_val
 	selected_ship.is_deployed = true
 	selected_ship.position = HexGrid.hex_to_pixel(selected_ship.grid_position)
@@ -2625,7 +2635,15 @@ func _on_deploy_complete_pressed():
 func rpc_submit_deployment(side_id: int, deployment_data: Dictionary):
 	if not _is_server_or_offline(): return
 	
-	# Apply final positions
+	# Apply and broadcast the final placed positions to everyone
+	if multiplayer.has_multiplayer_peer():
+		rpc_apply_deployment_data.rpc(side_id, deployment_data)
+	else:
+		rpc_apply_deployment_data(side_id, deployment_data)
+
+@rpc("authority", "call_local", "reliable")
+func rpc_apply_deployment_data(side_id: int, deployment_data: Dictionary):
+	# Apply final positions locally for UI/render matching
 	for s in ships:
 		if is_instance_valid(s) and s.side_id == side_id and deployment_data.has(s.name):
 			var d = deployment_data[s.name]
@@ -2640,14 +2658,16 @@ func rpc_submit_deployment(side_id: int, deployment_data: Dictionary):
 	elif side_id == 2:
 		has_deployed_side_2 = true
 
-	# Next steps
-	if has_deployed_side_1 and has_deployed_side_2:
-		# All deployed, start the game
-		rpc_finalize_deployment.rpc()
-	else:
-		# Someone is missing
-		var next_side = 1 if side_id == 2 else 2
-		rpc_sync_deployment_state.rpc(next_side)
+	# Only the host determines the state transition logic
+	if _is_server_or_offline():
+		# Next steps
+		if has_deployed_side_1 and has_deployed_side_2:
+			# All deployed, start the game
+			rpc_finalize_deployment.rpc()
+		else:
+			# Someone is missing
+			var next_side = 1 if side_id == 2 else 2
+			rpc_sync_deployment_state.rpc(next_side)
 
 @rpc("authority", "call_local", "reliable")
 func rpc_sync_deployment_state(subphase: int):
@@ -4396,7 +4416,7 @@ func _draw():
 	
 	# Active Plotting Visualization
 	# Only draw if selected ship DOES NOT have orders (i.e. we are actively plotting)
-	if is_instance_valid(ghost_ship) and current_path.size() > 0 and is_instance_valid(selected_ship) and not selected_ship.has_orders:
+	if current_phase == Phase.MOVEMENT and is_instance_valid(ghost_ship) and current_path.size() > 0 and is_instance_valid(selected_ship) and not selected_ship.has_orders:
 		var points = PackedVector2Array()
 		points.append(HexGrid.hex_to_pixel(selected_ship.grid_position))
 		
@@ -5278,7 +5298,12 @@ func get_side_name(side_id: int) -> String:
 
 func _submit_icm_decision(allocations: Dictionary):
 	# Send RPC to broadcast decision
-	rpc("broadcast_icm_decision", allocations)
+	if multiplayer.has_multiplayer_peer() and not _is_server_or_offline():
+		broadcast_icm_decision.rpc(allocations)
+	elif multiplayer.has_multiplayer_peer() and _is_server_or_offline():
+		broadcast_icm_decision.rpc(allocations)
+	else:
+		broadcast_icm_decision(allocations)
 
 @rpc("any_peer", "call_local", "reliable")
 func broadcast_icm_decision(allocations: Dictionary):
