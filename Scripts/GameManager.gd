@@ -129,7 +129,7 @@ var list_attack_queue: VBoxContainer # NEW
 var btn_clear_all: Button # NEW: Clear All Attacks Button
 
 # ICM UI
-signal icm_decision_made(count: int)
+signal icm_decision_made(allocations: Dictionary)
 var panel_icm: PanelContainer
 
 # Visuals
@@ -5298,7 +5298,12 @@ func get_side_name(side_id: int) -> String:
 
 func _submit_icm_decision(allocations: Dictionary):
 	# Send RPC to broadcast decision
-	rpc("broadcast_icm_decision", allocations)
+	if multiplayer.has_multiplayer_peer() and not _is_server_or_offline():
+		broadcast_icm_decision.rpc(allocations)
+	elif multiplayer.has_multiplayer_peer() and _is_server_or_offline():
+		broadcast_icm_decision.rpc(allocations)
+	else:
+		broadcast_icm_decision(allocations)
 
 @rpc("any_peer", "call_local", "reliable")
 func broadcast_icm_decision(allocations: Dictionary):
