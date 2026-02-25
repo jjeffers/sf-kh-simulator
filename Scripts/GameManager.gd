@@ -4869,8 +4869,11 @@ func _get_valid_targets(shooter: Ship) -> Array:
 	var valid = []
 	for s in ships:
 		if is_instance_valid(s) and s.side_id != shooter.side_id and not s.is_exploding:
-			# Check against ALL available weapons (or just current? usually any valid weapon means ship is active)
-			# Let's check if ANY weapon can hit the target
+			# Reactive Fire Tracking: Use previous path if Defensive Fire (Passive)
+			var target_hexes = [s.grid_position]
+			if combat_subphase == 1 and s.side_id == current_side_id:
+				target_hexes.append_array(s.previous_path)
+			
 			var can_hit = false
 			for weapon in shooter.weapons:
 				if weapon["ammo"] <= 0: continue
@@ -4878,33 +4881,35 @@ func _get_valid_targets(shooter: Ship) -> Array:
 				
 				var w_range = weapon["range"]
 				var w_arc = weapon["arc"]
-				var d = HexGrid.hex_distance(shooter.grid_position, s.grid_position)
 				
-				if d > w_range: continue
-				
-				# LOS Check (Planet Blocking)
-				var line_hexes = HexGrid.get_line_coords(shooter.grid_position, s.grid_position)
-				var blocked = false
-				for h in line_hexes:
-					if h in planet_hexes:
-						# Logic: If ANY hex in the line is a planet, it's blocked.
-						# EXCEPTION: Shooter and Target hexes (Firing out/in is allowed)
-						if h == shooter.grid_position or h == s.grid_position: continue
-						
-						blocked = true
+				for check_hex in target_hexes:
+					var d = HexGrid.hex_distance(shooter.grid_position, check_hex)
+					if d > w_range: continue
+					
+					# LOS Check (Planet Blocking)
+					var line_hexes = HexGrid.get_line_coords(shooter.grid_position, check_hex)
+					var blocked = false
+					for h in line_hexes:
+						if h in planet_hexes:
+							if h == shooter.grid_position or h == check_hex: continue
+							blocked = true
+							break
+					
+					if blocked: continue
+
+					if w_arc == "FF":
+						var valid_hexes = _get_ff_arc_hexes(shooter, w_range)
+						if check_hex in valid_hexes:
+							can_hit = true
+							break # Found a valid hex for this FF weapon
+					else:
+						# Default or Turret (360)
+						can_hit = true
 						break
 				
-				if blocked: continue
-
-				if w_arc == "FF":
-					var valid_hexes = _get_ff_arc_hexes(shooter, w_range)
-					if s.grid_position in valid_hexes:
-						can_hit = true
-						break # Found a valid weapon for this target
-				else:
-					# Default or Turret (360)
-					can_hit = true
-					break
+				if can_hit:
+					break # Found a valid weapon for this target
+					
 			if can_hit:
 				valid.append(s)
 	return valid
