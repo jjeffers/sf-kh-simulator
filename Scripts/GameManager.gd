@@ -2521,6 +2521,7 @@ func _update_deployment_ui():
 				deploy_hex_selected = false
 			_update_deployment_ui()
 			_update_deploy_preview()
+			_update_ui_state()
 		)
 		list_deployment.add_child(btn)
 		
