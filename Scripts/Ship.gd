@@ -10,6 +10,7 @@ extends Node2D
 var texture_fighter = preload("res://Assets/upf_fighter.png")
 var texture_assault_scout = preload("res://Assets/upf_assault_scout.png")
 var texture_frigate = preload("res://Assets/upf_frigate.png")
+var texture_upf_minelayer = preload("res://Assets/upf_minelayer.png")
 var texture_space_station = preload("res://Assets/upf_space_station.png")
 var texture_sathar_destroyer = preload("res://Assets/sathar_destroyer.png")
 var texture_sathar_heavy_cruiser = preload("res://Assets/sathar_heavy_cruiser.png")
@@ -76,6 +77,7 @@ var has_orders: bool = false
 var planned_path: Array[Vector3i] = []
 var planned_facing: int = 0
 var planned_orbit_dir: int = 0
+var planned_mines_to_drop: Array[Vector3i] = []
 
 func get_net_state() -> Dictionary:
 	return {
@@ -103,6 +105,7 @@ func get_net_state() -> Dictionary:
 		"facing": facing,
 		"orbit_direction": orbit_direction,
 		"speed": speed,
+		"planned_mines_to_drop": planned_mines_to_drop,
 		"is_deployed": is_deployed,
 		"is_destroyed": is_destroyed, # Important for sync
 		"current_dcr": current_dcr,
@@ -166,6 +169,11 @@ func apply_net_state(data: Dictionary):
 	_set_facing(data.get("facing", facing))
 	orbit_direction = data.get("orbit_direction", orbit_direction)
 	speed = data.get("speed", speed)
+	
+	if data.has("planned_mines_to_drop"):
+		planned_mines_to_drop.assign(data["planned_mines_to_drop"])
+	else:
+		planned_mines_to_drop.clear()
 	
 	var net_is_destroyed = data.get("is_destroyed", is_destroyed)
 	if net_is_destroyed and not is_destroyed:
@@ -589,6 +597,62 @@ func configure_frigate():
 	
 	current_weapon_index = 0
 	
+func configure_minelayer():
+	ship_class = "Minelayer"
+	defense = "RH"
+	max_hull = 40
+	hull = max_hull
+	adf = 1
+	mr = 2
+	icm_max = 4
+	icm_current = 4
+	ms_max = 4
+	ms_current = 4
+	max_dcr = 75
+	current_dcr = max_dcr
+	equipped_screens.clear()
+	
+	weapons.clear()
+	# Laser Battery (x2)
+	weapons.append({
+		"name": "Laser Battery 1",
+		"type": "Laser",
+		"range": 9,
+		"arc": "360",
+		"ammo": 999,
+		"max_ammo": 999,
+		"damage_dice": "1d10",
+		"damage_bonus": 0,
+		"fired": false
+	})
+	weapons.append({
+		"name": "Laser Battery 2",
+		"type": "Laser",
+		"range": 9,
+		"arc": "360",
+		"ammo": 999,
+		"max_ammo": 999,
+		"damage_dice": "1d10",
+		"damage_bonus": 0,
+		"fired": false
+	})
+	
+	# Mines (x20)
+	weapons.append({
+		"name": "Mines",
+		"type": "Mine",
+		"range": 0,
+		"arc": "360",
+		"ammo": 20,
+		"max_ammo": 20,
+		"damage_dice": "3d10",
+		"damage_bonus": 5,
+		"dtm": 0,
+		"fired": false
+	})
+	
+	current_weapon_index = 0
+
 func configure_destroyer():
 	ship_class = "Destroyer"
 	defense = "RH"
@@ -1305,6 +1369,30 @@ func _draw():
 			draw_set_transform(Vector2.ZERO, 0, Vector2(1, 1))
 			
 			points = PackedVector2Array()
+		"Minelayer":
+			# Sprite Rendering
+			var target_size = HexGrid.TILE_SIZE * 0.9
+			
+			var tex = texture_upf_minelayer # UPF Default for Minelayer
+			if faction == "Sathar":
+				tex = texture_sathar_frigate # Fallback to Sathar Frigate since no asset explicitly exists yet
+				target_size = HexGrid.TILE_SIZE * 0.9
+			
+			var ref_size = max(tex.get_width(), tex.get_height())
+			var scale_factor = target_size / ref_size
+			
+			var draw_angle = facing * (PI / 3.0) + (PI / 2.0)
+			
+			draw_set_transform(Vector2.ZERO, draw_angle, Vector2(scale_factor, scale_factor))
+			
+			var tex_size = tex.get_size()
+			var rect = Rect2(-tex_size / 2, tex_size)
+			
+			draw_texture_rect(tex, rect, false, Color.WHITE)
+			
+			draw_set_transform(Vector2.ZERO, 0, Vector2(1, 1))
+			
+			points = PackedVector2Array()
 		"Destroyer":
 			if faction == "Sathar":
 				# Sathar Destroyer Sprite
@@ -1588,6 +1676,7 @@ func get_display_name() -> String:
 	match ship_class:
 		"Fighter": abbrev = "F"
 		"Frigate": abbrev = "FG"
+		"Minelayer": abbrev = "ML"
 		"Destroyer": abbrev = "DD"
 		"Heavy Cruiser": abbrev = "C"
 		"Battleship": abbrev = "BB"
@@ -1662,6 +1751,9 @@ func get_texture() -> Texture2D:
 		"Frigate":
 			if faction == "Sathar": return texture_sathar_frigate
 			return texture_frigate
+		"Minelayer":
+			if faction == "Sathar": return texture_sathar_frigate
+			return texture_upf_minelayer
 		"Destroyer":
 			if faction == "Sathar": return texture_sathar_destroyer
 			return texture_upf_destroyer
@@ -1704,7 +1796,7 @@ func draw_sprite_custom(canvas: CanvasItem, pos: Vector2, facing_dir: int, alpha
 	match ship_class:
 		"Fighter": target_size = HexGrid.TILE_SIZE * 0.6
 		"Assault Scout": target_size = HexGrid.TILE_SIZE * 0.7
-		"Frigate": target_size = HexGrid.TILE_SIZE * 0.9
+		"Frigate", "Minelayer": target_size = HexGrid.TILE_SIZE * 0.9
 		"Destroyer": target_size = HexGrid.TILE_SIZE * 1.1
 		"Heavy Cruiser": target_size = HexGrid.TILE_SIZE * 1.4
 		"Battleship": target_size = HexGrid.TILE_SIZE * 1.7

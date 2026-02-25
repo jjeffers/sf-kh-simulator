@@ -6,7 +6,7 @@
 - A "game turn" is split in half between the two sides. In each side's turn, the side will plan and execute movement, and then both sides will plan and execute combat.
 - A side that performs movment is the "moving side" and the other side is the "non-moving side".
 - Combat is resolved in two phases: passive fire and active fire. During passive fire, the non-moving side will plan and execute defensive fire. During active fire, the moving side will plan and execute offensive fire.
-- The game shuuld track the current game turn as well as the phase within that side's half of the game turn.
+- The game shuold track the current game turn as well as the phase within that side's half of the game turn.
 
 ### Procedure
 A. Side A Turn
@@ -160,6 +160,7 @@ Detailed specifications for all ship classes currently implemented.
 | **Fighter** | 8 | 5 | 5 | RH | 0 | 0 | Assault Rockets (x3) | 30 |
 | **Assault Scout** | 15 | 5 | 4 | RH | 0 | 0 | Laser Battery, Assault Rockets (x4) | 50 |
 | **Frigate** | 40 | 3 | 3 | RH, ICMs (x4) | 4 | 1 | Laser Battery, Laser Canon, Rocket Battery (x4), Torpedo (x2) | 70 |
+| **Minelayer** | 40 | 1 | 2 | RH | 4 | 4 | Laser Battery (x2), Mines (x20) | 75 |
 | **Destroyer** | 50 | 3 | 2 | RH | 5 | 2 | Laser Battery, Laser Canon, Electron Battery, Rocket Battery (x6), Torpedo (x2) | 75 |
 | **Light Cruiser** | 70 | 3 | 2 | RH, ES, SS | 8 | 1 | Disruptor Canon, laser battery, electron battery, proton battery, Rocket Battery (x6), Torpedo (x4) | 100 |
 | **Heavy Cruiser** | 80 | 1 | 1 | RH, PS, SS | 8 | 1 | Laser Battery (x2), proton battery, electron battery, Disruptor Canon, Rocket Battery (x8), Torpedo (x4) | 120 |
@@ -186,9 +187,12 @@ Combat mechanics and specifications for all weapon types.
 | **Assault Rocket** | Rocket | 4 | FF, LTD, MPO | 2d10+4 | 60 | 60 | 60 | 60 | 60 | 60 | -10 | - Reduced to 60% vs RH<br>- Subject to ICM (-5% per) |
 | **Rocket Battery** | Rocket | 3 | LTD | 2d10 | 40 | 40 | 40 | 40 | 40 | 40 | -10|  <br>- Subject to ICM (-3% per) |
 | **Torpedo** | Torpedo | 4 | LTD, MPO | 4d10 | 50 | 50 | 50 | 50 |75 | 50 | -20 | <br>- Subject to ICM (-10% per) |
+| **Mine** | Mine | 0 | LTD | 3d10+5 | 60 | 60 | 60 | 60 | 80 | 60 | 0 | <br>Subject to ICM (-8% per) | 
 
 RD = Range Diffusion (weapon accuracy degrades 5% per hex), FF = Forward Fire, MPO = Moving player only (not valid for defensive fire), LTD = Limited Ammunition (limited number of uses), PR = proton screen, ES = electron scrren, SS = stasis screen, MS = masking screen, RH = reflective hull
 
+### Mines
+Note that mines are always visible to the owning side, but never shown to the enemy side. Mines detonate when an enemy ship or ships enter a hex containing the mine. All enemy ships entering the mined hex are attacked separately by the mine. After the mine detonates, the hex is cleared of that mine. Mines may be deployed during the setup phase, typically taken from the stock of mines carried by a minelayer. Mines may also be placed into a hex by a minelayer during movement planning. A "drop mine" button should be shown if the selected ship is a minelayer. Clicking the "drop mine" button should place a mine in the hex that the minelayer is currently in. The mine will remain in that hex until it detonates. 
 
 A weapon's chance to hit is not effected by distance unless it has the RD attribute.
 Weapons have can fire in any direction unless they have the FF attribute.

@@ -43,6 +43,8 @@ var combat_subphase: int = 0
 # Repair State
 var repair_subphase: int = 0 # 1 = Side 1 plan, 2 = Side 2 plan, 3 = Execute
 var repair_allocations: Dictionary = {} # { "ship_name": { "damage_key": DCR_amount } }
+var active_repair_animations: int = 0
+var has_submitted_final_repairs: bool = false
 
 # Deployment UI Nodes
 var panel_deployment: PanelContainer
@@ -83,6 +85,11 @@ var opt_active_screen: OptionButton
 var btn_exec_move: Button # NEW: Manual Phase Transition
 var btn_dock: Button
 var btn_rearm: Button
+var btn_drop_mine: Button # NEW: Mine placement flag
+
+# Mines State
+var active_mines: Array[Dictionary] = [] # Format: {"pos": Vector3i, "side_id": int, "owner_name": String}
+var state_mine_placement: bool = false # Tracks if UI is in "select hex to drop mine" mode
 
 # Movement State
 var ghost_ship: Ship = null
@@ -140,6 +147,10 @@ func _on_ship_state_changed():
 	if ship_status_panel and is_instance_valid(selected_ship):
 		ship_status_panel.update_from_ship(selected_ship)
 
+
+# ICM State Variables
+var _icm_decision_received: bool = false
+var _icm_current_allocations: Dictionary = {}
 
 func _ready():
 	_init_log_file()
@@ -501,6 +512,13 @@ func _setup_ui():
 	btn_commit.text = "Engage"
 	btn_commit.pressed.connect(_on_commit_move)
 	vbox.add_child(btn_commit)
+	
+	btn_drop_mine = Button.new()
+	btn_drop_mine.text = "Drop Mine"
+	btn_drop_mine.pressed.connect(_on_drop_mine_pressed)
+	btn_drop_mine.visible = false
+	btn_drop_mine.theme_type_variation = "FlatButton"
+	vbox.add_child(btn_drop_mine)
 	
 	# Turn Buttons Removed (Mouse Gesture Only)
 	
@@ -914,6 +932,10 @@ func log_message(msg: String):
 		combat_log.append_text(final_msg + "\n")
 	print(final_msg)
 	_log_to_file(final_msg)
+
+@rpc("authority", "call_local", "reliable")
+func rpc_log_message(msg: String):
+	log_message(msg)
 	
 func _init_log_file():
 	var f = FileAccess.open(LOG_FILE, FileAccess.WRITE)
@@ -1203,7 +1225,58 @@ func _spawn_icm_fx(target: Ship, attacker_pos: Vector2, duration: float = 0.5):
 		)
 
 func _spawn_attack_fx(start: Vector2, end: Vector2, type: String) -> float:
-	if type == "Rocket" or type == "Rocket Battery":
+	if type == "Mine":
+		var container = Node2D.new()
+		container.position = start
+		container.z_index = 20
+		add_child(container)
+		
+		# Expanding Core
+		var core = Polygon2D.new()
+		var pts = PackedVector2Array()
+		for i in range(16):
+			var a = i * PI / 8.0
+			pts.append(Vector2(cos(a), sin(a)) * 15.0)
+		core.polygon = pts
+		core.color = Color(1.0, 0.8, 0.2, 0.9)
+		container.add_child(core)
+		
+		# Expanding Shockwave
+		var shock = Polygon2D.new()
+		shock.polygon = pts
+		shock.color = Color(1.0, 0.3, 0.0, 0.6)
+		container.add_child(shock)
+		
+		# Omni-directional Burst Particles
+		var boom = CPUParticles2D.new()
+		boom.emitting = false
+		boom.amount = 80
+		boom.one_shot = true
+		boom.explosiveness = 0.95
+		boom.spread = 180.0
+		boom.gravity = Vector2.ZERO
+		boom.initial_velocity_min = 60.0
+		boom.initial_velocity_max = 200.0
+		boom.scale_amount_min = 3.0
+		boom.scale_amount_max = 8.0
+		boom.color = Color(1.0, 0.5, 0.1, 0.8)
+		container.add_child(boom)
+		
+		boom.emitting = true
+		
+		var t = create_tween()
+		t.set_parallel(true)
+		t.tween_property(core, "scale", Vector2(4, 4), 0.3).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_OUT)
+		t.tween_property(core, "color:a", 0.0, 0.4)
+		t.tween_property(shock, "scale", Vector2(8, 8), 0.7).set_trans(Tween.TRANS_EXPO).set_ease(Tween.EASE_OUT)
+		t.tween_property(shock, "color:a", 0.0, 0.7)
+		
+		t.chain().tween_callback(container.queue_free)
+		
+		if audio_hit and audio_hit.stream: audio_hit.play()
+		return 1.0 # Duration
+		
+	elif type == "Rocket" or type == "Rocket Battery":
 		# Rocket Visual
 		var container = Node2D.new()
 		container.position = start
@@ -1540,8 +1613,13 @@ func _process_next_attack():
 		# Prompt UI (Pass array of ships)
 		_trigger_icm_decision(source.name, weapon["name"], w_type, raw_chance, target, eligible_ships)
 		
-		# Wait for signal (Returns Dictionary now: { ship_name: amount })
-		var allocations = await icm_decision_made
+		# Wait for state flag instead of raw signal
+		while not _icm_decision_received:
+			await get_tree().process_frame
+			
+		var allocations = _icm_current_allocations
+		_icm_decision_received = false
+		_icm_current_allocations = {}
 		
 		# Calculate total and deduct from each
 		for s_name in allocations.keys():
@@ -1740,17 +1818,18 @@ func _reset_plotting_state():
 	free_gravity_turn_used = false
 	mr_expenditures.clear()
 	combat_action_taken = false
-	step_entry_facing = selected_ship.facing # Init to current facing
+	if is_instance_valid(selected_ship):
+		step_entry_facing = selected_ship.facing # Init to current facing
 
-	# Snapshot State for Undo (if not already moved)
-	if selected_ship and not selected_ship.has_moved and selected_ship.turn_start_state.is_empty():
-		selected_ship.turn_start_state = {
-			"grid_position": selected_ship.grid_position,
-			"facing": selected_ship.facing,
-			"speed": selected_ship.speed,
-			"is_ms_active": selected_ship.is_ms_active,
-			"ms_orbit_start_hex": selected_ship.ms_orbit_start_hex
-		}
+		# Snapshot State for Undo (if not already moved)
+		if not selected_ship.has_moved and selected_ship.turn_start_state.is_empty():
+			selected_ship.turn_start_state = {
+				"grid_position": selected_ship.grid_position,
+				"facing": selected_ship.facing,
+				"speed": selected_ship.speed,
+				"is_ms_active": selected_ship.is_ms_active,
+				"ms_orbit_start_hex": selected_ship.ms_orbit_start_hex
+			}
 
 
 # --- Phase Indicator Helpers ---
@@ -2698,6 +2777,8 @@ func start_repair_phase():
 		return 
 
 	repair_allocations.clear()
+	has_submitted_final_repairs = false
+	active_repair_animations = 0
 	
 	if multiplayer.has_multiplayer_peer():
 		rpc_sync_repair_state.rpc(1, repair_allocations)
@@ -2890,6 +2971,9 @@ func _update_repair_ui_list():
 		list_movement.add_child(btn)
 func _on_repair_exec_pressed():
 	if repair_subphase == 1 or repair_subphase == 2:
+		if btn_repair_exec:
+			btn_repair_exec.disabled = true
+			
 		log_message("Submitting Repair Allocations for Side %d" % repair_subphase)
 		
 		if multiplayer.has_multiplayer_peer() and not _is_server_or_offline():
@@ -2950,6 +3034,7 @@ func rpc_sync_repair_state(subphase: int, allocs: Dictionary):
 
 @rpc("authority", "call_local", "reliable")
 func rpc_execute_repairs_for_side(side_id: int, allocs_for_side: Dictionary, rng_seed: int, is_final_side: bool):
+	active_repair_animations += 1
 	seed(rng_seed)
 	# Loop through all ships, try repairs synchronously on both peers.
 	for s in ships:
@@ -3008,6 +3093,10 @@ func rpc_execute_repairs_for_side(side_id: int, allocs_for_side: Dictionary, rng
 			await get_tree().create_timer(2.0).timeout
 
 	if is_final_side:
+		has_submitted_final_repairs = true
+
+	active_repair_animations -= 1
+	if has_submitted_final_repairs and active_repair_animations <= 0:
 		_conclude_repair_phase()
 
 func _conclude_repair_phase():
@@ -3205,6 +3294,7 @@ func _update_ui_state():
 		btn_ms_toggle.visible = false
 		if btn_dock: btn_dock.visible = false
 		if btn_rearm: btn_rearm.visible = false
+		if btn_drop_mine: btn_drop_mine.visible = false
 		if opt_active_screen: opt_active_screen.visible = false
 		
 		# Turn Restriction: If not my turn, stop here (hide controls)
@@ -3233,6 +3323,16 @@ func _update_ui_state():
 			# Disable if invalid path OR already locked (Orders/Moved)
 			# Note: We can re-commit if we Undo first.
 			btn_commit.disabled = not is_valid or is_locked
+			
+			if btn_drop_mine and selected_ship.ship_class == "Minelayer":
+				var has_mines = false
+				for w in selected_ship.weapons:
+					if w["type"] == "Mine" and w["ammo"] > 0:
+						has_mines = true
+						break
+				btn_drop_mine.visible = has_mines
+				# Note: Button is always enabled, meaning you can drop mines even after moving.
+				# The name is static "Drop Mine"
 			
 			var is_stationary = (current_path.size() == 0 and start_speed == 0)
 
@@ -3774,6 +3874,15 @@ func _on_rearm_pressed():
 		btn_rearm.visible = false 
 		if ship_status_panel: ship_status_panel.update_from_ship(selected_ship)
 
+func _on_drop_mine_pressed():
+	if not selected_ship or selected_ship.ship_class != "Minelayer": return
+	state_mine_placement = not state_mine_placement # Toggle placement mode
+	if state_mine_placement:
+		log_message("Mine placement mode ON. Click valid path hexes to drop.")
+	else:
+		log_message("Mine placement mode OFF.")
+	queue_redraw()
+
 func _on_commit_move():
 	# Authority Check
 	if my_side_id != 0 and current_side_id != my_side_id:
@@ -3788,11 +3897,11 @@ func _on_commit_move():
 	print("DEBUG: _on_commit_move for ", selected_ship.name)
 	print("DEBUG: Path size: ", path_data.size())
 	
-	if multiplayer.has_multiplayer_peer():
-		rpc("register_movement_plan", selected_ship.name, path_data, ghost_ship.facing, current_orbit_direction, state_is_orbiting)
+	if multiplayer.has_multiplayer_peer() and not _is_server_or_offline():
+		rpc("register_movement_plan", selected_ship.name, path_data.duplicate(), ghost_ship.facing, current_orbit_direction, state_is_orbiting, selected_ship.planned_mines_to_drop.duplicate())
 	else:
 		print("DEBUG: Calling register_movement_plan locally")
-		register_movement_plan(selected_ship.name, path_data, ghost_ship.facing, current_orbit_direction, state_is_orbiting)
+		register_movement_plan(selected_ship.name, path_data.duplicate(), ghost_ship.facing, current_orbit_direction, state_is_orbiting, selected_ship.planned_mines_to_drop.duplicate())
 
 # --- Security Validation ---
 func _validate_rpc_ownership(sender_id: int, required_side_id: int) -> bool:
@@ -3856,7 +3965,7 @@ func _validate_move_path(ship: Ship, path: Array[Vector3i], _final_facing: int, 
 	return true
 
 @rpc("any_peer", "call_local", "reliable")
-func register_movement_plan(ship_name: String, path: Array, final_facing: int, orbit_dir: int, is_orbiting: bool):
+func register_movement_plan(ship_name: String, path: Array, final_facing: int, orbit_dir: int, is_orbiting: bool, planned_mines: Array = []):
 	var ship: Ship = null
 	for s in ships:
 		if is_instance_valid(s) and s.name == ship_name:
@@ -3880,7 +3989,8 @@ func register_movement_plan(ship_name: String, path: Array, final_facing: int, o
 
 	# LOGIC VALIDATION (Anti-Cheat)
 	var typed_path: Array[Vector3i] = []
-	typed_path.assign(path)
+	for p in path:
+		typed_path.append(Vector3i(p))
 	
 	if not _validate_move_path(ship, typed_path, final_facing, is_orbiting):
 		log_message("[Security] Move rejected: Invalid Path/Speed for %s" % ship.name)
@@ -3894,6 +4004,11 @@ func register_movement_plan(ship_name: String, path: Array, final_facing: int, o
 	ship.planned_orbit_dir = orbit_dir
 	ship.has_orders = true
 	
+	var typed_mines: Array[Vector3i] = []
+	for hex in planned_mines:
+		typed_mines.append(Vector3i(hex))
+	ship.planned_mines_to_drop = typed_mines
+	
 	# Auto-undock on plot
 	if ship.is_docked and typed_path.size() > 0:
 		ship.undock()
@@ -3906,14 +4021,8 @@ func register_movement_plan(ship_name: String, path: Array, final_facing: int, o
 		
 	# SERVER BROADCAST: Ensure all OTHER clients get this plan
 	if multiplayer.has_multiplayer_peer() and multiplayer.is_server():
-		# valid_peers = all peers except sender? No, let's sync everyone to be safe/authoritative.
-		# Note: "call_local" on register_movement_plan already updated Server and Sender (if call_local used).
-		# But to reach Client C, we need this broadcast.
-		# We use call_remote to avoid re-triggering on Server?
-		# Or call_local to ensure Server/Sender matches?
-		# Let's use call_remote to others. 
-		# Actually, simplest is to broadcast to everyone via Authority, and clients trust Authority.
-		rpc_sync_movement_plan.rpc(ship_name, typed_path, final_facing, orbit_dir, is_orbiting)
+		# Use duplicate() to prevent end-of-frame execution clearing from emptying the network packet payload!
+		rpc_sync_movement_plan.rpc(ship_name, typed_path.duplicate(), final_facing, orbit_dir, is_orbiting, planned_mines.duplicate())
 
 	# Update List UI
 	_update_movement_ui_list()
@@ -3921,15 +4030,22 @@ func register_movement_plan(ship_name: String, path: Array, final_facing: int, o
 	queue_redraw() # Trigger map redraw to show new lines
 
 @rpc("authority", "call_remote", "reliable")
-func rpc_sync_movement_plan(ship_name: String, path: Array, final_facing: int, orbit_dir: int, is_orbiting: bool):
+func rpc_sync_movement_plan(ship_name: String, path: Array, final_facing: int, orbit_dir: int, is_orbiting: bool, planned_mines: Array = []):
 	var ship = _find_ship_by_name(ship_name)
 	if not ship: return
 	
-	# Blindly trust server authority
-	ship.planned_path.assign(path)
+	var typed_path: Array[Vector3i] = []
+	for p in path:
+		typed_path.append(Vector3i(p))
+	ship.planned_path.assign(typed_path)
 	ship.planned_facing = final_facing
 	ship.planned_orbit_dir = orbit_dir
 	ship.has_orders = true
+	
+	var typed_mines: Array[Vector3i] = []
+	for hex in planned_mines:
+		typed_mines.append(Vector3i(hex))
+	ship.planned_mines_to_drop = typed_mines
 	
 	log_message("Synced Orders for %s" % ship.name)
 	
@@ -3957,10 +4073,14 @@ func _on_exec_move_pressed():
 	if my_side_id != 0 and my_side_id != current_side_id:
 		return
 		
-	# Confirm? (Maybe later)
-	
+	# Auto-Commit pending plot if valid
+	if is_instance_valid(selected_ship) and not selected_ship.has_moved and not selected_ship.has_orders:
+		if is_instance_valid(btn_commit) and not btn_commit.disabled and btn_commit.visible:
+			log_message("Auto-committing plotted movement for %s..." % selected_ship.name)
+			_on_commit_move()
+			
 	if multiplayer.has_multiplayer_peer():
-		rpc("request_execute_movement")
+		rpc_id(1, "request_execute_movement")
 	else:
 		execute_all_movement()
 
@@ -3975,15 +4095,17 @@ func request_execute_movement():
 	if not _validate_rpc_ownership(sender_id, current_side_id):
 		return
 		
-	# Call Authority Method
-	execute_all_movement()
+	# Call Authority Method and Broadcast
+	execute_all_movement.rpc()
 
 @rpc("authority", "call_local", "reliable")
 func execute_all_movement():
+	print(">>> DIAGNOSTIC: execute_all_movement running for side: ", current_side_id, " on peer: ", multiplayer.get_unique_id())
 	log_message("Executing Movement Phase for Side %s" % _get_side_name(current_side_id))
 	
 	for s in ships:
 		if is_instance_valid(s) and s.side_id == current_side_id and not s.is_destroyed:
+			log_message("[color=yellow]EXECUTE LOOP: Checking Ship %s (Class: %s, Mines: %d)[/color]" % [s.name, s.ship_class, s.planned_mines_to_drop.size()])
 			# If a ship did not receive orders (player pressed Execute Movement without plotting)
 			if not s.has_orders:
 				var min_speed = max(0, s.speed - s.get_effective_adf())
@@ -4004,14 +4126,188 @@ func execute_all_movement():
 			# Apply Plan
 			_apply_movement_plan(s)
 			
+			# Process planned mine drops
+			if s.ship_class == "Minelayer" and s.planned_mines_to_drop.size() > 0:
+				var drop_hexes = s.planned_mines_to_drop.duplicate()
+				s.planned_mines_to_drop.clear()
+				var w_mine = null
+				for w in s.weapons:
+					if w["type"] == "Mine": w_mine = w; break
+				if w_mine:
+					for hex in drop_hexes:
+						if w_mine["ammo"] > 0:
+							active_mines.append({
+								"pos": Vector3i(hex),
+								"side_id": s.side_id,
+								"owner_name": s.name
+							})
+							w_mine["ammo"] -= 1
+							log_message("%s laid a spatial mine at %v." % [s.name, hex])
+			
+	_reset_plotting_state()
 	_update_ui_state()
 	_update_movement_ui_list()
+	
+	# Wait for any mine detonations before starting combat
+	await _resolve_mine_detonations()
 	
 	# Phase Transition Logic
 	# Rule: Movement -> Combat (Passive) -> Combat (Active) -> Next Side
 	log_message("Movement Phase Complete for Side %d. Starting Combat." % current_side_id)
 	start_combat_passive()
 
+func _resolve_mine_detonations():
+	var detonated_indices = []
+	
+	print(">>> DIAGNOSTIC: Entering Mine Detonations. Active Mines: ", active_mines.size(), " on peer: ", multiplayer.get_unique_id())
+	log_message("[color=cyan]!!! DEBUG !!! Entering Mine Detonations. Active Mines: %d[/color]" % active_mines.size())
+	for m in active_mines:
+		log_message("[color=cyan]  Mine at %v (Side %d)[/color]" % [m["pos"], m["side_id"]])
+		
+	for i in range(active_mines.size()):
+		var m = active_mines[i]
+		# Check all ships on the board
+		var hit_ships = []
+		for s in ships:
+			if is_instance_valid(s) and not s.is_destroyed and s.side_id != m["side_id"]: # Only triggers on enemy ships
+				# Check if ship's path crossed the mine (or ended on it)
+				# A ship's previous_path gets populated during _apply_movement_plan
+				log_message("[color=cyan]  Checking ship %s (Side %d) at %v with path %s[/color]" % [s.name, s.side_id, s.grid_position, str(s.previous_path)])
+				
+				# Explicit type cast verification just in case
+				var match_found = (Vector3i(s.grid_position) == Vector3i(m["pos"]))
+				for p in s.previous_path:
+					if Vector3i(p) == Vector3i(m["pos"]): match_found = true
+					
+				if match_found:
+					hit_ships.append(s)
+					log_message("Target %s HIT by mine!" % s.name)
+					
+		log_message("Mines check complete. Hit ships size: %d" % hit_ships.size())
+					
+		if hit_ships.size() > 0:
+			log_message("MINE DETONATED at %v!" % m["pos"])
+			detonated_indices.append(i)
+			
+			# Construct a fake "Mine" weapon profile
+			var mine_weapon = {
+				"name": "Mine",
+				"type": "Mine",
+				"damage_dice": "3d10",
+				"damage_bonus": 5,
+				"dtm": 0,
+				"arc": "360",
+				"range": 0
+			}
+			
+			for s in hit_ships:
+				# Trigger ICM Defense!
+				var eligible_defenders = []
+				for ally in ships:
+					if is_instance_valid(ally) and ally.side_id == s.side_id and ally.grid_position == s.grid_position and ally.icm_current > 0 and not ally.is_destroyed and not ally.is_docked:
+						eligible_defenders.append(ally)
+						
+				var icm_used = 0
+				if eligible_defenders.size() > 0:
+					var raw_chance = Combat.calculate_hit_chance(0, mine_weapon, s, false, 0, null)
+					print("DEBUG: _trigger_icm_decision called by %d for target %s (Side %d)" % [my_side_id, s.name, s.side_id])
+					_trigger_icm_decision("Minefield", "Proximity Mine", "Mine", raw_chance, s, eligible_defenders)
+					
+					# Instead of await, which drops context on RPCs, we wait for the state flag
+					while not _icm_decision_received:
+						await get_tree().process_frame
+						
+					var allocations = _icm_current_allocations
+					_icm_decision_received = false # Reset for next
+					_icm_current_allocations = {}
+					
+					for s_name in allocations.keys():
+						var amt = allocations[s_name]
+						if amt > 0:
+							icm_used += amt
+							for ally in eligible_defenders:
+								if ally.name == s_name:
+									ally.icm_current -= amt
+									_spawn_icm_fx(ally, HexGrid.hex_to_pixel(ally.grid_position) + Vector2(0, -50)) # Visual flair upwards
+									break
+									
+					if icm_used > 0:
+						if multiplayer.has_multiplayer_peer() and multiplayer.is_server():
+							rpc_log_message.rpc("Point defense uses %d ICMs against mine fragment." % icm_used)
+						else:
+							log_message("Point defense uses %d ICMs against mine fragment." % icm_used)
+						await get_tree().create_timer(1.0).timeout
+						
+				var result = Combat.get_hit_roll_details(0, mine_weapon, s, false, icm_used, null)
+				var hit = result["success"]
+				var hit_str = "HIT" if hit else "MISS"
+				
+				var msg1 = "Mine attacks %s: Rolled %d vs %d%% -> %s" % [s.get_display_name(), result["roll"], result["chance"], hit_str]
+				if multiplayer.has_multiplayer_peer() and multiplayer.is_server():
+					rpc_log_message.rpc(msg1)
+				else:
+					log_message(msg1)
+				
+				var raw_dmg = 0
+				if hit:
+					raw_dmg = Combat.roll_damage("3d10+5")
+					s.take_hull_damage(raw_dmg)
+					var msg2 = "%s took %d damage from spatial mine!" % [s.get_display_name(), raw_dmg]
+					if multiplayer.has_multiplayer_peer() and multiplayer.is_server():
+						rpc_log_message.rpc(msg2)
+					else:
+						log_message(msg2)
+				else:
+					var msg3 = "Mine exploded harmlessly against %s defenses." % s.get_display_name()
+					if multiplayer.has_multiplayer_peer() and multiplayer.is_server():
+						rpc_log_message.rpc(msg3)
+					else:
+						log_message(msg3)
+					
+				# Broadcast visual FX for detonation
+				if multiplayer.has_multiplayer_peer() and multiplayer.is_server():
+					rpc_play_mine_fx.rpc(m["pos"], s.name, hit, raw_dmg)
+				else:
+					rpc_play_mine_fx(m["pos"], s.name, hit, raw_dmg)
+					
+				if not get_tree().root.has_node("GutRunner"):
+					await get_tree().create_timer(1.5).timeout
+					
+	# Clean up detonated mines starting from last to avoid shifting index issues
+	detonated_indices.sort()
+	detonated_indices.reverse()
+	for idx in detonated_indices:
+		active_mines.remove_at(idx)
+
+@rpc("authority", "call_local", "reliable")
+func rpc_play_mine_fx(mine_pos_hex: Vector3i, target_name: String, hit: bool, damage: int):
+	# Play general sound for explosion
+	if audio_hit and audio_hit.stream:
+		audio_hit.play()
+		
+	var target = _find_ship_by_name(target_name)
+	if is_instance_valid(target):
+		_update_camera(target)
+		
+	if not get_tree().root.has_node("GutRunner"):
+		var pixel_pos = HexGrid.hex_to_pixel(mine_pos_hex)
+		_spawn_floating_text("BOOM!", pixel_pos, Color.RED)
+		
+		# Explode locally on the mine hex (simulate by targeting the exact same hex as source)
+		var tgt_pixel = target.position if is_instance_valid(target) else pixel_pos
+		_spawn_attack_fx(pixel_pos, pixel_pos, "Mine")
+		
+		if is_instance_valid(target):
+			if hit:
+				_spawn_hit_text(tgt_pixel, damage)
+			else:
+				_spawn_hit_text(tgt_pixel, "MISS")
+				
+	# If we are a client, we MUST apply the damage locally so the ship dies instantly visually!
+	# The Host already applied it in _resolve_mine_detonations.
+	if multiplayer.has_multiplayer_peer() and not multiplayer.is_server():
+		if is_instance_valid(target) and hit:
+			target.take_hull_damage(damage)
 
 func _calculate_mr_used_for_plan(start_pos: Vector3i, start_facing: int, path: Array[Vector3i], final_facing: int) -> int:
 	var mr = 0
@@ -4041,7 +4337,9 @@ func _calculate_mr_used_for_plan(start_pos: Vector3i, start_facing: int, path: A
 func _apply_movement_plan(s: Ship):
 	if not is_instance_valid(s): return
 
-	s.previous_path = s.planned_path # History
+	var typed_history: Array[Vector3i] = []
+	for p in s.planned_path: typed_history.append(Vector3i(p))
+	s.previous_path = typed_history # History
 	var start_pos = s.grid_position
 	var start_facing = s.facing
 	var old_speed = s.speed
@@ -4628,6 +4926,51 @@ func _draw():
 			draw_string_outline(font, center + offset, exp_entry["text"], HORIZONTAL_ALIGNMENT_CENTER, -1, 16, 2, Color.BLACK)
 			draw_string(font, center + offset, exp_entry["text"], HORIZONTAL_ALIGNMENT_CENTER, -1, 16, Color.RED)
 
+	# Draw Active Mines
+	for m in active_mines:
+		var is_owner = (my_side_id == 0 or my_side_id == m["side_id"])
+		# Only draw mines if we own them, or if we are the server/spectator
+		if is_owner:
+			var m_pos = HexGrid.hex_to_pixel(m["pos"])
+			var spike_count = 8
+			var rad_inner = 8.0
+			var rad_outer = 14.0
+			var mine_color = Color(1.0, 0.8, 0.0, 0.9) # Bright Yellow
+			var pts = PackedVector2Array()
+			for i in range(spike_count * 2):
+				var angle = deg_to_rad(i * (360.0 / (spike_count * 2)))
+				var r = rad_outer if i % 2 == 0 else rad_inner
+				pts.append(m_pos + Vector2(cos(angle), sin(angle)) * r)
+			draw_colored_polygon(pts, mine_color)
+			draw_circle(m_pos, 4.0, Color.RED) # Red center eye
+			
+	# Draw Planned Mines (Placeholder/Hologram)
+	# Draw Planned Mines (Text Indicator)
+	if current_phase == Phase.MOVEMENT and is_instance_valid(selected_ship) and selected_ship.planned_mines_to_drop.size() > 0:
+		for hex in selected_ship.planned_mines_to_drop:
+			# When placement mode is active, we highlight valid drop hexes
+			if state_mine_placement:
+				var is_valid_hex = (hex == selected_ship.grid_position) or current_path.has(hex) or selected_ship.planned_path.has(hex)
+				if is_valid_hex:
+					# Highlight the hex to show it's clickable
+					_draw_filled_hex(hex, Color(1.0, 1.0, 0.0, 0.2)) # Faintest Yellow
+			
+			var m_pos = HexGrid.hex_to_pixel(hex)
+			var font = ThemeDB.fallback_font
+			# Draw shadow and then text
+			draw_string_outline(font, m_pos + Vector2(0, 5), "MINE", HORIZONTAL_ALIGNMENT_CENTER, -1, 14, 2, Color.BLACK)
+			draw_string(font, m_pos + Vector2(0, 5), "MINE", HORIZONTAL_ALIGNMENT_CENTER, -1, 14, Color.YELLOW)
+			
+	# If Placement mode is on but we have no planned mines yet (or some placed, but we need to highlight the rest of the path)
+	if current_phase == Phase.MOVEMENT and is_instance_valid(selected_ship) and state_mine_placement:
+		var valid_hexes = [selected_ship.grid_position]
+		valid_hexes.append_array(current_path)
+		valid_hexes.append_array(selected_ship.planned_path)
+		for hex in valid_hexes:
+			# Only faintly highlight if a mine isn't already placed there
+			if not selected_ship.planned_mines_to_drop.has(hex):
+				_draw_filled_hex(hex, Color(1.0, 1.0, 0.0, 0.2))
+
 
 func _draw_hex_outline(hex: Vector3i, color: Color, width: float):
 	var center = HexGrid.hex_to_pixel(hex)
@@ -4723,7 +5066,35 @@ func _unhandled_input(event):
 
 
 	if event is InputEventKey and event.pressed:
-		if event.keycode == KEY_EQUAL: # Plus key
+		if event.keycode == KEY_TAB:
+			if current_phase == Phase.DEPLOYMENT and (deployment_subphase == my_side_id or my_side_id == 0):
+				var my_ships = ships.filter(func(s): return is_instance_valid(s) and s.side_id == deployment_subphase and not s.is_exploding)
+				var deployable_ships = my_ships.filter(func(s): return not s.is_docked)
+				if deployable_ships.size() > 0:
+					var current_idx = -1
+					if is_instance_valid(selected_ship) and deployable_ships.has(selected_ship):
+						current_idx = deployable_ships.find(selected_ship)
+						
+					current_idx = (current_idx + 1) % deployable_ships.size()
+					var s = deployable_ships[current_idx]
+					
+					selected_ship = s
+					is_deploying_ship = true
+					if s.is_deployed:
+						deploy_tentative_hex = s.grid_position
+						deploy_facing_val = s.facing
+						deploy_speed_val = s.speed
+						deploy_hex_selected = true
+					else:
+						deploy_hex_selected = false
+						
+					_update_deployment_ui()
+					_update_deploy_preview()
+					_update_ui_state()
+					
+				get_viewport().set_input_as_handled()
+				return
+		elif event.keycode == KEY_EQUAL: # Plus key
 			target_zoom = (target_zoom + Vector2(ZOOM_SPEED, ZOOM_SPEED)).clamp(ZOOM_MIN, ZOOM_MAX)
 		elif event.keycode == KEY_MINUS: # Minus key
 			target_zoom = (target_zoom - Vector2(ZOOM_SPEED, ZOOM_SPEED)).clamp(ZOOM_MIN, ZOOM_MAX)
@@ -4955,10 +5326,53 @@ func _handle_movement_click(hex: Vector3i):
 	if not selected_ship or not is_instance_valid(selected_ship):
 		return
 		
-	# FIX: Prevent modifying plan if already committed/ordered
+	# Mine Placement Logic Intercept
+	if state_mine_placement:
+		# Valid hexes include start position, currently plotting path, and already planned path (if orders active)
+		var is_valid_hex = (hex == selected_ship.grid_position) or current_path.has(hex) or selected_ship.planned_path.has(hex)
+		if not is_valid_hex:
+			log_message("Mines must be dropped along your valid movement path.")
+			# Left-clicking outside cancels placement mode
+			state_mine_placement = false
+			queue_redraw()
+			return
+			
+		# Check if an active mine (from previous turns/ships) already exists here
+		for m in active_mines:
+			if m["pos"] == hex:
+				log_message("A mine already exists at this location!")
+				return
+				
+		# Toggle planned mine
+		if selected_ship.planned_mines_to_drop.has(hex):
+			selected_ship.planned_mines_to_drop.erase(hex)
+			log_message("Removed planned mine at %v." % hex)
+		else:
+			# Check ammo
+			var w_mine = null
+			for w in selected_ship.weapons:
+				if w["type"] == "Mine":
+					w_mine = w
+					break
+			if w_mine and selected_ship.planned_mines_to_drop.size() < w_mine["ammo"]:
+				selected_ship.planned_mines_to_drop.append(hex)
+				log_message("Planned mine drop at %v." % hex)
+			else:
+				log_message("Not enough mine ammo!")
+		
+		# If the ship hasn't committed orders yet, push history for undo
+		if not selected_ship.has_orders:
+			_push_history_state()
+		
+		queue_redraw()
+		return
+		
+	# FIX: Prevent modifying plan if already committed/ordered (unless we were placing mines above)
 	if selected_ship.has_orders:
 		log_message("Ship has orders. Use Undo to change.")
 		return
+		return
+
 
 	# UX IMPROVEMENT 1: Self-Click to Decelerate (Speed 0)
 	# If clicking own hex, and we haven't plotted a path yet.
@@ -5177,7 +5591,10 @@ func _spawn_floating_text(text: String, grid_pos: Vector2, color: Color = Color.
 	lbl.position = grid_pos - Vector2(100, 40) # Center offset
 	lbl.custom_minimum_size = Vector2(200, 50)
 	lbl.z_index = 100
-	ui_layer.add_child(lbl)
+	if ui_layer:
+		ui_layer.add_child(lbl)
+	else:
+		add_child(lbl)
 	
 	var tween = create_tween()
 	tween.tween_property(lbl, "position", grid_pos - Vector2(100, 100), 1.5).set_ease(Tween.EASE_OUT).set_trans(Tween.TRANS_QUAD)
@@ -5185,6 +5602,29 @@ func _spawn_floating_text(text: String, grid_pos: Vector2, color: Color = Color.
 	tween.tween_callback(lbl.queue_free)
 
 func _trigger_icm_decision(attacker_name: String, weapon_name: String, weapon_type: String, current_chance: int, target: Ship, eligible_ships: Array = []):
+	var eligible_names = []
+	for s in eligible_ships:
+		if is_instance_valid(s):
+			eligible_names.append(s.name)
+			
+	if eligible_names.is_empty() and is_instance_valid(target):
+		eligible_names.append(target.name)
+		
+	if multiplayer.has_multiplayer_peer() and multiplayer.is_server():
+		rpc_trigger_icm_decision.rpc(attacker_name, weapon_name, weapon_type, current_chance, target.name, eligible_names)
+	else:
+		rpc_trigger_icm_decision(attacker_name, weapon_name, weapon_type, current_chance, target.name, eligible_names)
+		
+@rpc("authority", "call_local", "reliable")
+func rpc_trigger_icm_decision(attacker_name: String, weapon_name: String, weapon_type: String, current_chance: int, target_name: String, eligible_ship_names: Array):
+	var target = _find_ship_by_name(target_name)
+	if not target: return
+	
+	var eligible_ships = []
+	for n in eligible_ship_names:
+		var s = _find_ship_by_name(n)
+		if s: eligible_ships.append(s)
+
 	# Create modal UI
 	if panel_icm: panel_icm.queue_free()
 	
@@ -5320,12 +5760,17 @@ func _submit_icm_decision(allocations: Dictionary):
 
 @rpc("any_peer", "call_local", "reliable")
 func broadcast_icm_decision(allocations: Dictionary):
+	print("DEBUG: broadcast_icm_decision called on peer %d" % multiplayer.get_unique_id())
 	# Close UI on all clients
 	if panel_icm:
 		panel_icm.queue_free()
 		panel_icm = null
 		
-	# Resume combat resolution logic on all clients (locally)
+	# Sync state for the waiting coroutine
+	_icm_current_allocations = allocations
+	_icm_decision_received = true
+	
+	# Keep emit for external tests/callbacks
 	icm_decision_made.emit(allocations)
 
 func _on_ship_destroyed(ship: Ship):
@@ -5472,7 +5917,9 @@ func load_scenario(key: String, seed_val: int = 12345):
 			"Fighter": s.configure_fighter()
 			"Assault Scout": s.configure_assault_scout()
 			"Frigate": s.configure_frigate()
+			"Minelayer": s.configure_minelayer()
 			"Destroyer": s.configure_destroyer()
+			"Light Cruiser": s.configure_light_cruiser()
 			"Heavy Cruiser": s.configure_heavy_cruiser()
 			"Battleship": s.configure_battleship()
 			"Assault Carrier": s.configure_assault_carrier()

@@ -9,6 +9,7 @@ const MAX_RANGE = 10
 const ICM_MODIFIER_TORPEDO = 10
 const ICM_MODIFIER_ASSAULT_ROCKET = 5
 const ICM_MODIFIER_ROCKET_BATTERY = 3
+const ICM_MODIFIER_MINE = 8
 
 static func calculate_icm_reduction(weapon_type: String, icm_count: int) -> int:
 	if icm_count <= 0: return 0
@@ -18,6 +19,7 @@ static func calculate_icm_reduction(weapon_type: String, icm_count: int) -> int:
 		"Torpedo": reduction_per_missile = ICM_MODIFIER_TORPEDO
 		"Rocket": reduction_per_missile = ICM_MODIFIER_ASSAULT_ROCKET
 		"Rocket Battery": reduction_per_missile = ICM_MODIFIER_ROCKET_BATTERY
+		"Mine": reduction_per_missile = ICM_MODIFIER_MINE
 		_: return 0
 		
 	return icm_count * reduction_per_missile
@@ -50,6 +52,26 @@ static func calculate_hit_chance(dist: int, weapon: Dictionary = {}, target: Shi
 		chance = 40
 		if is_head_on: chance += 10
 		if icm_count > 0: chance -= calculate_icm_reduction("Rocket Battery", icm_count)
+		return max(0, chance)
+		
+	# Special Rule: Mine (Flat 60%, 80% vs SS)
+	if weapon.get("type") == "Mine":
+		chance = 60
+		# VS Stasis Screen (SS)
+		if target and (target.get("active_screen") == "SS" or (target.defense == "SS" and target.get("active_screen") != "MS")):
+			# Actually, RULES.md says SS = 80%. Let's check active defense logic.
+			pass # We'll handle it below for clarity, or just do it here:
+		var active_def = "None"
+		if target:
+			if target.get("is_ms_active"): active_def = "MS"
+			elif target.get("active_screen") and target.get("active_screen") != "None": active_def = target.get("active_screen")
+			elif target.defense == "RH": active_def = "RH"
+		
+		if active_def == "SS":
+			chance = 80
+			
+		# Head-on does not apply to Mines per RULES.md (they are stationary/0 range)
+		if icm_count > 0: chance -= calculate_icm_reduction("Mine", icm_count)
 		return max(0, chance)
 	
 	# Base Chance Calculation and Target Defenses (RULES.md)
