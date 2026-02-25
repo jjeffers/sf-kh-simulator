@@ -61,6 +61,7 @@ var previous_path: Array[Vector3i] = []
 
 
 var grid_position: Vector3i = Vector3i.ZERO: set = _set_grid_position
+var is_deployed: bool = false
 var facing: int = 0: set = _set_facing # 0 to 5, direction index
 var speed: int = 0
 var has_moved: bool = false
@@ -102,6 +103,7 @@ func get_net_state() -> Dictionary:
 		"facing": facing,
 		"orbit_direction": orbit_direction,
 		"speed": speed,
+		"is_deployed": is_deployed,
 		"is_destroyed": is_destroyed, # Important for sync
 		"current_dcr": current_dcr,
 		"max_dcr": max_dcr,
@@ -148,6 +150,7 @@ func apply_net_state(data: Dictionary):
 	unrepairable_ccs = data.get("unrepairable_ccs", unrepairable_ccs)
 	rearm_capacity = data.get("rearm_capacity", rearm_capacity)
 	
+	is_deployed = data.get("is_deployed", is_deployed)
 	has_moved = data.get("has_moved", has_moved)
 	has_fired = data.get("has_fired", has_fired)
 	

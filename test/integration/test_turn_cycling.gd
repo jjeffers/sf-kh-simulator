@@ -23,6 +23,10 @@ func test_turn_order_surprise_attack():
 	# Wait for setup
 	await get_tree().process_frame
 	
+	# Bypass deployment phase for turn testing
+	_gm.rpc_finalize_deployment()
+	await get_tree().process_frame
+	
 	# Verify P1 starts
 	assert_eq(_gm.current_side_id, 1, "Player 1 (Sathar) should start")
 	assert_eq(_gm.current_phase, _gm.Phase.MOVEMENT, "Should be P1 Movement Phase")

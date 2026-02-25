@@ -2,7 +2,7 @@ class_name GameManager
 extends Node2D
 
 
-@export var map_radius: int = 25
+@export var map_radius: int = 35
 
 var ships: Array[Ship] = []
 const LOG_FILE = "user://game_log.txt"
@@ -25,12 +25,17 @@ const ZOOM_MAX = Vector2(2.0, 2.0)
 const ZOOM_SPEED = 0.1
 
 # Phase Enum
-enum Phase {START, MOVEMENT, COMBAT, REPAIR, END}
+enum Phase {START, DEPLOYMENT, MOVEMENT, COMBAT, REPAIR, END}
 # Combat State Enum
 enum CombatState {NONE, PLANNING, RESOLVING}
 
 var current_phase: Phase = Phase.START
 var current_combat_state: CombatState = CombatState.NONE
+
+# Deployment State
+var deployment_subphase: int = 0 # 1 = Side 1 deploying, 2 = Side 2 deploying
+var has_deployed_side_1: bool = false
+var has_deployed_side_2: bool = false
 
 # Combat Subphase: 0 = None, 1 = Passive Fire (First), 2 = Active Fire (Second)
 var combat_subphase: int = 0
@@ -39,13 +44,26 @@ var combat_subphase: int = 0
 var repair_subphase: int = 0 # 1 = Side 1 plan, 2 = Side 2 plan, 3 = Execute
 var repair_allocations: Dictionary = {} # { "ship_name": { "damage_key": DCR_amount } }
 
+# Deployment UI Nodes
+var panel_deployment: PanelContainer
+var list_deployment: VBoxContainer
+var btn_deploy_ship: Button
+var btn_deploy_complete: Button
+var spin_deploy_speed: SpinBox
+var lbl_deploy_facing: Label
+var btn_deploy_facing_cw: Button
+var btn_deploy_facing_ccw: Button
+
+var deploy_speed_val: int = 0
+var deploy_facing_val: int = 0
+var deploy_tentative_hex: Vector3i = Vector3i.ZERO
+var deploy_hex_selected: bool = false
+var is_deploying_ship: bool = false
+
 # Repair UI Nodes
 var panel_repair: PanelContainer
 var list_repair: VBoxContainer
 var btn_repair_exec: Button
-# ... (UI Nodes omitted, they remain)
-
-# Movement State references need to be reset properly
 
 # Movement State references need to be reset properly
 
@@ -302,7 +320,25 @@ func setup_game(seed_val: int, scen_key: String):
 	log_message("Game Setup Received: Seed %d" % seed_val)
 	load_scenario(scen_key, seed_val)
 	_load_planets_from_scenario(scen_key)
-	start_turn_cycle()
+	start_deployment_phase(scen_key)
+
+func start_deployment_phase(scen_key: String = ""):
+	current_phase = Phase.DEPLOYMENT
+	log_message("[color=cyan]=== DEPLOYMENT Phase ===[/color]")
+	has_deployed_side_1 = false
+	has_deployed_side_2 = false
+	
+	# UPF (Side 1) sets up first in these specific scenarios as Defenders.
+	if scen_key == "":
+		scen_key = NetworkManager.lobby_data.get("scenario", "simple_test")
+		
+	if scen_key == "surprise_attack" or scen_key == "the_last_stand":
+		deployment_subphase = 1
+	else:
+		deployment_subphase = 2
+	
+	_update_ui_state()
+	_update_deployment_ui()
 
 func _process(delta):
 	var move_vec = Vector2.ZERO
@@ -361,10 +397,29 @@ func _process(delta):
 		else:
 			_handle_preview_extension(hex_hover)
 			
-			# If we are NOT previewing (and not on path), we should handle standard Facing logic
 			# This replaces the logic in _unhandled_input to avoid 1-frame lag when leaving preview zone
 			if not path_preview_active:
 				_handle_mouse_facing(hex_hover)
+	
+	elif current_phase == Phase.DEPLOYMENT and is_deploying_ship and is_instance_valid(selected_ship) and deploy_hex_selected:
+		# Space Stations and Stations don't have facing or speed mechanics during deployment
+		if selected_ship.ship_class != "Space Station" and selected_ship.ship_class != "Station":
+			# Check if it's my turn
+			if deployment_subphase == my_side_id or my_side_id == 0:
+				var local_mouse = get_local_mouse_position()
+				var hex_hover = HexGrid.pixel_to_hex(local_mouse)
+				
+				if hex_hover != deploy_tentative_hex:
+					var dir = HexGrid.get_hex_direction(deploy_tentative_hex, hex_hover)
+					if dir != -1:
+						deploy_facing_val = dir
+						
+					var dist = HexGrid.hex_distance(deploy_tentative_hex, hex_hover)
+					deploy_speed_val = clampi(dist, 0, 20)
+					
+					_update_deploy_preview()
+					if is_instance_valid(lbl_deploy_facing): lbl_deploy_facing.text = str(deploy_facing_val)
+					if is_instance_valid(spin_deploy_speed): spin_deploy_speed.value = deploy_speed_val
 			
 func _setup_selection_highlight():
 	selection_highlight = Polygon2D.new()
@@ -422,6 +477,7 @@ func _setup_ui():
 	else:
 		push_error("CRITICAL: Failed to load ShipStatusPanel.gd! UI will be incomplete.")
 
+	_build_deployment_panel(vbox)
 	_build_repair_panel(vbox)
 
 
@@ -695,6 +751,86 @@ func _setup_ui():
 	mini_map.set_anchors_and_offsets_preset(Control.PRESET_TOP_RIGHT, Control.PRESET_MODE_KEEP_SIZE, 20)
 	ui_layer.add_child(mini_map)
 
+func _build_deployment_panel(parent: Container):
+	# Deployment Panel
+	panel_deployment = PanelContainer.new()
+	panel_deployment.visible = false
+	parent.add_child(panel_deployment)
+	
+	var dep_vbox = VBoxContainer.new()
+	panel_deployment.add_child(dep_vbox)
+	
+	var dep_header = Label.new()
+	dep_header.text = "DEPLOYMENT PHASE"
+	dep_header.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	dep_header.add_theme_font_size_override("font_size", 18)
+	dep_vbox.add_child(dep_header)
+	
+	# ScrollContainer for list of ships
+	var sc = ScrollContainer.new()
+	sc.custom_minimum_size = Vector2(250, 150)
+	dep_vbox.add_child(sc)
+	
+	list_deployment = VBoxContainer.new()
+	list_deployment.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	sc.add_child(list_deployment)
+	
+	dep_vbox.add_child(HSeparator.new())
+	
+	# Facing Control
+	var f_hbox = HBoxContainer.new()
+	dep_vbox.add_child(f_hbox)
+	var f_lbl = Label.new()
+	f_lbl.text = "Facing:"
+	f_hbox.add_child(f_lbl)
+	
+	btn_deploy_facing_ccw = Button.new()
+	btn_deploy_facing_ccw.text = "<"
+	btn_deploy_facing_ccw.disabled = true
+	btn_deploy_facing_ccw.pressed.connect(func(): if is_deploying_ship: deploy_facing_val = (deploy_facing_val - 1 + 6) % 6; lbl_deploy_facing.text = str(deploy_facing_val); _update_deploy_preview())
+	f_hbox.add_child(btn_deploy_facing_ccw)
+	
+	lbl_deploy_facing = Label.new()
+	lbl_deploy_facing.text = "0"
+	lbl_deploy_facing.custom_minimum_size = Vector2(20, 0)
+	lbl_deploy_facing.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	f_hbox.add_child(lbl_deploy_facing)
+	
+	btn_deploy_facing_cw = Button.new()
+	btn_deploy_facing_cw.text = ">"
+	btn_deploy_facing_cw.disabled = true
+	btn_deploy_facing_cw.pressed.connect(func(): if is_deploying_ship: deploy_facing_val = (deploy_facing_val + 1) % 6; lbl_deploy_facing.text = str(deploy_facing_val); _update_deploy_preview())
+	f_hbox.add_child(btn_deploy_facing_cw)
+	
+	# Speed Control
+	var s_hbox = HBoxContainer.new()
+	dep_vbox.add_child(s_hbox)
+	var s_lbl = Label.new()
+	s_lbl.text = "Speed: "
+	s_hbox.add_child(s_lbl)
+	
+	spin_deploy_speed = SpinBox.new()
+	spin_deploy_speed.min_value = 0
+	spin_deploy_speed.max_value = 20
+	spin_deploy_speed.value = 0
+	spin_deploy_speed.editable = false
+	spin_deploy_speed.value_changed.connect(func(v): if is_deploying_ship: deploy_speed_val = int(v))
+	s_hbox.add_child(spin_deploy_speed)
+	
+	dep_vbox.add_child(HSeparator.new())
+	
+	btn_deploy_ship = Button.new()
+	btn_deploy_ship.text = "Set Deployment"
+	btn_deploy_ship.disabled = true
+	btn_deploy_ship.pressed.connect(_on_deploy_ship_pressed)
+	dep_vbox.add_child(btn_deploy_ship)
+	
+	btn_deploy_complete = Button.new()
+	btn_deploy_complete.text = "COMPLETE DEPLOYMENT"
+	btn_deploy_complete.modulate = Color.GREEN
+	btn_deploy_complete.pressed.connect(_on_deploy_complete_pressed)
+	dep_vbox.add_child(btn_deploy_complete)
+	
 func _build_repair_panel(parent: Container):
 	print("[DEBUG] _build_repair_panel called")
 	log_message("[DEBUG] Initializing repair_panel")
@@ -1644,6 +1780,9 @@ func _update_phase_indicator():
 		if repair_subphase != 3:
 			rep_side = _get_side_name(repair_subphase)
 		text = "End of Turn %d - Repair, Active: %s" % [turn_count, rep_side]
+	elif current_phase == Phase.DEPLOYMENT:
+		var dep_side = _get_side_name(deployment_subphase)
+		text = "Setup: %s" % dep_side
 		
 	label_phase_indicator.text = text
 
@@ -2317,6 +2456,217 @@ func end_turn_cycle():
 			# Round Complete
 			_end_round_cycle()
 
+func _update_deployment_ui():
+	print("[DEBUG] _update_deployment_ui called - Subphase: %d, my_side_id: %d" % [deployment_subphase, my_side_id])
+	if not is_instance_valid(list_deployment): return
+	
+	for c in list_deployment.get_children():
+		c.queue_free()
+		
+	if deployment_subphase == 0 or current_phase != Phase.DEPLOYMENT:
+		panel_deployment.visible = false
+		return
+		
+	panel_deployment.visible = true
+	var is_my_turn = (deployment_subphase == my_side_id or my_side_id == 0)
+	
+	# Find my undeployed ships
+	var my_ships = ships.filter(func(s): return is_instance_valid(s) and s.side_id == deployment_subphase and not s.is_exploding)
+	# Docked ships are deployed automatically with their host, so skip them
+	var deployable_ships = my_ships.filter(func(s): return not s.is_docked)
+	var undeployed = deployable_ships.filter(func(s): return not s.is_deployed)
+	
+	if not is_my_turn:
+		var lbl = Label.new()
+		var sn = get_side_name(deployment_subphase)
+		lbl.text = "Awaiting %s to Deploy..." % sn
+		lbl.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+		list_deployment.add_child(lbl)
+		
+		# Hide controls
+		btn_deploy_facing_cw.disabled = true
+		btn_deploy_facing_ccw.disabled = true
+		spin_deploy_speed.editable = false
+		btn_deploy_ship.disabled = true
+		btn_deploy_complete.disabled = true
+		return
+		
+	if undeployed.is_empty():
+		var lbl = Label.new()
+		lbl.text = "All ships deployed."
+		lbl.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+		list_deployment.add_child(lbl)
+		
+		btn_deploy_complete.disabled = false
+	else:
+		btn_deploy_complete.disabled = true # Must deploy all ships first
+		
+	for s in deployable_ships:
+		var btn = Button.new()
+		if s == selected_ship:
+			btn.text = "> %s <" % s.name
+			btn.modulate = Color.YELLOW
+		else:
+			btn.text = s.name
+			if s.is_deployed:
+				btn.text += " (Deployed)"
+				btn.modulate = Color.GREEN
+		
+		btn.pressed.connect(func():
+			selected_ship = s
+			is_deploying_ship = true
+			if s.is_deployed:
+				deploy_tentative_hex = s.grid_position
+				deploy_facing_val = s.facing
+				deploy_speed_val = s.speed
+				deploy_hex_selected = true
+			else:
+				deploy_hex_selected = false
+			_update_deployment_ui()
+			_update_deploy_preview()
+			_update_ui_state()
+		)
+		list_deployment.add_child(btn)
+		
+	if is_instance_valid(selected_ship) and selected_ship.side_id == deployment_subphase:
+		btn_deploy_facing_cw.disabled = false
+		btn_deploy_facing_ccw.disabled = false
+		spin_deploy_speed.editable = true
+		btn_deploy_ship.disabled = false
+		btn_deploy_ship.text = "UPDATE DEPLOYMENT" if selected_ship.is_deployed else "DEPLOY SHIP"
+	else:
+		btn_deploy_facing_cw.disabled = true
+		btn_deploy_facing_ccw.disabled = true
+		spin_deploy_speed.editable = false
+		btn_deploy_ship.disabled = true
+		btn_deploy_ship.text = "DEPLOY SHIP"
+
+func _update_deploy_preview():
+	if not is_deploying_ship or not is_instance_valid(selected_ship) or not deploy_hex_selected:
+		if is_instance_valid(ghost_ship):
+			ghost_ship.queue_free()
+			ghost_ship = null
+		queue_redraw()
+		return
+		
+	if not is_instance_valid(ghost_ship):
+		ghost_ship = _create_ghost_ship(selected_ship)
+		
+	# Update ghost ship stats to preview
+	ghost_ship.grid_position = deploy_tentative_hex
+	ghost_ship.facing = deploy_facing_val
+	ghost_ship.speed = deploy_speed_val
+	ghost_ship.position = HexGrid.hex_to_pixel(deploy_tentative_hex)
+	ghost_ship.modulate = Color(1, 1, 1, 0.5) # Semi-transparent
+	
+	queue_redraw()
+
+func _on_deploy_ship_pressed():
+	if not is_deploying_ship or not is_instance_valid(selected_ship): return
+	
+	# Validate bounds / rules
+	var valid_hexes = ScenarioManager.get_valid_deployment_hexes(deployment_subphase, ships, planet_hexes, selected_ship)
+	if not valid_hexes.has(deploy_tentative_hex) and valid_hexes.size() > 0:
+		log_message("[color=red]Invalid deployment location![/color]")
+		return
+		
+	# Check collision with planet
+	if planet_hexes.has(deploy_tentative_hex):
+		log_message("[color=red]Cannot deploy inside a planet![/color]")
+		return
+		
+	selected_ship.grid_position = deploy_tentative_hex
+	selected_ship.facing = deploy_facing_val
+	selected_ship.speed = deploy_speed_val
+	selected_ship.is_deployed = true
+	selected_ship.position = HexGrid.hex_to_pixel(selected_ship.grid_position)
+	
+	log_message("%s deployed at %s, facing %d, speed %d." % [selected_ship.name, str(deploy_tentative_hex), deploy_facing_val, deploy_speed_val])
+	
+	# Also deploy any ships docked to this one
+	for s in ships:
+		if is_instance_valid(s) and s.is_docked and s.docked_host == selected_ship:
+			s.grid_position = deploy_tentative_hex
+			s.facing = deploy_facing_val
+			s.speed = deploy_speed_val
+			s.is_deployed = true
+			s.position = HexGrid.hex_to_pixel(s.grid_position)
+			log_message("%s (docked to %s) deployed automatically." % [s.name, selected_ship.name])
+	
+	is_deploying_ship = false
+	deploy_hex_selected = false
+	selected_ship = null
+	
+	if audio_beep and audio_beep.stream: audio_beep.play()
+	
+	_update_deployment_ui()
+	_update_deploy_preview()
+
+func _on_deploy_complete_pressed():
+	log_message("Submitting Deployment for Side %d" % deployment_subphase)
+	
+	var dep_data = {}
+	for s in ships:
+		if is_instance_valid(s) and s.side_id == deployment_subphase:
+			dep_data[s.name] = {
+				"grid_position": s.grid_position,
+				"facing": s.facing,
+				"speed": s.speed,
+				"is_deployed": true
+			}
+	
+	if multiplayer.has_multiplayer_peer() and not _is_server_or_offline():
+		rpc_submit_deployment.rpc_id(1, deployment_subphase, dep_data)
+	else:
+		rpc_submit_deployment(deployment_subphase, dep_data)
+
+
+@rpc("any_peer", "call_local", "reliable")
+func rpc_submit_deployment(side_id: int, deployment_data: Dictionary):
+	if not _is_server_or_offline(): return
+	
+	# Apply final positions
+	for s in ships:
+		if is_instance_valid(s) and s.side_id == side_id and deployment_data.has(s.name):
+			var d = deployment_data[s.name]
+			s.grid_position = d["grid_position"]
+			s.facing = d["facing"]
+			s.speed = d["speed"]
+			s.position = HexGrid.hex_to_pixel(s.grid_position)
+			s.is_deployed = true
+			
+	if side_id == 1:
+		has_deployed_side_1 = true
+	elif side_id == 2:
+		has_deployed_side_2 = true
+
+	# Next steps
+	if has_deployed_side_1 and has_deployed_side_2:
+		# All deployed, start the game
+		rpc_finalize_deployment.rpc()
+	else:
+		# Someone is missing
+		var next_side = 1 if side_id == 2 else 2
+		rpc_sync_deployment_state.rpc(next_side)
+
+@rpc("authority", "call_local", "reliable")
+func rpc_sync_deployment_state(subphase: int):
+	deployment_subphase = subphase
+	log_message("Side %d is now Deploying." % subphase)
+	
+	if audio_phase_change and audio_phase_change.stream:
+		audio_phase_change.play()
+		
+	_update_ui_state()
+	_update_deployment_ui()
+
+@rpc("authority", "call_local", "reliable")
+func rpc_finalize_deployment():
+	log_message("Deployment Complete. Starting Turn 1.")
+	panel_deployment.visible = false
+	start_turn_cycle()
+
+
 func start_repair_phase():
 	# Only authority orchestrates the transition
 	if multiplayer.has_multiplayer_peer() and multiplayer.get_unique_id() != 1:
@@ -2771,16 +3121,7 @@ func _spawn_ghost():
 		if not allowed:
 			return
 
-	ghost_ship = load("res://Scripts/Ship.gd").new()
-	ghost_ship.name = "GhostShip"
-	ghost_ship.side_id = selected_ship.side_id
-	ghost_ship.ship_class = selected_ship.ship_class # Copy visual class
-	ghost_ship.faction = selected_ship.faction # Copy faction for sprite selection
-	ghost_ship.color = selected_ship.color
-	ghost_ship.grid_position = selected_ship.grid_position
-	ghost_ship.facing = selected_ship.facing
-	ghost_ship.set_ghost(true)
-	add_child(ghost_ship)
+	ghost_ship = _create_ghost_ship(selected_ship)
 	
 	# Initialize Head State
 	ghost_head_pos = ghost_ship.grid_position
@@ -2788,6 +3129,20 @@ func _spawn_ghost():
 	path_preview_active = false
 	
 	queue_redraw() # Ensure predictive path draws immediately
+
+func _create_ghost_ship(source: Ship) -> Ship:
+	var ghost = load("res://Scripts/Ship.gd").new()
+	ghost.name = "GhostShip_%s" % source.name
+	ghost.side_id = source.side_id
+	ghost.ship_class = source.ship_class # Copy visual class
+	ghost.faction = source.faction # Copy faction for sprite selection
+	ghost.color = source.color
+	ghost.grid_position = source.grid_position
+	ghost.facing = source.facing
+	ghost.speed = source.speed
+	ghost.set_ghost(true)
+	add_child(ghost)
+	return ghost
 
 func _update_ui_state():
 	if not ui_layer: return
@@ -3909,6 +4264,43 @@ func _draw():
 			var hex = Vector3i(q, r, s)
 			draw_hex(hex)
 			
+	# Draw Deployment Highlights
+	if current_phase == Phase.DEPLOYMENT and is_deploying_ship and is_instance_valid(selected_ship):
+		var valid_hexes = ScenarioManager.get_valid_deployment_hexes(deployment_subphase, ships, planet_hexes, selected_ship)
+		# Only highlight if there are restrictions (not the whole map)
+		if valid_hexes.size() > 0:
+			for h in valid_hexes:
+				if not planet_hexes.has(h):
+					_draw_filled_hex(h, Color(0, 1, 0, 0.2)) # Faint Green
+					_draw_hex_outline(h, Color(0, 1, 0, 0.5), 2.0)
+					
+		# Render projected speed for non-station ships during deployment
+		if deploy_hex_selected and deploy_speed_val > 0 and selected_ship.ship_class != "Space Station" and selected_ship.ship_class != "Station":
+			var forward_vec = HexGrid.get_direction_vec(deploy_facing_val)
+			var current_check_hex = deploy_tentative_hex
+			
+			for i in range(deploy_speed_val):
+				current_check_hex += forward_vec
+				_draw_hex_outline(current_check_hex, Color(0, 1, 1, 0.6), 4.0) # Cyan for deployment speed
+				
+	# Draw projected speed vectors for already deployed ships
+	if current_phase == Phase.DEPLOYMENT:
+		for s in ships:
+			if is_instance_valid(s) and s.is_deployed and s.side_id == deployment_subphase:
+				if s.ship_class != "Space Station" and s.ship_class != "Station" and s.speed > 0:
+					var start_pos = HexGrid.hex_to_pixel(s.grid_position)
+					var forward_vec = HexGrid.get_direction_vec(s.facing)
+					var end_pos = HexGrid.hex_to_pixel(s.grid_position + forward_vec * s.speed)
+					
+					draw_line(start_pos, end_pos, Color(1, 1, 1, 0.6), 3.0, true)
+					
+					var angle = (end_pos - start_pos).angle()
+					var arrow_size = 15.0
+					var p1 = end_pos - Vector2(cos(angle - PI/6), sin(angle - PI/6)) * arrow_size
+					var p2 = end_pos - Vector2(cos(angle + PI/6), sin(angle + PI/6)) * arrow_size
+					var arrow_pts = PackedVector2Array([end_pos, p1, p2])
+					draw_polygon(arrow_pts, PackedColorArray([Color(1, 1, 1, 0.6)]))
+			
 	# Draw Eligible Hexes for Defensive Fire
 	if current_phase == Phase.COMBAT and combat_subphase == 1 and current_combat_state == CombatState.PLANNING:
 		var is_my_planning = (firing_side_id == my_side_id) or (my_side_id == 0)
@@ -4267,6 +4659,10 @@ func _unhandled_input(event):
 		var active_id = current_side_id
 		if current_phase == Phase.COMBAT:
 			active_id = firing_side_id
+		elif current_phase == Phase.REPAIR:
+			active_id = repair_subphase
+		elif current_phase == Phase.DEPLOYMENT:
+			active_id = deployment_subphase
 			
 		if active_id != my_side_id:
 			# print("Input Rejected: Active %d vs Local %d" % [active_id, my_side_id])
@@ -4283,12 +4679,16 @@ func _unhandled_input(event):
 				_handle_combat_click(hex_clicked)
 			elif current_phase == Phase.MOVEMENT:
 				_handle_movement_click(hex_clicked)
+			elif current_phase == Phase.DEPLOYMENT:
+				_handle_deployment_click(hex_clicked)
 		
-		# UX IMPROVEMENT: Right Click to Commit Move
 		elif event.button_index == MOUSE_BUTTON_RIGHT:
 			if current_phase == Phase.MOVEMENT and not current_path.is_empty():
 				log_message("Right Click: Committing Move...")
 				_on_commit_move()
+			elif current_phase == Phase.DEPLOYMENT and is_deploying_ship and deploy_hex_selected:
+				log_message("Right Click: Committing Deployment...")
+				_on_deploy_ship_pressed()
 				
 	if event is InputEventMouseMotion:
 		pass # Mouse Logic moved to _process for consistency and to fix frame-lag bugs
@@ -4488,6 +4888,33 @@ func _get_valid_targets(shooter: Ship) -> Array:
 			if can_hit:
 				valid.append(s)
 	return valid
+
+func _handle_deployment_click(hex: Vector3i):
+	if not is_deploying_ship or not is_instance_valid(selected_ship):
+		return
+	
+	# Validate bounds
+	# We rely on ScenarioManager.get_valid_deployment_hexes.
+	# If valid_hexes is empty, we assume no constraints (deploy anywhere)
+	var valid_hexes = ScenarioManager.get_valid_deployment_hexes(deployment_subphase, ships, planet_hexes, selected_ship)
+	
+	if valid_hexes.size() > 0 and not valid_hexes.has(hex):
+		log_message("[color=red]Invalid deployment hex location![/color]")
+		return
+		
+	# Check collision with planet
+	if planet_hexes.has(hex):
+		log_message("[color=red]Cannot deploy inside a planet![/color]")
+		return
+	
+	# Set tentative hex
+	deploy_tentative_hex = hex
+	deploy_hex_selected = true
+	selected_ship.grid_position = deploy_tentative_hex
+	selected_ship.position = HexGrid.hex_to_pixel(selected_ship.grid_position)
+	
+	if audio_beep and audio_beep.stream: audio_beep.play()
+	queue_redraw()
 
 func _handle_movement_click(hex: Vector3i):
 	print("DEBUG: _handle_movement_click called with hex: ", hex)

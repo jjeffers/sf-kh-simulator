@@ -28,6 +28,10 @@ func test_ship_list_after_turn_switch():
 	_gm.setup_game(seed_val, "surprise_attack")
 	await get_tree().process_frame
 	
+	# Bypass deployment phase for UI testing
+	_gm.rpc_finalize_deployment()
+	await get_tree().process_frame
+	
 	# Verify Start State: Side 1 (Sathar) Turn
 	assert_eq(_gm.current_side_id, 1, "Game should start with Side 1")
 	assert_eq(_gm.current_phase, _gm.Phase.MOVEMENT, "Should be Movement Phase")
