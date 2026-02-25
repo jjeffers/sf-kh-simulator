@@ -1721,6 +1721,11 @@ func _reset_plotting_state():
 		turns_remaining = selected_ship.mr
 		start_speed = selected_ship.speed
 		start_ms_active = selected_ship.is_ms_active
+		
+		# Space Stations can NEVER have speed > 0
+		if selected_ship.ship_class in ["Space Station", "Station"]:
+			selected_ship.speed = 0
+			start_speed = 0
 	else:
 		turns_remaining = 0
 		start_speed = 0
@@ -4051,6 +4056,9 @@ func _apply_movement_plan(s: Ship):
 		# Hold Position (or invalid empty path treated as hold)
 		s.facing = s.planned_facing # Always apply facing change?
 		new_speed = max(0, old_speed - s.get_effective_adf())
+		
+	if s.ship_class in ["Space Station", "Station"]:
+		new_speed = 0
 		
 	s.speed = new_speed
 	
