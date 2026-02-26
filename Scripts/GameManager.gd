@@ -349,7 +349,7 @@ func start_deployment_phase(scen_key: String = ""):
 	if scen_key == "":
 		scen_key = NetworkManager.lobby_data.get("scenario", "simple_test")
 		
-	if scen_key == "surprise_attack" or scen_key == "the_last_stand":
+	if scen_key == "surprise_attack" or scen_key == "the_last_stand" or scen_key == "battle_of_kenzah":
 		# Dynamically determine which side is UPF
 		var scen = ScenarioManager.get_scenario(scen_key)
 		var upf_side_id = 2 # Default fallback
@@ -2609,6 +2609,13 @@ func _center_camera_on_deployment_zone(ship: Ship):
 			center_pixel += HexGrid.hex_to_pixel(h)
 		center_pixel /= valid_hexes.size()
 		camera.position = center_pixel
+	elif planet_hexes.size() > 0:
+		var center_pixel = Vector2.ZERO
+		for h in planet_hexes:
+			center_pixel += HexGrid.hex_to_pixel(h)
+		center_pixel /= planet_hexes.size()
+		camera.position = center_pixel
+		target_zoom = Vector2(0.5, 0.5) # Zoom out to see the whole planet system
 
 func _update_deployment_ui():
 	print("[DEBUG] _update_deployment_ui called - Subphase: %d, my_side_id: %d" % [deployment_subphase, my_side_id])

@@ -397,7 +397,7 @@ static func generate_scenario(key: String, rng_seed: int) -> Dictionary:
 		for wing in fighter_wings:
 			ships.append({
 				"name": "Fighter " + wing, "class": "Fighter", "side": 1, "faction": "Sathar",
-				"position": anchor_pos, "docked_at": "Maelstrom"
+				"position": anchor_pos, "docked_at": "Maelstrom", "start_speed": 0
 			})
 			
 		scen["ships"] = ships
