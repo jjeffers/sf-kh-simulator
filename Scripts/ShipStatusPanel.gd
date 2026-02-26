@@ -363,16 +363,10 @@ func _update_damaged_systems(ship):
 		damaged_items.append("Combat Control System (CCS)")
 
 	# Logic for ICM/MS destruction checks:
-	# If current max is 0, but class suggests it should have them.
-	# Fighters/Scouts don't have ICM/MS.
-	var has_native_icm = not (ship.ship_class in ["Fighter", "Assault Scout"])
-	# Note: Space Station has variable stats, but usually has ICM.
-	if has_native_icm and ship.icm_max == 0:
+	if ship.base_icm_max > 0 and ship.icm_max == 0:
 		damaged_items.append("ICM System Destroyed")
 
-	var has_native_ms = not (ship.ship_class in ["Fighter", "Assault Scout"])
-	# Frigates+ usually have MS.
-	if has_native_ms and ship.ms_max == 0:
+	if ship.base_ms_max > 0 and ship.ms_max == 0:
 		damaged_items.append("Masking Screen Destroyed")
 		
 	# 5. Fires

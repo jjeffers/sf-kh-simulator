@@ -129,6 +129,7 @@ var planet_hexes: Array[Vector3i] = []
 # Scenario Rules
 var current_scenario_rules: Array = []
 var turn_count: int = 1 # Track player turns
+var game_seed: int = 12345 # Synchronized RNG payload from Host
 
 
 # Planning UI
@@ -440,6 +441,11 @@ func _process(delta):
 						
 					var dist = HexGrid.hex_distance(deploy_tentative_hex, hex_hover)
 					deploy_speed_val = clampi(dist, 0, 20)
+					
+					var scen_key = NetworkManager.lobby_data.get("scenario", "")
+					if scen_key == "close_escort" and selected_ship.name == "Megasaurus":
+						deploy_speed_val = 5
+						deploy_facing_val = 3
 					
 					_update_deploy_preview()
 					if is_instance_valid(lbl_deploy_facing): lbl_deploy_facing.text = str(deploy_facing_val)
@@ -2049,6 +2055,18 @@ func start_turn_cycle():
 
 	# Initial Setup
 	turn_order = [1, 2] # Side 1 First
+	
+	if turn_count == 1:
+		for rule in current_scenario_rules:
+			if rule.get("type", "") == "random_first_turn":
+				var rng = RandomNumberGenerator.new()
+				rng.seed = game_seed
+				if rng.randf() > 0.5:
+					turn_order = [2, 1]
+					print("GameManager: Random First Turn rolled. Side 2 goes first.")
+				else:
+					print("GameManager: Random First Turn rolled. Side 1 goes first.")
+					
 	current_turn_order_index = 0
 	
 	# Start Turn for Side 1
@@ -2568,6 +2586,15 @@ func end_turn_cycle():
 			# Round Complete
 			_end_round_cycle()
 
+func _center_camera_on_deployment_zone(ship: Ship):
+	var valid_hexes = ScenarioManager.get_valid_deployment_hexes(deployment_subphase, ships, planet_hexes, ship)
+	if valid_hexes.size() > 0:
+		var center_pixel = Vector2.ZERO
+		for h in valid_hexes:
+			center_pixel += HexGrid.hex_to_pixel(h)
+		center_pixel /= valid_hexes.size()
+		camera.position = center_pixel
+
 func _update_deployment_ui():
 	print("[DEBUG] _update_deployment_ui called - Subphase: %d, my_side_id: %d" % [deployment_subphase, my_side_id])
 	if not is_instance_valid(list_deployment): return
@@ -2636,6 +2663,10 @@ func _update_deployment_ui():
 				deploy_hex_selected = true
 			else:
 				deploy_hex_selected = false
+				
+				# Center camera on valid deployment zone
+				_center_camera_on_deployment_zone(s)
+					
 			_update_deployment_ui()
 			_update_deploy_preview()
 			_update_ui_state()
@@ -2646,6 +2677,23 @@ func _update_deployment_ui():
 		btn_deploy_facing_cw.disabled = false
 		btn_deploy_facing_ccw.disabled = false
 		spin_deploy_speed.editable = true
+		if is_instance_valid(spin_deploy_speed):
+			spin_deploy_speed.min_value = 0
+			spin_deploy_speed.max_value = 20
+		
+		# [SCENARIO RULE] Close Escort - Megasaurus locked speed limits.
+		var scen_key = NetworkManager.lobby_data.get("scenario", "simple_test")
+		if scen_key == "close_escort" and selected_ship.name == "Megasaurus":
+			deploy_speed_val = 5
+			deploy_facing_val = 3
+			if is_instance_valid(spin_deploy_speed):
+				spin_deploy_speed.min_value = 5
+				spin_deploy_speed.max_value = 5
+				spin_deploy_speed.set_value_no_signal(5.0)
+			spin_deploy_speed.editable = false
+			btn_deploy_facing_cw.disabled = true
+			btn_deploy_facing_ccw.disabled = true
+			
 		btn_deploy_ship.disabled = false
 		btn_deploy_ship.text = "UPDATE DEPLOYMENT" if selected_ship.is_deployed else "DEPLOY SHIP"
 	else:
@@ -5161,6 +5209,7 @@ func _unhandled_input(event):
 						deploy_hex_selected = true
 					else:
 						deploy_hex_selected = false
+						_center_camera_on_deployment_zone(s)
 						
 					_update_deployment_ui()
 					_update_deploy_preview()
@@ -5996,6 +6045,7 @@ func _update_minimap_position():
 	pass
 
 func load_scenario(key: String, seed_val: int = 12345):
+	game_seed = seed_val
 	# Retrieve Scenario Data
 	var scen_dataset = ScenarioManager.generate_scenario(key, seed_val)
 	# Handle case where generate_scenario returns empty but SCENARIOS has it (static)
@@ -6310,6 +6360,11 @@ func _spawn_planets_visuals():
 func _handle_mouse_facing(hex: Vector3i):
 	# Only update if we can turn OR if we are just pivoting before moving?
 	if not ghost_ship: return
+	
+	# Scenario rule lock
+	var scen_key = NetworkManager.lobby_data.get("scenario", "simple_test")
+	if scen_key == "close_escort" and is_instance_valid(selected_ship) and selected_ship.name == "Megasaurus":
+		return
 	
 	# Determine relative direction from ghost
 	var dist = HexGrid.hex_distance(ghost_ship.grid_position, hex)
