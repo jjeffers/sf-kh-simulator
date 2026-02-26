@@ -25,6 +25,9 @@ func _ready():
 		var idx = 0
 		var selected_idx = 0
 		for key in ScenarioManager.SCENARIOS:
+			if "test" in key:
+				continue
+				
 			var s_name = ScenarioManager.SCENARIOS[key].get("name", key)
 			opt_scenario.add_item(s_name, idx)
 			# Store key as metadata if possible, or just use index mapping

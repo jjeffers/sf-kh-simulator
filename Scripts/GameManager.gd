@@ -2078,6 +2078,9 @@ func start_turn_cycle():
 					print("GameManager: Random First Turn rolled. Side 2 goes first.")
 				else:
 					print("GameManager: Random First Turn rolled. Side 1 goes first.")
+			elif rule.get("type", "") == "attacker_first_turn":
+				turn_order = [2, 1] # Side 2 (Attacker) Goes First
+				print("GameManager: Attacker First Turn rule active. Side 2 goes first.")
 					
 	current_turn_order_index = 0
 	
