@@ -27,6 +27,17 @@ const SCENARIOS = {
 			}
 		]
 	},
+	"battle_of_kenzah": {
+		"name": "Battle of Ken'zah",
+		"description": "The UPF must defend Ken'zah Station from a Sathar assault.",
+		"sides": {
+			0: {"name": "UPF", "color": Color.GREEN, "role": "Defender"},
+			1: {"name": "Sathar", "color": Color.RED, "role": "Attacker"}
+		},
+		"ships": [],
+		"special_rules": [],
+		"planets": [Vector3i(0, 0, 0)]
+	},
 	"the_last_stand": {
 		"name": "The Last Stand",
 		"description": "A massive Sathar fleet assaults Fortress K'zdit. UPF must hold the line.",
@@ -311,6 +322,86 @@ static func generate_scenario(key: String, rng_seed: int) -> Dictionary:
 			"start_speed": 5
 		})
 		scen["ships"] = ships
+		
+	elif key == "battle_of_kenzah":
+		# UPF SETUP (Side 0, Defender)
+		ships.append({
+			"name": "Ken'zah Station", "class": "Space Station", "side": 0, "faction": "UPF",
+			"position": Vector3i(1, 0, -1), "facing": 0, "orbit_direction": 1,
+			"overrides": {
+				"hull": 140, "max_hull": 140, "max_dcr": 100, "current_dcr": 100,
+				"icm_max": 10, "icm_current": 10, "ms_max": 2, "ms_current": 2,
+				"reflective_hull": true,
+				"weapons": [
+					{"name": "Laser Battery", "type": "Laser", "range": 9, "arc": "360", "ammo": 999, "max_ammo": 999, "damage_dice": "1d10", "damage_bonus": 0, "fired": false},
+					{"name": "Laser Battery", "type": "Laser", "range": 9, "arc": "360", "ammo": 999, "max_ammo": 999, "damage_dice": "1d10", "damage_bonus": 0, "fired": false},
+					{"name": "Rocket Battery", "type": "Rocket Battery", "range": 3, "arc": "360", "ammo": 12, "max_ammo": 12, "damage_dice": "2d10", "damage_bonus": 0, "fired": false},
+					{"name": "Rocket Battery", "type": "Rocket Battery", "range": 3, "arc": "360", "ammo": 12, "max_ammo": 12, "damage_dice": "2d10", "damage_bonus": 0, "fired": false},
+					{"name": "Rocket Battery", "type": "Rocket Battery", "range": 3, "arc": "360", "ammo": 12, "max_ammo": 12, "damage_dice": "2d10", "damage_bonus": 0, "fired": false},
+					{"name": "Rocket Battery", "type": "Rocket Battery", "range": 3, "arc": "360", "ammo": 12, "max_ammo": 12, "damage_dice": "2d10", "damage_bonus": 0, "fired": false},
+					{"name": "Rocket Battery", "type": "Rocket Battery", "range": 3, "arc": "360", "ammo": 12, "max_ammo": 12, "damage_dice": "2d10", "damage_bonus": 0, "fired": false},
+					{"name": "Rocket Battery", "type": "Rocket Battery", "range": 3, "arc": "360", "ammo": 12, "max_ammo": 12, "damage_dice": "2d10", "damage_bonus": 0, "fired": false},
+					{"name": "Rocket Battery", "type": "Rocket Battery", "range": 3, "arc": "360", "ammo": 12, "max_ammo": 12, "damage_dice": "2d10", "damage_bonus": 0, "fired": false},
+					{"name": "Rocket Battery", "type": "Rocket Battery", "range": 3, "arc": "360", "ammo": 12, "max_ammo": 12, "damage_dice": "2d10", "damage_bonus": 0, "fired": false}
+				]
+			}
+		})
+
+		var upf_roster = [
+			{"name": "Z'Rak't Zoz", "class": "Minelayer", "pos": Vector3i(-1, 0, 1), "facing": 3},
+			{"name": "Shimmer", "class": "Frigate", "pos": Vector3i(-1, 1, 0), "facing": 3},
+			{"name": "Zz'Nakk'T", "class": "Frigate", "pos": Vector3i(0, -1, 1), "facing": 2},
+			{"name": "Rapier", "class": "Assault Scout", "pos": Vector3i(1, 1, -2), "facing": 0},
+			{"name": "Lancet", "class": "Assault Scout", "pos": Vector3i(0, 2, -2), "facing": 0},
+			{"name": "Fighter A", "class": "Fighter", "pos": Vector3i(-2, 1, 1), "facing": 3},
+			{"name": "Fighter B", "class": "Fighter", "pos": Vector3i(-2, 2, 0), "facing": 3},
+			{"name": "Fighter C", "class": "Fighter", "pos": Vector3i(-3, 1, 2), "facing": 3},
+			{"name": "Fighter D", "class": "Fighter", "pos": Vector3i(2, -1, -1), "facing": 0},
+			{"name": "Fighter E", "class": "Fighter", "pos": Vector3i(2, -2, 0), "facing": 0},
+			{"name": "Fighter F", "class": "Fighter", "pos": Vector3i(3, -1, -2), "facing": 0}
+		]
+		
+		for template in upf_roster:
+			ships.append({
+				"name": template["name"], "class": template["class"], "side": 0, "faction": "UPF",
+				"position": template["pos"], "facing": template["facing"], "start_speed": 4
+			})
+			
+		# SATHAR SETUP (Side 1, Attacker)
+		var directions = [
+			Vector3i(1, 0, -1), Vector3i(0, 1, -1), Vector3i(-1, 1, 0),
+			Vector3i(-1, 0, 1), Vector3i(0, -1, 1), Vector3i(1, -1, 0)
+		]
+		var edge_dir_idx = rng.randi() % 6
+		var edge_vec = directions[edge_dir_idx]
+		var spawn_dist = 34
+		var anchor_pos = edge_vec * spawn_dist
+		var attack_facing = (edge_dir_idx + 3) % 6
+		
+		var sathar_roster = [
+			{"name": "Maelstrom", "class": "Assault Carrier", "offset": Vector3i(0, 0, 0)},
+			{"name": "Carrion", "class": "Heavy Cruiser", "offset": Vector3i(1, -1, 0)},
+			{"name": "Deathstroke", "class": "Light Cruiser", "offset": Vector3i(-1, 0, 1)},
+			{"name": "Bludgeon", "class": "Destroyer", "offset": Vector3i(0, 1, -1)},
+			{"name": "Viper", "class": "Destroyer", "offset": Vector3i(0, -1, 1)}
+		]
+		
+		for s_data in sathar_roster:
+			ships.append({
+				"name": s_data["name"], "class": s_data["class"], "side": 1, "faction": "Sathar",
+				"position": anchor_pos + s_data["offset"],
+				"facing": attack_facing, "start_speed": 6
+			})
+			
+		var fighter_wings = ["A", "B", "C", "D", "E", "F"]
+		for wing in fighter_wings:
+			ships.append({
+				"name": "Fighter " + wing, "class": "Fighter", "side": 1, "faction": "Sathar",
+				"position": anchor_pos, "docked_at": "Maelstrom"
+			})
+			
+		scen["ships"] = ships
+		scen["planets"] = [Vector3i(0, 0, 0)]
 		
 	elif key == "the_last_stand":
 		# UPF SETUP
@@ -686,7 +777,7 @@ static func get_valid_deployment_hexes(side_id: int, ships: Array, planets: Arra
 					if dist == spawn_dist:
 						valid_hexes.append(Vector3i(x, y, z))
 						
-	elif scen_key == "the_last_stand":
+	elif scen_key == "the_last_stand" or scen_key == "battle_of_kenzah":
 		if side_id == 2:
 			# Attackers (Sathar): Must deploy exactly 34 hexes from center.
 			var spawn_dist = 34
