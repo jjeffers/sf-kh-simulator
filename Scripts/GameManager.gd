@@ -5507,6 +5507,10 @@ func _handle_deployment_click(hex: Vector3i):
 	
 	if audio_beep and audio_beep.stream: audio_beep.play()
 	queue_redraw()
+	
+	# Auto-commit deployment for stations (they don't need facing/speed dragging)
+	if selected_ship.ship_class == "Space Station" or selected_ship.ship_class == "Station":
+		_on_deploy_ship_pressed()
 
 func _handle_movement_click(hex: Vector3i):
 	print("DEBUG: _handle_movement_click called with hex: ", hex)
