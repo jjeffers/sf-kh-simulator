@@ -56,6 +56,8 @@ func test_crippled_weapon():
 
 func test_system_damage():
 	ship.configure_frigate() # Has ICM (4) and MS (1)
+	ship.base_icm_max = ship.icm_max
+	ship.base_ms_max = ship.ms_max
 	
 	# Damage CCS
 	ship.ccs_damaged = true
