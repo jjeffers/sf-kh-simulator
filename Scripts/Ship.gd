@@ -749,84 +749,6 @@ func configure_destroyer():
 func configure_light_cruiser():
 	ship_class = "Light Cruiser"
 	defense = "RH"
-	max_hull = 25
-	hull = max_hull
-	adf = 3
-	mr = 2
-	icm_max = 2
-	icm_current = 2
-	ms_max = 0
-	ms_current = 0
-	max_dcr = 50
-	current_dcr = max_dcr
-	
-	weapons.clear()
-	weapons.append({
-		"name": "Laser Battery 1",
-		"type": "Laser Battery",
-		"range": 5,
-		"arc": "FF",
-		"ammo": 999,
-		"max_ammo": 999,
-		"damage_dice": "1d10",
-		"damage_bonus": 0,
-		"dtm": -10,
-		"fired": false
-	})
-	weapons.append({
-		"name": "Laser Battery 2",
-		"type": "Laser Battery",
-		"range": 5,
-		"arc": "FF",
-		"ammo": 999,
-		"max_ammo": 999,
-		"damage_dice": "1d10",
-		"damage_bonus": 0,
-		"dtm": -10,
-		"fired": false
-	})
-	weapons.append({
-		"name": "Torpedoes",
-		"type": "Torpedo",
-		"range": 8,
-		"arc": "FF",
-		"ammo": 2,
-		"max_ammo": 2,
-		"damage_dice": "3d10",
-		"damage_bonus": 0,
-		"dtm": 0,
-		"fired": false
-	})
-
-func configure_shuttle():
-	ship_class = "Shuttle"
-	defense = "None"
-	max_hull = 5
-	hull = max_hull
-	adf = 2
-	mr = 2
-	icm_max = 0
-	icm_current = 0
-	ms_max = 0
-	ms_current = 0
-	max_dcr = 10
-	current_dcr = max_dcr
-	weapons.clear()
-
-func configure_civilian_ship(variant: int = 1):
-	ship_class = "Civilian"
-	defense = "None"
-	max_hull = 10 * variant
-	hull = max_hull
-	adf = 2
-	mr = 1
-	icm_max = 0
-	icm_current = 0
-	ms_max = 0
-	ms_current = 0
-	max_dcr = 20
-	current_dcr = max_dcr
-	weapons.clear()
 	max_hull = 70
 	hull = max_hull
 	adf = 3
@@ -912,6 +834,36 @@ func configure_civilian_ship(variant: int = 1):
 		"dtm": 20,
 		"fired": false
 	})
+
+func configure_shuttle():
+	ship_class = "Shuttle"
+	defense = "None"
+	max_hull = 5
+	hull = max_hull
+	adf = 2
+	mr = 2
+	icm_max = 0
+	icm_current = 0
+	ms_max = 0
+	ms_current = 0
+	max_dcr = 10
+	current_dcr = max_dcr
+	weapons.clear()
+
+func configure_civilian_ship(variant: int = 1):
+	ship_class = "Civilian"
+	defense = "None"
+	max_hull = 10 * variant
+	hull = max_hull
+	adf = 2
+	mr = 1
+	icm_max = 0
+	icm_current = 0
+	ms_max = 0
+	ms_current = 0
+	max_dcr = 20
+	current_dcr = max_dcr
+	weapons.clear()
 	
 	current_weapon_index = 0
 
@@ -1833,9 +1785,11 @@ func get_display_name() -> String:
 		"Frigate": abbrev = "FG"
 		"Minelayer": abbrev = "ML"
 		"Destroyer": abbrev = "DD"
-		"Heavy Cruiser": abbrev = "C"
+		"Light Cruiser": abbrev = "CL"
+		"Heavy Cruiser": abbrev = "CA"
 		"Battleship": abbrev = "BB"
-		"Space Station": abbrev = "SS"
+		"Civilian": abbrev = "SS"
+		"Space Station": abbrev = "ST"
 		"Assault Scout": abbrev = "AS"
 		"Assault Carrier": abbrev = "AC"
 		_: abbrev = "?"

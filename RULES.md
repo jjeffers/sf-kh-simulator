@@ -159,13 +159,13 @@ Detailed specifications for all ship classes currently implemented.
 | :--- | :--- | :--- | :--- | :--- | :--- | :--- | :--- | :---|
 | **Fighter** | 8 | 5 | 5 | RH | 0 | 0 | Assault Rockets (x3) | 30 |
 | **Assault Scout** | 15 | 5 | 4 | RH | 0 | 0 | Laser Battery, Assault Rockets (x4) | 50 |
-| **Frigate** | 40 | 3 | 3 | RH, ICMs (x4) | 4 | 1 | Laser Battery, Laser Canon, Rocket Battery (x4), Torpedo (x2) | 70 |
+| **Frigate** | 40 | 4 | 3 | RH, ICMs (x4) | 4 | 1 | Laser Battery, Laser Canon, Rocket Battery (x4), Torpedo (x2) | 70 |
 | **Minelayer** | 40 | 1 | 2 | RH | 4 | 4 | Laser Battery (x2), Mines (x20) | 75 |
-| **Destroyer** | 50 | 3 | 2 | RH | 5 | 2 | Laser Battery, Laser Canon, Electron Battery, Rocket Battery (x6), Torpedo (x2) | 75 |
+| **Destroyer** | 50 | 3 | 3 | RH | 5 | 2 | Laser Battery, Laser Canon, Electron Battery, Rocket Battery (x6), Torpedo (x2) | 75 |
 | **Light Cruiser** | 70 | 3 | 2 | RH, ES, SS | 8 | 1 | Disruptor Canon, laser battery, electron battery, proton battery, Rocket Battery (x6), Torpedo (x4) | 100 |
-| **Heavy Cruiser** | 80 | 1 | 1 | RH, PS, SS | 8 | 1 | Laser Battery (x2), proton battery, electron battery, Disruptor Canon, Rocket Battery (x8), Torpedo (x4) | 120 |
+| **Heavy Cruiser** | 80 | 2 | 1 | RH, PS, SS | 8 | 1 | Laser Battery (x2), proton battery, electron battery, Disruptor Canon, Rocket Battery (x8), Torpedo (x4) | 120 |
 | **Battleship** | 120 | 2 | 2 | RH, PS, ES, SS | 12 | 4 | Disruptor Canon, Laser Battery (x3), proton battery, electron battery (x2), Rocket Battery (x10), Torpedo (x8) | 200 |
-| **Assault Carrier** | 75 | 2 | 1 | RH | 10 | 4 | Laser Battery, Rocket Battery (x8) 150 |
+| **Assault Carrier** | 75 | 2 | 1 | RH | 10 | 4 | Laser Battery, proton battery, Rocket Battery (x8) 150 |
 | **Space Station** | 20-200 | 0 | 0 | RH, ES, SS, PS | 2-8 | 1-4 | 1 electron battery or 1 proton battery or 1 laser battery pe 50 hull points, Rocket Battery (2-12) | 1/2 hull points |
 
 *Note: Space Station stats scale based on Hull points (Randomly generated).*
@@ -307,6 +307,33 @@ When both sides have completed deployment, the game should proceed to the first 
 **Objectives:**
 - **UPF:** Dock the frigate Defiant at the station for 3 turns, then leave the playig area.
 - **Sathar:** Prevent the frigate from evacuating the station or leaving the play area after evacuating the station.
+
+## Close Escort
+**Description:** UPF forces must escort a transport ship to an escape position before the Sathar can destroy it.
+
+**UPF (Defenders):**
+- **Courageous** (Light Cruiser)
+- **Scimitar** (Assault Scout)UPF.
+- **Dagger** (Assault Scout)
+- **Megasaurus** (Civilian bulk transport), hull points 75, ADF 1, MR 1, DCR 40, no weapons, x1 masking screen
+
+**Sathar (Attackers):**
+- **Faminewind** (Light Cruiser)
+  - Faction: Sathar.
+- **Nemesis** (Destroyer)
+  - Faction: Sathar.
+
+**Setup:**
+ - UPF sets up first on the right-most edge of the playing area. The transport ship must start with a speed of 5.
+- The attackers must deploy on the left-most edge of the playing area.
+  
+**Special Rules**
+ - The Megasaurus must reach the left hand side of the paying area. It may only travel in a straight line.
+ - Randomaly determine who moves first in this scenario.
+
+**Objectives:**
+- **UPF:** ensure the Megauraus escapes by reaching the left and side of the map.
+- **Sathar:** Destroy the Megasaurus.
 
 ### The Last Stand
 **Description:** A massive Sathar fleet assaults Fortress K'zdit. UPF must hold the line.

@@ -40,6 +40,17 @@ const SCENARIOS = {
 		"special_rules": [],
 		"planets": [Vector3i(0, 0, 0)]
 	},
+	"close_escort": {
+		"name": "Close Escort",
+		"description": "UPF forces must escort a transport ship to an escape position before the Sathar can destroy it.",
+		"sides": {
+			0: {"name": "UPF", "color": Color.GREEN, "role": "Defender"},
+			1: {"name": "Sathar", "color": Color.RED, "role": "Attacker"}
+		},
+		"ships": [],
+		"special_rules": [],
+		"planets": []
+	},
 	"simple_test": {
 		"name": "Simple Test",
 		"description": "A simple test scenario to test the game engine.",
@@ -223,6 +234,82 @@ static func generate_scenario(key: String, rng_seed: int) -> Dictionary:
 			"start_speed": 8
 		})
 		
+		scen["ships"] = ships
+		
+	elif key == "close_escort":
+		# Scenario Rules
+		scen["special_rules"].append({
+			"type": "random_first_turn"
+		})
+		
+		# UPF SETUP (Side 0, Defenders)
+		ships.append({
+			"name": "Megasaurus",
+			"class": "Civilian",
+			"faction": "UPF",
+			"side_index": 0,
+			"position": Vector3i(34, 0, -34),
+			"facing": 3,
+			"start_speed": 5,
+			"overrides": {
+				"max_hull": 75,
+				"hull": 75,
+				"base_adf": 1,
+				"base_mr": 1,
+				"max_dcr": 40,
+				"current_dcr": 40,
+				"ms_max": 1,
+				"ms_current": 1,
+				"weapons": []
+			}
+		})
+		ships.append({
+			"name": "Courageous",
+			"class": "Light Cruiser",
+			"faction": "UPF",
+			"side_index": 0,
+			"position": Vector3i(34, 1, -35),
+			"facing": 3,
+			"start_speed": 5
+		})
+		ships.append({
+			"name": "Scimitar",
+			"class": "Assault Scout",
+			"faction": "UPF",
+			"side_index": 0,
+			"position": Vector3i(34, -1, -33),
+			"facing": 3,
+			"start_speed": 5
+		})
+		ships.append({
+			"name": "Dagger",
+			"class": "Assault Scout",
+			"faction": "UPF",
+			"side_index": 0,
+			"position": Vector3i(34, -2, -32),
+			"facing": 3,
+			"start_speed": 5
+		})
+		
+		# SATHAR SETUP (Side 1, Attackers)
+		ships.append({
+			"name": "Faminewind",
+			"class": "Light Cruiser",
+			"faction": "Sathar",
+			"side_index": 1,
+			"position": Vector3i(-34, 0, 34),
+			"facing": 0,
+			"start_speed": 5
+		})
+		ships.append({
+			"name": "Nemesis",
+			"class": "Destroyer",
+			"faction": "Sathar",
+			"side_index": 1,
+			"position": Vector3i(-34, 1, 33),
+			"facing": 0,
+			"start_speed": 5
+		})
 		scen["ships"] = ships
 		
 	elif key == "the_last_stand":
@@ -634,6 +721,24 @@ static func get_valid_deployment_hexes(side_id: int, ships: Array, planets: Arra
 		else:
 			# UPF can deploy anywhere
 			pass
+			
+	elif scen_key == "close_escort":
+		if side_id == 2:
+			# Sathar must deploy on the full left edge of the map (x = -34 or z = 34)
+			for x in range(-34, 35):
+				for y in range(max(-34, -x-34), min(34, -x+34) + 1):
+					var z = -x - y
+					if HexGrid.hex_distance(Vector3i.ZERO, Vector3i(x, y, z)) == 34:
+						if x == -34 or z == 34:
+							valid_hexes.append(Vector3i(x, y, z))
+		else:
+			# UPF must deploy on the full right edge of the map (x = 34 or z = -34)
+			for x in range(-34, 35):
+				for y in range(max(-34, -x-34), min(34, -x+34) + 1):
+					var z = -x - y
+					if HexGrid.hex_distance(Vector3i.ZERO, Vector3i(x, y, z)) == 34:
+						if x == 34 or z == -34:
+							valid_hexes.append(Vector3i(x, y, z))
 
 	# Wait, if valid_hexes is empty, we just let them deploy anywhere.
 	return valid_hexes
