@@ -762,9 +762,19 @@ func _setup_ui():
 	add_child(audio_ship_select)
 
 	audio_repair_roll = AudioStreamPlayer.new()
-	if not OS.get_cmdline_args().has("--headless"):
+	if not OS.get_cmdline_args().has("--headless") and FileAccess.file_exists("res://Assets/Audio/glitch-sound-short.mp3.import"):
 		audio_repair_roll.stream = load("res://Assets/Audio/glitch-sound-short.mp3")
 	add_child(audio_repair_roll)
+
+	audio_repair_success = AudioStreamPlayer.new()
+	if not OS.get_cmdline_args().has("--headless") and FileAccess.file_exists("res://Assets/Audio/made-repair.mp3.import"):
+		audio_repair_success.stream = load("res://Assets/Audio/made-repair.mp3")
+	add_child(audio_repair_success)
+
+	audio_repair_failure = AudioStreamPlayer.new()
+	if not OS.get_cmdline_args().has("--headless") and FileAccess.file_exists("res://Assets/Audio/failed-repair.mp3.import"):
+		audio_repair_failure.stream = load("res://Assets/Audio/failed-repair.mp3")
+	add_child(audio_repair_failure)
 
 	# MiniMap
 	# Add last to be on top? Or managing layout?
@@ -928,6 +938,8 @@ var audio_action_complete: AudioStreamPlayer
 var audio_phase_change: AudioStreamPlayer
 var audio_ship_select: AudioStreamPlayer
 var audio_repair_roll: AudioStreamPlayer
+var audio_repair_success: AudioStreamPlayer
+var audio_repair_failure: AudioStreamPlayer
 var mini_map: MiniMap
 
 var combat_log: RichTextLabel
@@ -3138,6 +3150,8 @@ func rpc_execute_repairs_for_side(side_id: int, allocs_for_side: Dictionary, rng
 			
 			if roll >= 90:
 				log_message("[color=red]Repair Failed![/color]")
+				if audio_repair_failure and audio_repair_failure.stream:
+					audio_repair_failure.play()
 				if roll >= 99:
 					log_message("[color=red]System permanently broken![/color]")
 					_spawn_hit_text(target_pos, pre_text + "CRITICAL FAIL")
@@ -3146,10 +3160,14 @@ func rpc_execute_repairs_for_side(side_id: int, allocs_for_side: Dictionary, rng
 					_spawn_hit_text(target_pos, pre_text + "FAILED")
 			elif roll <= chance:
 				log_message("[color=green]Repair Successful![/color]")
+				if audio_repair_success and audio_repair_success.stream:
+					audio_repair_success.play()
 				_spawn_hit_text(target_pos, pre_text + "REPAIRED!")
 				_apply_repair(s, key)
 			else:
 				log_message("[color=yellow]Repair Failed. Roll too high.[/color]")
+				if audio_repair_failure and audio_repair_failure.stream:
+					audio_repair_failure.play()
 				_spawn_hit_text(target_pos, pre_text + "FAILED")
 			
 			await get_tree().create_timer(2.0).timeout
