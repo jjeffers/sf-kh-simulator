@@ -85,6 +85,16 @@ const SCENARIOS = {
 		},
 		"ships": [],
 		"special_rules": []
+	},
+	"test_mines": {
+		"name": "Test Mines",
+		"description": "Verify minelayer spatial mine dropping, detonation, and integration.",
+		"sides": {
+			0: {"name": "UPF", "color": Color.GREEN, "role": "Defender"},
+			1: {"name": "Sathar", "color": Color.RED, "role": "Attacker"}
+		},
+		"ships": [],
+		"special_rules": []
 	}
 }
 
@@ -497,6 +507,52 @@ static func generate_scenario(key: String, rng_seed: int) -> Dictionary:
 			"overrides": {
 				"weapons": [ { "name": "Assault Rockets", "type": "Rocket", "range": 4, "arc": "FF", "ammo": 0, "max_ammo": 3, "damage_dice": "2d10", "damage_bonus": 4, "dtm": -10, "fired": false } ]
 			}
+		})
+		scen["ships"] = ships
+		
+	elif key == "test_mines":
+		# UPF Minelayer
+		ships.append({
+			"name": "UPF Minelayer Test",
+			"class": "Minelayer",
+			"faction": "UPF",
+			"side_index": 0,
+			"position": Vector3i(-2, 0, 2), # 2 hexes West
+			"facing": 0, # East
+			"start_speed": 6
+		})
+		
+		# Sathar Ships (5 hexes away: UPF is at q=-2, so 5 hexes East is q=3)
+		var sathar_pos = Vector3i(3, -1, -2) # Centered
+		
+		ships.append({
+			"name": "Sathar Fighter",
+			"class": "Fighter",
+			"faction": "Sathar",
+			"side_index": 1,
+			"position": sathar_pos + Vector3i(0, 1, -1),
+			"facing": 3, # West
+			"start_speed": 7
+		})
+		
+		ships.append({
+			"name": "Sathar Frigate",
+			"class": "Frigate",
+			"faction": "Sathar",
+			"side_index": 1,
+			"position": sathar_pos,
+			"facing": 3, # West
+			"start_speed": 7
+		})
+		
+		ships.append({
+			"name": "Sathar Light Cruiser",
+			"class": "Light Cruiser",
+			"faction": "Sathar",
+			"side_index": 1,
+			"position": sathar_pos + Vector3i(0, -1, 1),
+			"facing": 3, # West
+			"start_speed": 7
 		})
 		scen["ships"] = ships
 

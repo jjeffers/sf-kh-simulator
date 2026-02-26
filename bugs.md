@@ -1,7 +1,7 @@
 # Bug Tracker
 
 ## 🚨 Critical / High Priority
-- [ ] 
+- When a ship is passing a planet, the gravity well cost is applied in the first gravity well hex it enters and not next hex. This causes a ship to crash into the planet if it has 0 MR left instead of having its course altered in the next hex.
 
 ## 🐛 Backlog
 - Repair Panel Unrepairable Display: If systems didn't show up because of a previous failed repair with a roll of 96-100, we should still show the damaged system but disallow any DCR allocation to visually indicate its permanent destruction.
