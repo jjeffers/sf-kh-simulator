@@ -51,6 +51,7 @@ var panel_deployment: PanelContainer
 var list_deployment: VBoxContainer
 var btn_deploy_ship: Button
 var btn_deploy_complete: Button
+var btn_deploy_mine: Button
 var spin_deploy_speed: SpinBox
 var lbl_deploy_facing: Label
 var btn_deploy_facing_cw: Button
@@ -61,6 +62,10 @@ var deploy_facing_val: int = 0
 var deploy_tentative_hex: Vector3i = Vector3i.ZERO
 var deploy_hex_selected: bool = false
 var is_deploying_ship: bool = false
+
+# Deployment Mines Tracker
+var deployment_mines_placed: Array[Vector3i] = []
+var state_deployment_mine_placement = false
 
 # Repair UI Nodes
 var panel_repair: PanelContainer
@@ -850,6 +855,21 @@ func _build_deployment_panel(parent: Container):
 	btn_deploy_ship.disabled = true
 	btn_deploy_ship.pressed.connect(_on_deploy_ship_pressed)
 	dep_vbox.add_child(btn_deploy_ship)
+	
+	btn_deploy_mine = Button.new()
+	btn_deploy_mine.text = "Place Mine (0 Left)"
+	btn_deploy_mine.toggle_mode = true
+	btn_deploy_mine.modulate = Color.ORANGE
+	btn_deploy_mine.visible = false
+	btn_deploy_mine.toggled.connect(func(toggled_on): 
+		if current_phase == Phase.DEPLOYMENT:
+			state_deployment_mine_placement = toggled_on
+			
+			if not toggled_on:
+				btn_deploy_mine.text = btn_deploy_mine.text.replace("Cancel Placement", "Place Mine")
+			queue_redraw()
+	)
+	dep_vbox.add_child(btn_deploy_mine)
 	
 	btn_deploy_complete = Button.new()
 	btn_deploy_complete.text = "COMPLETE DEPLOYMENT"
@@ -2607,6 +2627,8 @@ func _update_deployment_ui():
 		btn.pressed.connect(func():
 			selected_ship = s
 			is_deploying_ship = true
+			state_deployment_mine_placement = false
+			if btn_deploy_mine: btn_deploy_mine.set_pressed_no_signal(false)
 			if s.is_deployed:
 				deploy_tentative_hex = s.grid_position
 				deploy_facing_val = s.facing
@@ -2632,6 +2654,24 @@ func _update_deployment_ui():
 		spin_deploy_speed.editable = false
 		btn_deploy_ship.disabled = true
 		btn_deploy_ship.text = "DEPLOY SHIP"
+		
+	# Calculate Deployment Mine Capacity
+	var total_mine_capacity = 0
+	for s in ships:
+		if is_instance_valid(s) and s.side_id == deployment_subphase:
+			for w in s.weapons:
+				if w.get("type", "") == "Mine":
+					total_mine_capacity += w.get("ammo", 0)
+					
+	if total_mine_capacity > 0:
+		btn_deploy_mine.visible = true
+		var mines_remaining = total_mine_capacity - deployment_mines_placed.size()
+		if not state_deployment_mine_placement:
+			btn_deploy_mine.text = "Place Mine (%d Left)" % mines_remaining
+		btn_deploy_mine.disabled = (mines_remaining <= 0 and not state_deployment_mine_placement)
+	else:
+		btn_deploy_mine.visible = false
+		state_deployment_mine_placement = false
 
 func _update_deploy_preview():
 	if not is_deploying_ship or not is_instance_valid(selected_ship) or not deploy_hex_selected:
@@ -2708,25 +2748,27 @@ func _on_deploy_complete_pressed():
 				"speed": s.speed,
 				"is_deployed": true
 			}
+			
+	var deployed_mines_data = deployment_mines_placed.duplicate()
 	
 	if multiplayer.has_multiplayer_peer() and not _is_server_or_offline():
-		rpc_submit_deployment.rpc_id(1, deployment_subphase, dep_data)
+		rpc_submit_deployment.rpc_id(1, deployment_subphase, dep_data, deployed_mines_data)
 	else:
-		rpc_submit_deployment(deployment_subphase, dep_data)
+		rpc_submit_deployment(deployment_subphase, dep_data, deployed_mines_data)
 
 
 @rpc("any_peer", "call_local", "reliable")
-func rpc_submit_deployment(side_id: int, deployment_data: Dictionary):
+func rpc_submit_deployment(side_id: int, deployment_data: Dictionary, deployed_mines_data: Array = []):
 	if not _is_server_or_offline(): return
 	
 	# Apply and broadcast the final placed positions to everyone
 	if multiplayer.has_multiplayer_peer():
-		rpc_apply_deployment_data.rpc(side_id, deployment_data)
+		rpc_apply_deployment_data.rpc(side_id, deployment_data, deployed_mines_data)
 	else:
-		rpc_apply_deployment_data(side_id, deployment_data)
+		rpc_apply_deployment_data(side_id, deployment_data, deployed_mines_data)
 
 @rpc("authority", "call_local", "reliable")
-func rpc_apply_deployment_data(side_id: int, deployment_data: Dictionary):
+func rpc_apply_deployment_data(side_id: int, deployment_data: Dictionary, deployed_mines_data: Array = []):
 	# Apply final positions locally for UI/render matching
 	for s in ships:
 		if is_instance_valid(s) and s.side_id == side_id and deployment_data.has(s.name):
@@ -2736,6 +2778,26 @@ func rpc_apply_deployment_data(side_id: int, deployment_data: Dictionary):
 			s.speed = d["speed"]
 			s.position = HexGrid.hex_to_pixel(s.grid_position)
 			s.is_deployed = true
+			
+	# Inject deployment mines and charge their ammo cost
+	for m_pos in deployed_mines_data:
+		active_mines.append({
+			"pos": Vector3i(m_pos), # Typecast just in case for ENet deserialization
+			"side_id": int(side_id), # Enforce exact int matching for multiplayer eval
+			"owner_name": "Deployment"
+		})
+		
+		# Deduct ammo dynamically from side's minelayer(s)
+		for s in ships:
+			if is_instance_valid(s) and s.side_id == side_id:
+				var deducted = false
+				for w in s.weapons:
+					if w.get("type", "") == "Mine" and w.get("ammo", 0) > 0:
+						w["ammo"] -= 1
+						deducted = true
+						break
+				if deducted:
+					break
 			
 	if side_id == 1:
 		has_deployed_side_1 = true
@@ -4138,7 +4200,7 @@ func execute_all_movement():
 						if w_mine["ammo"] > 0:
 							active_mines.append({
 								"pos": Vector3i(hex),
-								"side_id": s.side_id,
+								"side_id": int(s.side_id), # Enforce explicit int for network consistency evaluation
 								"owner_name": s.name
 							})
 							w_mine["ammo"] -= 1
@@ -4169,7 +4231,7 @@ func _resolve_mine_detonations():
 		# Check all ships on the board
 		var hit_ships = []
 		for s in ships:
-			if is_instance_valid(s) and not s.is_destroyed and s.side_id != m["side_id"]: # Only triggers on enemy ships
+			if is_instance_valid(s) and not s.is_destroyed and s.side_id != int(m["side_id"]): # Only triggers on enemy ships, strict int eval
 				# Check if ship's path crossed the mine (or ended on it)
 				# A ship's previous_path gets populated during _apply_movement_plan
 				log_message("[color=cyan]  Checking ship %s (Side %d) at %v with path %s[/color]" % [s.name, s.side_id, s.grid_position, str(s.previous_path)])
@@ -4597,9 +4659,19 @@ func _draw():
 		if valid_hexes.size() > 0:
 			for h in valid_hexes:
 				if not planet_hexes.has(h):
-					_draw_filled_hex(h, Color(0, 1, 0, 0.2)) # Faint Green
 					_draw_hex_outline(h, Color(0, 1, 0, 0.5), 2.0)
 					
+		# Draw Deployment Mines
+		if deployment_mines_placed.size() > 0:
+			var font = label_phase_indicator.get_theme_font("font")
+			for h in deployment_mines_placed:
+				var center = HexGrid.hex_to_pixel(h)
+				_draw_filled_hex(h, Color(1, 0.5, 0, 0.4)) # Translucent Orange
+				if font:
+					var text_offset = Vector2(0, 5) 
+					draw_string_outline(font, center + text_offset, "MINE", HORIZONTAL_ALIGNMENT_CENTER, -1, 14, 2, Color.BLACK)
+					draw_string(font, center + text_offset, "MINE", HORIZONTAL_ALIGNMENT_CENTER, -1, 14, Color.YELLOW)
+		
 		# Render projected speed for non-station ships during deployment
 		if deploy_hex_selected and deploy_speed_val > 0 and selected_ship.ship_class != "Space Station" and selected_ship.ship_class != "Station":
 			var forward_vec = HexGrid.get_direction_vec(deploy_facing_val)
@@ -5080,6 +5152,8 @@ func _unhandled_input(event):
 					
 					selected_ship = s
 					is_deploying_ship = true
+					state_deployment_mine_placement = false
+					if btn_deploy_mine: btn_deploy_mine.set_pressed_no_signal(false)
 					if s.is_deployed:
 						deploy_tentative_hex = s.grid_position
 						deploy_facing_val = s.facing
@@ -5294,6 +5368,43 @@ func _get_valid_targets(shooter: Ship) -> Array:
 	return valid
 
 func _handle_deployment_click(hex: Vector3i):
+	if state_deployment_mine_placement:
+		var valid_hexes = ScenarioManager.get_valid_deployment_hexes(deployment_subphase, ships, planet_hexes, null) # Null ship since we just want general deployment zones
+		
+		if valid_hexes.size() > 0 and not valid_hexes.has(hex):
+			log_message("[color=red]You can only place mines inside your deployment zone![/color]")
+			state_deployment_mine_placement = false # Cancel placement
+			btn_deploy_mine.set_pressed_no_signal(false)
+			_update_deployment_ui()
+			queue_redraw()
+			return
+			
+		if planet_hexes.has(hex):
+			log_message("[color=red]Cannot deploy a mine inside a planet![/color]")
+			return
+
+		# Toggle mine logic
+		if deployment_mines_placed.has(hex):
+			deployment_mines_placed.erase(hex)
+			log_message("Removed planned mine at %v." % hex)
+		else:
+			var total_capacity = 0
+			for s in ships:
+				if is_instance_valid(s) and s.side_id == deployment_subphase:
+					for w in s.weapons:
+						if w.get("type", "") == "Mine":
+							total_capacity += w.get("ammo", 0)
+			
+			if deployment_mines_placed.size() < total_capacity:
+				deployment_mines_placed.append(hex)
+				log_message("Placed mine at %v." % hex)
+			else:
+				log_message("[color=red]You have no remaining mines to drop![/color]")
+				
+		_update_deployment_ui()
+		queue_redraw()
+		return
+
 	if not is_deploying_ship or not is_instance_valid(selected_ship):
 		return
 	
@@ -5923,6 +6034,8 @@ func load_scenario(key: String, seed_val: int = 12345):
 			"Heavy Cruiser": s.configure_heavy_cruiser()
 			"Battleship": s.configure_battleship()
 			"Assault Carrier": s.configure_assault_carrier()
+			"Civilian": s.configure_civilian_ship()
+			"Shuttle": s.configure_shuttle()
 			_:
 				log_message("Unknown class %s, defaulting to Scout" % cls)
 				s.configure_assault_scout()

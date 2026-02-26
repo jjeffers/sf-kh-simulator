@@ -17,11 +17,18 @@ var texture_sathar_heavy_cruiser = preload("res://Assets/sathar_heavy_cruiser.pn
 var texture_sathar_frigate = preload("res://Assets/sathar_frigate.png")
 var texture_sathar_fighter = preload("res://Assets/sathar_fighter.png")
 var texture_sathar_assault_carrier = preload("res://Assets/sathar_assault_carrier.png")
+var texture_sathar_light_cruiser = preload("res://Assets/sathar_light_cruiser.png")
 
 var texture_upf_destroyer = preload("res://Assets/upf_destroyer.png")
 var texture_upf_heavy_cruiser = preload("res://Assets/upf_heavy_cruiser.png")
 var texture_upf_battleship = preload("res://Assets/upf_battleship.png")
 var texture_upf_assault_carrier = preload("res://Assets/upf_assault_carrier.png")
+var texture_upf_light_cruiser = preload("res://Assets/upf_light_cruiser.png")
+
+var texture_civilian_1 = preload("res://Assets/civilian1.png")
+var texture_civilian_2 = preload("res://Assets/civilian2.png")
+var texture_civilian_3 = preload("res://Assets/civilian3.png")
+var texture_shuttle = preload("res://Assets/shuttle.png")
 
 
 var faction: String = "UPF"
@@ -742,6 +749,84 @@ func configure_destroyer():
 func configure_light_cruiser():
 	ship_class = "Light Cruiser"
 	defense = "RH"
+	max_hull = 25
+	hull = max_hull
+	adf = 3
+	mr = 2
+	icm_max = 2
+	icm_current = 2
+	ms_max = 0
+	ms_current = 0
+	max_dcr = 50
+	current_dcr = max_dcr
+	
+	weapons.clear()
+	weapons.append({
+		"name": "Laser Battery 1",
+		"type": "Laser Battery",
+		"range": 5,
+		"arc": "FF",
+		"ammo": 999,
+		"max_ammo": 999,
+		"damage_dice": "1d10",
+		"damage_bonus": 0,
+		"dtm": -10,
+		"fired": false
+	})
+	weapons.append({
+		"name": "Laser Battery 2",
+		"type": "Laser Battery",
+		"range": 5,
+		"arc": "FF",
+		"ammo": 999,
+		"max_ammo": 999,
+		"damage_dice": "1d10",
+		"damage_bonus": 0,
+		"dtm": -10,
+		"fired": false
+	})
+	weapons.append({
+		"name": "Torpedoes",
+		"type": "Torpedo",
+		"range": 8,
+		"arc": "FF",
+		"ammo": 2,
+		"max_ammo": 2,
+		"damage_dice": "3d10",
+		"damage_bonus": 0,
+		"dtm": 0,
+		"fired": false
+	})
+
+func configure_shuttle():
+	ship_class = "Shuttle"
+	defense = "None"
+	max_hull = 5
+	hull = max_hull
+	adf = 2
+	mr = 2
+	icm_max = 0
+	icm_current = 0
+	ms_max = 0
+	ms_current = 0
+	max_dcr = 10
+	current_dcr = max_dcr
+	weapons.clear()
+
+func configure_civilian_ship(variant: int = 1):
+	ship_class = "Civilian"
+	defense = "None"
+	max_hull = 10 * variant
+	hull = max_hull
+	adf = 2
+	mr = 1
+	icm_max = 0
+	icm_current = 0
+	ms_max = 0
+	ms_current = 0
+	max_dcr = 20
+	current_dcr = max_dcr
+	weapons.clear()
 	max_hull = 70
 	hull = max_hull
 	adf = 3
@@ -1455,6 +1540,37 @@ func _draw():
 				draw_texture_rect(texture_upf_heavy_cruiser, rect, false, Color.WHITE)
 				draw_set_transform(Vector2.ZERO, 0, Vector2(1, 1))
 				points = PackedVector2Array()
+		"Light Cruiser":
+			if faction == "Sathar":
+				# Sathar Light Cruiser Sprite
+				var target_size = HexGrid.TILE_SIZE * 1.25 # 1.25x Tile Size
+				var ref_size = max(texture_sathar_light_cruiser.get_width(), texture_sathar_light_cruiser.get_height())
+				var scale_factor = target_size / ref_size
+				
+				var draw_angle = facing * (PI / 3.0) + (PI / 2.0)
+				draw_set_transform(Vector2.ZERO, draw_angle, Vector2(scale_factor, scale_factor))
+				
+				var tex_size = texture_sathar_light_cruiser.get_size()
+				var rect = Rect2(-tex_size / 2, tex_size)
+				
+				draw_texture_rect(texture_sathar_light_cruiser, rect, false, Color.WHITE)
+				draw_set_transform(Vector2.ZERO, 0, Vector2(1, 1))
+				points = PackedVector2Array()
+			else:
+				# UPF Light Cruiser Sprite
+				var target_size = HexGrid.TILE_SIZE * 1.25
+				var ref_size = max(texture_upf_light_cruiser.get_width(), texture_upf_light_cruiser.get_height())
+				var scale_factor = target_size / ref_size
+				
+				var draw_angle = facing * (PI / 3.0) + (PI / 2.0)
+				draw_set_transform(Vector2.ZERO, draw_angle, Vector2(scale_factor, scale_factor))
+				
+				var tex_size = texture_upf_light_cruiser.get_size()
+				var rect = Rect2(-tex_size / 2, tex_size)
+				
+				draw_texture_rect(texture_upf_light_cruiser, rect, false, Color.WHITE)
+				draw_set_transform(Vector2.ZERO, 0, Vector2(1, 1))
+				points = PackedVector2Array()
 		"Battleship":
 			if faction == "Sathar":
 				# No Sathar BB asset? Use fallback vector for now.
@@ -1564,6 +1680,45 @@ func _draw():
 			draw_set_transform(Vector2.ZERO, 0, Vector2(1, 1))
 			
 			# Skip polygon
+			points = PackedVector2Array()
+		"Civilian":
+			# Sprite Rendering
+			var target_size = HexGrid.TILE_SIZE * 1.0 # 1.0x Tile Size
+			
+			var tex = texture_civilian_1
+			# Very primitive seeded variety check
+			var hash_val = self.name.hash() % 3
+			if hash_val == 1: tex = texture_civilian_2
+			elif hash_val == 2: tex = texture_civilian_3
+			
+			var ref_size = max(tex.get_width(), tex.get_height())
+			var scale_factor = target_size / ref_size
+			
+			var draw_angle = facing * (PI / 3.0) + (PI / 2.0)
+			draw_set_transform(Vector2.ZERO, draw_angle, Vector2(scale_factor, scale_factor))
+			
+			var tex_size = tex.get_size()
+			var rect = Rect2(-tex_size / 2, tex_size)
+			
+			draw_texture_rect(tex, rect, false, Color.WHITE)
+			draw_set_transform(Vector2.ZERO, 0, Vector2(1, 1))
+			points = PackedVector2Array()
+		"Shuttle":
+			# Sprite Rendering
+			var target_size = HexGrid.TILE_SIZE * 0.4 # 0.4x Tile Size (Small)
+			
+			var tex = texture_shuttle
+			var ref_size = max(tex.get_width(), tex.get_height())
+			var scale_factor = target_size / ref_size
+			
+			var draw_angle = facing * (PI / 3.0) + (PI / 2.0)
+			draw_set_transform(Vector2.ZERO, draw_angle, Vector2(scale_factor, scale_factor))
+			
+			var tex_size = tex.get_size()
+			var rect = Rect2(-tex_size / 2, tex_size)
+			
+			draw_texture_rect(tex, rect, false, Color.WHITE)
+			draw_set_transform(Vector2.ZERO, 0, Vector2(1, 1))
 			points = PackedVector2Array()
 		_:
 			# Default / Fallback (Sleek Delta / Dart)
@@ -1757,6 +1912,9 @@ func get_texture() -> Texture2D:
 		"Destroyer":
 			if faction == "Sathar": return texture_sathar_destroyer
 			return texture_upf_destroyer
+		"Light Cruiser":
+			if faction == "Sathar": return texture_sathar_light_cruiser
+			return texture_upf_light_cruiser
 		"Heavy Cruiser":
 			if faction == "Sathar": return texture_sathar_heavy_cruiser
 			return texture_upf_heavy_cruiser
@@ -1766,6 +1924,13 @@ func get_texture() -> Texture2D:
 		"Assault Carrier":
 			if faction == "Sathar": return texture_sathar_assault_carrier
 			return texture_upf_assault_carrier
+		"Civilian":
+			var hash_val = self.name.hash() % 3
+			if hash_val == 1: return texture_civilian_2
+			elif hash_val == 2: return texture_civilian_3
+			return texture_civilian_1
+		"Shuttle":
+			return texture_shuttle
 		"Space Station":
 			return texture_space_station
 	return texture_fighter # Fallback
@@ -1794,10 +1959,13 @@ func draw_sprite_custom(canvas: CanvasItem, pos: Vector2, facing_dir: int, alpha
 
 	var target_size = HexGrid.TILE_SIZE
 	match ship_class:
+		"Shuttle": target_size = HexGrid.TILE_SIZE * 0.4
 		"Fighter": target_size = HexGrid.TILE_SIZE * 0.6
 		"Assault Scout": target_size = HexGrid.TILE_SIZE * 0.7
 		"Frigate", "Minelayer": target_size = HexGrid.TILE_SIZE * 0.9
+		"Civilian": target_size = HexGrid.TILE_SIZE * 1.0
 		"Destroyer": target_size = HexGrid.TILE_SIZE * 1.1
+		"Light Cruiser": target_size = HexGrid.TILE_SIZE * 1.25
 		"Heavy Cruiser": target_size = HexGrid.TILE_SIZE * 1.4
 		"Battleship": target_size = HexGrid.TILE_SIZE * 1.7
 		"Assault Carrier": target_size = HexGrid.TILE_SIZE * 2.0
