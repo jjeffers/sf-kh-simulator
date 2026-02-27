@@ -63,6 +63,10 @@ var deploy_tentative_hex: Vector3i = Vector3i.ZERO
 var deploy_hex_selected: bool = false
 var is_deploying_ship: bool = false
 
+var deploy_orbit_dir_val: int = 1
+var btn_deploy_orbit_cw: Button
+var btn_deploy_orbit_ccw: Button
+
 # Deployment Mines Tracker
 var deployment_mines_placed: Array[Vector3i] = []
 var state_deployment_mine_placement = false
@@ -863,6 +867,26 @@ func _build_deployment_panel(parent: Container):
 	spin_deploy_speed.editable = false
 	spin_deploy_speed.value_changed.connect(func(v): if is_deploying_ship: deploy_speed_val = int(v))
 	s_hbox.add_child(spin_deploy_speed)
+	
+	dep_vbox.add_child(HSeparator.new())
+	
+	# Orbit Control (Station Only)
+	var o_hbox = HBoxContainer.new()
+	dep_vbox.add_child(o_hbox)
+	
+	btn_deploy_orbit_ccw = Button.new()
+	btn_deploy_orbit_ccw.text = "Orbit CCW"
+	btn_deploy_orbit_ccw.disabled = true
+	btn_deploy_orbit_ccw.custom_minimum_size.x = 100
+	btn_deploy_orbit_ccw.pressed.connect(func(): if is_deploying_ship: deploy_orbit_dir_val = -1; _update_deployment_ui(); _update_deploy_preview())
+	o_hbox.add_child(btn_deploy_orbit_ccw)
+	
+	btn_deploy_orbit_cw = Button.new()
+	btn_deploy_orbit_cw.text = "Orbit CW"
+	btn_deploy_orbit_cw.disabled = true
+	btn_deploy_orbit_cw.custom_minimum_size.x = 100
+	btn_deploy_orbit_cw.pressed.connect(func(): if is_deploying_ship: deploy_orbit_dir_val = 1; _update_deployment_ui(); _update_deploy_preview())
+	o_hbox.add_child(btn_deploy_orbit_cw)
 	
 	dep_vbox.add_child(HSeparator.new())
 	
@@ -2658,6 +2682,9 @@ func _update_deployment_ui():
 		btn_deploy_facing_cw.disabled = true
 		btn_deploy_facing_ccw.disabled = true
 		spin_deploy_speed.editable = false
+		if is_instance_valid(btn_deploy_orbit_cw):
+			btn_deploy_orbit_cw.disabled = true
+			btn_deploy_orbit_ccw.disabled = true
 		btn_deploy_ship.disabled = true
 		btn_deploy_complete.disabled = true
 		return
@@ -2692,9 +2719,11 @@ func _update_deployment_ui():
 				deploy_tentative_hex = s.grid_position
 				deploy_facing_val = s.facing
 				deploy_speed_val = s.speed
+				deploy_orbit_dir_val = s.orbit_direction if s.orbit_direction != 0 else 1
 				deploy_hex_selected = true
 			else:
 				deploy_hex_selected = false
+				deploy_orbit_dir_val = 1
 				
 				# Center camera on valid deployment zone
 				_center_camera_on_deployment_zone(s)
@@ -2726,12 +2755,25 @@ func _update_deployment_ui():
 			btn_deploy_facing_cw.disabled = true
 			btn_deploy_facing_ccw.disabled = true
 			
+		var is_station = selected_ship.ship_class in ["Space Station", "Station"]
+		if is_instance_valid(btn_deploy_orbit_cw):
+			btn_deploy_orbit_cw.visible = is_station
+			btn_deploy_orbit_ccw.visible = is_station
+			if is_station:
+				btn_deploy_orbit_cw.disabled = false
+				btn_deploy_orbit_ccw.disabled = false
+				btn_deploy_orbit_cw.modulate = Color.GREEN if deploy_orbit_dir_val == 1 else Color.WHITE
+				btn_deploy_orbit_ccw.modulate = Color.GREEN if deploy_orbit_dir_val == -1 else Color.WHITE
+				
 		btn_deploy_ship.disabled = false
 		btn_deploy_ship.text = "UPDATE DEPLOYMENT" if selected_ship.is_deployed else "DEPLOY SHIP"
 	else:
 		btn_deploy_facing_cw.disabled = true
 		btn_deploy_facing_ccw.disabled = true
 		spin_deploy_speed.editable = false
+		if is_instance_valid(btn_deploy_orbit_cw):
+			btn_deploy_orbit_cw.disabled = true
+			btn_deploy_orbit_ccw.disabled = true
 		btn_deploy_ship.disabled = true
 		btn_deploy_ship.text = "DEPLOY SHIP"
 		
@@ -2789,8 +2831,11 @@ func _on_deploy_ship_pressed():
 		
 	selected_ship.grid_position = deploy_tentative_hex
 	selected_ship.facing = deploy_facing_val
-	if selected_ship.ship_class == "Space Station" or selected_ship.ship_class == "Station":
+	if selected_ship.ship_class in ["Space Station", "Station"]:
 		deploy_speed_val = 0
+		selected_ship.orbit_direction = deploy_orbit_dir_val
+	else:
+		selected_ship.orbit_direction = 0
 	selected_ship.speed = deploy_speed_val
 	selected_ship.is_deployed = true
 	selected_ship.position = HexGrid.hex_to_pixel(selected_ship.grid_position)
@@ -2826,6 +2871,7 @@ func _on_deploy_complete_pressed():
 				"grid_position": s.grid_position,
 				"facing": s.facing,
 				"speed": s.speed,
+				"orbit_direction": s.orbit_direction,
 				"is_deployed": true
 			}
 			
@@ -2856,6 +2902,7 @@ func rpc_apply_deployment_data(side_id: int, deployment_data: Dictionary, deploy
 			s.grid_position = d["grid_position"]
 			s.facing = d["facing"]
 			s.speed = d["speed"]
+			s.orbit_direction = d.get("orbit_direction", 0)
 			s.position = HexGrid.hex_to_pixel(s.grid_position)
 			s.is_deployed = true
 			
@@ -4734,6 +4781,28 @@ func _draw_weapon_ranges(ghost: Ship, source: Ship):
 		draw_string_outline(font_ref, label_pos + Vector2(0, 5), full_label, HORIZONTAL_ALIGNMENT_CENTER, -1, 14, 2, Color.BLACK)
 		draw_string(font_ref, label_pos + Vector2(0, 5), full_label, HORIZONTAL_ALIGNMENT_CENTER, -1, 14, Color(1, 0.9, 0.9, 0.9))
 
+func _draw_orbit_ring(planet_hex: Vector3i, orbit_dir: int, color: Color):
+	var center = HexGrid.hex_to_pixel(planet_hex)
+	var radius = HexGrid.TILE_SIZE * sqrt(3)
+	
+	# Draw ring
+	draw_arc(center, radius, 0, TAU, 64, color, 3.0)
+	
+	# Draw arrowheads around the ring (e.g. 4 arrowheads)
+	for i in range(4):
+		var angle = i * (PI / 2.0)
+		var pos = center + Vector2(cos(angle), sin(angle)) * radius
+		
+		# Direction of travel is tangent: +90 deg (PI/2) for CW 
+		var tangent_angle = angle + (PI / 2.0 if orbit_dir == 1 else -PI / 2.0)
+		
+		var arrow_len = 15.0
+		var p1 = pos - Vector2(cos(tangent_angle - PI/6.0), sin(tangent_angle - PI/6.0)) * arrow_len
+		var p2 = pos - Vector2(cos(tangent_angle + PI/6.0), sin(tangent_angle + PI/6.0)) * arrow_len
+		
+		var pts = PackedVector2Array([pos, p1, p2])
+		draw_polygon(pts, PackedColorArray([color]))
+
 
 func _draw():
 	# transform.origin = center # REMOVED: Camera is now handled by _update_camera
@@ -4765,8 +4834,8 @@ func _draw():
 					if not planet_hexes.has(h):
 						_draw_hex_outline(h, Color(0, 1, 0, 0.5), 2.0)
 						
-			# Render projected speed for non-station ships during deployment
-		if deploy_hex_selected and deploy_speed_val > 0 and selected_ship.ship_class != "Space Station" and selected_ship.ship_class != "Station":
+		# Render projected speed for non-station ships during deployment
+		if deploy_hex_selected and deploy_speed_val > 0 and not (selected_ship.ship_class in ["Space Station", "Station"]):
 			var forward_vec = HexGrid.get_direction_vec(deploy_facing_val)
 			var current_check_hex = deploy_tentative_hex
 			
@@ -4774,6 +4843,16 @@ func _draw():
 				current_check_hex += forward_vec
 				_draw_hex_outline(current_check_hex, Color(0, 1, 1, 0.6), 4.0) # Cyan for deployment speed
 				
+		# Render orbit preview for stations during deployment
+		if deploy_hex_selected and deploy_orbit_dir_val != 0 and (selected_ship.ship_class in ["Space Station", "Station"]):
+			var planet = null
+			for neighbor in HexGrid.get_neighbors(deploy_tentative_hex):
+				if neighbor in planet_hexes:
+					planet = neighbor
+					break
+			if planet != null:
+				_draw_orbit_ring(planet, deploy_orbit_dir_val, Color(0.8, 0.8, 0.8, 0.8))
+			
 	# Draw projected speed vectors for already deployed ships
 	if current_phase == Phase.DEPLOYMENT:
 		for s in ships:
@@ -4792,6 +4871,17 @@ func _draw():
 					var arrow_pts = PackedVector2Array([end_pos, p1, p2])
 					draw_polygon(arrow_pts, PackedColorArray([Color(1, 1, 1, 0.6)]))
 			
+	# Draw orbital rings for all orbiting Space Stations
+	for s in ships:
+		if is_instance_valid(s) and s.ship_class in ["Space Station", "Station"] and s.orbit_direction != 0 and s.is_deployed and not s.is_destroyed:
+			var planet = null
+			for neighbor in HexGrid.get_neighbors(s.grid_position):
+				if neighbor in planet_hexes:
+					planet = neighbor
+					break
+			if planet != null:
+				_draw_orbit_ring(planet, s.orbit_direction, Color(0.8, 0.8, 0.8, 0.6))
+
 	# Draw Eligible Hexes for Defensive Fire
 	if current_phase == Phase.COMBAT and combat_subphase == 1 and current_combat_state == CombatState.PLANNING:
 		var is_my_planning = (firing_side_id == my_side_id) or (my_side_id == 0)
