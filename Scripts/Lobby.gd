@@ -25,6 +25,9 @@ func _ready():
 		var idx = 0
 		var selected_idx = 0
 		for key in ScenarioManager.SCENARIOS:
+			if "test" in key:
+				continue
+				
 			var s_name = ScenarioManager.SCENARIOS[key].get("name", key)
 			opt_scenario.add_item(s_name, idx)
 			# Store key as metadata if possible, or just use index mapping
@@ -50,13 +53,22 @@ func _ready():
 	var auto_start = false
 	var wait_players = 1
 	var auto_side_id = 0
+	var auto_scenario = ""
 	for i in range(args.size()):
 		if args[i] == "--side" and i + 1 < args.size():
 			auto_side_id = args[i + 1].to_int()
+		if args[i] == "--scenario" and i + 1 < args.size():
+			auto_scenario = args[i + 1]
 		if args[i] == "--host" or args[i] == "--start":
 			auto_start = true
 		if args[i] == "--wait" and i + 1 < args.size():
 			wait_players = args[i + 1].to_int()
+			
+	if auto_scenario != "" and multiplayer.is_server():
+		# Explicitly force the server to select this scenario before auto-starting
+		# Bypassing opt_scenario UI entirely because "test" algorithms are actively excluded from the dropdown
+		NetworkManager.lobby_data["scenario"] = auto_scenario
+		NetworkManager.rpc("update_lobby_data", NetworkManager.lobby_data)
 			
 	if auto_side_id > 0:
 		var join_func = func():

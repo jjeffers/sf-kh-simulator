@@ -349,7 +349,7 @@ func start_deployment_phase(scen_key: String = ""):
 	if scen_key == "":
 		scen_key = NetworkManager.lobby_data.get("scenario", "simple_test")
 		
-	if scen_key == "surprise_attack" or scen_key == "the_last_stand":
+	if scen_key == "surprise_attack" or scen_key == "the_last_stand" or scen_key == "battle_of_kenzah":
 		# Dynamically determine which side is UPF
 		var scen = ScenarioManager.get_scenario(scen_key)
 		var upf_side_id = 2 # Default fallback
@@ -2078,6 +2078,9 @@ func start_turn_cycle():
 					print("GameManager: Random First Turn rolled. Side 2 goes first.")
 				else:
 					print("GameManager: Random First Turn rolled. Side 1 goes first.")
+			elif rule.get("type", "") == "attacker_first_turn":
+				turn_order = [2, 1] # Side 2 (Attacker) Goes First
+				print("GameManager: Attacker First Turn rule active. Side 2 goes first.")
 					
 	current_turn_order_index = 0
 	
@@ -2605,7 +2608,24 @@ func _center_camera_on_deployment_zone(ship: Ship):
 		for h in valid_hexes:
 			center_pixel += HexGrid.hex_to_pixel(h)
 		center_pixel /= valid_hexes.size()
+		
+		# If the deployment zone is a massive perimeter ring, the average drops back to exactly the planet.
+		# Rather than misleading the player, force the camera to zoom way out to show the deployment boundary.
+		if valid_hexes.size() > 50 and center_pixel.length() < 100:
+			camera.position = center_pixel
+			target_zoom = Vector2(0.3, 0.3)
+		else:
+			camera.position = center_pixel
+			
+		# Automatically snap the zoom right now
+		camera.zoom = target_zoom
+	elif planet_hexes.size() > 0:
+		var center_pixel = Vector2.ZERO
+		for h in planet_hexes:
+			center_pixel += HexGrid.hex_to_pixel(h)
+		center_pixel /= planet_hexes.size()
 		camera.position = center_pixel
+		target_zoom = Vector2(0.5, 0.5) # Zoom out to see the whole planet system
 
 func _update_deployment_ui():
 	print("[DEBUG] _update_deployment_ui called - Subphase: %d, my_side_id: %d" % [deployment_subphase, my_side_id])
@@ -2758,7 +2778,7 @@ func _on_deploy_ship_pressed():
 	
 	# Validate bounds / rules
 	var valid_hexes = ScenarioManager.get_valid_deployment_hexes(deployment_subphase, ships, planet_hexes, selected_ship)
-	if not valid_hexes.has(deploy_tentative_hex) and valid_hexes.size() > 0:
+	if valid_hexes.size() > 0 and not valid_hexes.has(deploy_tentative_hex):
 		log_message("[color=red]Invalid deployment location![/color]")
 		return
 		
@@ -4719,15 +4739,8 @@ func _draw():
 			draw_hex(hex)
 			
 	# Draw Deployment Highlights
-	if current_phase == Phase.DEPLOYMENT and is_deploying_ship and is_instance_valid(selected_ship):
-		var valid_hexes = ScenarioManager.get_valid_deployment_hexes(deployment_subphase, ships, planet_hexes, selected_ship)
-		# Only highlight if there are restrictions (not the whole map)
-		if valid_hexes.size() > 0:
-			for h in valid_hexes:
-				if not planet_hexes.has(h):
-					_draw_hex_outline(h, Color(0, 1, 0, 0.5), 2.0)
-					
-		# Draw Deployment Mines
+	if current_phase == Phase.DEPLOYMENT:
+		# Always Draw Deployment Mines while in Deployment phase
 		if deployment_mines_placed.size() > 0:
 			var font = label_phase_indicator.get_theme_font("font")
 			for h in deployment_mines_placed:
@@ -4737,8 +4750,16 @@ func _draw():
 					var text_offset = Vector2(0, 5) 
 					draw_string_outline(font, center + text_offset, "MINE", HORIZONTAL_ALIGNMENT_CENTER, -1, 14, 2, Color.BLACK)
 					draw_string(font, center + text_offset, "MINE", HORIZONTAL_ALIGNMENT_CENTER, -1, 14, Color.YELLOW)
-		
-		# Render projected speed for non-station ships during deployment
+					
+		if is_deploying_ship and is_instance_valid(selected_ship):
+			var valid_hexes = ScenarioManager.get_valid_deployment_hexes(deployment_subphase, ships, planet_hexes, selected_ship)
+			# Only highlight if there are restrictions (not the whole map)
+			if valid_hexes.size() > 0:
+				for h in valid_hexes:
+					if not planet_hexes.has(h):
+						_draw_hex_outline(h, Color(0, 1, 0, 0.5), 2.0)
+						
+			# Render projected speed for non-station ships during deployment
 		if deploy_hex_selected and deploy_speed_val > 0 and selected_ship.ship_class != "Space Station" and selected_ship.ship_class != "Station":
 			var forward_vec = HexGrid.get_direction_vec(deploy_facing_val)
 			var current_check_hex = deploy_tentative_hex
@@ -5497,6 +5518,10 @@ func _handle_deployment_click(hex: Vector3i):
 	
 	if audio_beep and audio_beep.stream: audio_beep.play()
 	queue_redraw()
+	
+	# Auto-commit deployment for stations (they don't need facing/speed dragging)
+	if selected_ship.ship_class == "Space Station" or selected_ship.ship_class == "Station":
+		_on_deploy_ship_pressed()
 
 func _handle_movement_click(hex: Vector3i):
 	print("DEBUG: _handle_movement_click called with hex: ", hex)

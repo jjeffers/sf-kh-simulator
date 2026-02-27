@@ -385,3 +385,31 @@ When both sides have completed deployment, the game should proceed to the first 
   - **Spawn:** adjacent to Savage.
   - Faction: Sathar.
 
+## Battle of Ken'zah
+**Description:** The UPF must defend Ken'zah Station from a Sathar assault.
+
+**Setup:**
+- The UPF sets up first.
+- The planet is placed near the center of the map.
+- The space station is placed in orbit around the planet.
+- The UPF forces may be deployed anywhere on the map and given any starting speed and facing.
+- The Sathar forces must deploy 34 hexes from the center of the map, but all Sathar ships must be within 2 hexes of each other. Sathar ships may be placed with any starting speed and facing.
+- The Sathar side will move first.
+
+**UPF (Defenders):**
+- **Ken'zah Station** (Space Station - Custom)
+  - Stats: 140 Hull, DCR 100 
+  - Weapons: laser battery (x2), rocket battery (x8)
+  - Defenses: reflective hull, 10 ICM, 2 MS.
+  **Fighters** (wings A, B, C, D, E, F)
+- **Z'Rak't Zoz** (Minelayer)
+- **Shimmer** (Frigate)
+- **Zz'Nakk'T** (Frigate)
+- **Rapier, Lancet** (Assault Scouts)
+
+**Sathar (Attacker):
+- **Maelstrom** (Assault Carrier)
+- **Fighters** (wings A, B, C, D, E, F) - docked with the Maelstrom
+- **Bludgeon, Viper** (Destroyers)
+- **Deathstroke** (Light Cruiser)
+- **Carrion** (Heavy Cruiser)
