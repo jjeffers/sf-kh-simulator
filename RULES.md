@@ -308,7 +308,7 @@ When both sides have completed deployment, the game should proceed to the first 
 - **UPF:** Dock the frigate Defiant at the station for 3 turns, then leave the playig area.
 - **Sathar:** Prevent the frigate from evacuating the station or leaving the play area after evacuating the station.
 
-## Close Escort
+### Close Escort
 **Description:** UPF forces must escort a transport ship to an escape position before the Sathar can destroy it.
 
 **UPF (Defenders):**
@@ -385,7 +385,7 @@ When both sides have completed deployment, the game should proceed to the first 
   - **Spawn:** adjacent to Savage.
   - Faction: Sathar.
 
-## Battle of Ken'zah
+### Battle of Ken'zah
 **Description:** The UPF must defend Ken'zah Station from a Sathar assault.
 
 **Setup:**
