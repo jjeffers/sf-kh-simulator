@@ -57,16 +57,33 @@ $$Score_A = \text{BasePower} \times U_{need}$$
 
 ---
 
-## 4. Technical Requirements (Godot/C# Implementation)
+## 4. Component C: Setup Phase Strategy (Initial Deployment)
 
-### 4.1 Movement Integration
+The AI must intelligently handle the pre-combat setup phase, establishing initial positioning, speeds, facings, and deploying mines before active turn cycles begin.
+
+### 4.1 Deployment Positioning
+- **Setup Heatmap:** Generate a specialized Heatmap for the deployment zone. It should favor hexes that cluster the fleet for mutual defense (e.g., overlapping anti-fighter screens) and position heavy ships toward the most likely enemy approach vector.
+- **Ship Roles:** Place fragile or high-value vessels (e.g., Carriers, Minelayers) in the rear of the deployment zone, while heavily armored vessels (e.g., Battleships, Heavy Cruisers) are placed forward.
+
+### 4.2 Initial Speed and Facing
+- **Vector Optimization:** Set initial facings to align forward-firing weapons with the center of the enemy's likely deployment or key objective areas.
+- **Speed Allocation:** Assign initial speeds based on ship classification and ADF/MR constraints. Fast attack craft receive higher initial speeds, while capital ships start at lower speeds to maximize initial Maneuver Rating (MR) flexibility.
+
+### 4.3 Pre-Combat Mine Laying
+- **Defensive Screening:** If minelayers are present, evaluate the deployment zone for high-utility mine placement. The AI will autonomously drop mines to create defensive screens or block predictable enemy approach vectors during the setup phase.
+
+---
+
+## 5. Technical Requirements (Godot/C# Implementation)
+
+### 5.1 Movement Integration
 
 - **Constraint:** The Heatmap must only be generated for hexes reachable via the ship's current **ADF (Acceleration)** and **MR (Maneuver Rating)**.
     
 - **Vector Bias:** The AI must consider its current heading to ensure it doesn't "overshoot" its target unless intended.
     
 
-### 4.2 The Decision Loop
+### 5.2 The Decision Loop
 
 1. **Scan:** Generate Heatmap layers for all valid destination hexes.
     
@@ -79,7 +96,7 @@ $$Score_A = \text{BasePower} \times U_{need}$$
 
 ---
 
-## 5. Knight Hawks Specific Logic
+## 6. Knight Hawks Specific Logic
 
 - **Screen Deployment:** If a Seeker is detected within 2 hexes, the `Utility_Screen` score must override `Utility_Attack`.
     
@@ -90,7 +107,7 @@ $$Score_A = \text{BasePower} \times U_{need}$$
 
 ---
 
-## 6. Future Extensibility
+## 7. Future Extensibility
 
 - **Squad Coordination:** Implementing a shared Heatmap where multiple ships gain bonuses for "Focus Fire" on a single target.
     
