@@ -4729,15 +4729,8 @@ func _draw():
 			draw_hex(hex)
 			
 	# Draw Deployment Highlights
-	if current_phase == Phase.DEPLOYMENT and is_deploying_ship and is_instance_valid(selected_ship):
-		var valid_hexes = ScenarioManager.get_valid_deployment_hexes(deployment_subphase, ships, planet_hexes, selected_ship)
-		# Only highlight if there are restrictions (not the whole map)
-		if valid_hexes.size() > 0:
-			for h in valid_hexes:
-				if not planet_hexes.has(h):
-					_draw_hex_outline(h, Color(0, 1, 0, 0.5), 2.0)
-					
-		# Draw Deployment Mines
+	if current_phase == Phase.DEPLOYMENT:
+		# Always Draw Deployment Mines while in Deployment phase
 		if deployment_mines_placed.size() > 0:
 			var font = label_phase_indicator.get_theme_font("font")
 			for h in deployment_mines_placed:
@@ -4747,8 +4740,16 @@ func _draw():
 					var text_offset = Vector2(0, 5) 
 					draw_string_outline(font, center + text_offset, "MINE", HORIZONTAL_ALIGNMENT_CENTER, -1, 14, 2, Color.BLACK)
 					draw_string(font, center + text_offset, "MINE", HORIZONTAL_ALIGNMENT_CENTER, -1, 14, Color.YELLOW)
-		
-		# Render projected speed for non-station ships during deployment
+					
+		if is_deploying_ship and is_instance_valid(selected_ship):
+			var valid_hexes = ScenarioManager.get_valid_deployment_hexes(deployment_subphase, ships, planet_hexes, selected_ship)
+			# Only highlight if there are restrictions (not the whole map)
+			if valid_hexes.size() > 0:
+				for h in valid_hexes:
+					if not planet_hexes.has(h):
+						_draw_hex_outline(h, Color(0, 1, 0, 0.5), 2.0)
+						
+			# Render projected speed for non-station ships during deployment
 		if deploy_hex_selected and deploy_speed_val > 0 and selected_ship.ship_class != "Space Station" and selected_ship.ship_class != "Station":
 			var forward_vec = HexGrid.get_direction_vec(deploy_facing_val)
 			var current_check_hex = deploy_tentative_hex

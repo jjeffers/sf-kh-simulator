@@ -385,12 +385,19 @@ static func generate_scenario(key: String, rng_seed: int) -> Dictionary:
 				"position": anchor_pos + s_data["offset"],
 				"facing": attack_facing, "start_speed": 6
 			})
-			
+		
+		# Find actual Maelstrom pos for fighters
+		var maelstrom_pos = anchor_pos
+		for s_data in sathar_roster:
+			if s_data["name"] == "Maelstrom":
+				maelstrom_pos = anchor_pos + s_data["offset"]
+				break
+				
 		var fighter_wings = ["A", "B", "C", "D", "E", "F"]
 		for wing in fighter_wings:
 			ships.append({
 				"name": "Fighter " + wing, "class": "Fighter", "side": 1, "faction": "Sathar",
-				"position": anchor_pos, "docked_at": "Maelstrom", "start_speed": 0
+				"position": maelstrom_pos, "docked_at": "Maelstrom", "start_speed": 0
 			})
 			
 		scen["ships"] = ships
@@ -771,7 +778,7 @@ static func get_valid_deployment_hexes(side_id: int, ships: Array, planets: Arra
 						valid_hexes.append(Vector3i(x, y, z))
 						
 	elif scen_key == "the_last_stand" or scen_key == "battle_of_kenzah":
-		if side_id == 2:
+		if side_id == 2 or (scen_key == "battle_of_kenzah" and side_id == 1):
 			# Attackers (Sathar): Must deploy exactly 34 hexes from center.
 			var spawn_dist = 34
 			var ring_hexes: Array[Vector3i] = []
