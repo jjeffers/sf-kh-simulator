@@ -65,12 +65,10 @@ func _ready():
 			wait_players = args[i + 1].to_int()
 			
 	if auto_scenario != "" and multiplayer.is_server():
-		# Force the server to select this scenario before auto-starting
-		for idx in range(opt_scenario.item_count):
-			if opt_scenario.get_item_metadata(idx) == auto_scenario:
-				opt_scenario.select(idx)
-				_on_scenario_selected(idx)
-				break
+		# Explicitly force the server to select this scenario before auto-starting
+		# Bypassing opt_scenario UI entirely because "test" algorithms are actively excluded from the dropdown
+		NetworkManager.lobby_data["scenario"] = auto_scenario
+		NetworkManager.rpc("update_lobby_data", NetworkManager.lobby_data)
 			
 	if auto_side_id > 0:
 		var join_func = func():
