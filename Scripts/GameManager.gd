@@ -2608,7 +2608,17 @@ func _center_camera_on_deployment_zone(ship: Ship):
 		for h in valid_hexes:
 			center_pixel += HexGrid.hex_to_pixel(h)
 		center_pixel /= valid_hexes.size()
-		camera.position = center_pixel
+		
+		# If the deployment zone is a massive perimeter ring, the average drops back to exactly the planet.
+		# Rather than misleading the player, force the camera to zoom way out to show the deployment boundary.
+		if valid_hexes.size() > 50 and center_pixel.length() < 100:
+			camera.position = center_pixel
+			target_zoom = Vector2(0.3, 0.3)
+		else:
+			camera.position = center_pixel
+			
+		# Automatically snap the zoom right now
+		camera.zoom = target_zoom
 	elif planet_hexes.size() > 0:
 		var center_pixel = Vector2.ZERO
 		for h in planet_hexes:

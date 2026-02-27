@@ -778,7 +778,7 @@ static func get_valid_deployment_hexes(side_id: int, ships: Array, planets: Arra
 						valid_hexes.append(Vector3i(x, y, z))
 						
 	elif scen_key == "the_last_stand" or scen_key == "battle_of_kenzah":
-		if side_id == 2 or (scen_key == "battle_of_kenzah" and side_id == 1):
+		if side_id == 2:
 			# Attackers (Sathar): Must deploy exactly 34 hexes from center.
 			var spawn_dist = 34
 			var ring_hexes: Array[Vector3i] = []
