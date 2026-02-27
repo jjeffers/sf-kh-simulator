@@ -2768,7 +2768,7 @@ func _on_deploy_ship_pressed():
 	
 	# Validate bounds / rules
 	var valid_hexes = ScenarioManager.get_valid_deployment_hexes(deployment_subphase, ships, planet_hexes, selected_ship)
-	if not valid_hexes.has(deploy_tentative_hex) and valid_hexes.size() > 0:
+	if valid_hexes.size() > 0 and not valid_hexes.has(deploy_tentative_hex):
 		log_message("[color=red]Invalid deployment location![/color]")
 		return
 		
