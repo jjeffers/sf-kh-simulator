@@ -2963,7 +2963,9 @@ func _update_repair_ui():
 	# Hull
 	if s.hull < s.max_hull: damaged_systems.append({"key": "hull", "name": "Hull (%d/%d)" % [s.hull, s.max_hull]})
 	for i in range(s.current_adf_modifier): damaged_systems.append({"key": "adf_%d" % i, "name": "ADF Loss"})
+	for i in range(s.unrepairable_adf_modifier): damaged_systems.append({"key": "adf_unrep_%d" % i, "name": "ADF Loss"})
 	for i in range(s.current_mr_modifier): damaged_systems.append({"key": "mr_%d" % i, "name": "MR Loss"})
+	for i in range(s.unrepairable_mr_modifier): damaged_systems.append({"key": "mr_unrep_%d" % i, "name": "MR Loss"})
 	if s.has_electrical_fire: damaged_systems.append({"key": "fire_elec", "name": "Electrical Fire"})
 	if s.has_disastrous_fire: damaged_systems.append({"key": "fire_dis", "name": "Disastrous Fire"})
 	if s.ccs_damaged: damaged_systems.append({"key": "ccs", "name": "CCS (Computer)"})
@@ -2972,7 +2974,7 @@ func _update_repair_ui():
 	
 	# Weapons
 	for i in range(s.weapons.size()):
-		if s.weapons[i].get("is_crippled", false):
+		if s.weapons[i].get("is_crippled", false) or s.weapons[i].get("unrepairable", false):
 			damaged_systems.append({"key": "wpn_%d" % i, "name": "Crippled: %s" % s.weapons[i]["name"]})
 			
 	if damaged_systems.size() > 0:
@@ -3005,7 +3007,7 @@ func _update_repair_ui():
 			
 			var spin = SpinBox.new()
 			spin.min_value = 0
-			spin.max_value = 100
+			spin.max_value = 90
 			spin.step = 1
 			spin.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 			spin.custom_minimum_size.x = 100
@@ -3018,6 +3020,10 @@ func _update_repair_ui():
 			elif dk == "ccs" and s.unrepairable_ccs: is_unrepairable = true
 			elif dk == "icm" and s.unrepairable_icm: is_unrepairable = true
 			elif dk == "ms" and s.unrepairable_ms: is_unrepairable = true
+			elif dk.begins_with("adf_unrep_") or dk.begins_with("mr_unrep_"): is_unrepairable = true
+			elif dk.begins_with("wpn_"):
+				var w_idx = int(dk.split("_")[1])
+				if s.weapons[w_idx].get("unrepairable", false): is_unrepairable = true
 			
 			if is_unrepairable:
 				sys_lbl.modulate = Color(1, 0, 0, 0.5)

@@ -1,16 +1,15 @@
 # Bug Tracker
 
 ## 🚨 Critical / High Priority
-- When a ship is passing a planet, the gravity well cost is applied in the first gravity well hex it enters and not next hex. This causes a ship to crash into the planet if it has 0 MR left instead of having its course altered in the next hex.
+
 
 ## 🐛 Backlog
-- Repair Panel Unrepairable Display: If systems didn't show up because of a previous failed repair with a roll of 96-100, we should still show the damaged system but disallow any DCR allocation to visually indicate its permanent destruction.
-
 
 ## 🔍 Needs Investigation
 - [ ] 
 
 ## ✅ Fixed
+- [x] Repair Panel Unrepairable Display: Systems that fail repairs with a roll of 96-100 are now shown explicitly on the repair panel with a (DESTROYED) lock, preventing them from being swept under the rug. Capped global DCR allocation SpinBox to 90. (2026-02-27)
 - [x] Implemented dynamic crippled weapon filtering for Ship Status UI: Appended a boolean guard into `ShipStatusPanel.gd`'s weapon enumeration block to intercept and `continue` past any weapons possessing active `is_crippled` or `unrepairable` flags, hiding them organically from the player's view structure. (2026-02-21)
 - [x] Fixed multiplayer synchronization of destroyed ships: Clients receiving network packets where `is_destroyed` transitioned to `true` were manually overwriting the bool locally without firing the `ship_destroyed` event. Ship replication now natively triggers `trigger_explosion()` automatically, globally culling 0-hull vessels across all clients' UIs. (2026-02-21)
 - [x] Implemented Game Log Tilde (~) Toggle: Refactored `panel_log_container` into `GameManager.gd`'s top-level scope. Set the chat log to be hidden by default (`visible = false`). Intercepted `KEY_QUOTELEFT` / `KEY_ASCIITILDE` in `_unhandled_input()` to map an absolute global visibility toggle. (2026-02-21)
