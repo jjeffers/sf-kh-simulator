@@ -53,13 +53,24 @@ func _ready():
 	var auto_start = false
 	var wait_players = 1
 	var auto_side_id = 0
+	var auto_scenario = ""
 	for i in range(args.size()):
 		if args[i] == "--side" and i + 1 < args.size():
 			auto_side_id = args[i + 1].to_int()
+		if args[i] == "--scenario" and i + 1 < args.size():
+			auto_scenario = args[i + 1]
 		if args[i] == "--host" or args[i] == "--start":
 			auto_start = true
 		if args[i] == "--wait" and i + 1 < args.size():
 			wait_players = args[i + 1].to_int()
+			
+	if auto_scenario != "" and multiplayer.is_server():
+		# Force the server to select this scenario before auto-starting
+		for idx in range(opt_scenario.item_count):
+			if opt_scenario.get_item_metadata(idx) == auto_scenario:
+				opt_scenario.select(idx)
+				_on_scenario_selected(idx)
+				break
 			
 	if auto_side_id > 0:
 		var join_func = func():
