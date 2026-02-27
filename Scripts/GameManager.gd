@@ -66,6 +66,7 @@ var is_deploying_ship: bool = false
 var deploy_orbit_dir_val: int = 1
 var btn_deploy_orbit_cw: Button
 var btn_deploy_orbit_ccw: Button
+var hbox_deploy_orbit: HBoxContainer
 
 # Deployment Mines Tracker
 var deployment_mines_placed: Array[Vector3i] = []
@@ -871,22 +872,38 @@ func _build_deployment_panel(parent: Container):
 	dep_vbox.add_child(HSeparator.new())
 	
 	# Orbit Control (Station Only)
-	var o_hbox = HBoxContainer.new()
-	dep_vbox.add_child(o_hbox)
+	hbox_deploy_orbit = HBoxContainer.new()
+	dep_vbox.add_child(hbox_deploy_orbit)
 	
 	btn_deploy_orbit_ccw = Button.new()
 	btn_deploy_orbit_ccw.text = "Orbit CCW"
 	btn_deploy_orbit_ccw.disabled = true
 	btn_deploy_orbit_ccw.custom_minimum_size.x = 100
-	btn_deploy_orbit_ccw.pressed.connect(func(): if is_deploying_ship: deploy_orbit_dir_val = -1; _update_deployment_ui(); _update_deploy_preview())
-	o_hbox.add_child(btn_deploy_orbit_ccw)
+	btn_deploy_orbit_ccw.pressed.connect(func():
+		if is_deploying_ship or (is_instance_valid(selected_ship) and selected_ship.is_deployed):
+			deploy_orbit_dir_val = -1
+			if is_instance_valid(selected_ship) and selected_ship.is_deployed:
+				selected_ship.orbit_direction = -1
+			_update_deployment_ui()
+			_update_deploy_preview()
+			queue_redraw()
+	)
+	hbox_deploy_orbit.add_child(btn_deploy_orbit_ccw)
 	
 	btn_deploy_orbit_cw = Button.new()
 	btn_deploy_orbit_cw.text = "Orbit CW"
 	btn_deploy_orbit_cw.disabled = true
 	btn_deploy_orbit_cw.custom_minimum_size.x = 100
-	btn_deploy_orbit_cw.pressed.connect(func(): if is_deploying_ship: deploy_orbit_dir_val = 1; _update_deployment_ui(); _update_deploy_preview())
-	o_hbox.add_child(btn_deploy_orbit_cw)
+	btn_deploy_orbit_cw.pressed.connect(func():
+		if is_deploying_ship or (is_instance_valid(selected_ship) and selected_ship.is_deployed):
+			deploy_orbit_dir_val = 1
+			if is_instance_valid(selected_ship) and selected_ship.is_deployed:
+				selected_ship.orbit_direction = 1
+			_update_deployment_ui()
+			_update_deploy_preview()
+			queue_redraw()
+	)
+	hbox_deploy_orbit.add_child(btn_deploy_orbit_cw)
 	
 	dep_vbox.add_child(HSeparator.new())
 	
@@ -2757,6 +2774,7 @@ func _update_deployment_ui():
 			
 		var is_station = selected_ship.ship_class in ["Space Station", "Station"]
 		if is_instance_valid(btn_deploy_orbit_cw):
+			if is_instance_valid(hbox_deploy_orbit): hbox_deploy_orbit.visible = is_station
 			btn_deploy_orbit_cw.visible = is_station
 			btn_deploy_orbit_ccw.visible = is_station
 			if is_station:
@@ -2765,6 +2783,7 @@ func _update_deployment_ui():
 				btn_deploy_orbit_cw.modulate = Color.GREEN if deploy_orbit_dir_val == 1 else Color.WHITE
 				btn_deploy_orbit_ccw.modulate = Color.GREEN if deploy_orbit_dir_val == -1 else Color.WHITE
 				
+			print("[DEBUG] Orbit UI Visible? CW: %s | CCW: %s | Is Station: %s" % [btn_deploy_orbit_cw.visible, btn_deploy_orbit_ccw.visible, is_station])
 		btn_deploy_ship.disabled = false
 		btn_deploy_ship.text = "UPDATE DEPLOYMENT" if selected_ship.is_deployed else "DEPLOY SHIP"
 	else:
@@ -2772,6 +2791,9 @@ func _update_deployment_ui():
 		btn_deploy_facing_ccw.disabled = true
 		spin_deploy_speed.editable = false
 		if is_instance_valid(btn_deploy_orbit_cw):
+			if is_instance_valid(hbox_deploy_orbit): hbox_deploy_orbit.visible = false
+			btn_deploy_orbit_cw.visible = false
+			btn_deploy_orbit_ccw.visible = false
 			btn_deploy_orbit_cw.disabled = true
 			btn_deploy_orbit_ccw.disabled = true
 		btn_deploy_ship.disabled = true
@@ -2854,7 +2876,6 @@ func _on_deploy_ship_pressed():
 	
 	is_deploying_ship = false
 	deploy_hex_selected = false
-	selected_ship = null
 	
 	if audio_beep and audio_beep.stream: audio_beep.play()
 	
@@ -2930,6 +2951,8 @@ func rpc_apply_deployment_data(side_id: int, deployment_data: Dictionary, deploy
 		has_deployed_side_1 = true
 	elif side_id == 2:
 		has_deployed_side_2 = true
+
+	queue_redraw()
 
 	# Only the host determines the state transition logic
 	if _is_server_or_offline():
@@ -4874,6 +4897,10 @@ func _draw():
 	# Draw orbital rings for all orbiting Space Stations
 	for s in ships:
 		if is_instance_valid(s) and s.ship_class in ["Space Station", "Station"] and s.orbit_direction != 0 and s.is_deployed and not s.is_destroyed:
+			# Skip drawing the permanent ring if we are actively re-deploying this station (it draws a preview instead)
+			if current_phase == Phase.DEPLOYMENT and is_deploying_ship and s == selected_ship:
+				continue
+				
 			var planet = null
 			for neighbor in HexGrid.get_neighbors(s.grid_position):
 				if neighbor in planet_hexes:

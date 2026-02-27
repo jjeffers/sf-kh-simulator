@@ -232,7 +232,8 @@ static func generate_scenario(key: String, rng_seed: int) -> Dictionary:
 			"side_index": 0, # Attacker
 			"position": venemous_pos,
 			"facing": attack_facing,
-			"start_speed": 8
+			"start_speed": 8,
+			"is_deployed": true
 		})
 		
 		ships.append({
@@ -242,7 +243,8 @@ static func generate_scenario(key: String, rng_seed: int) -> Dictionary:
 			"side_index": 0, # Attacker
 			"position": perdition_pos,
 			"facing": attack_facing,
-			"start_speed": 8
+			"start_speed": 8,
+			"is_deployed": true
 		})
 		
 		scen["ships"] = ships
@@ -383,7 +385,8 @@ static func generate_scenario(key: String, rng_seed: int) -> Dictionary:
 			ships.append({
 				"name": s_data["name"], "class": s_data["class"], "side": 1, "faction": "Sathar",
 				"position": anchor_pos + s_data["offset"],
-				"facing": attack_facing, "start_speed": 6
+				"facing": attack_facing, "start_speed": 6,
+				"is_deployed": true
 			})
 		
 		# Find actual Maelstrom pos for fighters
@@ -397,7 +400,8 @@ static func generate_scenario(key: String, rng_seed: int) -> Dictionary:
 		for wing in fighter_wings:
 			ships.append({
 				"name": "Fighter " + wing, "class": "Fighter", "side": 1, "faction": "Sathar",
-				"position": maelstrom_pos, "docked_at": "Maelstrom", "start_speed": 0
+				"position": maelstrom_pos, "docked_at": "Maelstrom", "start_speed": 0,
+				"is_deployed": true
 			})
 			
 		scen["ships"] = ships
@@ -484,17 +488,20 @@ static func generate_scenario(key: String, rng_seed: int) -> Dictionary:
 				"name": s_data["name"], "class": s_data["class"], "side": 1, "faction": "Sathar",
 				"position": anchor_pos + s_data["offset"], # Note: Simple offset, doesn't rotate with edge. Good enough.
 				"facing": attack_facing,
-				"start_speed": 6
+				"start_speed": 6,
+				"is_deployed": true
 			})
 			
 		# Docked Fighters for Infamous
 		ships.append({
 			"name": "Fighter A", "class": "Fighter", "side": 1, "faction": "Sathar",
-			"position": anchor_pos, "docked_at": "Infamous"
+			"position": anchor_pos, "docked_at": "Infamous",
+			"is_deployed": true
 		})
 		ships.append({
 			"name": "Fighter B", "class": "Fighter", "side": 1, "faction": "Sathar",
-			"position": anchor_pos, "docked_at": "Infamous"
+			"position": anchor_pos, "docked_at": "Infamous",
+			"is_deployed": true
 		})
 
 		scen["ships"] = ships
