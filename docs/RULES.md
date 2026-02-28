@@ -324,7 +324,7 @@ When both sides have completed deployment, the game should proceed to the first 
   - Faction: Sathar.
 
 **Setup:**
- - UPF sets up first on the right-most edge of the playing area. The transport ship must start with a speed of 5.
+ - UPF sets up first on the right-most edge of the playing area. The transport ship must start with a speed of 5 and must deploy in the center row of the right most edge.
 - The attackers must deploy on the left-most edge of the playing area.
   
 **Special Rules**

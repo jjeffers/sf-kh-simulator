@@ -56,6 +56,7 @@ var spin_deploy_speed: SpinBox
 var lbl_deploy_facing: Label
 var btn_deploy_facing_cw: Button
 var btn_deploy_facing_ccw: Button
+var btn_auto_deploy: Button
 
 var deploy_speed_val: int = 0
 var deploy_facing_val: int = 0
@@ -927,6 +928,12 @@ func _build_deployment_panel(parent: Container):
 			queue_redraw()
 	)
 	dep_vbox.add_child(btn_deploy_mine)
+	
+	btn_auto_deploy = Button.new()
+	btn_auto_deploy.text = "AUTO DEPLOY"
+	btn_auto_deploy.modulate = Color(0.2, 0.6, 1.0) # Light blue
+	btn_auto_deploy.pressed.connect(_on_auto_deploy_pressed)
+	dep_vbox.add_child(btn_auto_deploy)
 	
 	btn_deploy_complete = Button.new()
 	btn_deploy_complete.text = "COMPLETE DEPLOYMENT"
@@ -2704,7 +2711,12 @@ func _update_deployment_ui():
 			btn_deploy_orbit_ccw.disabled = true
 		btn_deploy_ship.disabled = true
 		btn_deploy_complete.disabled = true
+		if is_instance_valid(btn_auto_deploy):
+			btn_auto_deploy.visible = false
 		return
+		
+	if is_instance_valid(btn_auto_deploy):
+		btn_auto_deploy.visible = true
 		
 	if undeployed.is_empty():
 		var lbl = Label.new()
@@ -2816,6 +2828,36 @@ func _update_deployment_ui():
 	else:
 		btn_deploy_mine.visible = false
 		state_deployment_mine_placement = false
+
+func _on_auto_deploy_pressed():
+	if current_phase != Phase.DEPLOYMENT: return
+	
+	# First, wipe existing deployments for this side so we can recalculate and redeploy from scratch
+	for s in ships:
+		if is_instance_valid(s) and s.side_id == deployment_subphase and not s.is_docked:
+			s.is_deployed = false
+			s.speed = 0
+			s.orbit_direction = 0
+			s.grid_position = Vector3i.ZERO
+			
+	# Also clear out any mines we've placed
+	deployment_mines_placed.clear()
+	
+	var my_undeployed = []
+	for s in ships:
+		if is_instance_valid(s) and s.side_id == deployment_subphase and not s.is_docked:
+			my_undeployed.append(s)
+			
+	if my_undeployed.is_empty():
+		return
+		
+	var valid_hexes = ScenarioManager.get_valid_deployment_hexes(deployment_subphase, ships, planet_hexes, null)
+	
+	var processor = AutoDeployProcessor.new()
+	processor.execute(my_undeployed, valid_hexes, self)
+	
+	_update_deployment_ui()
+	queue_redraw()
 
 func _update_deploy_preview():
 	if not is_deploying_ship or not is_instance_valid(selected_ship) or not deploy_hex_selected:
