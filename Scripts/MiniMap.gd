@@ -86,6 +86,20 @@ func _draw():
 		if game_manager.combat_target == s:
 			draw_arc(map_pos, radius + 2, 0, TAU, 16, Color.RED, 1.0)
 			
+	# 2.5. Draw Friendly Mines
+	var my_side = game_manager.my_side_id
+	if game_manager.current_phase == game_manager.Phase.DEPLOYMENT and game_manager.deployment_subphase == my_side:
+		for hex in game_manager.deployment_mines_placed:
+			var world_pos = HexGrid.hex_to_pixel(hex)
+			var map_pos = (world_pos * scale_factor) + center_offset
+			draw_circle(map_pos, 2.0, Color.YELLOW)
+			
+	for m in game_manager.active_mines:
+		if m.get("side_id", -1) == my_side or my_side == 0:
+			var world_pos = HexGrid.hex_to_pixel(m["pos"])
+			var map_pos = (world_pos * scale_factor) + center_offset
+			draw_circle(map_pos, 2.0, Color.YELLOW)
+			
 	# 3. Draw Camera View Rect
 	# Use active camera position and zoom
 	var cam = game_manager.camera

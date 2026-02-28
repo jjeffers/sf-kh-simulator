@@ -343,23 +343,24 @@ static func generate_scenario(key: String, rng_seed: int) -> Dictionary:
 		})
 
 		var upf_roster = [
-			{"name": "Z'Rak't Zoz", "class": "Minelayer", "pos": Vector3i(-1, 0, 1), "facing": 3},
-			{"name": "Shimmer", "class": "Frigate", "pos": Vector3i(-1, 1, 0), "facing": 3},
-			{"name": "Zz'Nakk'T", "class": "Frigate", "pos": Vector3i(0, -1, 1), "facing": 2},
-			{"name": "Rapier", "class": "Assault Scout", "pos": Vector3i(1, 1, -2), "facing": 0},
-			{"name": "Lancet", "class": "Assault Scout", "pos": Vector3i(0, 2, -2), "facing": 0},
-			{"name": "Fighter A", "class": "Fighter", "pos": Vector3i(-2, 1, 1), "facing": 3},
-			{"name": "Fighter B", "class": "Fighter", "pos": Vector3i(-2, 2, 0), "facing": 3},
-			{"name": "Fighter C", "class": "Fighter", "pos": Vector3i(-3, 1, 2), "facing": 3},
-			{"name": "Fighter D", "class": "Fighter", "pos": Vector3i(2, -1, -1), "facing": 0},
-			{"name": "Fighter E", "class": "Fighter", "pos": Vector3i(2, -2, 0), "facing": 0},
-			{"name": "Fighter F", "class": "Fighter", "pos": Vector3i(3, -1, -2), "facing": 0}
+			{"name": "Z'Rak't Zoz", "class": "Minelayer", "pos": Vector3i.ZERO, "facing": 3},
+			{"name": "Shimmer", "class": "Frigate", "pos": Vector3i.ZERO, "facing": 3},
+			{"name": "Zz'Nakk'T", "class": "Frigate", "pos": Vector3i.ZERO, "facing": 2},
+			{"name": "Rapier", "class": "Assault Scout", "pos": Vector3i.ZERO, "facing": 0},
+			{"name": "Lancet", "class": "Assault Scout", "pos": Vector3i.ZERO, "facing": 0},
+			{"name": "Fighter A", "class": "Fighter", "pos": Vector3i.ZERO, "facing": 3, "docked_at": "Ken'zah Station"},
+			{"name": "Fighter B", "class": "Fighter", "pos": Vector3i.ZERO, "facing": 3, "docked_at": "Ken'zah Station"},
+			{"name": "Fighter C", "class": "Fighter", "pos": Vector3i.ZERO, "facing": 3, "docked_at": "Ken'zah Station"},
+			{"name": "Fighter D", "class": "Fighter", "pos": Vector3i.ZERO, "facing": 0, "docked_at": "Ken'zah Station"},
+			{"name": "Fighter E", "class": "Fighter", "pos": Vector3i.ZERO, "facing": 0, "docked_at": "Ken'zah Station"},
+			{"name": "Fighter F", "class": "Fighter", "pos": Vector3i.ZERO, "facing": 0, "docked_at": "Ken'zah Station"}
 		]
 		
 		for template in upf_roster:
 			ships.append({
 				"name": template["name"], "class": template["class"], "side": 0, "faction": "UPF",
-				"position": template["pos"], "facing": template["facing"], "start_speed": 4
+				"position": template["pos"], "facing": template["facing"], "start_speed": 4,
+				"docked_at": template.get("docked_at", "")
 			})
 			
 		# SATHAR SETUP (Side 1, Attacker)
@@ -399,7 +400,7 @@ static func generate_scenario(key: String, rng_seed: int) -> Dictionary:
 		var fighter_wings = ["A", "B", "C", "D", "E", "F"]
 		for wing in fighter_wings:
 			ships.append({
-				"name": "Fighter " + wing, "class": "Fighter", "side": 1, "faction": "Sathar",
+				"name": "Sathar Fighter " + wing, "class": "Fighter", "side": 1, "faction": "Sathar",
 				"position": maelstrom_pos, "docked_at": "Maelstrom", "start_speed": 0,
 				"is_deployed": true
 			})
@@ -410,16 +411,11 @@ static func generate_scenario(key: String, rng_seed: int) -> Dictionary:
 	elif key == "the_last_stand":
 		# UPF SETUP
 		# 1. Fortress K'zdit - Random Orbit
-		var center_neighbors = [
-			Vector3i(1, 0, -1), Vector3i(1, -1, 0), Vector3i(0, -1, 1),
-			Vector3i(-1, 0, 1), Vector3i(-1, 1, 0), Vector3i(0, 1, -1)
-		]
-		var station_pos = center_neighbors[rng.randi() % center_neighbors.size()]
 		var station_orbit_dir = 1 if rng.randf() > 0.5 else -1
 		
 		ships.append({
 			"name": "Fortress K'zdit", "class": "Space Station", "side": 0,
-			"position": station_pos, "facing": 0,
+			"position": Vector3i.ZERO, "facing": 0,
 			"orbit_direction": station_orbit_dir,
 			"overrides": {
 				"hull": 100, "max_hull": 100, "icm_max": 8, "icm_current": 8, "ms_max": 2, "ms_current": 2,
@@ -434,23 +430,21 @@ static func generate_scenario(key: String, rng_seed: int) -> Dictionary:
 		
 		# 2. UPF Fleet - Defensive Cluster near Center (avoiding Station)
 		var upf_roster = [
-			{"name": "Valiant", "class": "Battleship", "pos": Vector3i(1, 0, -1), "facing": 0}, # Shifted East off Planet
-			{"name": "Allison May", "class": "Destroyer", "pos": Vector3i(0, -2, 2), "facing": 1},
-			{"name": "Daridia", "class": "Frigate", "pos": Vector3i(-1, 1, 0), "facing": 5},
-			{"name": "Dauntless", "class": "Assault Scout", "pos": Vector3i(1, 1, -2), "facing": 0},
-			{"name": "Razor", "class": "Assault Scout", "pos": Vector3i(-1, -1, 2), "facing": 3},
-			{"name": "Fighter a", "class": "Fighter", "pos": Vector3i(0, 2, -2), "facing": 0},
-			{"name": "Fighter b", "class": "Fighter", "pos": Vector3i(0, 3, -3), "facing": 0}
+			{"name": "Valiant", "class": "Battleship", "pos": Vector3i.ZERO, "facing": 0},
+			{"name": "Allison May", "class": "Destroyer", "pos": Vector3i.ZERO, "facing": 1},
+			{"name": "Daridia", "class": "Frigate", "pos": Vector3i.ZERO, "facing": 5},
+			{"name": "Dauntless", "class": "Assault Scout", "pos": Vector3i.ZERO, "facing": 0},
+			{"name": "Razor", "class": "Assault Scout", "pos": Vector3i.ZERO, "facing": 3},
+			{"name": "Fighter a", "class": "Fighter", "pos": Vector3i.ZERO, "facing": 0, "docked_at": "Fortress K'zdit"},
+			{"name": "Fighter b", "class": "Fighter", "pos": Vector3i.ZERO, "facing": 0, "docked_at": "Fortress K'zdit"}
 		]
 		
 		for template in upf_roster:
-			# Simple overlap check: If a ship spawns on the station, shift it slightly
-			if template["pos"] == station_pos:
-				template["pos"] = template["pos"] + Vector3i(1, 0, -1) # Shift East
 			
 			ships.append({
-				"name": template["name"], "class": template["class"], "side": 0,
-				"position": template["pos"], "facing": template["facing"]
+				"name": template["name"], "class": template["class"], "side": 0, "faction": "UPF",
+				"position": template["pos"], "facing": template["facing"],
+				"docked_at": template.get("docked_at", "")
 			})
 			
 		# SATHAR SETUP
@@ -836,7 +830,17 @@ static func get_valid_deployment_hexes(side_id: int, ships: Array, planets: Arra
 					var z = -x - y
 					if HexGrid.hex_distance(Vector3i.ZERO, Vector3i(x, y, z)) == 34:
 						if x == 34 or z == -34:
-							valid_hexes.append(Vector3i(x, y, z))
+							if ship and ship.name == "Megasaurus":
+								if y == 0:
+									valid_hexes.append(Vector3i(x, y, z))
+							else:
+								valid_hexes.append(Vector3i(x, y, z))
 
-	# Wait, if valid_hexes is empty, we just let them deploy anywhere.
+	# If valid_hexes is empty, we default to the entire playable map (radius 25)
+	if valid_hexes.is_empty():
+		for x in range(-25, 26):
+			for y in range(max(-25, -x-25), min(25, -x+25) + 1):
+				var z = -x - y
+				valid_hexes.append(Vector3i(x, y, z))
+
 	return valid_hexes
