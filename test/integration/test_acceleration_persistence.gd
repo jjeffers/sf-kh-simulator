@@ -86,10 +86,16 @@ func test_icm_dialog_shows_target_name():
 	if target.get_parent() == null:
 		_game_manager.add_child(target)
 	_game_manager.ships.append(target)
+	_game_manager.my_side_id = 1
+	_game_manager.ui_layer = autofree(CanvasLayer.new())
+	_game_manager.add_child(_game_manager.ui_layer)
 	
 	# Trigger ICM Decision
 	# _trigger_icm_decision(attacker_name, weapon_name, weapon_type, current_chance, target)
-	_game_manager._trigger_icm_decision("Enemy Ship", "Torpedo", "Torpedo", 80, target)
+	_game_manager._trigger_icm_decision("Enemy Ship", "Torpedo", "Torpedo", 80, target, [target])
+	
+	# Wait one frame for UI nodes to initialize properly in Godot
+	await get_tree().process_frame
 	
 	# Verify Panel Created
 	assert_not_null(_game_manager.panel_icm, "ICM Panel should be created")

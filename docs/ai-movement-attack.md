@@ -37,3 +37,18 @@ The scenario engine injects faction-specific heuristics to alter the behavior pr
 
 - **Sathar Aggression Modifier:** Ships assigned to the Sathar faction receive a flat modifier to all of their Attack Utility ($U_a$) calculations. This directly skews their decision-making loop, compelling Sathar ships to aggressively close the distance, maintain relentless offensive pressure, and ignore mathematically optimal defensive retreats—even when their ship is structurally compromised.
 - **Defensive Screening:** If a Seeker missile is detected locked onto high-value ships, Escort class vessels will forcibly elevate their `Utility_Screen` score, abandoning offensive plans to intercept the incoming ordnance.
+
+## 6. Defensive Ordnance Interception (ICMs)
+
+During the combat resolution phase, the AI must decide how to allocate its limited stock of Interceptor Counter Missiles (ICMs) to defend itself and adjacent allies from incoming ballistic ordnance. The AI evaluates incoming attacks using an **Interception Efficiency Matrix** that balances the projectile's damage profile against the hit-chance deduction provided by an ICM.
+
+The AI prioritizes incoming ordnance as follows:
+
+1. **Torpedoes**: (Avg Damage: 22, ICM Reduction: -10% per point). The highest priority. Torpedoes deal devastating damage and are highly susceptible to point defense. The AI will aggressively dump ICMs to neutralize torpedo spreads.
+2. **Spatial Mines**: (Avg Damage: 21.5, ICM Reduction: -8% per point). Extreme burst damage with strong point-defense vulnerability. If an AI formation triggers a minefield, escorts will prioritize mitigating the shrapnel over all standard rocket fire.
+3. **Assault Rockets**: (Avg Damage: 15, ICM Reduction: -5% per point). Moderate threat. The AI allocates ICMs against Assault Rockets only if the target is structurally compromised or if no heavier ordnance is inbound.
+4. **Rocket Batteries**: (Avg Damage: 11, ICM Reduction: -3% per point). Lowest priority. Because of the poor reduction-per-ICM ratio, the AI generally absorbs Rocket Battery fire with its hull, reserving ICMs unless it has a massive surplus or the target ship is critically damaged.
+
+**Allocation Logic:**
+- **Threat Sorting:** Incoming attacks within the hex are sorted descending by their damage-to-reduction efficiency.
+- **Threshold Targeting:** The AI calculates the number of ICMs required to drop a high-threat attack below a "safe" hit chance threshold (e.g., < 15%) and allocates them sequentially until the ship/hex's ICM pool is depleted.

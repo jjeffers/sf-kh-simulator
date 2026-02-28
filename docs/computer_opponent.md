@@ -101,16 +101,33 @@ The AI must intelligently handle the pre-combat setup phase, establishing initia
 
 ---
 
-## 7. Technical Requirements (Godot/C# Implementation)
+## 7. Component E: Damage Control and Repair Phase
 
-### 7.1 Movement Integration
+The AI must intelligently manage its vessels' survivability during the end-of-turn Repair Phase. Efficient damage control is critical for maintaining combat effectiveness, especially for capital ships.
+
+### 7.1 Prioritization of Repairs
+- **Critical Systems First:** The AI will prioritize repairing systems that directly impact its ability to maneuver and fight. Scored in order of importance:
+  1. **Life Support / Structural Integrity:** Prevents immediate ship destruction (e.g., fixing critical fires or imminent hull breaches).
+  2. **Engines and Maneuverability (ADF/MR):** Restoring mobility to escape disadvantageous positions or pursue targets.
+  3. **Offensive Capabilities:** Repairing disabled weapon batteries or seeker launchers to maintain damage output.
+  4. **Defensive Screens:** Restoring shields or defensive arrays to mitigate incoming damage on subsequent turns.
+
+### 7.2 Resource Allocation
+- **Damage Control Rating (DCR):** The AI will evaluate the amount of available DCR on each ship. Rather than spreading repairs out randomly, it will concentrate efforts on allocating up to 90 DCR towards high-priority systems (maximizing success chance) before moving on to less critical damage.
+- **Triage Protocol:** If a ship is mathematically unsalvageable (e.g., overwhelming fires and critical hull damage), the AI will cease survival repair efforts on that vessel and instead attempt to maximize its remaining offensive utility by dumping all DCR into weapons before its inevitable destruction.
+
+---
+
+## 8. Technical Requirements (Godot/C# Implementation)
+
+### 8.1 Movement Integration
 
 - **Constraint:** The Heatmap must only be generated for hexes reachable via the ship's current **ADF (Acceleration)** and **MR (Maneuver Rating)**.
     
 - **Vector Bias:** The AI must consider its current heading to ensure it doesn't "overshoot" its target unless intended.
     
 
-### 7.2 The Decision Loop
+### 8.2 The Decision Loop
 
 1. **Scan:** Generate Heatmap layers for all valid destination hexes.
     
@@ -125,7 +142,7 @@ The AI must intelligently handle the pre-combat setup phase, establishing initia
 
 ---
 
-## 8. Knight Hawks Specific Logic
+## 9. Knight Hawks Specific Logic
 
 - **Screen Deployment:** If a Seeker is detected within 2 hexes, the `Utility_Screen` score must override `Utility_Attack`.
     
@@ -136,7 +153,7 @@ The AI must intelligently handle the pre-combat setup phase, establishing initia
 
 ---
 
-## 9. Future Extensibility
+## 10. Future Extensibility
 
 - **Squad Coordination:** Implementing a shared Heatmap where multiple ships gain bonuses for "Focus Fire" on a single target.
     

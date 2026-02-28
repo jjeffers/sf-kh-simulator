@@ -18,7 +18,7 @@ func before_each():
 	s1.side_id = 1
 	s1.grid_position = Vector3i(0, 0, 0)
 	if s1.get_parent() == null:
-		_game_manager.add_child(s1)
+		_gm.add_child(s1)
 	_gm.ships.append(s1)
 	_gm.add_child(s1)
 	
@@ -27,7 +27,7 @@ func before_each():
 	s2.side_id = 2
 	s2.grid_position = Vector3i(1, -1, 0)
 	if s2.get_parent() == null:
-		_game_manager.add_child(s2)
+		_gm.add_child(s2)
 	_gm.ships.append(s2)
 	_gm.add_child(s2)
 	

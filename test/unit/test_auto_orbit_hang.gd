@@ -19,7 +19,7 @@ func before_each():
 	station.speed = 0 # Station shouldn't move
 	
 	if station.get_parent() == null:
-		_game_manager.add_child(station)
+		game_manager.add_child(station)
 	game_manager.ships.append(station)
 	game_manager.add_child(station)
 

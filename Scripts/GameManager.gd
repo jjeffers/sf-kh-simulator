@@ -350,6 +350,8 @@ func start_deployment_phase(scen_key: String = ""):
 	log_message("[color=cyan]=== DEPLOYMENT Phase ===[/color]")
 	has_deployed_side_1 = false
 	has_deployed_side_2 = false
+
+	_spawn_computer_opponents()
 	
 	# UPF sets up first in these specific scenarios as Defenders.
 	if scen_key == "":
@@ -2216,6 +2218,7 @@ func start_movement_phase():
 	combat_subphase = 0
 	firing_side_id = 0
 	combat_action_taken = false # Reset lock
+	current_combat_state = CombatState.NONE # AI DEADLOCK FIX: Reset combat state when entering movement
 	
 	_update_phase_indicator() # NEW: Update UI for Movement Phase
 	
@@ -3030,6 +3033,8 @@ func start_repair_phase():
 	if multiplayer.has_multiplayer_peer() and multiplayer.get_unique_id() != 1:
 		return 
 
+	current_combat_state = CombatState.NONE # AI DEADLOCK FIX: clear resolving state for repair phase
+	
 	repair_allocations.clear()
 	has_submitted_final_repairs = false
 	active_repair_animations = 0
@@ -4603,11 +4608,11 @@ func _calculate_mr_used_for_plan(start_pos: Vector3i, start_facing: int, path: A
 func _apply_movement_plan(s: Ship):
 	if not is_instance_valid(s): return
 
-	var typed_history: Array[Vector3i] = []
-	for p in s.planned_path: typed_history.append(Vector3i(p))
-	s.previous_path = typed_history # History
 	var start_pos = s.grid_position
 	var start_facing = s.facing
+	var typed_history: Array[Vector3i] = [start_pos]
+	for p in s.planned_path: typed_history.append(Vector3i(p))
+	s.previous_path = typed_history # History
 	var old_speed = s.speed
 	if s.is_docked: old_speed = 0
 	
@@ -5993,13 +5998,30 @@ func rpc_trigger_icm_decision(attacker_name: String, weapon_name: String, weapon
 		var s = _find_ship_by_name(n)
 		if s: eligible_ships.append(s)
 
-	# Create modal UI
-	if panel_icm: panel_icm.queue_free()
-	
-	# Fallback if eligible_ships not properly passed (for older tests/code)
+	# Fallback if eligible_ships not properly passed
 	if eligible_ships.is_empty():
 		eligible_ships = [target]
 		
+	# --- AI AUTO-RESOLUTION HOOK ---
+	# Check if the target ship's side is controlled by a ComputerOpponent
+	var is_ai_target = false
+	for ai in computer_opponents:
+		if is_instance_valid(ai) and ai.side_id == target.side_id:
+			is_ai_target = true
+			break
+			
+	if is_ai_target and _is_server_or_offline():
+		# The server automatically resolves AI ICM decisions without UI
+		var icm_script = load("res://Scripts/AutoIcmProcessor.gd")
+		var allocations = icm_script.calculate_allocations(weapon_type, current_chance, target, eligible_ships)
+		# Add a slight delay for better game feel/pacing so it doesn't instantly blink past
+		await get_tree().create_timer(1.0).timeout
+		_submit_icm_decision(allocations)
+		return
+		
+	# --- HUMAN UI MODAL ---
+	if panel_icm: panel_icm.queue_free()
+	
 	panel_icm = PanelContainer.new()
 	ui_layer.add_child(panel_icm)
 	panel_icm.set_anchors_preset(Control.PRESET_CENTER)
@@ -6033,7 +6055,7 @@ func rpc_trigger_icm_decision(attacker_name: String, weapon_name: String, weapon
 	# Network Logic: Who decides?
 	var is_target_owner = (target.side_id == my_side_id) or (my_side_id == 0) # Debug/0 can also decide
 	
-	if is_target_owner:
+	if is_target_owner and not is_ai_target:
 		var ship_spinboxes = {} # Dictionary of ship_name -> SpinBox node
 		
 		# Initial Text updater
@@ -6876,6 +6898,36 @@ func _handle_preview_extension(hex: Vector3i):
 			ghost_ship.modulate.a = 1.0 # Reset opacity
 			path_preview_active = false
 			queue_redraw()
+
+var computer_opponents: Array = []
+
+func _spawn_computer_opponents():
+	if not _is_server_or_offline(): return
+	
+	var assigned_sides = []
+	if multiplayer.has_multiplayer_peer():
+		for pid in NetworkManager.lobby_data.get("teams", {}):
+			assigned_sides.append(NetworkManager.lobby_data["teams"][pid])
+	else:
+		assigned_sides.append(my_side_id)
+		
+	for s_id in [1, 2]:
+		if not s_id in assigned_sides:
+			# Check if already spawned
+			var already_spawned = false
+			for ai in computer_opponents:
+				if is_instance_valid(ai) and ai.side_id == s_id:
+					already_spawned = true
+					break
+			if already_spawned:
+				continue
+				
+			var ai = load("res://Scripts/ComputerOpponent.gd").new()
+			ai.name = "ComputerOpponent_Side" + str(s_id)
+			ai.game_manager = self
+			ai.side_id = s_id
+			add_child(ai)
+			computer_opponents.append(ai)
 
 func _is_server_or_offline() -> bool:
 	# Server Authority (Logic/State)
