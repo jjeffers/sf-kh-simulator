@@ -117,20 +117,7 @@ func _on_think_timeout():
 					game_manager.execute_all_movement()
 		GameManager.Phase.COMBAT:
 			if not _has_finished_combat_planning():
-				_plan_combat()
-			else:
-				var attacks_data = []
-				for atk in game_manager.queued_attacks:
-					var s = atk["source"]
-					var t = atk["target"]
-					if not is_instance_valid(s) or not is_instance_valid(t): continue
-					attacks_data.append({
-						"s": s.name,
-						"t": t.name,
-						"w": atk["weapon_idx"],
-						"tp": atk["target_pos"]
-					})
-				
+				var attacks_data = _plan_combat()
 				var seed_val = randi()
 				if game_manager.multiplayer.has_multiplayer_peer():
 					game_manager.rpc_id(1, "execute_commit_combat", attacks_data, seed_val)
@@ -333,9 +320,10 @@ func _score_hex(hex: Vector3i, target: Ship) -> float:
 	return score
 
 # --- COMBAT ---
-func _plan_combat():
+func _plan_combat() -> Array:
 	var my_ships = game_manager.ships.filter(func(s): return is_instance_valid(s) and s.side_id == side_id and not s.is_exploding)
 	var targets = game_manager.ships.filter(func(s): return is_instance_valid(s) and s.side_id != side_id and not s.is_exploding)
+	var attacks_data = []
 	
 	for ship in my_ships:
 		for i in range(ship.weapons.size()):
@@ -363,6 +351,14 @@ func _plan_combat():
 			
 			if best_target:
 				game_manager.log_message("AI Planning: %s -> %s with %s (Utility: %.2f)" % [ship.get_display_name(), best_target.get_display_name(), w["name"], best_utility])
-				game_manager.rpc_add_attack(ship.name, best_target.name, i)
+				
+				# Compile directly for resolution payload
+				attacks_data.append({
+					"s": ship.name,
+					"t": best_target.name,
+					"w": i,
+					"tp": best_target.grid_position
+				})
 
 	_combat_planned_subphase = game_manager.combat_subphase
+	return attacks_data

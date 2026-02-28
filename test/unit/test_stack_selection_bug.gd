@@ -25,10 +25,10 @@ func before_each():
 	enemy_ship.facing = 3
 	
 	if friendly_ship.get_parent() == null:
-		_game_manager.add_child(friendly_ship)
+		game_manager.add_child(friendly_ship)
 	game_manager.ships.append(friendly_ship)
 	if enemy_ship.get_parent() == null:
-		_game_manager.add_child(enemy_ship)
+		game_manager.add_child(enemy_ship)
 	game_manager.ships.append(enemy_ship)
 	game_manager.add_child(friendly_ship)
 	game_manager.add_child(enemy_ship)
