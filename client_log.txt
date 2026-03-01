@@ -12,7 +12,7 @@ WARNING: res://Scenes/Main.tscn:3 - ext_resource, invalid UID: uid://cvru4lxy5bn
          [0] start_game_rpc (res://Scripts/NetworkManager.gd:157)
 [DEBUG] _build_repair_panel called
 [Turn 1] [DEBUG] Initializing repair_panel
-[Turn 1] Game Setup Received: Seed 3755871247
+[Turn 1] Game Setup Received: Seed 212400485
 [Turn 1] Loading Scenario: Battle of Ken'zah
 [DEBUG] Ship Ken'zah Station loaded with Orbit Dir 1
 [Turn 1] Fighter A docked at Ken'zah Station
@@ -29,3 +29,23 @@ WARNING: res://Scenes/Main.tscn:3 - ext_resource, invalid UID: uid://cvru4lxy5bn
 [Turn 1] Sathar Fighter F docked at Maelstrom
 [Turn 1] [color=cyan]=== DEPLOYMENT Phase ===[/color]
 [DEBUG] _update_deployment_ui called - Subphase: 1, my_side_id: 2
+[Turn 1] Side 2 is now Deploying.
+[DEBUG] _update_deployment_ui called - Subphase: 2, my_side_id: 2
+[DEBUG] _update_deployment_ui called - Subphase: 2, my_side_id: 2
+[Turn 1] Submitting Deployment for Side 2
+[Turn 1] Deployment Complete. Starting Turn 1.
+[Turn 1] === Turn Start: Side UPF ===
+DEBUG: Rejected Maelstrom Side:2 CurSide:1 Moved:false
+DEBUG: Rejected Carrion Side:2 CurSide:1 Moved:false
+DEBUG: Rejected Deathstroke Side:2 CurSide:1 Moved:false
+DEBUG: Rejected Bludgeon Side:2 CurSide:1 Moved:false
+DEBUG: Rejected Viper Side:2 CurSide:1 Moved:false
+DEBUG: Rejected Sathar Fighter A Side:2 CurSide:1 Moved:false
+DEBUG: Rejected Sathar Fighter B Side:2 CurSide:1 Moved:false
+DEBUG: Rejected Sathar Fighter C Side:2 CurSide:1 Moved:false
+DEBUG: Rejected Sathar Fighter D Side:2 CurSide:1 Moved:false
+DEBUG: Rejected Sathar Fighter E Side:2 CurSide:1 Moved:false
+DEBUG: Rejected Sathar Fighter F Side:2 CurSide:1 Moved:false
+DEBUG: start_movement_phase. Side: 1 Available: 12
+DEBUG: First available: Ken'zah Station ID: 1 Moved: false
+DEBUG: Auto-Orbit Candidate Found: Ken'zah Station (Class: Space Station, Orbit: 1)

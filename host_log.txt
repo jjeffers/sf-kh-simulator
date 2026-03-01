@@ -5,7 +5,7 @@ ERROR: Error opening file 'res://icon.svg'.
    at: load_image (core/io/image_loader.cpp:89)
 [MainMenu] Auto-Hosting local match...
 [MainMenu] Pre-loading scenario:battle_of_kenzah
-Assigned Player 2 to Peer 2135407475
+Assigned Player 2 to Peer 1141994807
 [Lobby] Start Game Pressed!
 [NetworkManager] Starting Game RPC received. Changing Scene to Main.tscn...
 WARNING: res://Scenes/Main.tscn:3 - ext_resource, invalid UID: uid://cvru4lxy5bnj1 - using text path instead: res://Scripts/GameManager.gd
@@ -16,10 +16,10 @@ WARNING: res://Scenes/Main.tscn:3 - ext_resource, invalid UID: uid://cvru4lxy5bn
 [DEBUG] _build_repair_panel called
 [Turn 1] [DEBUG] Initializing repair_panel
 [Turn 1] Player 1 finished loading.
-[Turn 1] Player 2135407475 finished loading.
+[Turn 1] Player 1141994807 finished loading.
 [Turn 1] All Players Ready. Starting Game...
-GameManager: Generated Random Seed: 3755871247
-[Turn 1] Game Setup Received: Seed 3755871247
+GameManager: Generated Random Seed: 212400485
+[Turn 1] Game Setup Received: Seed 212400485
 [Turn 1] Loading Scenario: Battle of Ken'zah
 [DEBUG] Ship Ken'zah Station loaded with Orbit Dir 1
 [Turn 1] Fighter A docked at Ken'zah Station
@@ -37,16 +37,32 @@ GameManager: Generated Random Seed: 3755871247
 [Turn 1] [color=cyan]=== DEPLOYMENT Phase ===[/color]
 [DEBUG] _update_deployment_ui called - Subphase: 1, my_side_id: 1
 [DEBUG] _update_deployment_ui called - Subphase: 1, my_side_id: 1
-[Turn 1] Recovered deployed seeker at (-1.000000, -8.000000, 9.000000).
-[DEBUG] _update_deployment_ui called - Subphase: 1, my_side_id: 1
-[Turn 1] Recovered deployed mine at (0.000000, -7.000000, 7.000000).
-[DEBUG] _update_deployment_ui called - Subphase: 1, my_side_id: 1
-[Turn 1] Placed mine at (-1.000000, -6.000000, 7.000000).
-[DEBUG] _update_deployment_ui called - Subphase: 1, my_side_id: 1
-[Turn 1] [color=red]You have no remaining mines to drop![/color]
+[Turn 1] Recovered deployed seeker at (6.000000, 2.000000, -8.000000).
 [DEBUG] _update_deployment_ui called - Subphase: 1, my_side_id: 1
 [DEBUG] _update_deployment_ui called - Subphase: 1, my_side_id: 1
-[DEBUG] Orbit UI Visible? CW: false | CCW: false | Is Station: false
-[Turn 1] Shimmer deployed at (4, -7, 3), facing 3, speed 11.
+[Turn 1] Placed seeker at (6.000000, 1.000000, -7.000000).
 [DEBUG] _update_deployment_ui called - Subphase: 1, my_side_id: 1
-[DEBUG] Orbit UI Visible? CW: false | CCW: false | Is Station: false
+[Turn 1] Submitting Deployment for Side 1
+[Turn 1] Side 2 is now Deploying.
+[DEBUG] _update_deployment_ui called - Subphase: 2, my_side_id: 1
+[Turn 1] Deployment Complete. Starting Turn 1.
+[Turn 1] === Turn Start: Side UPF ===
+DEBUG: Rejected Maelstrom Side:2 CurSide:1 Moved:false
+DEBUG: Rejected Carrion Side:2 CurSide:1 Moved:false
+DEBUG: Rejected Deathstroke Side:2 CurSide:1 Moved:false
+DEBUG: Rejected Bludgeon Side:2 CurSide:1 Moved:false
+DEBUG: Rejected Viper Side:2 CurSide:1 Moved:false
+DEBUG: Rejected Sathar Fighter A Side:2 CurSide:1 Moved:false
+DEBUG: Rejected Sathar Fighter B Side:2 CurSide:1 Moved:false
+DEBUG: Rejected Sathar Fighter C Side:2 CurSide:1 Moved:false
+DEBUG: Rejected Sathar Fighter D Side:2 CurSide:1 Moved:false
+DEBUG: Rejected Sathar Fighter E Side:2 CurSide:1 Moved:false
+DEBUG: Rejected Sathar Fighter F Side:2 CurSide:1 Moved:false
+DEBUG: start_movement_phase. Side: 1 Available: 12
+DEBUG: First available: Ken'zah Station ID: 1 Moved: false
+DEBUG: Auto-Orbit Candidate Found: Ken'zah Station (Class: Space Station, Orbit: 1)
+DEBUG: _on_commit_move for Ken'zah Station
+DEBUG: Path size: 1
+DEBUG: Calling register_movement_plan locally
+[Security] Validation Failed: Sender 1141994807 (Side 2) tried to control Side 1
+[DEBUG] Standard move start for Z'Rak't Zoz

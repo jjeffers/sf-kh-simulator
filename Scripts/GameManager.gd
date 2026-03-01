@@ -4209,15 +4209,17 @@ func _update_movement_ui_list():
 		list_movement.add_child(btn)
 		
 	# Find unactivated Seekers for active side
-	var my_inactive_seekers = active_seekers.filter(func(s): return s["side_id"] == current_side_id and s.get("speed", 0) == 0)
-	for seeker in my_inactive_seekers:
-		var btn = Button.new()
-		btn.text = "Activate Seeker @ %v" % seeker["pos"]
-		btn.modulate = Color.ORANGE
-		btn.pressed.connect(func():
-			_on_activate_seeker_pressed(seeker)
-		)
-		list_movement.add_child(btn)
+	var is_admin_or_owner = (my_side_id == 0) or (my_side_id == current_side_id)
+	if is_admin_or_owner:
+		var my_inactive_seekers = active_seekers.filter(func(s): return s["side_id"] == current_side_id and s.get("speed", 0) == 0)
+		for seeker in my_inactive_seekers:
+			var btn = Button.new()
+			btn.text = "Activate Seeker @ %v" % seeker["pos"]
+			btn.modulate = Color.ORANGE
+			btn.pressed.connect(func():
+				_on_activate_seeker_pressed(seeker)
+			)
+			list_movement.add_child(btn)
 	
 func execute_commit_move(ship_name: String, path: Array, final_facing: int, orbit_dir: int, is_orbiting: bool):
 	# Test Compatibility Wrapper
