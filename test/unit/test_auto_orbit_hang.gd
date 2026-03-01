@@ -19,9 +19,8 @@ func before_each():
 	station.speed = 0 # Station shouldn't move
 	
 	if station.get_parent() == null:
-		_game_manager.add_child(station)
+		game_manager.add_child(station)
 	game_manager.ships.append(station)
-	game_manager.add_child(station)
 
 func test_auto_orbit_with_no_planet_does_not_hang():
 	# Scenario: Station wants to orbit, but NO PLANET is nearby.

@@ -17,6 +17,7 @@ func after_each():
 	network_manager.game_setup_data.clear()
 
 func test_host_assignment_surprise_attack_upf():
+	network_manager.game_setup_data.clear()
 	# Simulate Surprise Attack
 	# Side 0: Sathar. Side 1: UPF.
 	# Lobby Team 2 -> Side 1 (UPF).

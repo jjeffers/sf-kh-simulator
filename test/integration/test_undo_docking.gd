@@ -24,9 +24,8 @@ func before_each():
 	_carrier.speed = 0
 	_carrier.facing = 0
 	if _carrier.get_parent() == null:
-		_game_manager.add_child(_carrier)
-	_gm.ships.append(_carrier)
-	_gm.add_child(_carrier)
+		_gm.add_child(_carrier)
+		_gm.ships.append(_carrier)
 	
 	# Setup Fighter (Docked)
 	_fighter = ship_script.new()
@@ -38,9 +37,8 @@ func before_each():
 	_fighter.facing = 0
 	_fighter.dock_at(_carrier)
 	if _fighter.get_parent() == null:
-		_game_manager.add_child(_fighter)
-	_gm.ships.append(_fighter)
-	_gm.add_child(_fighter)
+		_gm.add_child(_fighter)
+		_gm.ships.append(_fighter)
 
 func test_undo_carrier_move_resets_fighter():
 	# 1. Capture Start State (Simulate Turn Start)

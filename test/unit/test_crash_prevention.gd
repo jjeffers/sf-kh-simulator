@@ -18,18 +18,16 @@ func before_each():
 	s1.side_id = 1
 	s1.grid_position = Vector3i(0, 0, 0)
 	if s1.get_parent() == null:
-		_game_manager.add_child(s1)
+		_gm.add_child(s1)
 	_gm.ships.append(s1)
-	_gm.add_child(s1)
 	
 	var s2 = ShipScript.new()
 	s2.name = "Victim"
 	s2.side_id = 2
 	s2.grid_position = Vector3i(1, -1, 0)
 	if s2.get_parent() == null:
-		_game_manager.add_child(s2)
+		_gm.add_child(s2)
 	_gm.ships.append(s2)
-	_gm.add_child(s2)
 	
 	_mm = MiniMapScript.new()
 	_mm.game_manager = _gm

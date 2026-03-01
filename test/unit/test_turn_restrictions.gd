@@ -31,9 +31,8 @@ func before_each():
 	_ship.name = "TestShip"
 	_ship.side_id = 1
 	if _ship.get_parent() == null:
-		_game_manager.add_child(_ship)
+		_gm.add_child(_ship)
 	_gm.ships.append(_ship)
-	_gm.add_child(_ship)
 
 func after_each():
 	_gm.free()
@@ -116,9 +115,8 @@ func test_cycle_selection_disabled_when_not_my_turn():
 	enemy.name = "EnemyShip"
 	enemy.side_id = 2
 	if enemy.get_parent() == null:
-		_game_manager.add_child(enemy)
+		_gm.add_child(enemy)
 	_gm.ships.append(enemy)
-	_gm.add_child(enemy)
 	
 	# If logic is "cycle MY ships", then enemy shouldn't be selected anyway.
 	# But if logic is "cycle ANY ship", and we are restricted...

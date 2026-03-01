@@ -20,9 +20,8 @@ func before_each():
 	ship.adf = 1
 	
 	if ship.get_parent() == null:
-		_game_manager.add_child(ship)
+		game_manager.add_child(ship)
 	game_manager.ships.append(ship)
-	game_manager.add_child(ship)
 	
 	game_manager.selected_ship = ship
 	game_manager.my_side_id = 1
@@ -91,6 +90,8 @@ func test_turn_after_move_preview():
 	
 	# Now we have moved 1 step.
 	game_manager.can_turn_this_step = true # Enabled after move
+	game_manager.start_speed = 3
+	game_manager.turns_remaining = 3
 	
 	# 2. Hover Left relative to new facing
 	# Facing 1 (SE?). Left is 0 (E).
@@ -123,6 +124,7 @@ func test_mouse_over_invalid_turn_preview():
 	# Should NOT rotate.
 	game_manager.ghost_ship.facing = 1
 	game_manager.can_turn_this_step = true
+	game_manager.start_speed = 3
 	
 	var rear_hex = Vector3i(0, -1, 1)
 	

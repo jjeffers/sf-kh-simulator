@@ -30,18 +30,14 @@ func before_each():
 	enemy_2.grid_position = Vector3i(0, 0, 0)
 	
 	if friendly_ship.get_parent() == null:
-		_game_manager.add_child(friendly_ship)
+		game_manager.add_child(friendly_ship)
 	game_manager.ships.append(friendly_ship)
 	if enemy_1.get_parent() == null:
-		_game_manager.add_child(enemy_1)
+		game_manager.add_child(enemy_1)
 	game_manager.ships.append(enemy_1)
 	if enemy_2.get_parent() == null:
-		_game_manager.add_child(enemy_2)
+		game_manager.add_child(enemy_2)
 	game_manager.ships.append(enemy_2)
-	
-	game_manager.add_child(friendly_ship)
-	game_manager.add_child(enemy_1)
-	game_manager.add_child(enemy_2)
 	
 	game_manager.current_phase = game_manager.Phase.COMBAT
 	game_manager.my_side_id = 1

@@ -27,18 +27,16 @@ func test_planet_blocks_los():
 	# Give weapon with range
 	shooter.weapons = [ {"name": "Laser", "type": "Laser", "range": 10, "arc": "T", "ammo": 10, "max_ammo": 10}]
 	if shooter.get_parent() == null:
-		_game_manager.add_child(shooter)
+		gm.add_child(shooter)
 	gm.ships.append(shooter)
-	add_child_autofree(shooter)
 	
 	target = ship_script.new()
 	target.name = "Target"
 	target.grid_position = Vector3i(2, -2, 0)
 	target.side_id = 2
 	if target.get_parent() == null:
-		_game_manager.add_child(target)
+		gm.add_child(target)
 	gm.ships.append(target)
-	add_child_autofree(target)
 	
 	# Verify LOS is blocked
 	var targets = gm._get_valid_targets(shooter)
@@ -61,18 +59,16 @@ func test_planet_does_not_block_clear_los():
 	shooter.side_id = 1
 	shooter.weapons = [ {"name": "Laser", "type": "Laser", "range": 10, "arc": "T", "ammo": 10}]
 	if shooter.get_parent() == null:
-		_game_manager.add_child(shooter)
+		gm.add_child(shooter)
 	gm.ships.append(shooter)
-	add_child_autofree(shooter)
 	
 	target = ship_script.new()
 	target.name = "Target"
 	target.grid_position = Vector3i(2, -2, 0)
 	target.side_id = 2
 	if target.get_parent() == null:
-		_game_manager.add_child(target)
+		gm.add_child(target)
 	gm.ships.append(target)
-	add_child_autofree(target)
 	
 	# Verify LOS is valid
 	var targets = gm._get_valid_targets(shooter)

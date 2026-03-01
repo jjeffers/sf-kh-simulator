@@ -1,22 +1,20 @@
 extends GutTest
 
-var game_scene = preload("res://Main.tscn")
+var game_scene = preload("res://Scenes/Main.tscn")
 var game_manager: Node2D
 
 func before_each():
 	game_manager = game_scene.instantiate()
 	get_tree().root.add_child(game_manager)
 	
-	GameManager.reset_state()
-	GameManager.test_force_online = false 
-	GameManager.my_side_id = 0
+	game_manager.test_force_online = false 
+	game_manager.my_side_id = 0
 	
 	NetworkManager.game_setup_data = {
 		"scenario": "simple_test",
 		"host_side": 0 
 	}
-	
-	GameManager.start_game()
+	game_manager.setup_game(12345, "simple_test")
 	
 	await get_tree().process_frame
 	await get_tree().process_frame
@@ -24,12 +22,13 @@ func before_each():
 func after_each():
 	if is_instance_valid(game_manager):
 		game_manager.queue_free()
-	GameManager.reset_state()
 	await get_tree().process_frame
 
 func test_hull_integrity_risk_calculation():
-	var ship = game_manager._find_ship_by_name("Test Ship 1")
-	assert_not_null(ship, "Test ship should exist")
+	var ship = load("res://Scripts/Ship.gd").new()
+	ship.name = "Test Ship 1"
+	game_manager.add_child(ship)
+	game_manager.ships.append(ship)
 	
 	# Force base values
 	ship.max_hull = 100
@@ -56,8 +55,8 @@ func test_hull_integrity_risk_calculation():
 func test_mr_used_for_plan_calculation():
 	var start_pos = Vector3i(0, 0, 0)
 	var path: Array[Vector3i] = [
-		Vector3i(1, -1, 0), # Move direction 0 (Facing Right/Up)
-		Vector3i(2, -1, -1) # Move direction 0 
+		Vector3i(1, 0, -1), # Move direction 0 (East)
+		Vector3i(2, 0, -2) # Move direction 0 (East)
 	]
 	
 	# Started facing 0, moved 2 hexes facing 0, ended facing 1 (Right Turn)
@@ -66,20 +65,22 @@ func test_mr_used_for_plan_calculation():
 	
 	# Complex Path
 	# Start 0
-	# Hex 1: dir 1
-	# Hex 2: dir 0
-	# Final Facing: 5
+	# Hex 1: dir 1 SE (0, 1, -1)
+	# Hex 2: dir 0 E (1, 0, -1)
+	# Final Facing: 5 NE
 	var path2: Array[Vector3i] = [
-		Vector3i(1, 0, -1), # turn 0->1 (cost 1)
-		Vector3i(2, -1, -1) # turn 1->0 (cost 1)
+		Vector3i(0, 1, -1), # turn 0->1 (cost 1)
+		Vector3i(1, 1, -2) # turn 1->0 (cost 1)
 	]
 	# Final facing 5: turn 0->5 (cost 1)
 	var mr2 = game_manager._calculate_mr_used_for_plan(start_pos, 0, path2, 5)
 	assert_eq(mr2, 3, "Complex zig-zag and final turn should cost 3 MR")
 
 func test_hull_integrity_execution_destruction():
-	var ship = game_manager._find_ship_by_name("Test Ship 1")
-	assert_not_null(ship, "Test ship should exist")
+	var ship = load("res://Scripts/Ship.gd").new()
+	ship.name = "Test Ship 1"
+	game_manager.add_child(ship)
+	game_manager.ships.append(ship)
 	
 	# Force into danger zone
 	ship.max_hull = 100

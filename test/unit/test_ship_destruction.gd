@@ -25,7 +25,7 @@ func test_ship_destruction_signal_error():
 	# So I should let GM setup a ship and destroy it.
 	
 	if s.get_parent() == null:
-		_game_manager.add_child(s)
+		gm.add_child(s)
 	gm.ships.append(s)
 	
 	# This is the line in GM: s.ship_destroyed.connect(func(ship): _on_ship_destroyed(ship))

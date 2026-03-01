@@ -1,0 +1,30 @@
+Godot Engine v4.6.1.stable.official.14d19694e - https://godotengine.org
+
+[MainMenu] Auto-Hosting local match...
+[MainMenu] Pre-loading scenario:the_last_stand
+[Lobby] Start Game Pressed!
+[NetworkManager] Starting Game RPC received. Changing Scene to Main.tscn...
+WARNING: res://Scenes/Main.tscn:3 - ext_resource, invalid UID: uid://cvru4lxy5bnj1 - using text path instead: res://Scripts/GameManager.gd
+     at: load (scene/resources/resource_format_text.cpp:500)
+     GDScript backtrace (most recent call first):
+         [0] start_game_rpc (res://Scripts/NetworkManager.gd:157)
+         [1] _on_start_pressed (res://Scripts/Lobby.gd:156)
+[DEBUG] _build_repair_panel called
+[Turn 1] [DEBUG] Initializing repair_panel
+[Turn 1] Player 1 finished loading.
+[Turn 1] All Players Ready. Starting Game...
+GameManager: Generated Random Seed: 1131657038
+[Turn 1] Game Setup Received: Seed 1131657038
+[Turn 1] Loading Scenario: The Last Stand
+[DEBUG] Ship Fortress K'zdit loaded with Orbit Dir 1
+[Turn 1] Fighter a docked at Fortress K'zdit
+[Turn 1] Fighter b docked at Fortress K'zdit
+[Turn 1] Fighter A docked at Infamous
+[Turn 1] Fighter B docked at Infamous
+[Turn 1] [color=cyan]=== DEPLOYMENT Phase ===[/color]
+[DEBUG] _update_deployment_ui called - Subphase: 1, my_side_id: 1
+Assigned Player 2 to Peer 66336202
+.14d19694e - https://godotengine.org
+
+[MainMenu] Auto-Joining match...
+Connecting to ws://127.0.0.1:7000

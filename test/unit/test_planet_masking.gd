@@ -22,10 +22,10 @@ func before_each():
 	
 	_gm.ships.clear()
 	if _shooter.get_parent() == null:
-		_game_manager.add_child(_shooter)
+		_gm.add_child(_shooter)
 	_gm.ships.append(_shooter)
 	if _target.get_parent() == null:
-		_game_manager.add_child(_target)
+		_gm.add_child(_target)
 	_gm.ships.append(_target)
 
 func after_each():

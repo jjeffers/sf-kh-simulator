@@ -16,17 +16,15 @@ func _init():
 	s1.side_id = 1
 	s1.name = "Ship_S1"
 	if s1.get_parent() == null:
-		_game_manager.add_child(s1)
+		gm.add_child(s1)
 	gm.ships.append(s1)
-	gm.add_child(s1)
 	
 	var s2 = load("res://Scripts/Ship.gd").new()
 	s2.side_id = 2
 	s2.name = "Ship_S2"
 	if s2.get_parent() == null:
-		_game_manager.add_child(s2)
+		gm.add_child(s2)
 	gm.ships.append(s2)
-	gm.add_child(s2)
 	
 	# 3. Start Turn Cycle
 	print("Calling start_turn_cycle()...")

@@ -1,0 +1,1816 @@
+Godot Engine v4.6.1.stable.official.14d19694e - https://godotengine.org
+
+---  GUT  ---
+[1m[INFO]:  [0musing [/home/jdjeffers/.local/share/godot/app_userdata/Hex Space Combat] for temporary output.
+Godot version:  4.6.1
+GUT version:  9.5.0
+[33m[WARNING]:  [0mIgnoring script test/integration/test_adf_speed_limits.gd because it does not extend GutTest
+[33m[WARNING]:  [0mIgnoring script test/integration/test_batch_movement.gd because it does not extend GutTest
+[33m[WARNING]:  [0mIgnoring script test/integration/test_combat_flow.gd because it does not extend GutTest
+[33m[WARNING]:  [0mIgnoring script test/integration/test_combat_reset.gd because it does not extend GutTest
+[33m[WARNING]:  [0mIgnoring script test/integration/test_combat_sync.gd because it does not extend GutTest
+[33m[WARNING]:  [0mIgnoring script test/integration/test_combat_validation.gd because it does not extend GutTest
+[33m[WARNING]:  [0mIgnoring script test/integration/test_full_turn_loop.gd because it does not extend GutTest
+[33m[WARNING]:  [0mIgnoring script test/integration/test_full_turn_with_casualties.gd because it does not extend GutTest
+[33m[WARNING]:  [0mIgnoring script test/integration/test_hull_integrity.gd because it does not extend GutTest
+[33m[WARNING]:  [0mIgnoring script test/integration/test_initiative_order.gd because it does not extend GutTest
+[33m[WARNING]:  [0mIgnoring script test/integration/test_movement_plotting.gd because it does not extend GutTest
+[33m[WARNING]:  [0mIgnoring script test/integration/test_movement_ux.gd because it does not extend GutTest
+[33m[WARNING]:  [0mIgnoring script test/integration/test_movement_validation.gd because it does not extend GutTest
+[33m[WARNING]:  [0mIgnoring script test/integration/test_orbit_automation.gd because it does not extend GutTest
+[33m[WARNING]:  [0mIgnoring script test/integration/test_planet_collision.gd because it does not extend GutTest
+[33m[WARNING]:  [0mIgnoring script test/integration/test_repair_distinct_slots.gd because it does not extend GutTest
+[33m[WARNING]:  [0mIgnoring script test/integration/test_repair_phase.gd because it does not extend GutTest
+[33m[WARNING]:  [0mIgnoring script test/integration/test_repair_ui_selection.gd because it does not extend GutTest
+[33m[WARNING]:  [0mIgnoring script test/integration/test_second_turn_combat.gd because it does not extend GutTest
+[33m[WARNING]:  [0mIgnoring script test/integration/test_shared_icm_defense.gd because it does not extend GutTest
+[33m[WARNING]:  [0mIgnoring script test/integration/test_station_auto_orbit.gd because it does not extend GutTest
+[33m[WARNING]:  [0mIgnoring script test/integration/test_station_orbit_debug.gd because it does not extend GutTest
+[33m[WARNING]:  [0mIgnoring script test/integration/test_station_orbit_validation.gd because it does not extend GutTest
+[33m[WARNING]:  [0mIgnoring script test/integration/test_station_range.gd because it does not extend GutTest
+[33m[WARNING]:  [0mIgnoring script test/integration/test_undo_committed.gd because it does not extend GutTest
+[33m[WARNING]:  [0mIgnoring script test/integration/test_undo_docking.gd because it does not extend GutTest
+[33m[WARNING]:  [0mIgnoring script test/integration/test_undo_reset.gd because it does not extend GutTest
+[33m[WARNING]:  [0mIgnoring script test/integration/test_undo_sync.gd because it does not extend GutTest
+[33m[WARNING]:  [0mIgnoring script test/integration/test_undock_targeting_bug.gd because it does not extend GutTest
+[33m[WARNING]:  [0mIgnoring script test/test_turn_sequence_refactor.gd because it does not extend GutTest
+[33m[WARNING]:  [0mIgnoring script test/unit/test_docked_movement.gd because it does not extend GutTest
+[33m[WARNING]:  [0mIgnoring script test/unit/test_enemy_selection_highlights.gd because it does not extend GutTest
+[33m[WARNING]:  [0mIgnoring script test/unit/test_facing_accumulation.gd because it does not extend GutTest
+[33m[WARNING]:  [0mIgnoring script test/unit/test_ghost_path_follow.gd because it does not extend GutTest
+[33m[WARNING]:  [0mIgnoring script test/unit/test_gravity_wells.gd because it does not extend GutTest
+[33m[WARNING]:  [0mIgnoring script test/unit/test_mouse_facing.gd because it does not extend GutTest
+[33m[WARNING]:  [0mIgnoring script test/unit/test_mouse_facing_cost.gd because it does not extend GutTest
+[33m[WARNING]:  [0mIgnoring script test/unit/test_movement_execution.gd because it does not extend GutTest
+[33m[WARNING]:  [0mIgnoring script test/unit/test_movement_sync.gd because it does not extend GutTest
+[33m[WARNING]:  [0mIgnoring script test/unit/test_movement_ui_visuals.gd because it does not extend GutTest
+[33m[WARNING]:  [0mIgnoring script test/unit/test_movement_viz.gd because it does not extend GutTest
+[33m[WARNING]:  [0mIgnoring script test/unit/test_multi_stack.gd because it does not extend GutTest
+[33m[WARNING]:  [0mIgnoring script test/unit/test_network_visualization.gd because it does not extend GutTest
+[33m[WARNING]:  [0mIgnoring script test/unit/test_phase_indicator.gd because it does not extend GutTest
+[33m[WARNING]:  [0mIgnoring script test/unit/test_planet_los.gd because it does not extend GutTest
+[33m[WARNING]:  [0mIgnoring script test/unit/test_planet_masking.gd because it does not extend GutTest
+[33m[WARNING]:  [0mIgnoring script test/unit/test_ship_destruction.gd because it does not extend GutTest
+[33m[WARNING]:  [0mIgnoring script test/unit/test_stack_selection_bug.gd because it does not extend GutTest
+[33m[WARNING]:  [0mIgnoring script test/unit/test_turn_restrictions.gd because it does not extend GutTest
+[4m
+
+test/integration/test_acceleration_persistence.gd
+[0m* test_acceleration_to_3_persists
+[DEBUG] _build_repair_panel called
+[Turn 1] [DEBUG] Initializing repair_panel
+[DEBUG] GameManager: Peer 1 NOT in Lobby Teams. Defaulting to 0 (Spectator). Teams: {  }
+[Turn 1] Network: Default Assignment (Host=1, Client=2). My Side: 1
+[Turn 1] Player 1 finished loading.
+[Turn 1] All Players Ready. Starting Game...
+GameManager: Generated Random Seed: 3718512813
+[Turn 1] Game Setup Received: Seed 3718512813
+[SCENARIO] Sathar Entry Edge: 4 (Vec: (0, -1, 1)), Facing: 1
+[Turn 1] Loading Scenario: Surprise Attack!
+[DEBUG] Ship Station Alpha loaded with Orbit Dir 1
+[Turn 1] Defiant docked at Station Alpha
+[Turn 1] Stiletto docked at Station Alpha
+[Turn 1] [color=cyan]=== DEPLOYMENT Phase ===[/color]
+[Turn 1] [color=yellow]AI Spawning for Side 1 (Sathar: true)[/color]
+[Turn 1] [color=yellow]AI Spawning for Side 2 (Sathar: false)[/color]
+[DEBUG] _update_deployment_ui called - Subphase: 2, my_side_id: 1
+DEBUG: Before _on_commit_move
+DEBUG: _on_commit_move for TestShip
+DEBUG: Path size: 3
+DEBUG: Calling register_movement_plan locally
+[Turn 1] Orders Received for TestShip
+DEBUG: After _on_commit_move
+DEBUG: Before execute_all_movement
+>>> DIAGNOSTIC: execute_all_movement running for side: 1 on peer: 1
+[Turn 1] Executing Movement Phase for Side UPF
+[Turn 1] [color=yellow]EXECUTE LOOP: Checking Ship TestShip (Class: Destroyer, Mines: 0)[/color]
+>>> DIAGNOSTIC: Entering Mine Detonations. Active Mines: 0 on peer: 1
+[Turn 1] [color=cyan]!!! DEBUG !!! Entering Mine Detonations. Active Mines: 0[/color]
+[Turn 1] Movement Phase Complete for Side 1. Starting Combat.
+[DEBUG] start_combat_passive: Side 2 firing (Opponent of Moving Side 1)
+[Turn 1] Combat Planning: Side 2
+[DEBUG] TARGET CHECK P2. Ships: 0
+[DEBUG] NO TARGETS FOUND for P2
+[Turn 1] No valid targets for Side 2. Skipping...
+DEBUG: After execute_all_movement
+DEBUG: _ship exists, speed is 3
+* test_icm_dialog_shows_target_name
+[DEBUG] _build_repair_panel called
+[Turn 1] [DEBUG] Initializing repair_panel
+[DEBUG] GameManager: Peer 1 NOT in Lobby Teams. Defaulting to 0 (Spectator). Teams: {  }
+[Turn 1] Network: Default Assignment (Host=1, Client=2). My Side: 1
+[Turn 1] Player 1 finished loading.
+[Turn 1] All Players Ready. Starting Game...
+GameManager: Generated Random Seed: 2673384358
+[Turn 1] Game Setup Received: Seed 2673384358
+[SCENARIO] Sathar Entry Edge: 2 (Vec: (-1, 1, 0)), Facing: 5
+[Turn 1] Loading Scenario: Surprise Attack!
+[DEBUG] Ship Station Alpha loaded with Orbit Dir 1
+[Turn 1] Defiant docked at Station Alpha
+[Turn 1] Stiletto docked at Station Alpha
+[Turn 1] [color=cyan]=== DEPLOYMENT Phase ===[/color]
+[Turn 1] [color=yellow]AI Spawning for Side 1 (Sathar: true)[/color]
+[Turn 1] [color=yellow]AI Spawning for Side 2 (Sathar: false)[/color]
+[DEBUG] _update_deployment_ui called - Subphase: 2, my_side_id: 1
+[31m    [Failed]:  [0mExpected [<null>] to be anything but NULL:  ICM Panel should be created
+      at line 98
+[31m    [Failed]:  [0mUnexpected Errors:
+    [1] <engine-2>Invalid call. Nonexistent function 'get_child' in base 'Nil'.
+      at line -1
+[1m1/2 passed.
+[0m[4m
+
+test/integration/test_camera_zoom.gd
+[0m* test_camera_exists
+[DEBUG] _build_repair_panel called
+[Turn 1] [DEBUG] Initializing repair_panel
+[DEBUG] GameManager: Peer 1 NOT in Lobby Teams. Defaulting to 0 (Spectator). Teams: {  }
+[Turn 1] Network: Default Assignment (Host=1, Client=2). My Side: 1
+[Turn 1] Player 1 finished loading.
+[Turn 1] All Players Ready. Starting Game...
+GameManager: Generated Random Seed: 237869227
+[Turn 1] Game Setup Received: Seed 237869227
+[SCENARIO] Sathar Entry Edge: 5 (Vec: (1, -1, 0)), Facing: 2
+[Turn 1] Loading Scenario: Surprise Attack!
+[DEBUG] Ship Station Alpha loaded with Orbit Dir 1
+[Turn 1] Defiant docked at Station Alpha
+[Turn 1] Stiletto docked at Station Alpha
+[Turn 1] [color=cyan]=== DEPLOYMENT Phase ===[/color]
+[Turn 1] [color=yellow]AI Spawning for Side 1 (Sathar: true)[/color]
+[Turn 1] [color=yellow]AI Spawning for Side 2 (Sathar: false)[/color]
+[DEBUG] _update_deployment_ui called - Subphase: 2, my_side_id: 1
+* test_zoom_initialization
+[DEBUG] _build_repair_panel called
+[Turn 1] [DEBUG] Initializing repair_panel
+[DEBUG] GameManager: Peer 1 NOT in Lobby Teams. Defaulting to 0 (Spectator). Teams: {  }
+[Turn 1] Network: Default Assignment (Host=1, Client=2). My Side: 1
+[Turn 1] Player 1 finished loading.
+[Turn 1] All Players Ready. Starting Game...
+GameManager: Generated Random Seed: 2830397992
+[Turn 1] Game Setup Received: Seed 2830397992
+[SCENARIO] Sathar Entry Edge: 2 (Vec: (-1, 1, 0)), Facing: 5
+[Turn 1] Loading Scenario: Surprise Attack!
+[DEBUG] Ship Station Alpha loaded with Orbit Dir 1
+[Turn 1] Defiant docked at Station Alpha
+[Turn 1] Stiletto docked at Station Alpha
+[Turn 1] [color=cyan]=== DEPLOYMENT Phase ===[/color]
+[Turn 1] [color=yellow]AI Spawning for Side 1 (Sathar: true)[/color]
+[Turn 1] [color=yellow]AI Spawning for Side 2 (Sathar: false)[/color]
+[DEBUG] _update_deployment_ui called - Subphase: 2, my_side_id: 1
+* test_zoom_in_input
+[DEBUG] _build_repair_panel called
+[Turn 1] [DEBUG] Initializing repair_panel
+[DEBUG] GameManager: Peer 1 NOT in Lobby Teams. Defaulting to 0 (Spectator). Teams: {  }
+[Turn 1] Network: Default Assignment (Host=1, Client=2). My Side: 1
+[Turn 1] Player 1 finished loading.
+[Turn 1] All Players Ready. Starting Game...
+GameManager: Generated Random Seed: 2853167448
+[Turn 1] Game Setup Received: Seed 2853167448
+[SCENARIO] Sathar Entry Edge: 2 (Vec: (-1, 1, 0)), Facing: 5
+[Turn 1] Loading Scenario: Surprise Attack!
+[DEBUG] Ship Station Alpha loaded with Orbit Dir 1
+[Turn 1] Defiant docked at Station Alpha
+[Turn 1] Stiletto docked at Station Alpha
+[Turn 1] [color=cyan]=== DEPLOYMENT Phase ===[/color]
+[Turn 1] [color=yellow]AI Spawning for Side 1 (Sathar: true)[/color]
+[Turn 1] [color=yellow]AI Spawning for Side 2 (Sathar: false)[/color]
+[DEBUG] _update_deployment_ui called - Subphase: 2, my_side_id: 1
+* test_zoom_out_input
+[DEBUG] _build_repair_panel called
+[Turn 1] [DEBUG] Initializing repair_panel
+[DEBUG] GameManager: Peer 1 NOT in Lobby Teams. Defaulting to 0 (Spectator). Teams: {  }
+[Turn 1] Network: Default Assignment (Host=1, Client=2). My Side: 1
+[Turn 1] Player 1 finished loading.
+[Turn 1] All Players Ready. Starting Game...
+GameManager: Generated Random Seed: 811857507
+[Turn 1] Game Setup Received: Seed 811857507
+[SCENARIO] Sathar Entry Edge: 2 (Vec: (-1, 1, 0)), Facing: 5
+[Turn 1] Loading Scenario: Surprise Attack!
+[DEBUG] Ship Station Alpha loaded with Orbit Dir 1
+[Turn 1] Defiant docked at Station Alpha
+[Turn 1] Stiletto docked at Station Alpha
+[Turn 1] [color=cyan]=== DEPLOYMENT Phase ===[/color]
+[Turn 1] [color=yellow]AI Spawning for Side 1 (Sathar: true)[/color]
+[Turn 1] [color=yellow]AI Spawning for Side 2 (Sathar: false)[/color]
+[DEBUG] _update_deployment_ui called - Subphase: 2, my_side_id: 1
+* test_zoom_clamping
+[DEBUG] _build_repair_panel called
+[Turn 1] [DEBUG] Initializing repair_panel
+[DEBUG] GameManager: Peer 1 NOT in Lobby Teams. Defaulting to 0 (Spectator). Teams: {  }
+[Turn 1] Network: Default Assignment (Host=1, Client=2). My Side: 1
+[Turn 1] Player 1 finished loading.
+[Turn 1] All Players Ready. Starting Game...
+GameManager: Generated Random Seed: 3399869151
+[Turn 1] Game Setup Received: Seed 3399869151
+[SCENARIO] Sathar Entry Edge: 0 (Vec: (1, 0, -1)), Facing: 3
+[Turn 1] Loading Scenario: Surprise Attack!
+[DEBUG] Ship Station Alpha loaded with Orbit Dir 1
+[Turn 1] Defiant docked at Station Alpha
+[Turn 1] Stiletto docked at Station Alpha
+[Turn 1] [color=cyan]=== DEPLOYMENT Phase ===[/color]
+[Turn 1] [color=yellow]AI Spawning for Side 1 (Sathar: true)[/color]
+[Turn 1] [color=yellow]AI Spawning for Side 2 (Sathar: false)[/color]
+[DEBUG] _update_deployment_ui called - Subphase: 2, my_side_id: 1
+* test_camera_process_zoom_smoothing
+[DEBUG] _build_repair_panel called
+[Turn 1] [DEBUG] Initializing repair_panel
+[DEBUG] GameManager: Peer 1 NOT in Lobby Teams. Defaulting to 0 (Spectator). Teams: {  }
+[Turn 1] Network: Default Assignment (Host=1, Client=2). My Side: 1
+[Turn 1] Player 1 finished loading.
+[Turn 1] All Players Ready. Starting Game...
+GameManager: Generated Random Seed: 875324739
+[Turn 1] Game Setup Received: Seed 875324739
+[SCENARIO] Sathar Entry Edge: 2 (Vec: (-1, 1, 0)), Facing: 5
+[Turn 1] Loading Scenario: Surprise Attack!
+[DEBUG] Ship Station Alpha loaded with Orbit Dir 1
+[Turn 1] Defiant docked at Station Alpha
+[Turn 1] Stiletto docked at Station Alpha
+[Turn 1] [color=cyan]=== DEPLOYMENT Phase ===[/color]
+[Turn 1] [color=yellow]AI Spawning for Side 1 (Sathar: true)[/color]
+[Turn 1] [color=yellow]AI Spawning for Side 2 (Sathar: false)[/color]
+[DEBUG] _update_deployment_ui called - Subphase: 2, my_side_id: 1
+[1m6/6 passed.
+[0m[4m
+
+test/integration/test_docking_rearming.gd
+[0m* test_docking_rules
+[DEBUG] _build_repair_panel called
+[Turn 1] [DEBUG] Initializing repair_panel
+[DEBUG] GameManager: Peer 1 NOT in Lobby Teams. Defaulting to 0 (Spectator). Teams: {  }
+[Turn 1] Network: Default Assignment (Host=1, Client=2). My Side: 1
+[Turn 1] Player 1 finished loading.
+[Turn 1] All Players Ready. Starting Game...
+GameManager: Generated Random Seed: 528303747
+[Turn 1] Game Setup Received: Seed 528303747
+[SCENARIO] Sathar Entry Edge: 3 (Vec: (-1, 0, 1)), Facing: 0
+[Turn 1] Loading Scenario: Surprise Attack!
+[DEBUG] Ship Station Alpha loaded with Orbit Dir 1
+[Turn 1] Defiant docked at Station Alpha
+[Turn 1] Stiletto docked at Station Alpha
+[Turn 1] [color=cyan]=== DEPLOYMENT Phase ===[/color]
+[Turn 1] [color=yellow]AI Spawning for Side 1 (Sathar: true)[/color]
+[Turn 1] [color=yellow]AI Spawning for Side 2 (Sathar: false)[/color]
+[DEBUG] _update_deployment_ui called - Subphase: 2, my_side_id: 1
+* test_docked_movement_cascade
+[DEBUG] _build_repair_panel called
+[Turn 1] [DEBUG] Initializing repair_panel
+[DEBUG] GameManager: Peer 1 NOT in Lobby Teams. Defaulting to 0 (Spectator). Teams: {  }
+[Turn 1] Network: Default Assignment (Host=1, Client=2). My Side: 1
+[Turn 1] Player 1 finished loading.
+[Turn 1] All Players Ready. Starting Game...
+GameManager: Generated Random Seed: 4274832159
+[Turn 1] Game Setup Received: Seed 4274832159
+[SCENARIO] Sathar Entry Edge: 3 (Vec: (-1, 0, 1)), Facing: 0
+[Turn 1] Loading Scenario: Surprise Attack!
+[DEBUG] Ship Station Alpha loaded with Orbit Dir 1
+[Turn 1] Defiant docked at Station Alpha
+[Turn 1] Stiletto docked at Station Alpha
+[Turn 1] [color=cyan]=== DEPLOYMENT Phase ===[/color]
+[Turn 1] [color=yellow]AI Spawning for Side 1 (Sathar: true)[/color]
+[Turn 1] [color=yellow]AI Spawning for Side 2 (Sathar: false)[/color]
+[DEBUG] _update_deployment_ui called - Subphase: 2, my_side_id: 1
+* test_undock_on_move
+[DEBUG] _build_repair_panel called
+[Turn 1] [DEBUG] Initializing repair_panel
+[DEBUG] GameManager: Peer 1 NOT in Lobby Teams. Defaulting to 0 (Spectator). Teams: {  }
+[Turn 1] Network: Default Assignment (Host=1, Client=2). My Side: 1
+[Turn 1] Player 1 finished loading.
+[Turn 1] All Players Ready. Starting Game...
+GameManager: Generated Random Seed: 2592695064
+[Turn 1] Game Setup Received: Seed 2592695064
+[SCENARIO] Sathar Entry Edge: 1 (Vec: (0, 1, -1)), Facing: 4
+[Turn 1] Loading Scenario: Surprise Attack!
+[DEBUG] Ship Station Alpha loaded with Orbit Dir 1
+[Turn 1] Defiant docked at Station Alpha
+[Turn 1] Stiletto docked at Station Alpha
+[Turn 1] [color=cyan]=== DEPLOYMENT Phase ===[/color]
+[Turn 1] [color=yellow]AI Spawning for Side 1 (Sathar: true)[/color]
+[Turn 1] [color=yellow]AI Spawning for Side 2 (Sathar: false)[/color]
+[DEBUG] _update_deployment_ui called - Subphase: 2, my_side_id: 1
+[Turn 1] Orders Received for TestFighter
+[Turn 1] F TestFighter auto-undocked for maneuver.
+* test_rearm_mechanics
+[DEBUG] _build_repair_panel called
+[Turn 1] [DEBUG] Initializing repair_panel
+[DEBUG] GameManager: Peer 1 NOT in Lobby Teams. Defaulting to 0 (Spectator). Teams: {  }
+[Turn 1] Network: Default Assignment (Host=1, Client=2). My Side: 1
+[Turn 1] Player 1 finished loading.
+[Turn 1] All Players Ready. Starting Game...
+GameManager: Generated Random Seed: 2286665769
+[Turn 1] Game Setup Received: Seed 2286665769
+[SCENARIO] Sathar Entry Edge: 5 (Vec: (1, -1, 0)), Facing: 2
+[Turn 1] Loading Scenario: Surprise Attack!
+[DEBUG] Ship Station Alpha loaded with Orbit Dir 1
+[Turn 1] Defiant docked at Station Alpha
+[Turn 1] Stiletto docked at Station Alpha
+[Turn 1] [color=cyan]=== DEPLOYMENT Phase ===[/color]
+[Turn 1] [color=yellow]AI Spawning for Side 1 (Sathar: true)[/color]
+[Turn 1] [color=yellow]AI Spawning for Side 2 (Sathar: false)[/color]
+[DEBUG] _update_deployment_ui called - Subphase: 2, my_side_id: 1
+[1m4/4 passed.
+[0m[4m
+
+test/integration/test_load_ship.gd
+[0m* test_load_ship
+SUCCESSFULLY LOADED SHIP.GD
+[1m1/1 passed.
+[0m[4m
+
+test/integration/test_min_speed_skip.gd
+[0m* test_skip_turn_with_min_speed
+[DEBUG] _build_repair_panel called
+[Turn 1] [DEBUG] Initializing repair_panel
+[DEBUG] GameManager: Peer 1 NOT in Lobby Teams. Defaulting to 0 (Spectator). Teams: {  }
+[Turn 1] Network: Default Assignment (Host=1, Client=2). My Side: 1
+[Turn 1] Player 1 finished loading.
+[Turn 1] All Players Ready. Starting Game...
+GameManager: Generated Random Seed: 675800081
+[Turn 1] Game Setup Received: Seed 675800081
+[SCENARIO] Sathar Entry Edge: 2 (Vec: (-1, 1, 0)), Facing: 5
+[Turn 1] Loading Scenario: Surprise Attack!
+[DEBUG] Ship Station Alpha loaded with Orbit Dir 1
+[Turn 1] Defiant docked at Station Alpha
+[Turn 1] Stiletto docked at Station Alpha
+[Turn 1] [color=cyan]=== DEPLOYMENT Phase ===[/color]
+[Turn 1] [color=yellow]AI Spawning for Side 1 (Sathar: true)[/color]
+[Turn 1] [color=yellow]AI Spawning for Side 2 (Sathar: false)[/color]
+[DEBUG] _update_deployment_ui called - Subphase: 2, my_side_id: 1
+>>> DIAGNOSTIC: execute_all_movement running for side: 1 on peer: 1
+[Turn 1] Executing Movement Phase for Side Sathar
+[Turn 1] [color=yellow]EXECUTE LOOP: Checking Ship Venemous (Class: Destroyer, Mines: 0)[/color]
+[Turn 1] [color=yellow]EXECUTE LOOP: Checking Ship Perdition (Class: Heavy Cruiser, Mines: 0)[/color]
+[Turn 1] [color=yellow]EXECUTE LOOP: Checking Ship FastShip (Class: Assault Scout, Mines: 0)[/color]
+>>> DIAGNOSTIC: Entering Mine Detonations. Active Mines: 0 on peer: 1
+[Turn 1] [color=cyan]!!! DEBUG !!! Entering Mine Detonations. Active Mines: 0[/color]
+[Turn 1] Movement Phase Complete for Side 1. Starting Combat.
+[DEBUG] start_combat_passive: Side 2 firing (Opponent of Moving Side 1)
+[Turn 1] Combat Planning: Side 2
+[DEBUG] TARGET CHECK P2. Ships: 3
+[DEBUG] VALID: Station Alpha found target with Laser Battery
+[1m1/1 passed.
+[0m[4m
+
+test/integration/test_mines_and_minelayer.gd
+[0m* test_minelayer_places_mine_and_detonates
+[DEBUG] _build_repair_panel called
+[Turn 1] [DEBUG] Initializing repair_panel
+[DEBUG] GameManager: Peer 1 NOT in Lobby Teams. Defaulting to 0 (Spectator). Teams: {  }
+[Turn 1] Network: Default Assignment (Host=1, Client=2). My Side: 1
+[Turn 1] Player 1 finished loading.
+[Turn 1] All Players Ready. Starting Game...
+GameManager: Generated Random Seed: 1074920313
+[Turn 1] Game Setup Received: Seed 1074920313
+[SCENARIO] Sathar Entry Edge: 0 (Vec: (1, 0, -1)), Facing: 3
+[Turn 1] Loading Scenario: Surprise Attack!
+[DEBUG] Ship Station Alpha loaded with Orbit Dir 1
+[Turn 1] Defiant docked at Station Alpha
+[Turn 1] Stiletto docked at Station Alpha
+[Turn 1] [color=cyan]=== DEPLOYMENT Phase ===[/color]
+[Turn 1] [color=yellow]AI Spawning for Side 1 (Sathar: true)[/color]
+[Turn 1] [color=yellow]AI Spawning for Side 2 (Sathar: false)[/color]
+[DEBUG] _update_deployment_ui called - Subphase: 2, my_side_id: 1
+[DEBUG] _build_repair_panel called
+[Turn 1] [DEBUG] Initializing repair_panel
+[Turn 1] Mine placement mode ON. Click valid path hexes to drop.
+DEBUG: _handle_movement_click called with hex: (5, -5, 0)
+[Turn 1] Planned mine drop at (5.000000, -5.000000, 0.000000).
+[Turn 1] Movement Phase: Sathar
+DEBUG: _on_commit_move for UPF_Minelayer_Test
+DEBUG: Path size: 1
+DEBUG: Calling register_movement_plan locally
+[Turn 1] Orders Received for UPF_Minelayer_Test
+>>> DIAGNOSTIC: execute_all_movement running for side: 1 on peer: 1
+[Turn 1] Executing Movement Phase for Side UPF
+[Turn 1] [color=yellow]EXECUTE LOOP: Checking Ship UPF_Minelayer_Test (Class: Minelayer, Mines: 1)[/color]
+[Turn 1] UPF_Minelayer_Test laid a spatial mine at (5.000000, -5.000000, 0.000000).
+>>> DIAGNOSTIC: Entering Mine Detonations. Active Mines: 1 on peer: 1
+[Turn 1] [color=cyan]!!! DEBUG !!! Entering Mine Detonations. Active Mines: 1[/color]
+[Turn 1] [color=cyan]  Mine at (5.000000, -5.000000, 0.000000) (Side 1)[/color]
+[Turn 1] [color=cyan]  Checking ship Sathar_Frigate_Test (Side 2) at (7.000000, -5.000000, -2.000000) with path [][/color]
+[Turn 1] Mines check complete. Hit ships size: 0
+[Turn 1] Movement Phase Complete for Side 1. Starting Combat.
+[DEBUG] start_combat_passive: Side 2 firing (Opponent of Moving Side 1)
+[Turn 1] Combat Planning: Side 2
+[DEBUG] TARGET CHECK P2. Ships: 1
+[DEBUG] VALID: Sathar_Frigate_Test found target with Laser Battery
+DEBUG: _on_commit_move for Sathar_Frigate_Test
+DEBUG: Path size: 2
+DEBUG: Calling register_movement_plan locally
+[Turn 1] Orders Received for Sathar_Frigate_Test
+>>> DIAGNOSTIC: execute_all_movement running for side: 2 on peer: 1
+[Turn 1] Executing Movement Phase for Side UPF
+[Turn 1] [color=yellow]EXECUTE LOOP: Checking Ship Sathar_Frigate_Test (Class: Frigate, Mines: 0)[/color]
+>>> DIAGNOSTIC: Entering Mine Detonations. Active Mines: 1 on peer: 1
+[Turn 1] [color=cyan]!!! DEBUG !!! Entering Mine Detonations. Active Mines: 1[/color]
+[Turn 1] [color=cyan]  Mine at (5.000000, -5.000000, 0.000000) (Side 1)[/color]
+[Turn 1] [color=cyan]  Checking ship Sathar_Frigate_Test (Side 2) at (5.000000, -5.000000, 0.000000) with path [(7, -5, -2), (6, -5, -1), (5, -5, 0)][/color]
+[Turn 1] Target Sathar_Frigate_Test HIT by mine!
+[Turn 1] Mines check complete. Hit ships size: 1
+[Turn 1] MINE DETONATED at (5.000000, -5.000000, 0.000000)!
+Combat Roll: Distance 0, Chance 60%, Rolled 19
+[Turn 1] Mine attacks FG Sathar_Frigate_Test: Rolled 19 vs 60% -> HIT
+Damage Roll: 3d10+5 -> 17
+[Turn 1] FG Sathar_Frigate_Test took 17 damage from spatial mine!
+[Turn 1] Movement Phase Complete for Side 2. Starting Combat.
+[DEBUG] start_combat_passive: Side 1 firing (Opponent of Moving Side 2)
+[Turn 1] Combat Planning: Side 1
+[DEBUG] TARGET CHECK P1. Ships: 1
+[DEBUG] VALID: UPF_Minelayer_Test found target with Laser Battery 1
+DEBUG Target grid pos: (5, -5, 0) expected: (5, -5, 0)
+DEBUG Active mines: []
+[1m1/1 passed.
+[0m[4m
+
+test/integration/test_minimap_input.gd
+[0m* test_minimap_click_updates_camera
+[DEBUG] _build_repair_panel called
+[Turn 1] [DEBUG] Initializing repair_panel
+[DEBUG] GameManager: Peer 1 NOT in Lobby Teams. Defaulting to 0 (Spectator). Teams: {  }
+[Turn 1] Network: Default Assignment (Host=1, Client=2). My Side: 1
+[Turn 1] Player 1 finished loading.
+[Turn 1] All Players Ready. Starting Game...
+GameManager: Generated Random Seed: 3611885360
+[Turn 1] Game Setup Received: Seed 3611885360
+[SCENARIO] Sathar Entry Edge: 1 (Vec: (0, 1, -1)), Facing: 4
+[Turn 1] Loading Scenario: Surprise Attack!
+[DEBUG] Ship Station Alpha loaded with Orbit Dir 1
+[Turn 1] Defiant docked at Station Alpha
+[Turn 1] Stiletto docked at Station Alpha
+[Turn 1] [color=cyan]=== DEPLOYMENT Phase ===[/color]
+[Turn 1] [color=yellow]AI Spawning for Side 1 (Sathar: true)[/color]
+[Turn 1] [color=yellow]AI Spawning for Side 2 (Sathar: false)[/color]
+[DEBUG] _update_deployment_ui called - Subphase: 2, my_side_id: 1
+[DEBUG] _build_repair_panel called
+[Turn 1] [DEBUG] Initializing repair_panel
+[DEBUG] GameManager: Peer 1 NOT in Lobby Teams. Defaulting to 0 (Spectator). Teams: {  }
+[Turn 1] Network: Default Assignment (Host=1, Client=2). My Side: 1
+[Turn 1] Player 1 finished loading.
+[Turn 1] All Players Ready. Starting Game...
+GameManager: Generated Random Seed: 2238874618
+[Turn 1] Game Setup Received: Seed 2238874618
+[SCENARIO] Sathar Entry Edge: 3 (Vec: (-1, 0, 1)), Facing: 0
+[Turn 1] Loading Scenario: Surprise Attack!
+[DEBUG] Ship Station Alpha2 loaded with Orbit Dir 1
+[Turn 1] [color=cyan]=== DEPLOYMENT Phase ===[/color]
+[DEBUG] _update_deployment_ui called - Subphase: 2, my_side_id: 1
+[33m    [WARNING]:  [0mWarn:  Float/Int comparison.  Got FLOAT but expected INT
+[33m    [WARNING]:  [0mWarn:  Float/Int comparison.  Got FLOAT but expected INT
+* test_minimap_ignores_other_input
+[DEBUG] _build_repair_panel called
+[Turn 1] [DEBUG] Initializing repair_panel
+[DEBUG] GameManager: Peer 1 NOT in Lobby Teams. Defaulting to 0 (Spectator). Teams: {  }
+[Turn 1] Network: Default Assignment (Host=1, Client=2). My Side: 1
+[Turn 1] Player 1 finished loading.
+[Turn 1] All Players Ready. Starting Game...
+GameManager: Generated Random Seed: 1816673066
+[Turn 1] Game Setup Received: Seed 1816673066
+[SCENARIO] Sathar Entry Edge: 0 (Vec: (1, 0, -1)), Facing: 3
+[Turn 1] Loading Scenario: Surprise Attack!
+[DEBUG] Ship Station Alpha loaded with Orbit Dir 1
+[Turn 1] Defiant docked at Station Alpha
+[Turn 1] Stiletto docked at Station Alpha
+[Turn 1] [color=cyan]=== DEPLOYMENT Phase ===[/color]
+[Turn 1] [color=yellow]AI Spawning for Side 1 (Sathar: true)[/color]
+[Turn 1] [color=yellow]AI Spawning for Side 2 (Sathar: false)[/color]
+[DEBUG] _update_deployment_ui called - Subphase: 2, my_side_id: 1
+[DEBUG] _build_repair_panel called
+[Turn 1] [DEBUG] Initializing repair_panel
+[DEBUG] GameManager: Peer 1 NOT in Lobby Teams. Defaulting to 0 (Spectator). Teams: {  }
+[Turn 1] Network: Default Assignment (Host=1, Client=2). My Side: 1
+[Turn 1] Player 1 finished loading.
+[Turn 1] All Players Ready. Starting Game...
+GameManager: Generated Random Seed: 2505025534
+[Turn 1] Game Setup Received: Seed 2505025534
+[SCENARIO] Sathar Entry Edge: 0 (Vec: (1, 0, -1)), Facing: 3
+[Turn 1] Loading Scenario: Surprise Attack!
+[DEBUG] Ship Station Alpha2 loaded with Orbit Dir 1
+[Turn 1] [color=cyan]=== DEPLOYMENT Phase ===[/color]
+[DEBUG] _update_deployment_ui called - Subphase: 2, my_side_id: 1
+[1m2/2 passed.
+[0m[4m
+
+test/integration/test_speed_bleed.gd
+[0m* test_speed_bleed_stationary
+[DEBUG] _build_repair_panel called
+[Turn 1] [DEBUG] Initializing repair_panel
+[DEBUG] GameManager: Peer 1 NOT in Lobby Teams. Defaulting to 0 (Spectator). Teams: {  }
+[Turn 1] Network: Default Assignment (Host=1, Client=2). My Side: 1
+[Turn 1] Player 1 finished loading.
+[Turn 1] All Players Ready. Starting Game...
+GameManager: Generated Random Seed: 2308889203
+[Turn 1] Game Setup Received: Seed 2308889203
+[SCENARIO] Sathar Entry Edge: 4 (Vec: (0, -1, 1)), Facing: 1
+[Turn 1] Loading Scenario: Surprise Attack!
+[DEBUG] Ship Station Alpha loaded with Orbit Dir 1
+[Turn 1] Defiant docked at Station Alpha
+[Turn 1] Stiletto docked at Station Alpha
+[Turn 1] [color=cyan]=== DEPLOYMENT Phase ===[/color]
+[Turn 1] [color=yellow]AI Spawning for Side 1 (Sathar: true)[/color]
+[Turn 1] [color=yellow]AI Spawning for Side 2 (Sathar: false)[/color]
+[DEBUG] _update_deployment_ui called - Subphase: 2, my_side_id: 1
+>>> DIAGNOSTIC: execute_all_movement running for side: 1 on peer: 1
+[Turn 1] Executing Movement Phase for Side Sathar
+[Turn 1] [color=yellow]EXECUTE LOOP: Checking Ship Venemous (Class: Destroyer, Mines: 0)[/color]
+[Turn 1] [color=yellow]EXECUTE LOOP: Checking Ship Perdition (Class: Heavy Cruiser, Mines: 0)[/color]
+[Turn 1] [color=yellow]EXECUTE LOOP: Checking Ship TestCarrier (Class: Assault Carrier, Mines: 0)[/color]
+>>> DIAGNOSTIC: Entering Mine Detonations. Active Mines: 0 on peer: 1
+[Turn 1] [color=cyan]!!! DEBUG !!! Entering Mine Detonations. Active Mines: 0[/color]
+[Turn 1] Movement Phase Complete for Side 1. Starting Combat.
+[DEBUG] start_combat_passive: Side 2 firing (Opponent of Moving Side 1)
+[Turn 1] Combat Planning: Side 2
+[DEBUG] TARGET CHECK P2. Ships: 3
+[DEBUG] VALID: Station Alpha found target with Laser Battery
+>>> DIAGNOSTIC: execute_all_movement running for side: 1 on peer: 1
+[Turn 1] Executing Movement Phase for Side Sathar
+[Turn 1] [color=yellow]EXECUTE LOOP: Checking Ship Venemous (Class: Destroyer, Mines: 0)[/color]
+[Turn 1] [color=yellow]EXECUTE LOOP: Checking Ship Perdition (Class: Heavy Cruiser, Mines: 0)[/color]
+[Turn 1] [color=yellow]EXECUTE LOOP: Checking Ship TestCarrier (Class: Assault Carrier, Mines: 0)[/color]
+>>> DIAGNOSTIC: Entering Mine Detonations. Active Mines: 0 on peer: 1
+[Turn 1] [color=cyan]!!! DEBUG !!! Entering Mine Detonations. Active Mines: 0[/color]
+[Turn 1] Movement Phase Complete for Side 1. Starting Combat.
+[DEBUG] start_combat_passive: Side 2 firing (Opponent of Moving Side 1)
+[Turn 1] Combat Planning: Side 2
+[DEBUG] TARGET CHECK P2. Ships: 3
+[DEBUG] VALID: Station Alpha found target with Laser Battery
+[1m1/1 passed.
+[0m[4m
+
+test/integration/test_turn_cycling.gd
+[0m* test_turn_order_surprise_attack
+[DEBUG] _build_repair_panel called
+[Turn 1] [DEBUG] Initializing repair_panel
+[DEBUG] GameManager: Peer 1 NOT in Lobby Teams. Defaulting to 0 (Spectator). Teams: {  }
+[Turn 1] Network: Default Assignment (Host=1, Client=2). My Side: 1
+[Turn 1] Player 1 finished loading.
+[Turn 1] All Players Ready. Starting Game...
+GameManager: Generated Random Seed: 3999194542
+[Turn 1] Game Setup Received: Seed 3999194542
+[Turn 1] Error: Scenario  not found!
+[Turn 1] [color=cyan]=== DEPLOYMENT Phase ===[/color]
+[Turn 1] [color=yellow]AI Spawning for Side 1 (Sathar: false)[/color]
+[Turn 1] [color=yellow]AI Spawning for Side 2 (Sathar: false)[/color]
+[DEBUG] _update_deployment_ui called - Subphase: 2, my_side_id: 1
+[DEBUG] _build_repair_panel called
+[Turn 1] [DEBUG] Initializing repair_panel
+[Turn 1] Player 1 finished loading.
+[Turn 1] All Players Ready. Starting Game...
+GameManager: Generated Random Seed: 559944525
+[Turn 1] Game Setup Received: Seed 559944525
+[SCENARIO] Sathar Entry Edge: 0 (Vec: (1, 0, -1)), Facing: 3
+[Turn 1] Loading Scenario: Surprise Attack!
+[DEBUG] Ship Station Alpha loaded with Orbit Dir 1
+[Turn 1] Defiant docked at Station Alpha
+[Turn 1] Stiletto docked at Station Alpha
+[Turn 1] [color=cyan]=== DEPLOYMENT Phase ===[/color]
+[DEBUG] _update_deployment_ui called - Subphase: 2, my_side_id: 1
+[Turn 1] Deployment Complete. Starting Turn 1.
+[Turn 1] === Turn Start: Side Sathar ===
+DEBUG: Rejected Station Alpha Side:2 CurSide:1 Moved:false
+DEBUG: Rejected Defiant Side:2 CurSide:1 Moved:false
+DEBUG: Rejected Stiletto Side:2 CurSide:1 Moved:false
+DEBUG: start_movement_phase. Side: 1 Available: 2
+DEBUG: First available: Venemous ID: 1 Moved: false
+DEBUG: Skip Auto-Orbit Check: Venemous (Class: Destroyer, Orbit: 0)
+DEBUG: Skip Auto-Orbit Check: Perdition (Class: Heavy Cruiser, Orbit: 0)
+[DEBUG] Standard move start for Venemous
+DEBUG: Rejected Station Alpha Side:2 CurSide:1 Moved:false
+DEBUG: Rejected Defiant Side:2 CurSide:1 Moved:false
+DEBUG: Rejected Stiletto Side:2 CurSide:1 Moved:false
+DEBUG: Rejected Venemous Side:1 CurSide:1 Moved:true
+DEBUG: Rejected Perdition Side:1 CurSide:1 Moved:true
+DEBUG: start_movement_phase. Side: 1 Available: 0
+>>> DIAGNOSTIC: execute_all_movement running for side: 1 on peer: 1
+[Turn 1] Executing Movement Phase for Side Sathar
+[Turn 1] [color=yellow]EXECUTE LOOP: Checking Ship Venemous (Class: Destroyer, Mines: 0)[/color]
+[Turn 1] [color=yellow]EXECUTE LOOP: Checking Ship Perdition (Class: Heavy Cruiser, Mines: 0)[/color]
+>>> DIAGNOSTIC: Entering Mine Detonations. Active Mines: 0 on peer: 1
+[Turn 1] [color=cyan]!!! DEBUG !!! Entering Mine Detonations. Active Mines: 0[/color]
+[Turn 1] Movement Phase Complete for Side 1. Starting Combat.
+[DEBUG] start_combat_passive: Side 2 firing (Opponent of Moving Side 1)
+[Turn 1] Combat Planning: Side 2
+[DEBUG] TARGET CHECK P2. Ships: 3
+[DEBUG] Weapon Laser Canon N/A for Defiant (Phase 3, Fired false)
+[DEBUG] Weapon Torpedoes N/A for Defiant (Phase 3, Fired false)
+[DEBUG] Weapon Assault Rockets N/A for Stiletto (Phase 3, Fired false)
+[DEBUG] NO TARGETS FOUND for P2
+[Turn 1] No valid targets for Side 2. Skipping...
+DEBUG: skipping passive combat
+[Turn 1] Defiant Evacuation Progress: Turn 1
+[Turn 1] Turn Segment Complete.
+[DEBUG] start_combat_active: Side 1 firing (Active Side)
+[Turn 1] Combat Planning: Side 1
+[DEBUG] TARGET CHECK P1. Ships: 2
+[DEBUG] NO TARGETS FOUND for P1
+[Turn 1] No valid targets for Side 1. Skipping...
+DEBUG: skipping active combat
+[Turn 1] Defiant Evacuation Progress: Turn 2
+[Turn 1] Turn Segment Complete.
+[Turn 1] === Turn Start: Side UPF ===
+DEBUG: Rejected Venemous Side:1 CurSide:2 Moved:false
+DEBUG: Rejected Perdition Side:1 CurSide:2 Moved:false
+DEBUG: start_movement_phase. Side: 2 Available: 3
+DEBUG: First available: Station Alpha ID: 2 Moved: false
+DEBUG: Auto-Orbit Candidate Found: Station Alpha (Class: Space Station, Orbit: 1)
+[DEBUG] _on_orbit: No planet found adjacent to Station Alpha at (0, 0, 0)
+[DEBUG] Auto-Orbit Failed (No planet?). Defaulting to Hold Position.
+[Turn 1] Not your turn! (Active: 2, You: 1)
+[DEBUG] Standard move start for Defiant
+[33m    10 Orphans[0m
+[33m        * [@Button@3445:<Button#320797149056>]
+        * [@Button@3440:<Button#320394496453>]
+        * [@Button@3444:<Button#320746818054>]
+        * [@Button@3441:<Button#320444828259>]
+        * [@Button@3436:<Button#320159615664>]
+        * [@Button@3437:<Button#320209947315>]
+        * [@Button@3438:<Button#320260278966>]
+        * [@Button@3439:<Button#320310610616>]
+        * [@Button@3443:<Button#320545491643>]
+        * [@Button@3442:<Button#320495160210>][0m
+[33m10 orphans[0m
+[1m1/1 passed.
+[0m[4m
+
+test/integration/test_turn_switch_ui.gd
+[0m* test_ship_list_after_turn_switch
+[DEBUG] _build_repair_panel called
+[Turn 1] [DEBUG] Initializing repair_panel
+[Turn 1] Player 1 finished loading.
+[Turn 1] All Players Ready. Starting Game...
+GameManager: Generated Random Seed: 163603113
+[Turn 1] Game Setup Received: Seed 163603113
+[SCENARIO] Sathar Entry Edge: 5 (Vec: (1, -1, 0)), Facing: 2
+[Turn 1] Loading Scenario: Surprise Attack!
+[DEBUG] Ship Station Alpha loaded with Orbit Dir 1
+[Turn 1] Defiant docked at Station Alpha
+[Turn 1] Stiletto docked at Station Alpha
+[Turn 1] [color=cyan]=== DEPLOYMENT Phase ===[/color]
+[DEBUG] _update_deployment_ui called - Subphase: 2, my_side_id: 1
+[DEBUG] _build_repair_panel called
+[Turn 1] [DEBUG] Initializing repair_panel
+[Turn 1] Player 1 finished loading.
+[Turn 1] All Players Ready. Starting Game...
+GameManager: Generated Random Seed: 4228198128
+[Turn 1] Game Setup Received: Seed 4228198128
+[SCENARIO] Sathar Entry Edge: 5 (Vec: (1, -1, 0)), Facing: 2
+[Turn 1] Loading Scenario: Surprise Attack!
+[DEBUG] Ship Station Alpha2 loaded with Orbit Dir 1
+[Turn 1] [color=cyan]=== DEPLOYMENT Phase ===[/color]
+[DEBUG] _update_deployment_ui called - Subphase: 2, my_side_id: 1
+[Turn 1] Game Setup Received: Seed 12345
+[SCENARIO] Sathar Entry Edge: 2 (Vec: (-1, 1, 0)), Facing: 5
+[Turn 1] Loading Scenario: Surprise Attack!
+[DEBUG] Ship Station Alpha3 loaded with Orbit Dir 1
+[Turn 1] [color=cyan]=== DEPLOYMENT Phase ===[/color]
+[DEBUG] _update_deployment_ui called - Subphase: 2, my_side_id: 1
+[Turn 1] Deployment Complete. Starting Turn 1.
+[Turn 1] === Turn Start: Side Sathar ===
+DEBUG: Rejected Station Alpha3 Side:2 CurSide:1 Moved:false
+DEBUG: Rejected Defiant3 Side:2 CurSide:1 Moved:false
+DEBUG: Rejected Stiletto3 Side:2 CurSide:1 Moved:false
+DEBUG: start_movement_phase. Side: 1 Available: 2
+DEBUG: First available: Venemous3 ID: 1 Moved: false
+DEBUG: Skip Auto-Orbit Check: Venemous3 (Class: Destroyer, Orbit: 0)
+DEBUG: Skip Auto-Orbit Check: Perdition3 (Class: Heavy Cruiser, Orbit: 0)
+[DEBUG] Standard move start for Venemous3
+DEBUG: Rejected Station Alpha3 Side:2 CurSide:1 Moved:false
+DEBUG: Rejected Defiant3 Side:2 CurSide:1 Moved:false
+DEBUG: Rejected Stiletto3 Side:2 CurSide:1 Moved:false
+DEBUG: Rejected Venemous3 Side:1 CurSide:1 Moved:true
+DEBUG: Rejected Perdition3 Side:1 CurSide:1 Moved:true
+DEBUG: start_movement_phase. Side: 1 Available: 0
+>>> DIAGNOSTIC: execute_all_movement running for side: 1 on peer: 1
+[Turn 1] Executing Movement Phase for Side Sathar
+[Turn 1] [color=yellow]EXECUTE LOOP: Checking Ship Venemous3 (Class: Destroyer, Mines: 0)[/color]
+[Turn 1] [color=yellow]EXECUTE LOOP: Checking Ship Perdition3 (Class: Heavy Cruiser, Mines: 0)[/color]
+>>> DIAGNOSTIC: Entering Mine Detonations. Active Mines: 0 on peer: 1
+[Turn 1] [color=cyan]!!! DEBUG !!! Entering Mine Detonations. Active Mines: 0[/color]
+[Turn 1] Movement Phase Complete for Side 1. Starting Combat.
+[DEBUG] start_combat_passive: Side 2 firing (Opponent of Moving Side 1)
+[Turn 1] Combat Planning: Side 2
+[DEBUG] TARGET CHECK P2. Ships: 3
+[DEBUG] Weapon Torpedoes N/A for Defiant3 (Phase 3, Fired false)
+[DEBUG] Weapon Assault Rockets N/A for Stiletto3 (Phase 3, Fired false)
+[DEBUG] NO TARGETS FOUND for P2
+[Turn 1] No valid targets for Side 2. Skipping...
+[Turn 1] Turn Segment Complete.
+[DEBUG] start_combat_active: Side 1 firing (Active Side)
+[Turn 1] Combat Planning: Side 1
+[DEBUG] TARGET CHECK P1. Ships: 2
+[DEBUG] NO TARGETS FOUND for P1
+[Turn 1] No valid targets for Side 1. Skipping...
+[Turn 1] Turn Segment Complete.
+[Turn 1] === Turn Start: Side UPF ===
+DEBUG: Rejected Venemous3 Side:1 CurSide:2 Moved:false
+DEBUG: Rejected Perdition3 Side:1 CurSide:2 Moved:false
+DEBUG: start_movement_phase. Side: 2 Available: 3
+DEBUG: First available: Station Alpha3 ID: 2 Moved: false
+DEBUG: Auto-Orbit Candidate Found: Station Alpha3 (Class: Space Station, Orbit: 1)
+[DEBUG] _on_orbit: No planet found adjacent to Station Alpha3 at (0, 0, 0)
+[DEBUG] Auto-Orbit Failed (No planet?). Defaulting to Hold Position.
+[Turn 1] Not your turn! (Active: 2, You: 1)
+[DEBUG] Standard move start for Defiant3
+[1m1/1 passed.
+[0m[4m
+
+test/integration/test_undock_sync.gd
+[0m* test_undock_movement_registration
+[DEBUG] _build_repair_panel called
+[Turn 1] [DEBUG] Initializing repair_panel
+[Turn 1] Player 1 finished loading.
+[Turn 1] All Players Ready. Starting Game...
+GameManager: Generated Random Seed: 1245642785
+[Turn 1] Game Setup Received: Seed 1245642785
+[SCENARIO] Sathar Entry Edge: 5 (Vec: (1, -1, 0)), Facing: 2
+[Turn 1] Loading Scenario: Surprise Attack!
+[DEBUG] Ship Station Alpha loaded with Orbit Dir 1
+[Turn 1] Defiant docked at Station Alpha
+[Turn 1] Stiletto docked at Station Alpha
+[Turn 1] [color=cyan]=== DEPLOYMENT Phase ===[/color]
+[DEBUG] _update_deployment_ui called - Subphase: 2, my_side_id: 1
+[Turn 1] Orders Received for Scout
+[Turn 1] AS Scout auto-undocked for maneuver.
+>>> DIAGNOSTIC: execute_all_movement running for side: 1 on peer: 1
+[Turn 1] Executing Movement Phase for Side UPF
+[Turn 1] [color=yellow]EXECUTE LOOP: Checking Ship Station (Class: Space Station, Mines: 0)[/color]
+[Turn 1] [color=yellow]EXECUTE LOOP: Checking Ship Scout (Class: Assault Scout, Mines: 0)[/color]
+>>> DIAGNOSTIC: Entering Mine Detonations. Active Mines: 0 on peer: 1
+[Turn 1] [color=cyan]!!! DEBUG !!! Entering Mine Detonations. Active Mines: 0[/color]
+[Turn 1] Movement Phase Complete for Side 1. Starting Combat.
+[DEBUG] start_combat_passive: Side 2 firing (Opponent of Moving Side 1)
+[Turn 1] Combat Planning: Side 2
+[DEBUG] TARGET CHECK P2. Ships: 0
+[DEBUG] NO TARGETS FOUND for P2
+[Turn 1] No valid targets for Side 2. Skipping...
+[1m1/1 passed.
+[0m[4m
+
+test/scenarios/test_surprise_attack.gd
+[0m* test_surprise_attack_setup
+[DEBUG] _build_repair_panel called
+[Turn 1] [DEBUG] Initializing repair_panel
+[Turn 1] Player 1 finished loading.
+[Turn 1] All Players Ready. Starting Game...
+GameManager: Generated Random Seed: 433762977
+[Turn 1] Game Setup Received: Seed 433762977
+[SCENARIO] Sathar Entry Edge: 1 (Vec: (0, 1, -1)), Facing: 4
+[Turn 1] Loading Scenario: Surprise Attack!
+[DEBUG] Ship Station Alpha loaded with Orbit Dir 1
+[Turn 1] Defiant docked at Station Alpha
+[Turn 1] Stiletto docked at Station Alpha
+[Turn 1] [color=cyan]=== DEPLOYMENT Phase ===[/color]
+[DEBUG] _update_deployment_ui called - Subphase: 2, my_side_id: 1
+Cleaning up 0 ships from _ready
+[SCENARIO] Sathar Entry Edge: 2 (Vec: (-1, 1, 0)), Facing: 5
+[Turn 1] Loading Scenario: Surprise Attack!
+[DEBUG] Ship Station Alpha loaded with Orbit Dir 1
+[Turn 1] Defiant docked at Station Alpha
+[Turn 1] Stiletto docked at Station Alpha
+[1m1/1 passed.
+[0m[4m
+
+test/test_team_assignment.gd
+[0m* test_host_assignment_surprise_attack_upf
+[DEBUG] _build_repair_panel called
+[Turn 1] [DEBUG] Initializing repair_panel
+[Turn 1] Player 1 finished loading.
+[Turn 1] All Players Ready. Starting Game...
+GameManager: Generated Random Seed: 418369955
+[Turn 1] Game Setup Received: Seed 418369955
+[SCENARIO] Sathar Entry Edge: 4 (Vec: (0, -1, 1)), Facing: 1
+[Turn 1] Loading Scenario: Surprise Attack!
+[DEBUG] Ship Station Alpha loaded with Orbit Dir 1
+[Turn 1] Defiant docked at Station Alpha
+[Turn 1] Stiletto docked at Station Alpha
+[Turn 1] [color=cyan]=== DEPLOYMENT Phase ===[/color]
+[Turn 1] [color=yellow]AI Spawning for Side 1 (Sathar: true)[/color]
+[DEBUG] _update_deployment_ui called - Subphase: 2, my_side_id: 2
+* test_host_assignment_last_stand_upf
+[DEBUG] _build_repair_panel called
+[Turn 1] [DEBUG] Initializing repair_panel
+[Turn 1] Player 1 finished loading.
+[Turn 1] All Players Ready. Starting Game...
+GameManager: Generated Random Seed: 2453918173
+[Turn 1] Game Setup Received: Seed 2453918173
+[Turn 1] Loading Scenario: The Last Stand
+[DEBUG] Ship Fortress K'zdit loaded with Orbit Dir -1
+[Turn 1] Fighter a docked at Fortress K'zdit
+[Turn 1] Fighter b docked at Fortress K'zdit
+[Turn 1] Fighter A docked at Infamous
+[Turn 1] Fighter B docked at Infamous
+[Turn 1] [color=cyan]=== DEPLOYMENT Phase ===[/color]
+[Turn 1] [color=yellow]AI Spawning for Side 2 (Sathar: true)[/color]
+[DEBUG] _update_deployment_ui called - Subphase: 1, my_side_id: 1
+* test_host_fallback_assignment
+[DEBUG] _build_repair_panel called
+[Turn 1] [DEBUG] Initializing repair_panel
+[DEBUG] GameManager: Peer 1 NOT in Lobby Teams. Defaulting to 0 (Spectator). Teams: {  }
+[Turn 1] Network: Default Assignment (Host=1, Client=2). My Side: 1
+[Turn 1] Player 1 finished loading.
+[Turn 1] All Players Ready. Starting Game...
+GameManager: Generated Random Seed: 2498896202
+[Turn 1] Game Setup Received: Seed 2498896202
+[SCENARIO] Sathar Entry Edge: 2 (Vec: (-1, 1, 0)), Facing: 5
+[Turn 1] Loading Scenario: Surprise Attack!
+[DEBUG] Ship Station Alpha loaded with Orbit Dir 1
+[Turn 1] Defiant docked at Station Alpha
+[Turn 1] Stiletto docked at Station Alpha
+[Turn 1] [color=cyan]=== DEPLOYMENT Phase ===[/color]
+[Turn 1] [color=yellow]AI Spawning for Side 1 (Sathar: true)[/color]
+[Turn 1] [color=yellow]AI Spawning for Side 2 (Sathar: false)[/color]
+[DEBUG] _update_deployment_ui called - Subphase: 2, my_side_id: 1
+[1m3/3 passed.
+[0m[4m
+
+test/unit/test_ai_icm.gd
+[0m* test_torpedo_prioritization
+[DEBUG] _build_repair_panel called
+[Turn 1] [DEBUG] Initializing repair_panel
+[DEBUG] GameManager: Peer 1 NOT in Lobby Teams. Defaulting to 0 (Spectator). Teams: {  }
+[Turn 1] Network: Default Assignment (Host=1, Client=2). My Side: 1
+[Turn 1] Player 1 finished loading.
+[Turn 1] All Players Ready. Starting Game...
+GameManager: Generated Random Seed: 196527627
+[Turn 1] Game Setup Received: Seed 196527627
+[SCENARIO] Sathar Entry Edge: 3 (Vec: (-1, 0, 1)), Facing: 0
+[Turn 1] Loading Scenario: Surprise Attack!
+[DEBUG] Ship Station Alpha loaded with Orbit Dir 1
+[Turn 1] Defiant docked at Station Alpha
+[Turn 1] Stiletto docked at Station Alpha
+[Turn 1] [color=cyan]=== DEPLOYMENT Phase ===[/color]
+[Turn 1] [color=yellow]AI Spawning for Side 1 (Sathar: true)[/color]
+[Turn 1] [color=yellow]AI Spawning for Side 2 (Sathar: false)[/color]
+[DEBUG] _update_deployment_ui called - Subphase: 2, my_side_id: 1
+[Turn 1] [color=yellow]AI Spawning for Side 2 (Sathar: false)[/color]
+* test_rocket_battery_ignored_when_healthy
+[DEBUG] _build_repair_panel called
+[Turn 1] [DEBUG] Initializing repair_panel
+[DEBUG] GameManager: Peer 1 NOT in Lobby Teams. Defaulting to 0 (Spectator). Teams: {  }
+[Turn 1] Network: Default Assignment (Host=1, Client=2). My Side: 1
+[Turn 1] Player 1 finished loading.
+[Turn 1] All Players Ready. Starting Game...
+GameManager: Generated Random Seed: 366569889
+[Turn 1] Game Setup Received: Seed 366569889
+[SCENARIO] Sathar Entry Edge: 5 (Vec: (1, -1, 0)), Facing: 2
+[Turn 1] Loading Scenario: Surprise Attack!
+[DEBUG] Ship Station Alpha loaded with Orbit Dir 1
+[Turn 1] Defiant docked at Station Alpha
+[Turn 1] Stiletto docked at Station Alpha
+[Turn 1] [color=cyan]=== DEPLOYMENT Phase ===[/color]
+[Turn 1] [color=yellow]AI Spawning for Side 1 (Sathar: true)[/color]
+[Turn 1] [color=yellow]AI Spawning for Side 2 (Sathar: false)[/color]
+[DEBUG] _update_deployment_ui called - Subphase: 2, my_side_id: 1
+[Turn 1] [color=yellow]AI Spawning for Side 2 (Sathar: false)[/color]
+* test_rocket_battery_defended_when_critical
+[DEBUG] _build_repair_panel called
+[Turn 1] [DEBUG] Initializing repair_panel
+[DEBUG] GameManager: Peer 1 NOT in Lobby Teams. Defaulting to 0 (Spectator). Teams: {  }
+[Turn 1] Network: Default Assignment (Host=1, Client=2). My Side: 1
+[Turn 1] Player 1 finished loading.
+[Turn 1] All Players Ready. Starting Game...
+GameManager: Generated Random Seed: 2007336015
+[Turn 1] Game Setup Received: Seed 2007336015
+[SCENARIO] Sathar Entry Edge: 5 (Vec: (1, -1, 0)), Facing: 2
+[Turn 1] Loading Scenario: Surprise Attack!
+[DEBUG] Ship Station Alpha loaded with Orbit Dir 1
+[Turn 1] Defiant docked at Station Alpha
+[Turn 1] Stiletto docked at Station Alpha
+[Turn 1] [color=cyan]=== DEPLOYMENT Phase ===[/color]
+[Turn 1] [color=yellow]AI Spawning for Side 1 (Sathar: true)[/color]
+[Turn 1] [color=yellow]AI Spawning for Side 2 (Sathar: false)[/color]
+[DEBUG] _update_deployment_ui called - Subphase: 2, my_side_id: 1
+[Turn 1] [color=yellow]AI Spawning for Side 2 (Sathar: false)[/color]
+* test_assault_rocket_always_defended_high_chance
+[DEBUG] _build_repair_panel called
+[Turn 1] [DEBUG] Initializing repair_panel
+[DEBUG] GameManager: Peer 1 NOT in Lobby Teams. Defaulting to 0 (Spectator). Teams: {  }
+[Turn 1] Network: Default Assignment (Host=1, Client=2). My Side: 1
+[Turn 1] Player 1 finished loading.
+[Turn 1] All Players Ready. Starting Game...
+GameManager: Generated Random Seed: 4255486250
+[Turn 1] Game Setup Received: Seed 4255486250
+[SCENARIO] Sathar Entry Edge: 0 (Vec: (1, 0, -1)), Facing: 3
+[Turn 1] Loading Scenario: Surprise Attack!
+[DEBUG] Ship Station Alpha loaded with Orbit Dir 1
+[Turn 1] Defiant docked at Station Alpha
+[Turn 1] Stiletto docked at Station Alpha
+[Turn 1] [color=cyan]=== DEPLOYMENT Phase ===[/color]
+[Turn 1] [color=yellow]AI Spawning for Side 1 (Sathar: true)[/color]
+[Turn 1] [color=yellow]AI Spawning for Side 2 (Sathar: false)[/color]
+[DEBUG] _update_deployment_ui called - Subphase: 2, my_side_id: 1
+[Turn 1] [color=yellow]AI Spawning for Side 2 (Sathar: false)[/color]
+[1m4/4 passed.
+[0m[4m
+
+test/unit/test_auto_deploy.gd
+[0m* test_categorize_ships
+[33m    3 Orphans[0m
+[33m        * [<Node2D#419480734418>(Ship.gd)]
+        * [<Node2D#419514288851>(Ship.gd)]
+        * [<Node2D#419547843284>(Ship.gd)][0m
+* test_execute_placement_spacing_and_facing
+[33m    3 Orphans[0m
+[33m        * [<Node2D#419749168744>(Ship.gd)]
+        * [<Node2D#419816277609>(Ship.gd)]
+        * [<Node2D#419782723700>(Ship.gd)][0m
+* test_space_station_speed_locks_and_orbit
+[33m    1 Orphans[0m
+[33m        * [<Node2D#420000827811>(Ship.gd)][0m
+* test_auto_deploy_collision_avoidance
+[33m    2 Orphans[0m
+[33m        * [<Node2D#420185377232>(Ship.gd)]
+        * [<Node2D#420218931672>(Ship.gd)][0m
+[33m9 orphans[0m
+[1m4/4 passed.
+[0m[4m
+
+test/unit/test_auto_orbit_hang.gd
+[0m* test_auto_orbit_with_no_planet_does_not_hang
+[DEBUG] _build_repair_panel called
+[Turn 1] [DEBUG] Initializing repair_panel
+[DEBUG] GameManager: Peer 1 NOT in Lobby Teams. Defaulting to 0 (Spectator). Teams: {  }
+[Turn 1] Network: Default Assignment (Host=1, Client=2). My Side: 1
+[Turn 1] Player 1 finished loading.
+[Turn 1] All Players Ready. Starting Game...
+GameManager: Generated Random Seed: 1329987506
+[Turn 1] Game Setup Received: Seed 1329987506
+[SCENARIO] Sathar Entry Edge: 0 (Vec: (1, 0, -1)), Facing: 3
+[Turn 1] Loading Scenario: Surprise Attack!
+[DEBUG] Ship Station Alpha loaded with Orbit Dir 1
+[Turn 1] Defiant docked at Station Alpha
+[Turn 1] Stiletto docked at Station Alpha
+[Turn 1] [color=cyan]=== DEPLOYMENT Phase ===[/color]
+[Turn 1] [color=yellow]AI Spawning for Side 1 (Sathar: true)[/color]
+[Turn 1] [color=yellow]AI Spawning for Side 2 (Sathar: false)[/color]
+[DEBUG] _update_deployment_ui called - Subphase: 2, my_side_id: 1
+[DEBUG] _build_repair_panel called
+[Turn 1] [DEBUG] Initializing repair_panel
+[DEBUG] GameManager: Peer 1 NOT in Lobby Teams. Defaulting to 0 (Spectator). Teams: {  }
+[Turn 1] Network: Default Assignment (Host=1, Client=2). My Side: 1
+[Turn 1] Player 1 finished loading.
+[Turn 1] All Players Ready. Starting Game...
+GameManager: Generated Random Seed: 3551010139
+[Turn 1] Game Setup Received: Seed 3551010139
+[SCENARIO] Sathar Entry Edge: 4 (Vec: (0, -1, 1)), Facing: 1
+[Turn 1] Loading Scenario: Surprise Attack!
+[DEBUG] Ship Station Alpha2 loaded with Orbit Dir 1
+[Turn 1] [color=cyan]=== DEPLOYMENT Phase ===[/color]
+[DEBUG] _update_deployment_ui called - Subphase: 2, my_side_id: 1
+DEBUG: Rejected Station Alpha2 Side:2 CurSide:1 Moved:false
+DEBUG: Rejected Defiant2 Side:2 CurSide:1 Moved:false
+DEBUG: Rejected Stiletto2 Side:2 CurSide:1 Moved:false
+DEBUG: start_movement_phase. Side: 1 Available: 3
+DEBUG: First available: Venemous2 ID: 1 Moved: false
+DEBUG: Skip Auto-Orbit Check: Venemous2 (Class: Destroyer, Orbit: 0)
+DEBUG: Skip Auto-Orbit Check: Perdition2 (Class: Heavy Cruiser, Orbit: 0)
+DEBUG: Auto-Orbit Candidate Found: Station (Class: Space Station, Orbit: 1)
+[DEBUG] _on_orbit: No planet found adjacent to Station at (0, 0, 0)
+[DEBUG] Auto-Orbit Failed (No planet?). Defaulting to Hold Position.
+DEBUG: _on_commit_move for Station
+DEBUG: Path size: 0
+DEBUG: Calling register_movement_plan locally
+[Turn 1] Orders Received for Station
+[DEBUG] Standard move start for Venemous2
+* test_auto_orbit_with_planet_succeeds
+[DEBUG] _build_repair_panel called
+[Turn 1] [DEBUG] Initializing repair_panel
+[DEBUG] GameManager: Peer 1 NOT in Lobby Teams. Defaulting to 0 (Spectator). Teams: {  }
+[Turn 1] Network: Default Assignment (Host=1, Client=2). My Side: 1
+[Turn 1] Player 1 finished loading.
+[Turn 1] All Players Ready. Starting Game...
+GameManager: Generated Random Seed: 1021283980
+[Turn 1] Game Setup Received: Seed 1021283980
+[SCENARIO] Sathar Entry Edge: 4 (Vec: (0, -1, 1)), Facing: 1
+[Turn 1] Loading Scenario: Surprise Attack!
+[DEBUG] Ship Station Alpha loaded with Orbit Dir 1
+[Turn 1] Defiant docked at Station Alpha
+[Turn 1] Stiletto docked at Station Alpha
+[Turn 1] [color=cyan]=== DEPLOYMENT Phase ===[/color]
+[Turn 1] [color=yellow]AI Spawning for Side 1 (Sathar: true)[/color]
+[Turn 1] [color=yellow]AI Spawning for Side 2 (Sathar: false)[/color]
+[DEBUG] _update_deployment_ui called - Subphase: 2, my_side_id: 1
+[DEBUG] _build_repair_panel called
+[Turn 1] [DEBUG] Initializing repair_panel
+[DEBUG] GameManager: Peer 1 NOT in Lobby Teams. Defaulting to 0 (Spectator). Teams: {  }
+[Turn 1] Network: Default Assignment (Host=1, Client=2). My Side: 1
+[Turn 1] Player 1 finished loading.
+[Turn 1] All Players Ready. Starting Game...
+GameManager: Generated Random Seed: 1741240713
+[Turn 1] Game Setup Received: Seed 1741240713
+[SCENARIO] Sathar Entry Edge: 0 (Vec: (1, 0, -1)), Facing: 3
+[Turn 1] Loading Scenario: Surprise Attack!
+[DEBUG] Ship Station Alpha2 loaded with Orbit Dir 1
+[Turn 1] [color=cyan]=== DEPLOYMENT Phase ===[/color]
+[DEBUG] _update_deployment_ui called - Subphase: 2, my_side_id: 1
+DEBUG: Rejected Station Alpha2 Side:2 CurSide:1 Moved:false
+DEBUG: Rejected Defiant2 Side:2 CurSide:1 Moved:false
+DEBUG: Rejected Stiletto2 Side:2 CurSide:1 Moved:false
+DEBUG: start_movement_phase. Side: 1 Available: 3
+DEBUG: First available: Venemous2 ID: 1 Moved: false
+DEBUG: Skip Auto-Orbit Check: Venemous2 (Class: Destroyer, Orbit: 0)
+DEBUG: Skip Auto-Orbit Check: Perdition2 (Class: Heavy Cruiser, Orbit: 0)
+DEBUG: Auto-Orbit Candidate Found: Station (Class: Space Station, Orbit: 1)
+DEBUG: _on_commit_move for Station
+DEBUG: Path size: 1
+DEBUG: Calling register_movement_plan locally
+[Turn 1] Orders Received for Station
+[DEBUG] Standard move start for Venemous2
+[1m2/2 passed.
+[0m[4m
+
+test/unit/test_ci_sanity.gd
+[0m* test_can_load_all_scripts
+[1m1/1 passed.
+[0m[4m
+
+test/unit/test_combat_math.gd
+[0m* test_hit_chance_calculation
+* test_damage_roll
+Damage Roll: 1d6+2 -> 6
+[1m2/2 passed.
+[0m[4m
+
+test/unit/test_combat_math_fix.gd
+[0m[DEBUG] _build_repair_panel called
+[Turn 1] [DEBUG] Initializing repair_panel
+[DEBUG] GameManager: Peer 1 NOT in Lobby Teams. Defaulting to 0 (Spectator). Teams: {  }
+[Turn 1] Network: Default Assignment (Host=1, Client=2). My Side: 1
+[Turn 1] Player 1 finished loading.
+[Turn 1] All Players Ready. Starting Game...
+GameManager: Generated Random Seed: 451106486
+[Turn 1] Game Setup Received: Seed 451106486
+[SCENARIO] Sathar Entry Edge: 1 (Vec: (0, 1, -1)), Facing: 4
+[Turn 1] Loading Scenario: Surprise Attack!
+[DEBUG] Ship Station Alpha loaded with Orbit Dir 1
+[Turn 1] Defiant docked at Station Alpha
+[Turn 1] Stiletto docked at Station Alpha
+[Turn 1] [color=cyan]=== DEPLOYMENT Phase ===[/color]
+[Turn 1] [color=yellow]AI Spawning for Side 1 (Sathar: true)[/color]
+[Turn 1] [color=yellow]AI Spawning for Side 2 (Sathar: false)[/color]
+[DEBUG] _update_deployment_ui called - Subphase: 2, my_side_id: 1
+* test_assault_rocket_flat_chance
+
+--- Testing Rocket Flat Chance ---
+* test_assault_rocket_vs_rh
+
+--- Testing Rocket vs RH ---
+* test_laser_range_diffusion
+
+--- Testing Laser Range Diffusion ---
+[33m[WARNING]:  [0mTest script has 2 unfreed children.  Increase log level for more details.
+[1m3/3 passed.
+[0m[4m
+
+test/unit/test_crash_prevention.gd
+[0m* test_crash_on_freed_ship_access
+[DEBUG] _build_repair_panel called
+[Turn 1] [DEBUG] Initializing repair_panel
+[DEBUG] GameManager: Peer 1 NOT in Lobby Teams. Defaulting to 0 (Spectator). Teams: {  }
+[Turn 1] Network: Default Assignment (Host=1, Client=2). My Side: 1
+[Turn 1] Player 1 finished loading.
+[Turn 1] All Players Ready. Starting Game...
+GameManager: Generated Random Seed: 304030124
+[Turn 1] Game Setup Received: Seed 304030124
+[SCENARIO] Sathar Entry Edge: 0 (Vec: (1, 0, -1)), Facing: 3
+[Turn 1] Loading Scenario: Surprise Attack!
+[DEBUG] Ship Station Alpha loaded with Orbit Dir 1
+[Turn 1] Defiant docked at Station Alpha
+[Turn 1] Stiletto docked at Station Alpha
+[Turn 1] [color=cyan]=== DEPLOYMENT Phase ===[/color]
+[Turn 1] [color=yellow]AI Spawning for Side 1 (Sathar: true)[/color]
+[Turn 1] [color=yellow]AI Spawning for Side 2 (Sathar: false)[/color]
+[DEBUG] _update_deployment_ui called - Subphase: 2, my_side_id: 1
+[DEBUG] _build_repair_panel called
+[Turn 1] [DEBUG] Initializing repair_panel
+[DEBUG] GameManager: Peer 1 NOT in Lobby Teams. Defaulting to 0 (Spectator). Teams: {  }
+[Turn 1] Network: Default Assignment (Host=1, Client=2). My Side: 1
+[Turn 1] Player 1 finished loading.
+[Turn 1] All Players Ready. Starting Game...
+GameManager: Generated Random Seed: 3895809740
+[Turn 1] Game Setup Received: Seed 3895809740
+[SCENARIO] Sathar Entry Edge: 2 (Vec: (-1, 1, 0)), Facing: 5
+[Turn 1] Loading Scenario: Surprise Attack!
+[DEBUG] Ship Station Alpha2 loaded with Orbit Dir 1
+[Turn 1] [color=cyan]=== DEPLOYMENT Phase ===[/color]
+[DEBUG] _update_deployment_ui called - Subphase: 2, my_side_id: 1
+[DEBUG] TARGET CHECK P1. Ships: 3
+[DEBUG] NO TARGETS FOUND for P1
+[1m1/1 passed.
+[0m[4m
+
+test/unit/test_crippled_weapon_bug.gd
+[0m* test_crippled_weapon_should_be_unavailable
+[DEBUG] _build_repair_panel called
+[Turn 1] [DEBUG] Initializing repair_panel
+[DEBUG] GameManager: Peer 1 NOT in Lobby Teams. Defaulting to 0 (Spectator). Teams: {  }
+[Turn 1] Network: Default Assignment (Host=1, Client=2). My Side: 1
+[Turn 1] Player 1 finished loading.
+[Turn 1] All Players Ready. Starting Game...
+GameManager: Generated Random Seed: 875645368
+[Turn 1] Game Setup Received: Seed 875645368
+[SCENARIO] Sathar Entry Edge: 1 (Vec: (0, 1, -1)), Facing: 4
+[Turn 1] Loading Scenario: Surprise Attack!
+[DEBUG] Ship Station Alpha loaded with Orbit Dir 1
+[Turn 1] Defiant docked at Station Alpha
+[Turn 1] Stiletto docked at Station Alpha
+[Turn 1] [color=cyan]=== DEPLOYMENT Phase ===[/color]
+[Turn 1] [color=yellow]AI Spawning for Side 1 (Sathar: true)[/color]
+[Turn 1] [color=yellow]AI Spawning for Side 2 (Sathar: false)[/color]
+[DEBUG] _update_deployment_ui called - Subphase: 2, my_side_id: 1
+[1m1/1 passed.
+[0m[4m
+
+test/unit/test_damage_system.gd
+[0m* test_combat_damage_table_lookup
+* test_ship_apply_damage_hull
+* test_ship_apply_damage_adf
+* test_ship_apply_damage_weapon
+* test_fire_damage_stack
+[1m5/5 passed.
+[0m[4m
+
+test/unit/test_defensive_screens.gd
+[0m* test_energy_screens_vs_beam_weapons
+[1m1/1 passed.
+[0m[4m
+
+test/unit/test_deployment_phase.gd
+[0m* test_start_deployment_phase
+[DEBUG] _build_repair_panel called
+[Turn 1] [DEBUG] Initializing repair_panel
+[DEBUG] GameManager: Peer 1 NOT in Lobby Teams. Defaulting to 0 (Spectator). Teams: {  }
+[Turn 1] Network: Default Assignment (Host=1, Client=2). My Side: 1
+[Turn 1] Player 1 finished loading.
+[Turn 1] All Players Ready. Starting Game...
+GameManager: Generated Random Seed: 1042548081
+[Turn 1] Game Setup Received: Seed 1042548081
+[SCENARIO] Sathar Entry Edge: 0 (Vec: (1, 0, -1)), Facing: 3
+[Turn 1] Loading Scenario: Surprise Attack!
+[DEBUG] Ship Station Alpha loaded with Orbit Dir 1
+[Turn 1] Defiant docked at Station Alpha
+[Turn 1] Stiletto docked at Station Alpha
+[Turn 1] [color=cyan]=== DEPLOYMENT Phase ===[/color]
+[Turn 1] [color=yellow]AI Spawning for Side 1 (Sathar: true)[/color]
+[Turn 1] [color=yellow]AI Spawning for Side 2 (Sathar: false)[/color]
+[DEBUG] _update_deployment_ui called - Subphase: 2, my_side_id: 1
+[Turn 1] Game Setup Received: Seed 12345
+[Turn 1] Loading Scenario: Simple Test
+[Turn 1] [color=cyan]=== DEPLOYMENT Phase ===[/color]
+[DEBUG] _update_deployment_ui called - Subphase: 2, my_side_id: 1
+* test_deployment_rpc_transitions_phase
+[DEBUG] _build_repair_panel called
+[Turn 1] [DEBUG] Initializing repair_panel
+[DEBUG] GameManager: Peer 1 NOT in Lobby Teams. Defaulting to 0 (Spectator). Teams: {  }
+[Turn 1] Network: Default Assignment (Host=1, Client=2). My Side: 1
+[Turn 1] Player 1 finished loading.
+[Turn 1] All Players Ready. Starting Game...
+GameManager: Generated Random Seed: 3260760155
+[Turn 1] Game Setup Received: Seed 3260760155
+[SCENARIO] Sathar Entry Edge: 3 (Vec: (-1, 0, 1)), Facing: 0
+[Turn 1] Loading Scenario: Surprise Attack!
+[DEBUG] Ship Station Alpha loaded with Orbit Dir 1
+[Turn 1] Defiant docked at Station Alpha
+[Turn 1] Stiletto docked at Station Alpha
+[Turn 1] [color=cyan]=== DEPLOYMENT Phase ===[/color]
+[Turn 1] [color=yellow]AI Spawning for Side 1 (Sathar: true)[/color]
+[Turn 1] [color=yellow]AI Spawning for Side 2 (Sathar: false)[/color]
+[DEBUG] _update_deployment_ui called - Subphase: 2, my_side_id: 1
+[Turn 1] Game Setup Received: Seed 12345
+[Turn 1] Loading Scenario: Simple Test
+[Turn 1] [color=cyan]=== DEPLOYMENT Phase ===[/color]
+[DEBUG] _update_deployment_ui called - Subphase: 2, my_side_id: 1
+[Turn 1] Side 1 is now Deploying.
+[DEBUG] _update_deployment_ui called - Subphase: 1, my_side_id: 1
+[Turn 1] Deployment Complete. Starting Turn 1.
+[Turn 1] === Turn Start: Side UPF ===
+DEBUG: Rejected Savage Side:2 CurSide:1 Moved:false
+DEBUG: Rejected Stinger Side:2 CurSide:1 Moved:false
+DEBUG: start_movement_phase. Side: 1 Available: 2
+DEBUG: First available: Vigilant ID: 1 Moved: false
+DEBUG: Skip Auto-Orbit Check: Vigilant (Class: Frigate, Orbit: 0)
+DEBUG: Skip Auto-Orbit Check: Defiant2 (Class: Frigate, Orbit: 0)
+[DEBUG] Standard move start for Vigilant
+[1m2/2 passed.
+[0m[4m
+
+test/unit/test_facing_fragility.gd
+[0m* test_fragile_state_desync
+[DEBUG] _build_repair_panel called
+[Turn 1] [DEBUG] Initializing repair_panel
+[DEBUG] GameManager: Peer 1 NOT in Lobby Teams. Defaulting to 0 (Spectator). Teams: {  }
+[Turn 1] Network: Default Assignment (Host=1, Client=2). My Side: 1
+[Turn 1] Player 1 finished loading.
+[Turn 1] All Players Ready. Starting Game...
+GameManager: Generated Random Seed: 3908729079
+[Turn 1] Game Setup Received: Seed 3908729079
+[SCENARIO] Sathar Entry Edge: 3 (Vec: (-1, 0, 1)), Facing: 0
+[Turn 1] Loading Scenario: Surprise Attack!
+[DEBUG] Ship Station Alpha loaded with Orbit Dir 1
+[Turn 1] Defiant docked at Station Alpha
+[Turn 1] Stiletto docked at Station Alpha
+[Turn 1] [color=cyan]=== DEPLOYMENT Phase ===[/color]
+[Turn 1] [color=yellow]AI Spawning for Side 1 (Sathar: true)[/color]
+[Turn 1] [color=yellow]AI Spawning for Side 2 (Sathar: false)[/color]
+[DEBUG] _update_deployment_ui called - Subphase: 2, my_side_id: 1
+DEBUG: ghost input dist: 1 | start: (0, 0, 0) | target: (1, 0, -1) | facing: 0
+[Turn 1] Movement Phase: Sathar
+[Turn 1] Movement Phase: Sathar
+[Turn 1] Resetting Plot...
+DEBUG: ghost input dist: 1 | start: (0, 0, 0) | target: (1, 0, -1) | facing: 0
+[Turn 1] Movement Phase: Sathar
+[Turn 1] Movement Phase: Sathar
+[33m    2 Orphans[0m
+[33m        * [<Node2D#512376180326>(Ship.gd)]
+        * [<Node2D#512409734759>(Ship.gd)][0m
+[33m2 orphans[0m
+[33m[WARNING]:  [0mTest script has 2 unfreed children.  Increase log level for more details.
+[1m1/1 passed.
+[0m[4m
+
+test/unit/test_fire_damage_rules.gd
+[0m* test_fire_stack_limit
+[33m    1 Orphans[0m
+[33m        * [<Node2D#513668025944>(Ship.gd)][0m
+* test_disastrous_overrides_electrical
+[33m    1 Orphans[0m
+[33m        * [<Node2D#513768689238>(Ship.gd)][0m
+* test_electrical_does_not_override_disastrous
+[33m    1 Orphans[0m
+[33m        * [<Node2D#513852575316>(Ship.gd)][0m
+[33m3 orphans[0m
+[1m3/3 passed.
+[0m[4m
+
+test/unit/test_hex_grid.gd
+[0m* test_cube_round_trip
+* test_hex_distance
+* test_get_neighbors
+* test_get_line_coords
+[1m4/4 passed.
+[0m[4m
+
+test/unit/test_last_stand_crash.gd
+[0m* test_last_stand_load
+[DEBUG] _build_repair_panel called
+[Turn 1] [DEBUG] Initializing repair_panel
+[DEBUG] GameManager: Peer 1 NOT in Lobby Teams. Defaulting to 0 (Spectator). Teams: {  }
+[Turn 1] Network: Default Assignment (Host=1, Client=2). My Side: 1
+[Turn 1] Player 1 finished loading.
+[Turn 1] All Players Ready. Starting Game...
+GameManager: Generated Random Seed: 3490745001
+[Turn 1] Game Setup Received: Seed 3490745001
+[SCENARIO] Sathar Entry Edge: 5 (Vec: (1, -1, 0)), Facing: 2
+[Turn 1] Loading Scenario: Surprise Attack!
+[DEBUG] Ship Station Alpha loaded with Orbit Dir 1
+[Turn 1] Defiant docked at Station Alpha
+[Turn 1] Stiletto docked at Station Alpha
+[Turn 1] [color=cyan]=== DEPLOYMENT Phase ===[/color]
+[Turn 1] [color=yellow]AI Spawning for Side 1 (Sathar: true)[/color]
+[Turn 1] [color=yellow]AI Spawning for Side 2 (Sathar: false)[/color]
+[DEBUG] _update_deployment_ui called - Subphase: 2, my_side_id: 1
+[Turn 1] Game Setup Received: Seed 1234
+[Turn 1] Loading Scenario: The Last Stand
+[DEBUG] Ship Fortress K'zdit loaded with Orbit Dir -1
+[Turn 1] Fighter a docked at Fortress K'zdit
+[Turn 1] Fighter b docked at Fortress K'zdit
+[Turn 1] Fighter A docked at Infamous
+[Turn 1] Fighter B docked at Infamous
+[Turn 1] [color=cyan]=== DEPLOYMENT Phase ===[/color]
+[DEBUG] _update_deployment_ui called - Subphase: 1, my_side_id: 1
+[1m1/1 passed.
+[0m[4m
+
+test/unit/test_last_stand_load.gd
+[0m* test_last_stand_load
+[DEBUG] _build_repair_panel called
+[Turn 1] [DEBUG] Initializing repair_panel
+[DEBUG] GameManager: Peer 1 NOT in Lobby Teams. Defaulting to 0 (Spectator). Teams: {  }
+[Turn 1] Network: Default Assignment (Host=1, Client=2). My Side: 1
+[Turn 1] Player 1 finished loading.
+[Turn 1] All Players Ready. Starting Game...
+GameManager: Generated Random Seed: 1155686104
+[Turn 1] Game Setup Received: Seed 1155686104
+[SCENARIO] Sathar Entry Edge: 0 (Vec: (1, 0, -1)), Facing: 3
+[Turn 1] Loading Scenario: Surprise Attack!
+[DEBUG] Ship Station Alpha loaded with Orbit Dir 1
+[Turn 1] Defiant docked at Station Alpha
+[Turn 1] Stiletto docked at Station Alpha
+[Turn 1] [color=cyan]=== DEPLOYMENT Phase ===[/color]
+[Turn 1] [color=yellow]AI Spawning for Side 1 (Sathar: true)[/color]
+[Turn 1] [color=yellow]AI Spawning for Side 2 (Sathar: false)[/color]
+[DEBUG] _update_deployment_ui called - Subphase: 2, my_side_id: 1
+[Turn 1] Game Setup Received: Seed 1234
+[Turn 1] Loading Scenario: The Last Stand
+[DEBUG] Ship Fortress K'zdit loaded with Orbit Dir -1
+[Turn 1] Fighter a docked at Fortress K'zdit
+[Turn 1] Fighter b docked at Fortress K'zdit
+[Turn 1] Fighter A docked at Infamous
+[Turn 1] Fighter B docked at Infamous
+[Turn 1] [color=cyan]=== DEPLOYMENT Phase ===[/color]
+[DEBUG] _update_deployment_ui called - Subphase: 1, my_side_id: 1
+[1m1/1 passed.
+[0m[4m
+
+test/unit/test_minimap_view.gd
+[0m* test_view_rect_logic
+[DEBUG] _build_repair_panel called
+[Turn 1] [DEBUG] Initializing repair_panel
+[DEBUG] GameManager: Peer 1 NOT in Lobby Teams. Defaulting to 0 (Spectator). Teams: {  }
+[Turn 1] Network: Default Assignment (Host=1, Client=2). My Side: 1
+[Turn 1] Player 1 finished loading.
+[Turn 1] All Players Ready. Starting Game...
+GameManager: Generated Random Seed: 31559337
+[Turn 1] Game Setup Received: Seed 31559337
+[SCENARIO] Sathar Entry Edge: 5 (Vec: (1, -1, 0)), Facing: 2
+[Turn 1] Loading Scenario: Surprise Attack!
+[DEBUG] Ship Station Alpha loaded with Orbit Dir 1
+[Turn 1] Defiant docked at Station Alpha
+[Turn 1] Stiletto docked at Station Alpha
+[Turn 1] [color=cyan]=== DEPLOYMENT Phase ===[/color]
+[Turn 1] [color=yellow]AI Spawning for Side 1 (Sathar: true)[/color]
+[Turn 1] [color=yellow]AI Spawning for Side 2 (Sathar: false)[/color]
+[DEBUG] _update_deployment_ui called - Subphase: 2, my_side_id: 1
+[DEBUG] _build_repair_panel called
+[Turn 1] [DEBUG] Initializing repair_panel
+[DEBUG] GameManager: Peer 1 NOT in Lobby Teams. Defaulting to 0 (Spectator). Teams: {  }
+[Turn 1] Network: Default Assignment (Host=1, Client=2). My Side: 1
+[Turn 1] Player 1 finished loading.
+[Turn 1] All Players Ready. Starting Game...
+GameManager: Generated Random Seed: 164316646
+[Turn 1] Game Setup Received: Seed 164316646
+[SCENARIO] Sathar Entry Edge: 1 (Vec: (0, 1, -1)), Facing: 4
+[Turn 1] Loading Scenario: Surprise Attack!
+[DEBUG] Ship Station Alpha2 loaded with Orbit Dir 1
+[Turn 1] [color=cyan]=== DEPLOYMENT Phase ===[/color]
+[DEBUG] _update_deployment_ui called - Subphase: 2, my_side_id: 1
+[1m1/1 passed.
+[0m[4m
+
+test/unit/test_movement_constraints.gd
+[0m* test_cannot_turn_at_start_if_speed_gt_0
+[DEBUG] _build_repair_panel called
+[Turn 1] [DEBUG] Initializing repair_panel
+[DEBUG] GameManager: Peer 1 NOT in Lobby Teams. Defaulting to 0 (Spectator). Teams: {  }
+[Turn 1] Network: Default Assignment (Host=1, Client=2). My Side: 1
+[Turn 1] Player 1 finished loading.
+[Turn 1] All Players Ready. Starting Game...
+GameManager: Generated Random Seed: 2138968514
+[Turn 1] Game Setup Received: Seed 2138968514
+[SCENARIO] Sathar Entry Edge: 0 (Vec: (1, 0, -1)), Facing: 3
+[Turn 1] Loading Scenario: Surprise Attack!
+[DEBUG] Ship Station Alpha loaded with Orbit Dir 1
+[Turn 1] Defiant docked at Station Alpha
+[Turn 1] Stiletto docked at Station Alpha
+[Turn 1] [color=cyan]=== DEPLOYMENT Phase ===[/color]
+[Turn 1] [color=yellow]AI Spawning for Side 1 (Sathar: true)[/color]
+[Turn 1] [color=yellow]AI Spawning for Side 2 (Sathar: false)[/color]
+[DEBUG] _update_deployment_ui called - Subphase: 2, my_side_id: 1
+* test_can_turn_freely_at_start_if_speed_0
+[DEBUG] _build_repair_panel called
+[Turn 1] [DEBUG] Initializing repair_panel
+[DEBUG] GameManager: Peer 1 NOT in Lobby Teams. Defaulting to 0 (Spectator). Teams: {  }
+[Turn 1] Network: Default Assignment (Host=1, Client=2). My Side: 1
+[Turn 1] Player 1 finished loading.
+[Turn 1] All Players Ready. Starting Game...
+GameManager: Generated Random Seed: 4078360322
+[Turn 1] Game Setup Received: Seed 4078360322
+[SCENARIO] Sathar Entry Edge: 3 (Vec: (-1, 0, 1)), Facing: 0
+[Turn 1] Loading Scenario: Surprise Attack!
+[DEBUG] Ship Station Alpha loaded with Orbit Dir 1
+[Turn 1] Defiant docked at Station Alpha
+[Turn 1] Stiletto docked at Station Alpha
+[Turn 1] [color=cyan]=== DEPLOYMENT Phase ===[/color]
+[Turn 1] [color=yellow]AI Spawning for Side 1 (Sathar: true)[/color]
+[Turn 1] [color=yellow]AI Spawning for Side 2 (Sathar: false)[/color]
+[DEBUG] _update_deployment_ui called - Subphase: 2, my_side_id: 1
+* test_undo_turn_logic
+[DEBUG] _build_repair_panel called
+[Turn 1] [DEBUG] Initializing repair_panel
+[DEBUG] GameManager: Peer 1 NOT in Lobby Teams. Defaulting to 0 (Spectator). Teams: {  }
+[Turn 1] Network: Default Assignment (Host=1, Client=2). My Side: 1
+[Turn 1] Player 1 finished loading.
+[Turn 1] All Players Ready. Starting Game...
+GameManager: Generated Random Seed: 2363408443
+[Turn 1] Game Setup Received: Seed 2363408443
+[SCENARIO] Sathar Entry Edge: 5 (Vec: (1, -1, 0)), Facing: 2
+[Turn 1] Loading Scenario: Surprise Attack!
+[DEBUG] Ship Station Alpha loaded with Orbit Dir 1
+[Turn 1] Defiant docked at Station Alpha
+[Turn 1] Stiletto docked at Station Alpha
+[Turn 1] [color=cyan]=== DEPLOYMENT Phase ===[/color]
+[Turn 1] [color=yellow]AI Spawning for Side 1 (Sathar: true)[/color]
+[Turn 1] [color=yellow]AI Spawning for Side 2 (Sathar: false)[/color]
+[DEBUG] _update_deployment_ui called - Subphase: 2, my_side_id: 1
+[Turn 1] Movement Phase: Sathar
+[Turn 1] Movement Phase: Sathar
+[Turn 1] Movement Phase: Sathar
+[1m3/3 passed.
+[0m[4m
+
+test/unit/test_reactive_fire_odds.gd
+[0m* test_best_defensive_fire_hex
+[1m1/1 passed.
+[0m[4m
+
+test/unit/test_scenario_generation.gd
+[0m* test_generate_scenario_ships
+[SCENARIO] Sathar Entry Edge: 2 (Vec: (-1, 1, 0)), Facing: 5
+[1m1/1 passed.
+[0m[4m
+
+test/unit/test_scenario_loader.gd
+[0m* test_load_surprise_attack_planets
+[DEBUG] _build_repair_panel called
+[Turn 1] [DEBUG] Initializing repair_panel
+[DEBUG] GameManager: Peer 1 NOT in Lobby Teams. Defaulting to 0 (Spectator). Teams: {  }
+[Turn 1] Network: Default Assignment (Host=1, Client=2). My Side: 1
+[Turn 1] Player 1 finished loading.
+[Turn 1] All Players Ready. Starting Game...
+GameManager: Generated Random Seed: 1449796961
+[Turn 1] Game Setup Received: Seed 1449796961
+[SCENARIO] Sathar Entry Edge: 2 (Vec: (-1, 1, 0)), Facing: 5
+[Turn 1] Loading Scenario: Surprise Attack!
+[DEBUG] Ship Station Alpha loaded with Orbit Dir 1
+[Turn 1] Defiant docked at Station Alpha
+[Turn 1] Stiletto docked at Station Alpha
+[Turn 1] [color=cyan]=== DEPLOYMENT Phase ===[/color]
+[Turn 1] [color=yellow]AI Spawning for Side 1 (Sathar: true)[/color]
+[Turn 1] [color=yellow]AI Spawning for Side 2 (Sathar: false)[/color]
+[DEBUG] _update_deployment_ui called - Subphase: 2, my_side_id: 1
+* test_spawn_visuals
+[DEBUG] _build_repair_panel called
+[Turn 1] [DEBUG] Initializing repair_panel
+[DEBUG] GameManager: Peer 1 NOT in Lobby Teams. Defaulting to 0 (Spectator). Teams: {  }
+[Turn 1] Network: Default Assignment (Host=1, Client=2). My Side: 1
+[Turn 1] Player 1 finished loading.
+[Turn 1] All Players Ready. Starting Game...
+GameManager: Generated Random Seed: 270148282
+[Turn 1] Game Setup Received: Seed 270148282
+[SCENARIO] Sathar Entry Edge: 5 (Vec: (1, -1, 0)), Facing: 2
+[Turn 1] Loading Scenario: Surprise Attack!
+[DEBUG] Ship Station Alpha loaded with Orbit Dir 1
+[Turn 1] Defiant docked at Station Alpha
+[Turn 1] Stiletto docked at Station Alpha
+[Turn 1] [color=cyan]=== DEPLOYMENT Phase ===[/color]
+[Turn 1] [color=yellow]AI Spawning for Side 1 (Sathar: true)[/color]
+[Turn 1] [color=yellow]AI Spawning for Side 2 (Sathar: false)[/color]
+[DEBUG] _update_deployment_ui called - Subphase: 2, my_side_id: 1
+[1m2/2 passed.
+[0m[4m
+
+test/unit/test_scenario_logic.gd
+[0m* test_surprise_attack_debuff_logic
+[DEBUG] _build_repair_panel called
+[Turn 1] [DEBUG] Initializing repair_panel
+[DEBUG] GameManager: Peer 1 NOT in Lobby Teams. Defaulting to 0 (Spectator). Teams: {  }
+[Turn 1] Network: Default Assignment (Host=1, Client=2). My Side: 1
+[Turn 1] Player 1 finished loading.
+[Turn 1] All Players Ready. Starting Game...
+GameManager: Generated Random Seed: 287246824
+[Turn 1] Game Setup Received: Seed 287246824
+[Turn 1] Error: Scenario  not found!
+[Turn 1] [color=cyan]=== DEPLOYMENT Phase ===[/color]
+[Turn 1] [color=yellow]AI Spawning for Side 1 (Sathar: false)[/color]
+[Turn 1] [color=yellow]AI Spawning for Side 2 (Sathar: false)[/color]
+[DEBUG] _update_deployment_ui called - Subphase: 2, my_side_id: 1
+[SCENARIO] Sathar Entry Edge: 2 (Vec: (-1, 1, 0)), Facing: 5
+[Turn 1] Loading Scenario: Surprise Attack!
+[DEBUG] Ship Station Alpha loaded with Orbit Dir 1
+[Turn 1] Defiant docked at Station Alpha
+[Turn 1] Stiletto docked at Station Alpha
+* test_surprise_attack_debuff_success
+[DEBUG] _build_repair_panel called
+[Turn 1] [DEBUG] Initializing repair_panel
+[DEBUG] GameManager: Peer 1 NOT in Lobby Teams. Defaulting to 0 (Spectator). Teams: {  }
+[Turn 1] Network: Default Assignment (Host=1, Client=2). My Side: 1
+[Turn 1] Player 1 finished loading.
+[Turn 1] All Players Ready. Starting Game...
+GameManager: Generated Random Seed: 2086157908
+[Turn 1] Game Setup Received: Seed 2086157908
+[Turn 1] Error: Scenario  not found!
+[Turn 1] [color=cyan]=== DEPLOYMENT Phase ===[/color]
+[Turn 1] [color=yellow]AI Spawning for Side 1 (Sathar: false)[/color]
+[Turn 1] [color=yellow]AI Spawning for Side 2 (Sathar: false)[/color]
+[DEBUG] _update_deployment_ui called - Subphase: 2, my_side_id: 1
+[SCENARIO] Sathar Entry Edge: 2 (Vec: (-1, 1, 0)), Facing: 5
+[Turn 1] Loading Scenario: Surprise Attack!
+[DEBUG] Ship Station Alpha loaded with Orbit Dir 1
+[Turn 1] Defiant docked at Station Alpha
+[Turn 1] Stiletto docked at Station Alpha
+[Turn 1] Action 'no_fire' blocked by scenario rule!
+[1m2/2 passed.
+[0m[4m
+
+test/unit/test_scenario_randomization.gd
+[0m* test_generate_scenario_deterministic
+[SCENARIO] Sathar Entry Edge: 2 (Vec: (-1, 1, 0)), Facing: 5
+[SCENARIO] Sathar Entry Edge: 2 (Vec: (-1, 1, 0)), Facing: 5
+* test_generate_scenario_random
+[SCENARIO] Sathar Entry Edge: 2 (Vec: (-1, 1, 0)), Facing: 5
+[SCENARIO] Sathar Entry Edge: 3 (Vec: (-1, 0, 1)), Facing: 0
+[1m2/2 passed.
+[0m[4m
+
+test/unit/test_security_validation.gd
+[0m* test_validate_rpc_ownership
+[DEBUG] _build_repair_panel called
+[Turn 1] [DEBUG] Initializing repair_panel
+[DEBUG] GameManager: Peer 1 NOT in Lobby Teams. Defaulting to 0 (Spectator). Teams: {  }
+[Turn 1] Network: Default Assignment (Host=1, Client=2). My Side: 1
+[Turn 1] Player 1 finished loading.
+[Turn 1] All Players Ready. Starting Game...
+GameManager: Generated Random Seed: 208897155
+[Turn 1] Game Setup Received: Seed 208897155
+[Turn 1] Error: Scenario  not found!
+[Turn 1] [color=cyan]=== DEPLOYMENT Phase ===[/color]
+[Turn 1] [color=yellow]AI Spawning for Side 1 (Sathar: false)[/color]
+[Turn 1] [color=yellow]AI Spawning for Side 2 (Sathar: false)[/color]
+[DEBUG] _update_deployment_ui called - Subphase: 2, my_side_id: 1
+[Security] Validation Failed: Sender 100 (Side 1) tried to control Side 2
+[1m1/1 passed.
+[0m[4m
+
+test/unit/test_ship_data.gd
+[0m* test_ship_initialization
+* test_reset_turn_state
+[1m2/2 passed.
+[0m[4m
+
+test/unit/test_ship_list_bug.gd
+[0m* test_ship_list_filtering_sathar_passive_fire
+[DEBUG] _build_repair_panel called
+[Turn 1] [DEBUG] Initializing repair_panel
+[DEBUG] GameManager: Peer 1 NOT in Lobby Teams. Defaulting to 0 (Spectator). Teams: {  }
+[Turn 1] Network: Default Assignment (Host=1, Client=2). My Side: 1
+[Turn 1] Player 1 finished loading.
+[Turn 1] All Players Ready. Starting Game...
+GameManager: Generated Random Seed: 4200840143
+[Turn 1] Game Setup Received: Seed 4200840143
+[Turn 1] Error: Scenario  not found!
+[Turn 1] [color=cyan]=== DEPLOYMENT Phase ===[/color]
+[Turn 1] [color=yellow]AI Spawning for Side 1 (Sathar: false)[/color]
+[Turn 1] [color=yellow]AI Spawning for Side 2 (Sathar: false)[/color]
+[DEBUG] _update_deployment_ui called - Subphase: 2, my_side_id: 1
+[DEBUG] start_combat_passive: Side 2 firing (Opponent of Moving Side 1)
+[Turn 1] Combat Planning: Side 2
+[DEBUG] TARGET CHECK P2. Ships: 1
+[DEBUG] NO TARGETS FOUND for P2
+[Turn 1] No valid targets for Side 2. Skipping...
+    Button Text: [N/A] Sathar_Ship
+[33m    3 Orphans[0m
+[33m        * [@Button@9047:<Button#618173303109>]
+        * [@Button@9048:<Button#618223634761>]
+        * [@Button@9049:<Button#618307521786>][0m
+* test_ship_list_filtering_upf_active_fire
+[DEBUG] _build_repair_panel called
+[Turn 1] [DEBUG] Initializing repair_panel
+[DEBUG] GameManager: Peer 1 NOT in Lobby Teams. Defaulting to 0 (Spectator). Teams: {  }
+[Turn 1] Network: Default Assignment (Host=1, Client=2). My Side: 1
+[Turn 1] Player 1 finished loading.
+[Turn 1] All Players Ready. Starting Game...
+GameManager: Generated Random Seed: 941376369
+[Turn 1] Game Setup Received: Seed 941376369
+[Turn 1] Error: Scenario  not found!
+[Turn 1] [color=cyan]=== DEPLOYMENT Phase ===[/color]
+[Turn 1] [color=yellow]AI Spawning for Side 1 (Sathar: false)[/color]
+[Turn 1] [color=yellow]AI Spawning for Side 2 (Sathar: false)[/color]
+[DEBUG] _update_deployment_ui called - Subphase: 2, my_side_id: 1
+[DEBUG] start_combat_active: Side 1 firing (Active Side)
+[Turn 1] Combat Planning: Side 1
+[DEBUG] TARGET CHECK P1. Ships: 1
+[DEBUG] NO TARGETS FOUND for P1
+[Turn 1] No valid targets for Side 1. Skipping...
+    Button Text: [N/A] UPF_Ship
+[33m    3 Orphans[0m
+[33m        * [@Button@9195:<Button#626008263000>]
+        * [@Button@9196:<Button#626058594650>]
+        * [@Button@9197:<Button#626142480735>][0m
+[33m6 orphans[0m
+[1m2/2 passed.
+[0m[4m
+
+test/unit/test_ship_status_panel.gd
+[0m* test_no_damage_initial_state
+* test_adf_reduction
+* test_crippled_weapon
+* test_system_damage
+* test_fire
+[1m5/5 passed.
+[0m[4m
+
+test/unit/test_side_names.gd
+[0m* test_get_side_name_returns_correct_name
+[DEBUG] _build_repair_panel called
+[Turn 1] [DEBUG] Initializing repair_panel
+[DEBUG] GameManager: Peer 1 NOT in Lobby Teams. Defaulting to 0 (Spectator). Teams: {  }
+[Turn 1] Network: Default Assignment (Host=1, Client=2). My Side: 1
+[Turn 1] Player 1 finished loading.
+[Turn 1] All Players Ready. Starting Game...
+GameManager: Generated Random Seed: 216951563
+[Turn 1] Game Setup Received: Seed 216951563
+[Turn 1] Error: Scenario  not found!
+[Turn 1] [color=cyan]=== DEPLOYMENT Phase ===[/color]
+[Turn 1] [color=yellow]AI Spawning for Side 1 (Sathar: false)[/color]
+[Turn 1] [color=yellow]AI Spawning for Side 2 (Sathar: false)[/color]
+[DEBUG] _update_deployment_ui called - Subphase: 2, my_side_id: 1
+* test_get_side_name_fallback
+[DEBUG] _build_repair_panel called
+[Turn 1] [DEBUG] Initializing repair_panel
+[DEBUG] GameManager: Peer 1 NOT in Lobby Teams. Defaulting to 0 (Spectator). Teams: {  }
+[Turn 1] Network: Default Assignment (Host=1, Client=2). My Side: 1
+[Turn 1] Player 1 finished loading.
+[Turn 1] All Players Ready. Starting Game...
+GameManager: Generated Random Seed: 3098168215
+[Turn 1] Game Setup Received: Seed 3098168215
+[SCENARIO] Sathar Entry Edge: 2 (Vec: (-1, 1, 0)), Facing: 5
+[Turn 1] Loading Scenario: Surprise Attack!
+[DEBUG] Ship Station Alpha loaded with Orbit Dir 1
+[Turn 1] Defiant docked at Station Alpha
+[Turn 1] Stiletto docked at Station Alpha
+[Turn 1] [color=cyan]=== DEPLOYMENT Phase ===[/color]
+[Turn 1] [color=yellow]AI Spawning for Side 1 (Sathar: true)[/color]
+[Turn 1] [color=yellow]AI Spawning for Side 2 (Sathar: false)[/color]
+[DEBUG] _update_deployment_ui called - Subphase: 2, my_side_id: 1
+[1m2/2 passed.
+[0m[4m
+
+test/unit/test_speed_0_facing_bug.gd
+[0m* test_reproduction_speed_0_rotation_and_move
+[DEBUG] _build_repair_panel called
+[Turn 1] [DEBUG] Initializing repair_panel
+[DEBUG] GameManager: Peer 1 NOT in Lobby Teams. Defaulting to 0 (Spectator). Teams: {  }
+[Turn 1] Network: Default Assignment (Host=1, Client=2). My Side: 1
+[Turn 1] Player 1 finished loading.
+[Turn 1] All Players Ready. Starting Game...
+GameManager: Generated Random Seed: 3231549758
+[Turn 1] Game Setup Received: Seed 3231549758
+[SCENARIO] Sathar Entry Edge: 5 (Vec: (1, -1, 0)), Facing: 2
+[Turn 1] Loading Scenario: Surprise Attack!
+[DEBUG] Ship Station Alpha loaded with Orbit Dir 1
+[Turn 1] Defiant docked at Station Alpha
+[Turn 1] Stiletto docked at Station Alpha
+[Turn 1] [color=cyan]=== DEPLOYMENT Phase ===[/color]
+[Turn 1] [color=yellow]AI Spawning for Side 1 (Sathar: true)[/color]
+[Turn 1] [color=yellow]AI Spawning for Side 2 (Sathar: false)[/color]
+[DEBUG] _update_deployment_ui called - Subphase: 2, my_side_id: 1
+DEBUG: ghost input dist: 1 | start: (0, 0, 0) | target: (1, -1, 0) | facing: 5
+[Turn 1] Movement Phase: Sathar
+[Turn 1] Movement Phase: Sathar
+[33m    1 Orphans[0m
+[33m        * [TestShip:<Node2D#660351225385>(Ship.gd)][0m
+[33m1 orphans[0m
+[1m1/1 passed.
+[0m[4m
+
+test/unit/test_turn_cycle.gd
+[0m* test_turn_increment_cycle
+[DEBUG] _build_repair_panel called
+[Turn 1] [DEBUG] Initializing repair_panel
+[DEBUG] GameManager: Peer 1 NOT in Lobby Teams. Defaulting to 0 (Spectator). Teams: {  }
+[Turn 1] Network: Default Assignment (Host=1, Client=2). My Side: 1
+[Turn 1] Player 1 finished loading.
+[Turn 1] All Players Ready. Starting Game...
+GameManager: Generated Random Seed: 3732812778
+[Turn 1] Game Setup Received: Seed 3732812778
+[SCENARIO] Sathar Entry Edge: 1 (Vec: (0, 1, -1)), Facing: 4
+[Turn 1] Loading Scenario: Surprise Attack!
+[DEBUG] Ship Station Alpha loaded with Orbit Dir 1
+[Turn 1] Defiant docked at Station Alpha
+[Turn 1] Stiletto docked at Station Alpha
+[Turn 1] [color=cyan]=== DEPLOYMENT Phase ===[/color]
+[Turn 1] [color=yellow]AI Spawning for Side 1 (Sathar: true)[/color]
+[Turn 1] [color=yellow]AI Spawning for Side 2 (Sathar: false)[/color]
+[DEBUG] _update_deployment_ui called - Subphase: 2, my_side_id: 1
+[Turn 1] === Turn Start: Side Sathar ===
+DEBUG: Rejected Station Alpha Side:2 CurSide:1 Moved:false
+DEBUG: Rejected Defiant Side:2 CurSide:1 Moved:false
+DEBUG: Rejected Stiletto Side:2 CurSide:1 Moved:false
+DEBUG: start_movement_phase. Side: 1 Available: 2
+DEBUG: First available: Venemous ID: 1 Moved: false
+DEBUG: Skip Auto-Orbit Check: Venemous (Class: Destroyer, Orbit: 0)
+DEBUG: Skip Auto-Orbit Check: Perdition (Class: Heavy Cruiser, Orbit: 0)
+[DEBUG] Standard move start for Venemous
+[Turn 1] Defiant Evacuation Progress: Turn 1
+[Turn 1] Turn Segment Complete.
+[Turn 1] === Turn Start: Side UPF ===
+DEBUG: Rejected Venemous Side:1 CurSide:2 Moved:false
+DEBUG: Rejected Perdition Side:1 CurSide:2 Moved:false
+DEBUG: start_movement_phase. Side: 2 Available: 3
+DEBUG: First available: Station Alpha ID: 2 Moved: false
+DEBUG: Auto-Orbit Candidate Found: Station Alpha (Class: Space Station, Orbit: 1)
+[DEBUG] _on_orbit: No planet found adjacent to Station Alpha at (0, 0, 0)
+[DEBUG] Auto-Orbit Failed (No planet?). Defaulting to Hold Position.
+[Turn 1] Not your turn! (Active: 2, You: 1)
+[DEBUG] Standard move start for Defiant
+[Turn 1] Defiant Evacuation Progress: Turn 2
+[Turn 1] Turn Segment Complete.
+[Turn 2] Round Complete. Starting New Round.
+[Turn 2] === Turn Start: Side Sathar ===
+DEBUG: Rejected Station Alpha Side:2 CurSide:1 Moved:false
+DEBUG: Rejected Defiant Side:2 CurSide:1 Moved:false
+DEBUG: Rejected Stiletto Side:2 CurSide:1 Moved:false
+DEBUG: start_movement_phase. Side: 1 Available: 2
+DEBUG: First available: Venemous ID: 1 Moved: false
+DEBUG: Skip Auto-Orbit Check: Venemous (Class: Destroyer, Orbit: 0)
+DEBUG: Skip Auto-Orbit Check: Perdition (Class: Heavy Cruiser, Orbit: 0)
+[DEBUG] Standard move start for Venemous
+[33m[WARNING]:  [0mTest script has 3 unfreed children.  Increase log level for more details.
+[1m1/1 passed.
+[0m[4m
+
+test/unit/test_ui_weapon_highlight.gd
+[0m* test_weapon_highlight
+[1m1/1 passed.
+[0m[4m
+
+test/unit/test_undo_logic.gd
+[0m* test_segmented_undo
+[DEBUG] _build_repair_panel called
+[Turn 1] [DEBUG] Initializing repair_panel
+[DEBUG] GameManager: Peer 1 NOT in Lobby Teams. Defaulting to 0 (Spectator). Teams: {  }
+[Turn 1] Network: Default Assignment (Host=1, Client=2). My Side: 1
+[Turn 1] Player 1 finished loading.
+[Turn 1] All Players Ready. Starting Game...
+GameManager: Generated Random Seed: 4224861249
+[Turn 1] Game Setup Received: Seed 4224861249
+[SCENARIO] Sathar Entry Edge: 1 (Vec: (0, 1, -1)), Facing: 4
+[Turn 1] Loading Scenario: Surprise Attack!
+[DEBUG] Ship Station Alpha loaded with Orbit Dir 1
+[Turn 1] Defiant docked at Station Alpha
+[Turn 1] Stiletto docked at Station Alpha
+[Turn 1] [color=cyan]=== DEPLOYMENT Phase ===[/color]
+[Turn 1] [color=yellow]AI Spawning for Side 1 (Sathar: true)[/color]
+[Turn 1] [color=yellow]AI Spawning for Side 2 (Sathar: false)[/color]
+[DEBUG] _update_deployment_ui called - Subphase: 2, my_side_id: 1
+DEBUG: ghost input dist: 1 | start: (0, 0, 0) | target: (1, 0, -1) | facing: 0
+[Turn 1] Movement Phase: Sathar
+[Turn 1] Movement Phase: Sathar
+[Turn 1] Resetting Plot...
+[1m1/1 passed.
+[0m[4m
+
+test/unit/test_weapon_grouping.gd
+[0m* test_weapon_grouping_logic
+[1m1/1 passed.
+[0m
+
+
+
+[33m==============================================[0m
+[33m= 14 Orphans[0m
+[33m==============================================[0m
+test_auto_deploy.gd
+    - test_categorize_ships
+[33m        * [<Node2D#419480734418>(Ship.gd)]
+        * [<Node2D#419514288851>(Ship.gd)]
+        * [<Node2D#419547843284>(Ship.gd)][0m
+    - test_execute_placement_spacing_and_facing
+[33m        * [<Node2D#419749168744>(Ship.gd)]
+        * [<Node2D#419816277609>(Ship.gd)]
+        * [<Node2D#419782723700>(Ship.gd)][0m
+    - test_space_station_speed_locks_and_orbit
+[33m        * [<Node2D#420000827811>(Ship.gd)][0m
+    - test_auto_deploy_collision_avoidance
+[33m        * [<Node2D#420185377232>(Ship.gd)]
+        * [<Node2D#420218931672>(Ship.gd)][0m
+test_facing_fragility.gd
+    - test_fragile_state_desync
+[33m        * [<Node2D#512376180326>(Ship.gd)][0m
+test_fire_damage_rules.gd
+    - test_fire_stack_limit
+[33m        * [<Node2D#513668025944>(Ship.gd)][0m
+    - test_disastrous_overrides_electrical
+[33m        * [<Node2D#513768689238>(Ship.gd)][0m
+    - test_electrical_does_not_override_disastrous
+[33m        * [<Node2D#513852575316>(Ship.gd)][0m
+test_speed_0_facing_bug.gd
+    - test_reproduction_speed_0_rotation_and_move
+[33m        * [TestShip:<Node2D#660351225385>(Ship.gd)][0m
+
+
+[33m==============================================
+[0m[33m= Run Summary
+[0m[33m==============================================
+[0m[4m
+test/integration/test_acceleration_persistence.gd
+[0m- test_icm_dialog_shows_target_name
+[31m    [Failed]:  [0mExpected [<null>] to be anything but NULL:  ICM Panel should be created
+          at line 98
+[31m    [Failed]:  [0mUnexpected Errors:
+    [1] <engine-2>Invalid call. Nonexistent function 'get_child' in base 'Nil'.
+          at line -1
+
+Totals
+------
+Warnings             54
+
+Scripts              46
+Tests                90
+Passing Tests        89
+Failing Tests         1
+Asserts           304/306
+Orphans              14
+Time              1.328s
+
+
+[31m---- 1 failing tests ----
+[0m

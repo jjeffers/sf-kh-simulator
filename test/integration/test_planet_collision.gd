@@ -9,8 +9,8 @@ func before_each():
 	gm = game_manager_script.new()
 	add_child_autofree(gm)
 	# Initialize minimal state
-	gm.ships = []
-	gm.planet_hexes = []
+	gm.ships.clear()
+	gm.planet_hexes.clear()
 	gm.current_phase = gm.Phase.MOVEMENT
 	gm.current_side_id = 1
 
@@ -27,9 +27,8 @@ func test_planet_collision_destroys_ship():
 	ship.max_hull = 100
 	ship.hull = 100
 	if ship.get_parent() == null:
-		_game_manager.add_child(ship)
+		gm.add_child(ship)
 	gm.ships.append(ship)
-	add_child_autofree(ship)
 	
 	# 3. Execute Move into Planet
 	# Path: (0,0,0) -> (1,-1,0). BUT validate_move_path expects segments?
@@ -62,12 +61,8 @@ func test_planet_collision_avoids_safe_path():
 	ship.grid_position = Vector3i(0, 0, 0)
 	ship.side_id = 1 # Must match current_side_id
 	if ship.get_parent() == null:
-		_game_manager.add_child(ship)
+		gm.add_child(ship)
 	gm.ships.append(ship)
-	
-	# FIX: Parent to GM to prevent GUT double-free/ownership issues
-	gm.add_child(ship)
-	# add_child_autofree(ship) # Removed
 	
 	var path = [Vector3i(1, -1, 0)] # Stops before planet
 	

@@ -22,7 +22,7 @@ func before_each():
 	_sender.grid_position = Vector3i(0, 0, 0)
 	_sender.configure_heavy_cruiser() # Has multiple weapons
 	if _sender.get_parent() == null:
-		_game_manager.add_child(_sender)
+		_gm.add_child(_sender)
 	_gm.ships.append(_sender)
 	
 	_ghost = ShipScript.new()
@@ -32,8 +32,6 @@ func before_each():
 	
 func after_each():
 	_gm.free()
-	_sender.free()
-	_ghost.free()
 
 func test_draw_weapon_ranges_no_crash():
 	var drawn = [false]

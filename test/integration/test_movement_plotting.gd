@@ -8,7 +8,8 @@ var _gm = null
 var _ship = null
 
 func before_each():
-	get_node("/root/NetworkManager").lobby_data = {"teams": {}, "ship_assignments": {}}
+	get_node("/root/NetworkManager").game_setup_data.clear()
+	get_node("/root/NetworkManager").lobby_data = {"scenario": "none", "teams": {}, "ship_assignments": {}}
 	_gm = GameManagerScript.new()
 	add_child(_gm)
 	_gm._ready()
@@ -24,9 +25,8 @@ func before_each():
 	_ship.speed = 0 # Start stationary to avoid auto-orbit
 	_ship.facing = 0 # East
 	if _ship.get_parent() == null:
-		_game_manager.add_child(_ship)
-	_gm.ships.append(_ship)
-	_gm.add_child(_ship)
+		_gm.add_child(_ship)
+		_gm.ships.append(_ship)
 	
 	_gm.current_side_id = 1
 	_gm.my_side_id = 1 # Authoritative
@@ -83,8 +83,8 @@ func test_previous_path_saved_on_commit():
 	_gm.execute_all_movement() # Execute the committed move to save previous_path
 	
 	# Verify
-	assert_eq(_ship.previous_path.size(), 1, "Previous path should be saved")
-	assert_eq(_ship.previous_path[0], target_hex, "Previous path content match")
+	assert_eq(_ship.previous_path.size(), 2, "Previous path should be saved with origin node")
+	assert_eq(_ship.previous_path[1], target_hex, "Previous path content match")
 
 func test_select_ship_click():
 	# Add another ship
@@ -93,9 +93,8 @@ func test_select_ship_click():
 	s2.grid_position = Vector3i(-2, 2, 0)
 	s2.side_id = 1
 	if s2.get_parent() == null:
-		_game_manager.add_child(s2)
-	_gm.ships.append(s2)
-	_gm.add_child(s2)
+		_gm.add_child(s2)
+		_gm.ships.append(s2)
 	
 	# Click on it
 	_gm._handle_movement_click(s2.grid_position)

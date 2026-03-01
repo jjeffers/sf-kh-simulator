@@ -30,9 +30,8 @@ func test_zero_speed_with_negative_adf_click():
 	ship.current_adf_modifier = 2 
 	
 	if ship.get_parent() == null:
-		_game_manager.add_child(ship)
-	_gm.ships.append(ship)
-	_gm.add_child(ship)
+		_gm.add_child(ship)
+		_gm.ships.append(ship)
 	
 	# Selecting the ship initializes its plotting state
 	_gm.selected_ship = ship

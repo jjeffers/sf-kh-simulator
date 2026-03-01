@@ -31,9 +31,8 @@ func test_batch_movement_flow():
 	s1.speed = 0
 	s1.adf = 2
 	if s1.get_parent() == null:
-		_game_manager.add_child(s1)
-	gm.ships.append(s1)
-	gm.add_child(s1)
+		gm.add_child(s1)
+		gm.ships.append(s1)
 	
 	var s2 = load("res://Scripts/Ship.gd").new()
 	s2.name = "Ship2"
@@ -43,9 +42,8 @@ func test_batch_movement_flow():
 	s2.speed = 0
 	s2.adf = 2
 	if s2.get_parent() == null:
-		_game_manager.add_child(s2)
-	gm.ships.append(s2)
-	gm.add_child(s2)
+		gm.add_child(s2)
+		gm.ships.append(s2)
 	
 	# gm._ready() # Removed to prevent scenario reload wiping ships
 	gm.current_side_id = 1
@@ -121,9 +119,8 @@ func test_undo_planning():
 	s1.side_id = 1
 	s1.grid_position = Vector3i(0, 0, 0)
 	if s1.get_parent() == null:
-		_game_manager.add_child(s1)
-	gm.ships.append(s1)
-	gm.add_child(s1)
+		gm.add_child(s1)
+		gm.ships.append(s1)
 	
 	# gm._ready() # Removed to prevent scenario reload wiping ships
 	gm.current_side_id = 1

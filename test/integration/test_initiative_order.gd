@@ -7,7 +7,8 @@ var HexGridScript = preload("res://Scripts/HexGrid.gd")
 var _gm = null
 
 func before_each():
-	NetworkManager.lobby_data = {"teams": {}, "ship_assignments": {}}
+	NetworkManager.game_setup_data.clear()
+	NetworkManager.lobby_data = {"scenario": "none", "teams": {}, "ship_assignments": {}}
 	_gm = GameManagerScript.new()
 	add_child(_gm)
 	_gm.multiplayer.multiplayer_peer = OfflineMultiplayerPeer.new()
@@ -29,7 +30,7 @@ func test_initiative_order_p2_first():
 	s1.side_id = 1
 	s1.grid_position = Vector3i(0, 0, 0)
 	if s1.get_parent() == null:
-		_game_manager.add_child(s1)
+		_gm.add_child(s1)
 	_gm.ships.append(s1)
 	
 	var s2 = ShipScript.new()
@@ -37,7 +38,7 @@ func test_initiative_order_p2_first():
 	s2.side_id = 2
 	s2.grid_position = Vector3i(10, -10, 0)
 	if s2.get_parent() == null:
-		_game_manager.add_child(s2)
+		_gm.add_child(s2)
 	_gm.ships.append(s2)
 	
 	# Force Start with P2
