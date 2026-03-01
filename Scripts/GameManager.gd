@@ -4732,9 +4732,7 @@ func _resolve_seeker_movement_and_detonations():
 		if seeker.get("speed", 0) <= 0:
 			continue # Inactive or destroyed
 			
-		# Increase speed by 2
-		seeker["speed"] += 2
-		log_message("[color=orange]Seeker at %v accelerates to speed %d.[/color]" % [seeker["pos"], seeker["speed"]])
+		log_message("[color=orange]Seeker at %v activates at speed %d.[/color]" % [seeker["pos"], seeker["speed"]])
 		
 		# Check max threshold before moving
 		if seeker["speed"] > 12:
@@ -4798,6 +4796,9 @@ func _resolve_seeker_movement_and_detonations():
 				break
 				
 		seeker["pos"] = current_pos
+		
+		# Delay speed increment to apply to next turn phase
+		seeker["speed"] += 2
 		
 		if not hit_ship:
 			for s in ships:
