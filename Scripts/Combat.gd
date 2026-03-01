@@ -10,6 +10,7 @@ const ICM_MODIFIER_TORPEDO = 10
 const ICM_MODIFIER_ASSAULT_ROCKET = 5
 const ICM_MODIFIER_ROCKET_BATTERY = 3
 const ICM_MODIFIER_MINE = 8
+const ICM_MODIFIER_SEEKER = 8
 
 static func calculate_icm_reduction(weapon_type: String, icm_count: int) -> int:
 	if icm_count <= 0: return 0
@@ -20,6 +21,7 @@ static func calculate_icm_reduction(weapon_type: String, icm_count: int) -> int:
 		"Rocket": reduction_per_missile = ICM_MODIFIER_ASSAULT_ROCKET
 		"Rocket Battery": reduction_per_missile = ICM_MODIFIER_ROCKET_BATTERY
 		"Mine": reduction_per_missile = ICM_MODIFIER_MINE
+		"Seeker": reduction_per_missile = ICM_MODIFIER_SEEKER
 		_: return 0
 		
 	return icm_count * reduction_per_missile
@@ -72,6 +74,23 @@ static func calculate_hit_chance(dist: int, weapon: Dictionary = {}, target: Shi
 			
 		# Head-on does not apply to Mines per RULES.md (they are stationary/0 range)
 		if icm_count > 0: chance -= calculate_icm_reduction("Mine", icm_count)
+		return max(0, chance)
+		
+	# Special Rule: Seeker (Flat 75%, 90% vs SS)
+	if weapon.get("type") == "Seeker":
+		chance = 75
+		# VS Stasis Screen (SS)
+		var active_def = "None"
+		if target:
+			if target.get("is_ms_active"): active_def = "MS"
+			elif target.get("active_screen") and target.get("active_screen") != "None": active_def = target.get("active_screen")
+			elif target.defense == "RH": active_def = "RH"
+		
+		if active_def == "SS":
+			chance = 90
+			
+		# Head-on does not apply to Seekers per RULES.md (they are autonomous missiles from random facings)
+		if icm_count > 0: chance -= calculate_icm_reduction("Seeker", icm_count)
 		return max(0, chance)
 	
 	# Base Chance Calculation and Target Defenses (RULES.md)

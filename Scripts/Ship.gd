@@ -85,6 +85,7 @@ var planned_path: Array[Vector3i] = []
 var planned_facing: int = 0
 var planned_orbit_dir: int = 0
 var planned_mines_to_drop: Array[Vector3i] = []
+var planned_seekers_to_drop: Array[Vector3i] = []
 
 func get_net_state() -> Dictionary:
 	return {
@@ -113,6 +114,7 @@ func get_net_state() -> Dictionary:
 		"orbit_direction": orbit_direction,
 		"speed": speed,
 		"planned_mines_to_drop": planned_mines_to_drop,
+		"planned_seekers_to_drop": planned_seekers_to_drop,
 		"is_deployed": is_deployed,
 		"is_destroyed": is_destroyed, # Important for sync
 		"current_dcr": current_dcr,
@@ -181,6 +183,11 @@ func apply_net_state(data: Dictionary):
 		planned_mines_to_drop.assign(data["planned_mines_to_drop"])
 	else:
 		planned_mines_to_drop.clear()
+		
+	if data.has("planned_seekers_to_drop"):
+		planned_seekers_to_drop.assign(data["planned_seekers_to_drop"])
+	else:
+		planned_seekers_to_drop.clear()
 	
 	var net_is_destroyed = data.get("is_destroyed", is_destroyed)
 	if net_is_destroyed and not is_destroyed:
@@ -620,44 +627,55 @@ func configure_minelayer():
 	equipped_screens.clear()
 	
 	weapons.clear()
-	# Laser Battery (x2)
-	weapons.append({
-		"name": "Laser Battery 1",
-		"type": "Laser",
-		"range": 9,
-		"arc": "360",
-		"ammo": 999,
-		"max_ammo": 999,
-		"damage_dice": "1d10",
-		"damage_bonus": 0,
-		"fired": false
-	})
-	weapons.append({
-		"name": "Laser Battery 2",
-		"type": "Laser",
-		"range": 9,
-		"arc": "360",
-		"ammo": 999,
-		"max_ammo": 999,
-		"damage_dice": "1d10",
-		"damage_bonus": 0,
-		"fired": false
-	})
-	
-	# Mines (x20)
-	weapons.append({
-		"name": "Mines",
-		"type": "Mine",
-		"range": 0,
-		"arc": "360",
-		"ammo": 20,
-		"max_ammo": 20,
-		"damage_dice": "3d10",
-		"damage_bonus": 5,
-		"dtm": 0,
-		"fired": false
-	})
-	
+	# Laser Batteries (x2), Mines, Seekers
+	weapons = [
+		{
+			"name": "Laser Battery A",
+			"type": "Laser",
+			"range": 9,
+			"arc": "360",
+			"ammo": 999,
+			"max_ammo": 999,
+			"damage_dice": "1d10",
+			"damage_bonus": 0,
+			"fired": false
+		},
+		{
+			"name": "Laser Battery B",
+			"type": "Laser",
+			"range": 9,
+			"arc": "360",
+			"ammo": 999,
+			"max_ammo": 999,
+			"damage_dice": "1d10",
+			"damage_bonus": 0,
+			"fired": false
+		},
+		{
+			"name": "Mines",
+			"type": "Mine",
+			"range": 0,
+			"arc": "360",
+			"ammo": 20,
+			"max_ammo": 20,
+			"damage_dice": "3d10",
+			"damage_bonus": 5,
+			"dtm": -20,
+			"fired": false
+		},
+		{
+			"name": "Seekers",
+			"type": "Seeker",
+			"range": 0,
+			"arc": "360",
+			"ammo": 4,
+			"max_ammo": 4,
+			"damage_dice": "5d10",
+			"damage_bonus": 0,
+			"dtm": -20,
+			"fired": false
+		}
+	]
 	current_weapon_index = 0
 
 func configure_destroyer():

@@ -160,11 +160,11 @@ Detailed specifications for all ship classes currently implemented.
 | **Fighter** | 8 | 5 | 5 | RH | 0 | 0 | Assault Rockets (x3) | 30 |
 | **Assault Scout** | 15 | 5 | 4 | RH | 0 | 0 | Laser Battery, Assault Rockets (x4) | 50 |
 | **Frigate** | 40 | 4 | 3 | RH, ICMs (x4) | 4 | 1 | Laser Battery, Laser Canon, Rocket Battery (x4), Torpedo (x2) | 70 |
-| **Minelayer** | 40 | 1 | 2 | RH | 4 | 4 | Laser Battery (x2), Mines (x20) | 75 |
+| **Minelayer** | 40 | 1 | 2 | RH | 4 | 4 | Laser Battery (x2), Mines (x20), Seeker (x4) | 75 |
 | **Destroyer** | 50 | 3 | 3 | RH | 5 | 2 | Laser Battery, Laser Canon, Electron Battery, Rocket Battery (x6), Torpedo (x2) | 75 |
 | **Light Cruiser** | 70 | 3 | 2 | RH, ES, SS | 8 | 1 | Disruptor Canon, laser battery, electron battery, proton battery, Rocket Battery (x6), Torpedo (x4) | 100 |
-| **Heavy Cruiser** | 80 | 2 | 1 | RH, PS, SS | 8 | 1 | Laser Battery (x2), proton battery, electron battery, Disruptor Canon, Rocket Battery (x8), Torpedo (x4) | 120 |
-| **Battleship** | 120 | 2 | 2 | RH, PS, ES, SS | 12 | 4 | Disruptor Canon, Laser Battery (x3), proton battery, electron battery (x2), Rocket Battery (x10), Torpedo (x8) | 200 |
+| **Heavy Cruiser** | 80 | 2 | 1 | RH, PS, SS | 8 | 1 | Laser Battery (x2), proton battery, electron battery, Disruptor Canon, Rocket Battery (x8), Torpedo (x4), Seeker (x2) | 120 |
+| **Battleship** | 120 | 2 | 2 | RH, PS, ES, SS | 12 | 4 | Disruptor Canon, Laser Battery (x3), proton battery, electron battery (x2), Rocket Battery (x10), Torpedo (x8), Seeker (x4) | 200 |
 | **Assault Carrier** | 75 | 2 | 1 | RH | 10 | 4 | Laser Battery, proton battery, Rocket Battery (x8) 150 |
 | **Space Station** | 20-200 | 0 | 0 | RH, ES, SS, PS | 2-8 | 1-4 | 1 electron battery or 1 proton battery or 1 laser battery pe 50 hull points, Rocket Battery (2-12) | 1/2 hull points |
 
@@ -187,12 +187,10 @@ Combat mechanics and specifications for all weapon types.
 | **Assault Rocket** | Rocket | 4 | FF, LTD, MPO | 2d10+4 | 60 | 60 | 60 | 60 | 60 | 60 | -10 | - Reduced to 60% vs RH<br>- Subject to ICM (-5% per) |
 | **Rocket Battery** | Rocket | 3 | LTD | 2d10 | 40 | 40 | 40 | 40 | 40 | 40 | -10|  <br>- Subject to ICM (-3% per) |
 | **Torpedo** | Torpedo | 4 | LTD, MPO | 4d10 | 50 | 50 | 50 | 50 |75 | 50 | -20 | <br>- Subject to ICM (-10% per) |
-| **Mine** | Mine | 0 | LTD | 3d10+5 | 60 | 60 | 60 | 60 | 80 | 60 | 0 | <br>Subject to ICM (-8% per) | 
+| **Mine** | Mine | 0 | LTD | 3d10+5 | 60 | 60 | 60 | 60 | 80 | 60 | -20 | <br>Subject to ICM (-8% per) | 
+| **Seeker** | Seeker | unlimited | LTD | 5d10 | 75 | 75  | 75 | 75 | 90 | 75 | -20 | <br>Subject to ICM (-8% per) |
 
 RD = Range Diffusion (weapon accuracy degrades 5% per hex), FF = Forward Fire, MPO = Moving player only (not valid for defensive fire), LTD = Limited Ammunition (limited number of uses), PR = proton screen, ES = electron scrren, SS = stasis screen, MS = masking screen, RH = reflective hull
-
-### Mines
-Note that mines are always visible to the owning side, but never shown to the enemy side. Mines detonate when an enemy ship or ships enter a hex containing the mine. All enemy ships entering the mined hex are attacked separately by the mine. After the mine detonates, the hex is cleared of that mine. Mines may be deployed during the setup phase, typically taken from the stock of mines carried by a minelayer. Mines may also be placed into a hex by a minelayer during movement planning. A "drop mine" button should be shown if the selected ship is a minelayer. Clicking the "drop mine" button should place a mine in the hex that the minelayer is currently in. The mine will remain in that hex until it detonates. 
 
 A weapon's chance to hit is not effected by distance unless it has the RD attribute.
 Weapons have can fire in any direction unless they have the FF attribute.
@@ -200,6 +198,27 @@ Weapons have can fire in any direction unless they have the FF attribute.
 DTM in the table above refers to Damage Table Modifier. 
 
 *Note: "Flat" chances usually ignore Range penalties in some systems, but code implies `Chance = Base - (Dist * 5)`. The "Flat" designation in `Combat.gd` overrides the 80% default base, but the Range logic at line 79 applies to ALL weapons. (Verification needed: `Combat.gd` lines 38-51 return EARLY for Torpedo/RB, skipping line 79?? Yes, they verify `return max(0, chance)`. So Torpedoes/Available Rockets **IGNORE RANGE PENALTY**).*
+
+### Mines
+Note that mines are always visible to the owning side, but never shown to the enemy side. Mines detonate when an enemy ship or ships enter a hex containing the mine. All enemy ships entering the mined hex are attacked separately by the mine. After the mine detonates, the hex is cleared of that mine. Mines may be deployed during the setup phase, typically taken from the stock of mines carried by a minelayer. Mines may also be placed into a hex by a minelayer during movement planning. A "drop mine" button should be shown if the selected ship is a minelayer. Clicking the "drop mine" button should place a mine in the hex that the minelayer is currently in. The mine will remain in that hex until it detonates. 
+
+### Seekers
+
+Seekers are like mines in that they are always visible to the owning side, but never shown to the enemy side until activated. Seekers may be placed during the setup phase and taken from the stock seekers carried by ships of the owning side. Seekers may also be placed into a hex by a ship of the owning side during movement planning. 
+
+Seeker are activated during movement planning by the owning side. Immediately after being activated a seeker will move 2 hexes towards the nearest ship of any aide. On the next turn the seeker will move 4 hexes, and it will accelerate by 2 hexes each turn until it reaches a maximum of 12 hexes of speed, at which point it will detonate. 
+
+An active seeker detonates when it enters a hex containing any ship. A seeker will detonate if any ship enters its hex during movement execution. If more than 1 ship enters the same hex during movment, the seeker attacks the largest ship.
+
+After detonating, the hex is cleared of that seeker. 
+
+Seekers may make as many as 3 facing changes before it moves, and it can make an unlimited number of face changes during movment.
+
+A seeker will move towards the closest ship or space station of any aide. If there are more than 1 ship of equal, closest distance, the seeker will move towards one of them at random. They do not target planets, moons, asteroids, etc.
+
+
+
+
 
 ## Defensive Systems
 
