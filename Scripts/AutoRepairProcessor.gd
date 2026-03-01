@@ -142,9 +142,18 @@ static func _sort_weapons_by_utility(s, key_a: String, key_b: String) -> bool:
 
 static func _get_weapon_utility(wpn: Dictionary) -> float:
 	var utility = 0.0
-	var damage_dice = wpn.get("damage_dice", 1)
+	var damage_val = 1.0
+	
+	var damage_dice = wpn.get("damage_dice", "1d10")
+	if typeof(damage_dice) == TYPE_STRING and "d" in damage_dice:
+		var parts = damage_dice.split("d")
+		if parts.size() == 2:
+			damage_val = float(parts[0]) * float(parts[1])
+	else:
+		damage_val = float(damage_dice)
+		
 	var max_range = wpn.get("max_range", 0)
-	utility = (damage_dice * 5.0) + max_range
+	utility = (damage_val * 5.0) + max_range
 	if wpn.get("ammo", 1) <= 0:
 		utility = -999.0
 	return utility
