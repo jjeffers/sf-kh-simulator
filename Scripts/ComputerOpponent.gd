@@ -149,11 +149,12 @@ func _execute_deployment():
 		}
 	
 	var deployed_mines_data = game_manager.deployment_mines_placed.duplicate()
+	var deployed_seekers_data = game_manager.deployment_seekers_placed.duplicate()
 	
 	if game_manager.multiplayer.has_multiplayer_peer() and not game_manager._is_server_or_offline():
-		game_manager.rpc_submit_deployment.rpc_id(1, side_id, dep_data, deployed_mines_data)
+		game_manager.rpc_submit_deployment.rpc_id(1, side_id, dep_data, deployed_mines_data, deployed_seekers_data)
 	else:
-		game_manager.rpc_submit_deployment(side_id, dep_data, deployed_mines_data)
+		game_manager.rpc_submit_deployment(side_id, dep_data, deployed_mines_data, deployed_seekers_data)
 
 # --- MOVEMENT ---
 func _execute_movement():

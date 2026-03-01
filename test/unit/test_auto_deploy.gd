@@ -11,6 +11,7 @@ class MockGameManager extends Node:
     var planet_hexes: Array[Vector3i] = []
     var map_radius: int = 35
     var deployment_mines_placed: Array[Vector3i] = []
+    var deployment_seekers_placed: Array[Vector3i] = []
 
 func before_each():
     processor = AutoDeployProcessor.new()

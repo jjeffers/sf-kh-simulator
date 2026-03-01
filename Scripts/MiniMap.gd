@@ -100,6 +100,21 @@ func _draw():
 			var map_pos = (world_pos * scale_factor) + center_offset
 			draw_circle(map_pos, 2.0, Color.YELLOW)
 			
+	# 2.6 Draw Seekers
+	if game_manager.current_phase == game_manager.Phase.DEPLOYMENT and game_manager.deployment_subphase == my_side:
+		for hex in game_manager.deployment_seekers_placed:
+			var world_pos = HexGrid.hex_to_pixel(hex)
+			var map_pos = (world_pos * scale_factor) + center_offset
+			draw_circle(map_pos, 2.0, Color.ORANGE)
+			
+	for s in game_manager.active_seekers:
+		var is_owner = (s.get("side_id", -1) == my_side or my_side == 0)
+		var is_hunting = s.get("speed", 0) > 0
+		if is_owner or is_hunting:
+			var world_pos = HexGrid.hex_to_pixel(s["pos"])
+			var map_pos = (world_pos * scale_factor) + center_offset
+			draw_circle(map_pos, 2.0, Color.ORANGE)
+			
 	# 3. Draw Camera View Rect
 	# Use active camera position and zoom
 	var cam = game_manager.camera

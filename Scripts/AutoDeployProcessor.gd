@@ -53,6 +53,62 @@ func execute(ships: Array, valid_hexes: Array[Vector3i], game_manager: Node) -> 
         placed_ships.append(s)
         
     _deploy_mines(ships[0].side_id, game_manager)
+    _deploy_seekers(ships[0].side_id, game_manager)
+
+func _deploy_seekers(active_side_id: int, game_manager: Node) -> void:
+    # 1. Count seeker capacity available for this side
+    var total_seeker_capacity = 0
+    for s in game_manager.ships:
+        if is_instance_valid(s) and s.side_id == active_side_id:
+            for w in s.weapons:
+                if w.get("type", "") == "Seeker":
+                    total_seeker_capacity += w.get("ammo", 0)
+    
+    var seekers_needed = total_seeker_capacity - game_manager.deployment_seekers_placed.size()
+    if seekers_needed <= 0:
+        return
+        
+    # 2. Find planets defended by space stations of our side
+    var target_planets = []
+    for s in game_manager.ships:
+        if is_instance_valid(s) and s.side_id == active_side_id and s.ship_class in ["Space Station", "Station"]:
+            # Find closest planet (typically orbit distance)
+            for p in game_manager.planet_hexes:
+                if HexGrid.hex_distance(s.grid_position, p) <= 5: 
+                    if not p in target_planets:
+                        target_planets.append(p)
+    
+    if target_planets.is_empty():
+        return # No base to defend, scatter logic irrelevant
+        
+    # 3. Scatter randomly 7-9 hexes away from defended planets
+    var rng = RandomNumberGenerator.new()
+    rng.randomize()
+    
+    for i in range(seekers_needed):
+        var p = target_planets[rng.randi() % target_planets.size()]
+        var dist = rng.randi_range(7, 9)
+        
+        var ring: Array[Vector3i] = []
+        for dx in range(-dist, dist + 1):
+            for dy in range(max(-dist, -dx - dist), min(dist, -dx + dist) + 1):
+                var dz = -dx - dy
+                var h = p + Vector3i(dx, dy, dz)
+                if HexGrid.hex_distance(p, h) == dist:
+                    ring.append(h)
+                    
+        # Find untaken spot on the ring
+        var placed = false
+        var attempts = 15
+        while attempts > 0 and ring.size() > 0:
+            var cand = ring[rng.randi() % ring.size()]
+            # Keep it within map boundary
+            if HexGrid.hex_distance(Vector3i.ZERO, cand) <= game_manager.map_radius:
+                if not game_manager.deployment_seekers_placed.has(cand) and not game_manager.deployment_mines_placed.has(cand):
+                    game_manager.deployment_seekers_placed.append(cand)
+                    placed = true
+                    break
+            attempts -= 1
 
 func _deploy_mines(active_side_id: int, game_manager: Node) -> void:
     # 1. Count mine capacity available for this side

@@ -52,6 +52,7 @@ var list_deployment: VBoxContainer
 var btn_deploy_ship: Button
 var btn_deploy_complete: Button
 var btn_deploy_mine: Button
+var btn_deploy_seeker: Button
 var spin_deploy_speed: SpinBox
 var lbl_deploy_facing: Label
 var btn_deploy_facing_cw: Button
@@ -72,6 +73,8 @@ var hbox_deploy_orbit: HBoxContainer
 # Deployment Mines Tracker
 var deployment_mines_placed: Array[Vector3i] = []
 var state_deployment_mine_placement = false
+var deployment_seekers_placed: Array[Vector3i] = []
+var state_deployment_seeker_placement = false
 
 # Repair UI Nodes
 var panel_repair: PanelContainer
@@ -97,10 +100,15 @@ var btn_exec_move: Button # NEW: Manual Phase Transition
 var btn_dock: Button
 var btn_rearm: Button
 var btn_drop_mine: Button # NEW: Mine placement flag
+var btn_drop_seeker: Button # NEW: Seeker placement flag
 
 # Mines State
 var active_mines: Array[Dictionary] = [] # Format: {"pos": Vector3i, "side_id": int, "owner_name": String}
 var state_mine_placement: bool = false # Tracks if UI is in "select hex to drop mine" mode
+
+# Seekers State
+var active_seekers: Array[Dictionary] = [] # Format: {"pos": Vector3i, "side_id": int, "owner_name": String, "speed": int}
+var state_seeker_placement: bool = false # Tracks if UI is in "select hex to drop seeker" mode
 
 # Movement State
 var ghost_ship: Ship = null
@@ -541,6 +549,13 @@ func _setup_ui():
 	btn_drop_mine.theme_type_variation = "FlatButton"
 	vbox.add_child(btn_drop_mine)
 	
+	btn_drop_seeker = Button.new()
+	btn_drop_seeker.text = "Drop Seeker"
+	btn_drop_seeker.pressed.connect(_on_drop_seeker_pressed)
+	btn_drop_seeker.visible = false
+	btn_drop_seeker.theme_type_variation = "FlatButton"
+	vbox.add_child(btn_drop_seeker)
+	
 	# Turn Buttons Removed (Mouse Gesture Only)
 	
 	# Orbit Buttons
@@ -926,12 +941,23 @@ func _build_deployment_panel(parent: Container):
 	btn_deploy_mine.toggled.connect(func(toggled_on): 
 		if current_phase == Phase.DEPLOYMENT:
 			state_deployment_mine_placement = toggled_on
-			
-			if not toggled_on:
-				btn_deploy_mine.text = btn_deploy_mine.text.replace("Cancel Placement", "Place Mine")
+			_update_deployment_ui()
 			queue_redraw()
 	)
 	dep_vbox.add_child(btn_deploy_mine)
+	
+	btn_deploy_seeker = Button.new()
+	btn_deploy_seeker.text = "Place Seeker (0 Left)"
+	btn_deploy_seeker.toggle_mode = true
+	btn_deploy_seeker.modulate = Color.ORANGE
+	btn_deploy_seeker.visible = false
+	btn_deploy_seeker.toggled.connect(func(toggled_on): 
+		if current_phase == Phase.DEPLOYMENT:
+			state_deployment_seeker_placement = toggled_on
+			_update_deployment_ui()
+			queue_redraw()
+	)
+	dep_vbox.add_child(btn_deploy_seeker)
 	
 	btn_auto_deploy = Button.new()
 	btn_auto_deploy.text = "AUTO DEPLOY"
@@ -2824,21 +2850,38 @@ func _update_deployment_ui():
 		
 	# Calculate Deployment Mine Capacity
 	var total_mine_capacity = 0
+	var total_seeker_capacity = 0
 	for s in ships:
 		if is_instance_valid(s) and s.side_id == deployment_subphase:
 			for w in s.weapons:
 				if w.get("type", "") == "Mine":
 					total_mine_capacity += w.get("ammo", 0)
+				elif w.get("type", "") == "Seeker":
+					total_seeker_capacity += w.get("ammo", 0)
 					
 	if total_mine_capacity > 0:
 		btn_deploy_mine.visible = true
 		var mines_remaining = total_mine_capacity - deployment_mines_placed.size()
-		if not state_deployment_mine_placement:
+		if state_deployment_mine_placement:
+			btn_deploy_mine.text = "Cancel Placement (%d Left)" % mines_remaining
+		else:
 			btn_deploy_mine.text = "Place Mine (%d Left)" % mines_remaining
 		btn_deploy_mine.disabled = (mines_remaining <= 0 and not state_deployment_mine_placement)
 	else:
 		btn_deploy_mine.visible = false
 		state_deployment_mine_placement = false
+		
+	if total_seeker_capacity > 0:
+		btn_deploy_seeker.visible = true
+		var seekers_remaining = total_seeker_capacity - deployment_seekers_placed.size()
+		if state_deployment_seeker_placement:
+			btn_deploy_seeker.text = "Cancel Placement (%d Left)" % seekers_remaining
+		else:
+			btn_deploy_seeker.text = "Place Seeker (%d Left)" % seekers_remaining
+		btn_deploy_seeker.disabled = (seekers_remaining <= 0 and not state_deployment_seeker_placement)
+	else:
+		btn_deploy_seeker.visible = false
+		state_deployment_seeker_placement = false
 
 func _on_auto_deploy_pressed():
 	if current_phase != Phase.DEPLOYMENT: return
@@ -2851,8 +2894,9 @@ func _on_auto_deploy_pressed():
 			s.orbit_direction = 0
 			s.grid_position = Vector3i.ZERO
 			
-	# Also clear out any mines we've placed
+	# Also clear out any mines or seekers we've placed
 	deployment_mines_placed.clear()
+	deployment_seekers_placed.clear()
 	
 	var my_undeployed = []
 	for s in ships:
@@ -2950,25 +2994,26 @@ func _on_deploy_complete_pressed():
 			}
 			
 	var deployed_mines_data = deployment_mines_placed.duplicate()
+	var deployed_seekers_data = deployment_seekers_placed.duplicate()
 	
 	if _is_networked() and not _is_server_or_offline():
-		rpc_submit_deployment.rpc_id(1, deployment_subphase, dep_data, deployed_mines_data)
+		rpc_submit_deployment.rpc_id(1, deployment_subphase, dep_data, deployed_mines_data, deployed_seekers_data)
 	else:
-		rpc_submit_deployment(deployment_subphase, dep_data, deployed_mines_data)
+		rpc_submit_deployment(deployment_subphase, dep_data, deployed_mines_data, deployed_seekers_data)
 
 
 @rpc("any_peer", "call_local", "reliable")
-func rpc_submit_deployment(side_id: int, deployment_data: Dictionary, deployed_mines_data: Array = []):
+func rpc_submit_deployment(side_id: int, deployment_data: Dictionary, deployed_mines_data: Array = [], deployed_seekers_data: Array = []):
 	if not _is_server_or_offline(): return
 	
 	# Apply and broadcast the final placed positions to everyone
 	if _is_networked():
-		rpc_apply_deployment_data.rpc(side_id, deployment_data, deployed_mines_data)
+		rpc_apply_deployment_data.rpc(side_id, deployment_data, deployed_mines_data, deployed_seekers_data)
 	else:
-		rpc_apply_deployment_data(side_id, deployment_data, deployed_mines_data)
+		rpc_apply_deployment_data(side_id, deployment_data, deployed_mines_data, deployed_seekers_data)
 
 @rpc("authority", "call_local", "reliable")
-func rpc_apply_deployment_data(side_id: int, deployment_data: Dictionary, deployed_mines_data: Array = []):
+func rpc_apply_deployment_data(side_id: int, deployment_data: Dictionary, deployed_mines_data: Array = [], deployed_seekers_data: Array = []):
 	# Apply final positions locally for UI/render matching
 	for s in ships:
 		if is_instance_valid(s) and s.side_id == side_id and deployment_data.has(s.name):
@@ -2994,6 +3039,27 @@ func rpc_apply_deployment_data(side_id: int, deployment_data: Dictionary, deploy
 				var deducted = false
 				for w in s.weapons:
 					if w.get("type", "") == "Mine" and w.get("ammo", 0) > 0:
+						w["ammo"] -= 1
+						deducted = true
+						break
+				if deducted:
+					break
+					
+	# Inject deployment seekers and charge their ammo cost
+	for s_pos in deployed_seekers_data:
+		active_seekers.append({
+			"pos": Vector3i(s_pos),
+			"side_id": int(side_id),
+			"owner_name": "Deployment",
+			"speed": 0
+		})
+		
+		# Deduct ammo dynamically from side's equipped ships
+		for s in ships:
+			if is_instance_valid(s) and s.side_id == side_id:
+				var deducted = false
+				for w in s.weapons:
+					if w.get("type", "") == "Seeker" and w.get("ammo", 0) > 0:
 						w["ammo"] -= 1
 						deducted = true
 						break
@@ -3584,6 +3650,7 @@ func _update_ui_state():
 		if btn_dock: btn_dock.visible = false
 		if btn_rearm: btn_rearm.visible = false
 		if btn_drop_mine: btn_drop_mine.visible = false
+		if btn_drop_seeker: btn_drop_seeker.visible = false
 		if opt_active_screen: opt_active_screen.visible = false
 		
 		# Turn Restriction: If not my turn, stop here (hide controls)
@@ -3622,6 +3689,14 @@ func _update_ui_state():
 				btn_drop_mine.visible = has_mines
 				# Note: Button is always enabled, meaning you can drop mines even after moving.
 				# The name is static "Drop Mine"
+				
+			if btn_drop_seeker:
+				var has_seekers = false
+				for w in selected_ship.weapons:
+					if w["type"] == "Seeker" and w["ammo"] > 0:
+						has_seekers = true
+						break
+				btn_drop_seeker.visible = has_seekers
 			
 			var is_stationary = (current_path.size() == 0 and start_speed == 0)
 
@@ -4132,6 +4207,19 @@ func _update_movement_ui_list():
 		)
 		
 		list_movement.add_child(btn)
+		
+	# Find unactivated Seekers for active side
+	var is_admin_or_owner = (my_side_id == 0) or (my_side_id == current_side_id)
+	if is_admin_or_owner:
+		var my_inactive_seekers = active_seekers.filter(func(s): return s["side_id"] == current_side_id and s.get("speed", 0) == 0)
+		for seeker in my_inactive_seekers:
+			var btn = Button.new()
+			btn.text = "Activate Seeker @ %v" % seeker["pos"]
+			btn.modulate = Color.ORANGE
+			btn.pressed.connect(func():
+				_on_activate_seeker_pressed(seeker)
+			)
+			list_movement.add_child(btn)
 	
 func execute_commit_move(ship_name: String, path: Array, final_facing: int, orbit_dir: int, is_orbiting: bool):
 	# Test Compatibility Wrapper
@@ -4140,6 +4228,25 @@ func execute_commit_move(ship_name: String, path: Array, final_facing: int, orbi
 	var typed_path: Array[Vector3i] = []
 	typed_path.assign(path)
 	register_movement_plan(ship_name, typed_path, final_facing, orbit_dir, is_orbiting)
+	
+func _on_activate_seeker_pressed(seeker: Dictionary):
+	# Confirm the activation and process immediately since it doesn't need to wait for execute step, or we can queue it?
+	# We'll immediately process it like turning a shield on.
+	if _is_networked():
+		rpc_activate_seeker.rpc(seeker["pos"])
+	else:
+		rpc_activate_seeker(seeker["pos"])
+		
+@rpc("any_peer", "call_local", "reliable")
+func rpc_activate_seeker(pos: Vector3i):
+	# Make the seeker active by setting speed to 2
+	for s in active_seekers:
+		if s["pos"] == pos and s.get("speed", 0) == 0:
+			s["speed"] = 2
+			log_message("Seeker at %v ACTIVATED." % pos)
+			break
+	_update_movement_ui_list()
+	queue_redraw()
 
 func _on_dock_pressed():
 	if not selected_ship: return
@@ -4172,6 +4279,15 @@ func _on_drop_mine_pressed():
 		log_message("Mine placement mode OFF.")
 	queue_redraw()
 
+func _on_drop_seeker_pressed():
+	if not selected_ship: return
+	state_seeker_placement = not state_seeker_placement # Toggle placement mode
+	if state_seeker_placement:
+		log_message("Seeker placement mode ON. Click valid path hexes to drop.")
+	else:
+		log_message("Seeker placement mode OFF.")
+	queue_redraw()
+
 func _on_commit_move():
 	# Authority Check
 	if my_side_id != 0 and current_side_id != my_side_id:
@@ -4187,10 +4303,10 @@ func _on_commit_move():
 	print("DEBUG: Path size: ", path_data.size())
 	
 	if _is_networked() and not _is_server_or_offline():
-		rpc("register_movement_plan", selected_ship.name, path_data.duplicate(), ghost_ship.facing, current_orbit_direction, state_is_orbiting, selected_ship.planned_mines_to_drop.duplicate())
+		rpc("register_movement_plan", selected_ship.name, path_data.duplicate(), ghost_ship.facing, current_orbit_direction, state_is_orbiting, selected_ship.planned_mines_to_drop.duplicate(), selected_ship.planned_seekers_to_drop.duplicate())
 	else:
 		print("DEBUG: Calling register_movement_plan locally")
-		register_movement_plan(selected_ship.name, path_data.duplicate(), ghost_ship.facing, current_orbit_direction, state_is_orbiting, selected_ship.planned_mines_to_drop.duplicate())
+		register_movement_plan(selected_ship.name, path_data.duplicate(), ghost_ship.facing, current_orbit_direction, state_is_orbiting, selected_ship.planned_mines_to_drop.duplicate(), selected_ship.planned_seekers_to_drop.duplicate())
 
 # --- Security Validation ---
 func _validate_rpc_ownership(sender_id: int, required_side_id: int) -> bool:
@@ -4254,7 +4370,7 @@ func _validate_move_path(ship: Ship, path: Array[Vector3i], _final_facing: int, 
 	return true
 
 @rpc("any_peer", "call_local", "reliable")
-func register_movement_plan(ship_name: String, path: Array, final_facing: int, orbit_dir: int, is_orbiting: bool, planned_mines: Array = []):
+func register_movement_plan(ship_name: String, path: Array, final_facing: int, orbit_dir: int, is_orbiting: bool, planned_mines: Array = [], planned_seekers: Array = []):
 	var ship: Ship = null
 	for s in ships:
 		if is_instance_valid(s) and s.name == ship_name:
@@ -4298,6 +4414,11 @@ func register_movement_plan(ship_name: String, path: Array, final_facing: int, o
 		typed_mines.append(Vector3i(hex))
 	ship.planned_mines_to_drop = typed_mines
 	
+	var typed_seekers: Array[Vector3i] = []
+	for hex in planned_seekers:
+		typed_seekers.append(Vector3i(hex))
+	ship.planned_seekers_to_drop = typed_seekers
+	
 	# Auto-undock on plot
 	if ship.is_docked and typed_path.size() > 0:
 		ship.undock()
@@ -4311,7 +4432,7 @@ func register_movement_plan(ship_name: String, path: Array, final_facing: int, o
 	# SERVER BROADCAST: Ensure all OTHER clients get this plan
 	if _is_networked() and multiplayer.is_server():
 		# Use duplicate() to prevent end-of-frame execution clearing from emptying the network packet payload!
-		rpc_sync_movement_plan.rpc(ship_name, typed_path.duplicate(), final_facing, orbit_dir, is_orbiting, planned_mines.duplicate())
+		rpc_sync_movement_plan.rpc(ship_name, typed_path.duplicate(), final_facing, orbit_dir, is_orbiting, planned_mines.duplicate(), planned_seekers.duplicate())
 
 	# Update List UI
 	_update_movement_ui_list()
@@ -4319,7 +4440,7 @@ func register_movement_plan(ship_name: String, path: Array, final_facing: int, o
 	queue_redraw() # Trigger map redraw to show new lines
 
 @rpc("authority", "call_remote", "reliable")
-func rpc_sync_movement_plan(ship_name: String, path: Array, final_facing: int, orbit_dir: int, is_orbiting: bool, planned_mines: Array = []):
+func rpc_sync_movement_plan(ship_name: String, path: Array, final_facing: int, orbit_dir: int, is_orbiting: bool, planned_mines: Array = [], planned_seekers: Array = []):
 	var ship = _find_ship_by_name(ship_name)
 	if not ship: return
 	
@@ -4335,6 +4456,11 @@ func rpc_sync_movement_plan(ship_name: String, path: Array, final_facing: int, o
 	for hex in planned_mines:
 		typed_mines.append(Vector3i(hex))
 	ship.planned_mines_to_drop = typed_mines
+	
+	var typed_seekers: Array[Vector3i] = []
+	for hex in planned_seekers:
+		typed_seekers.append(Vector3i(hex))
+	ship.planned_seekers_to_drop = typed_seekers
 	
 	log_message("Synced Orders for %s" % ship.name)
 	
@@ -4436,6 +4562,25 @@ func execute_all_movement():
 							})
 							w_mine["ammo"] -= 1
 							log_message("%s laid a spatial mine at %v." % [s.name, hex])
+							
+			# Process planned seeker drops
+			if s.planned_seekers_to_drop.size() > 0:
+				var drop_hexes = s.planned_seekers_to_drop.duplicate()
+				s.planned_seekers_to_drop.clear()
+				var w_seeker = null
+				for w in s.weapons:
+					if w["type"] == "Seeker": w_seeker = w; break
+				if w_seeker:
+					for hex in drop_hexes:
+						if w_seeker["ammo"] > 0:
+							active_seekers.append({
+								"pos": Vector3i(hex),
+								"side_id": int(s.side_id),
+								"owner_name": s.name,
+								"speed": 0
+							})
+							w_seeker["ammo"] -= 1
+							log_message("%s deployed a seeker at %v." % [s.name, hex])
 			
 	_reset_plotting_state()
 	_update_ui_state()
@@ -4443,6 +4588,9 @@ func execute_all_movement():
 	
 	# Wait for any mine detonations before starting combat
 	await _resolve_mine_detonations()
+	
+	# Wait for any seeker movement and detonations before starting combat
+	await _resolve_seeker_movement_and_detonations()
 	
 	# Phase Transition Logic
 	# Rule: Movement -> Combat (Passive) -> Combat (Active) -> Next Side
@@ -4572,6 +4720,193 @@ func _resolve_mine_detonations():
 	detonated_indices.reverse()
 	for idx in detonated_indices:
 		active_mines.remove_at(idx)
+
+func _resolve_seeker_movement_and_detonations():
+	var detonated_indices = []
+	var peer_id = (multiplayer.get_unique_id() if _is_networked() else 1) if _is_networked() else "Offline"
+	
+	log_message("[color=cyan]!!! DEBUG !!! Entering Seeker Movement. Active Seekers: %d[/color]" % active_seekers.size())
+	
+	for i in range(active_seekers.size()):
+		var seeker = active_seekers[i]
+		if seeker.get("speed", 0) <= 0:
+			continue # Inactive or destroyed
+			
+		log_message("[color=orange]Seeker at %v activates at speed %d.[/color]" % [seeker["pos"], seeker["speed"]])
+		
+		# Check max threshold before moving
+		if seeker["speed"] > 12:
+			log_message("[color=orange]Seeker at %v ran out of fuel and self-destructed.[/color]" % seeker["pos"])
+			detonated_indices.append(i)
+			if _is_networked() and multiplayer.is_server():
+				rpc_play_mine_fx.rpc(seeker["pos"], "", false, 0)
+			else:
+				rpc_play_mine_fx(seeker["pos"], "", false, 0)
+			continue
+			
+		# Find nearest ship
+		var nearest_ship = null
+		var min_dist = 9999
+		for s in ships:
+			if is_instance_valid(s) and not s.is_destroyed and not s.is_docked:
+				var dist = HexGrid.hex_distance(seeker["pos"], s.grid_position)
+				if dist < min_dist:
+					min_dist = dist
+					nearest_ship = s
+					
+		if not nearest_ship:
+			continue # No valid targets
+			
+		# Move towards nearest ship
+		var steps_taken = 0
+		var current_pos = seeker["pos"]
+		var hit_ship = null
+		
+		while steps_taken < seeker["speed"]:
+			# Re-calculate nearest ship if circumstances changed? The rule says "closest ship no matter friend or foe". 
+			# We'll just stick to the initially evaluated nearest_ship to avoid oscillation loops unless it's destroyed.
+			if not is_instance_valid(nearest_ship) or nearest_ship.is_destroyed:
+				break
+				
+			if current_pos == nearest_ship.grid_position:
+				break
+				
+			var best_next = current_pos
+			var best_dist = HexGrid.hex_distance(current_pos, nearest_ship.grid_position)
+			
+			for dir in range(6):
+				var adj = current_pos + HexGrid.get_direction_vec(dir)
+				var dist = HexGrid.hex_distance(adj, nearest_ship.grid_position)
+				if dist < best_dist:
+					best_dist = dist
+					best_next = adj
+					
+			if best_next != current_pos:
+				current_pos = best_next
+				steps_taken += 1
+				
+				# Check interception
+				for s in ships:
+					if is_instance_valid(s) and not s.is_destroyed and not s.is_docked and s.grid_position == current_pos:
+						hit_ship = s
+						break
+				if hit_ship:
+					break
+			else:
+				break
+				
+		seeker["pos"] = current_pos
+		
+		# Delay speed increment to apply to next turn phase
+		seeker["speed"] += 2
+		
+		if not hit_ship:
+			for s in ships:
+				if is_instance_valid(s) and not s.is_destroyed and not s.is_docked and s.grid_position == current_pos:
+					hit_ship = s
+					break
+					
+		if hit_ship:
+			detonated_indices.append(i)
+			log_message("[color=orange]SEEKER INTERCEPT at %v![/color]" % current_pos)
+			
+			# Identify largest ship in hex
+			var hex_ships = []
+			for s in ships:
+				if is_instance_valid(s) and not s.is_destroyed and not s.is_docked and s.grid_position == current_pos:
+					hex_ships.append(s)
+			
+			var target = hex_ships[0]
+			for s in hex_ships:
+				if s.hull > target.hull: target = s
+				
+			var seeker_weapon = {
+				"name": "Seeker",
+				"type": "Seeker",
+				"damage_dice": "5d10",
+				"damage_bonus": 0,
+				"dtm": -20,
+				"arc": "360",
+				"range": 0
+			}
+			
+			var eligible_defenders = []
+			for ally in ships:
+				if is_instance_valid(ally) and ally.side_id == target.side_id and ally.grid_position == target.grid_position and ally.icm_current > 0 and not ally.is_destroyed and not ally.is_docked:
+					eligible_defenders.append(ally)
+					
+			var icm_used = 0
+			if eligible_defenders.size() > 0:
+				var raw_chance = Combat.calculate_hit_chance(0, seeker_weapon, target, false, 0, null)
+				_trigger_icm_decision("Autonomous Seeker", "Seeker Missile", "Seeker", raw_chance, target, eligible_defenders)
+				
+				while not _icm_decision_received:
+					await get_tree().process_frame
+					
+				var allocations = _icm_current_allocations
+				_icm_decision_received = false
+				_icm_current_allocations = {}
+				
+				for s_name in allocations.keys():
+					var amt = allocations[s_name]
+					if amt > 0:
+						icm_used += amt
+						for ally in eligible_defenders:
+							if ally.name == s_name:
+								ally.icm_current -= amt
+								_spawn_icm_fx(ally, HexGrid.hex_to_pixel(ally.grid_position) + Vector2(0, -50))
+								break
+								
+				if icm_used > 0:
+					var m_icm = "Point defense uses %d ICMs against incoming Seeker." % icm_used
+					if _is_networked() and multiplayer.is_server(): rpc_log_message.rpc(m_icm)
+					else: log_message(m_icm)
+					if get_tree() and not get_tree().root.has_node("GutRunner"):
+						await get_tree().create_timer(1.0).timeout
+					
+			var result = Combat.get_hit_roll_details(0, seeker_weapon, target, false, icm_used, null)
+			var hit = result["success"]
+			var hit_str = "HIT" if hit else "MISS"
+			
+			var msg1 = "Seeker attacks %s: Rolled %d vs %d%% -> %s" % [target.get_display_name(), result["roll"], result["chance"], hit_str]
+			if _is_networked() and multiplayer.is_server(): rpc_log_message.rpc(msg1)
+			else: log_message(msg1)
+			
+			var raw_dmg = 0
+			if hit:
+				raw_dmg = Combat.roll_damage("5d10")
+				var dmg_roll = Combat.calculate_damage_roll(-20)
+				var effect = Combat.get_damage_effect(dmg_roll)
+				
+				var dmg_txt = "%s took %d base damage array and %s from Seeker!" % [target.get_display_name(), raw_dmg, effect["text"]]
+				
+				if _is_networked() and multiplayer.is_server():
+					rpc_play_mine_fx.rpc(current_pos, target.name, hit, raw_dmg)
+					rpc_log_message.rpc(dmg_txt)
+				else:
+					rpc_play_mine_fx(current_pos, target.name, hit, raw_dmg)
+					log_message(dmg_txt)
+					
+				var res_fx = target.apply_damage_effect(effect, raw_dmg)
+				log_message("%s: %s" % [target.name, res_fx.get("text")])
+				if res_fx.get("fallback", false):
+					target.take_hull_damage(raw_dmg)
+					
+			else:
+				var msg3 = "Seeker exploded harmlessly against %s defenses." % target.get_display_name()
+				if _is_networked() and multiplayer.is_server(): rpc_log_message.rpc(msg3)
+				else: log_message(msg3)
+				
+				if _is_networked() and multiplayer.is_server(): rpc_play_mine_fx.rpc(current_pos, target.name, hit, 0)
+				else: rpc_play_mine_fx(current_pos, target.name, hit, 0)
+				
+			if get_tree() and not get_tree().root.has_node("GutRunner"):
+				await get_tree().create_timer(1.5).timeout
+				
+	detonated_indices.sort()
+	detonated_indices.reverse()
+	for idx in detonated_indices:
+		active_seekers.remove_at(idx)
 
 @rpc("authority", "call_local", "reliable")
 func rpc_play_mine_fx(mine_pos_hex: Vector3i, target_name: String, hit: bool, damage: int):
@@ -4918,6 +5253,13 @@ func _draw():
 					var text_offset = Vector2(0, 5) 
 					draw_string_outline(font, center + text_offset, "MINE", HORIZONTAL_ALIGNMENT_CENTER, -1, 14, 2, Color.BLACK)
 					draw_string(font, center + text_offset, "MINE", HORIZONTAL_ALIGNMENT_CENTER, -1, 14, Color.YELLOW)
+					
+		if deployment_seekers_placed.size() > 0:
+			for h in deployment_seekers_placed:
+				var s_pos = HexGrid.hex_to_pixel(h)
+				_draw_filled_hex(h, Color(1, 0.5, 0, 0.4)) # Translucent Orange
+				draw_circle(s_pos, 10.0, Color(1.0, 0.5, 0.0, 0.9)) # Orange Circle
+				draw_circle(s_pos, 4.0, Color(1.0, 1.0, 1.0, 0.9)) # White Center Eye
 					
 		if is_deploying_ship and is_instance_valid(selected_ship):
 			var valid_hexes = ScenarioManager.get_valid_deployment_hexes(deployment_subphase, ships, planet_hexes, selected_ship)
@@ -5323,6 +5665,37 @@ func _draw():
 			if not selected_ship.planned_mines_to_drop.has(hex):
 				_draw_filled_hex(hex, Color(1.0, 1.0, 0.0, 0.2))
 
+	# Draw Active Seekers
+	for s in active_seekers:
+		# Draw if active, or if we own it during deployment/inactivity
+		var is_owner = (my_side_id == 0 or my_side_id == s["side_id"])
+		if is_owner or s.get("speed", 0) > 0: # Speed > 0 means it's ALIVE and hunting, visible to all
+			var s_pos = HexGrid.hex_to_pixel(s["pos"])
+			draw_circle(s_pos, 10.0, Color(1.0, 0.5, 0.0, 0.9)) # Orange Circle
+			draw_circle(s_pos, 4.0, Color(1.0, 1.0, 1.0, 0.9)) # White Center Eye
+			
+	# Draw Planned Seekers
+	if current_phase == Phase.MOVEMENT and is_instance_valid(selected_ship) and selected_ship.planned_seekers_to_drop.size() > 0:
+		for hex in selected_ship.planned_seekers_to_drop:
+			if state_seeker_placement:
+				var is_valid_hex = (hex == selected_ship.grid_position) or current_path.has(hex) or selected_ship.planned_path.has(hex)
+				if is_valid_hex:
+					_draw_filled_hex(hex, Color(1.0, 0.5, 0.0, 0.2)) # Faintest Orange
+			
+			var s_pos = HexGrid.hex_to_pixel(hex)
+			draw_circle(s_pos, 10.0, Color(1.0, 0.5, 0.0, 0.9)) # Orange Circle
+			draw_circle(s_pos, 4.0, Color(1.0, 1.0, 1.0, 0.9)) # White Center Eye
+
+	# If Placement mode is on but we have no planned seekers yet (or highlighting rest of path)
+	if current_phase == Phase.MOVEMENT and is_instance_valid(selected_ship) and state_seeker_placement:
+		var valid_hexes = [selected_ship.grid_position]
+		valid_hexes.append_array(current_path)
+		valid_hexes.append_array(selected_ship.planned_path)
+		for hex in valid_hexes:
+			var seeker_arr = selected_ship.planned_seekers_to_drop
+			if not seeker_arr.has(hex):
+				_draw_filled_hex(hex, Color(1.0, 0.5, 0.0, 0.2))
+
 
 func _draw_hex_outline(hex: Vector3i, color: Color, width: float):
 	var center = HexGrid.hex_to_pixel(hex)
@@ -5427,13 +5800,21 @@ func _unhandled_input(event):
 					if is_instance_valid(selected_ship) and deployable_ships.has(selected_ship):
 						current_idx = deployable_ships.find(selected_ship)
 						
-					current_idx = (current_idx + 1) % deployable_ships.size()
+					var shift_held = Input.is_key_pressed(KEY_SHIFT)
+					if shift_held:
+						current_idx = (current_idx - 1 + deployable_ships.size()) % deployable_ships.size()
+					else:
+						current_idx = (current_idx + 1) % deployable_ships.size()
+						
 					var s = deployable_ships[current_idx]
 					
 					selected_ship = s
 					is_deploying_ship = true
 					state_deployment_mine_placement = false
+					state_deployment_seeker_placement = false
 					if btn_deploy_mine: btn_deploy_mine.set_pressed_no_signal(false)
+					if btn_deploy_seeker: btn_deploy_seeker.set_pressed_no_signal(false)
+					
 					if s.is_deployed:
 						deploy_tentative_hex = s.grid_position
 						deploy_facing_val = s.facing
@@ -5686,6 +6067,59 @@ func _handle_deployment_click(hex: Vector3i):
 		queue_redraw()
 		return
 
+	if state_deployment_seeker_placement:
+		var valid_hexes = ScenarioManager.get_valid_deployment_hexes(deployment_subphase, ships, planet_hexes, null) # Null ship since we just want general deployment zones
+		
+		if valid_hexes.size() > 0 and not valid_hexes.has(hex):
+			log_message("[color=red]You can only place seekers inside your deployment zone![/color]")
+			state_deployment_seeker_placement = false # Cancel placement
+			if btn_deploy_seeker: btn_deploy_seeker.set_pressed_no_signal(false)
+			_update_deployment_ui()
+			queue_redraw()
+			return
+			
+		if planet_hexes.has(hex):
+			log_message("[color=red]Cannot deploy a seeker inside a planet![/color]")
+			return
+
+		# Toggle seeker logic
+		if deployment_seekers_placed.has(hex):
+			deployment_seekers_placed.erase(hex)
+			log_message("Removed planned seeker at %v." % hex)
+		else:
+			var total_capacity = 0
+			for s in ships:
+				if is_instance_valid(s) and s.side_id == deployment_subphase:
+					for w in s.weapons:
+						if w.get("type", "") == "Seeker":
+							total_capacity += w.get("ammo", 0)
+			
+			if deployment_seekers_placed.size() < total_capacity:
+				deployment_seekers_placed.append(hex)
+				log_message("Placed seeker at %v." % hex)
+			else:
+				log_message("[color=red]You have no remaining seekers to drop![/color]")
+				
+		_update_deployment_ui()
+		queue_redraw()
+		return
+
+
+	# Enable implicit UNDO of deployed ordnance if we click an existing token without placement mode active
+	if deployment_mines_placed.has(hex):
+		deployment_mines_placed.erase(hex)
+		log_message("Recovered deployed mine at %v." % hex)
+		_update_deployment_ui()
+		queue_redraw()
+		return
+		
+	if deployment_seekers_placed.has(hex):
+		deployment_seekers_placed.erase(hex)
+		log_message("Recovered deployed seeker at %v." % hex)
+		_update_deployment_ui()
+		queue_redraw()
+		return
+
 	if not is_deploying_ship or not is_instance_valid(selected_ship):
 		return
 	
@@ -5763,10 +6197,46 @@ func _handle_movement_click(hex: Vector3i):
 		queue_redraw()
 		return
 		
+	# Seeker Placement Logic Intercept
+	if state_seeker_placement:
+		var is_valid_hex = (hex == selected_ship.grid_position) or current_path.has(hex) or selected_ship.planned_path.has(hex)
+		if not is_valid_hex:
+			log_message("Seekers must be dropped along your valid movement path.")
+			state_seeker_placement = false
+			queue_redraw()
+			return
+			
+		for s in active_seekers:
+			if s["pos"] == hex:
+				log_message("A seeker already exists at this location!")
+				return
+				
+		if selected_ship.planned_seekers_to_drop.has(hex):
+			selected_ship.planned_seekers_to_drop.erase(hex)
+			log_message("Removed planned seeker at %v." % hex)
+		else:
+			var w_seeker = null
+			for w in selected_ship.weapons:
+				if w["type"] == "Seeker":
+					w_seeker = w
+					break
+			if w_seeker and selected_ship.planned_seekers_to_drop.size() < w_seeker["ammo"]:
+				if not "planned_seekers_to_drop" in selected_ship:
+					selected_ship.planned_seekers_to_drop = []
+				selected_ship.planned_seekers_to_drop.append(hex)
+				log_message("Planned seeker drop at %v." % hex)
+			else:
+				log_message("Not enough seeker ammo!")
+		
+		if not selected_ship.has_orders:
+			_push_history_state()
+		
+		queue_redraw()
+		return
+		
 	# FIX: Prevent modifying plan if already committed/ordered (unless we were placing mines above)
 	if selected_ship.has_orders:
 		log_message("Ship has orders. Use Undo to change.")
-		return
 		return
 
 
