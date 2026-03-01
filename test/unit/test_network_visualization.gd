@@ -21,14 +21,14 @@ func before_each():
 	_ship_friendly.name = "Friendly"
 	_ship_friendly.side_id = 1
 	if _ship_friendly.get_parent() == null:
-		_game_manager.add_child(_ship_friendly)
+		_gm.add_child(_ship_friendly)
 	_gm.ships.append(_ship_friendly)
 	
 	_ship_enemy = Ship.new()
 	_ship_enemy.name = "Enemy"
 	_ship_enemy.side_id = 2
 	if _ship_enemy.get_parent() == null:
-		_game_manager.add_child(_ship_enemy)
+		_gm.add_child(_ship_enemy)
 	_gm.ships.append(_ship_enemy)
 
 func after_each():

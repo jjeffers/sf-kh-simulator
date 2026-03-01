@@ -24,9 +24,8 @@ func before_each():
 	_ship.speed = 2 # Start with speed 2
 	_ship.facing = 0 # East
 	if _ship.get_parent() == null:
-		_game_manager.add_child(_ship)
-	_gm.ships.append(_ship)
-	_gm.add_child(_ship)
+		_gm.add_child(_ship)
+		_gm.ships.append(_ship)
 	
 	_gm.current_side_id = 1
 	_gm.my_side_id = 1 # Authoritative

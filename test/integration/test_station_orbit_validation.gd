@@ -18,9 +18,8 @@ func test_station_orbit_validation():
 	station.speed = 0
 	
 	if station.get_parent() == null:
-		_game_manager.add_child(station)
-	game_manager.ships.append(station)
-	game_manager.add_child(station)
+		game_manager.add_child(station)
+		game_manager.ships.append(station)
 	
 	# 2. Simulate Execute Commit Move
 	# RPC signature: execute_commit_move(ship_name, path, final_facing, orbit_dir, is_orbiting)

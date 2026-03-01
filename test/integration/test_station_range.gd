@@ -2,6 +2,7 @@ extends GutTest
 
 var game_manager_script = load("res://Scripts/GameManager.gd")
 var ship_script = load("res://Scripts/Ship.gd")
+var hex_grid_script = load("res://Scripts/HexGrid.gd")
 
 var gm
 var station
@@ -10,8 +11,8 @@ var target
 func before_each():
 	gm = game_manager_script.new()
 	add_child_autofree(gm)
-	gm.ships = []
-	gm.planet_hexes = []
+	gm.ships.clear()
+	gm.planet_hexes.clear()
 
 func test_station_rocket_battery_range_limit():
 	# Setup: Station at (0,0,0)
@@ -21,9 +22,8 @@ func test_station_rocket_battery_range_limit():
 	station.side_id = 1
 	station.configure_space_station() # Should set RB range to 3
 	if station.get_parent() == null:
-		_game_manager.add_child(station)
-	gm.ships.append(station)
-	gm.add_child(station)
+		gm.add_child(station)
+		gm.ships.append(station)
 	
 	# Setup: Target at Range 10 (10, 0, -10)
 	target = ship_script.new()
@@ -31,9 +31,8 @@ func test_station_rocket_battery_range_limit():
 	target.grid_position = Vector3i(10, 0, -10)
 	target.side_id = 2
 	if target.get_parent() == null:
-		_game_manager.add_child(target)
-	gm.ships.append(target)
-	gm.add_child(target)
+		gm.add_child(target)
+		gm.ships.append(target)
 	
 	# Verify Distance
 	var dist = hex_grid_script.hex_distance(station.grid_position, target.grid_position)

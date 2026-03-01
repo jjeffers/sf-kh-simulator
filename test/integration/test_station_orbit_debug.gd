@@ -23,9 +23,8 @@ func test_station_orbit_environment():
 	station.orbit_direction = 1
 	station.grid_position = Vector3i(1, -1, 0)
 	if station.get_parent() == null:
-		_game_manager.add_child(station)
-	game_manager.ships.append(station)
-	game_manager.add_child(station)
+		game_manager.add_child(station)
+		game_manager.ships.append(station)
 	
 	game_manager.selected_ship = station
 	game_manager.my_side_id = 2

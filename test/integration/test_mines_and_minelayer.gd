@@ -9,9 +9,9 @@ func before_each():
 		root.remove_child(old_gm)
 		old_gm.queue_free()
 		
-	var template = load("res://Scenes/Level_00.tscn")
-	if template:
-		gm = template.instantiate()
+	var scenario_scene = load("res://Scenes/Main.tscn")
+	if scenario_scene:
+		gm = scenario_scene.instantiate()
 		root.add_child(gm)
 	else:
 		gm = load("res://Scripts/GameManager.gd").new()

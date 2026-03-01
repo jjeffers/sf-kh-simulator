@@ -30,9 +30,8 @@ func test_teleport_exploit():
 	ship.speed = 2
 	ship.adf = 1
 	if ship.get_parent() == null:
-		_game_manager.add_child(ship)
-	_gm.ships.append(ship)
-	_gm.add_child(ship)
+		_gm.add_child(ship)
+		_gm.ships.append(ship)
 	
 	# Create an Invalid Path (Teleportation)
 	# Jump from 0,0,0 to 10,10,-20 directly
@@ -56,9 +55,8 @@ func test_speed_limit_exploit():
 	ship.speed = 2
 	ship.adf = 1
 	if ship.get_parent() == null:
-		_game_manager.add_child(ship)
-	_gm.ships.append(ship)
-	_gm.add_child(ship)
+		_gm.add_child(ship)
+		_gm.ships.append(ship)
 	
 	# Create Path that is valid adjacency but too long (Speed 5)
 	# 0,0,0 -> 1,0,-1 -> 2,0,-2 -> 3,0,-3 -> 4,0,-4 -> 5,0,-5

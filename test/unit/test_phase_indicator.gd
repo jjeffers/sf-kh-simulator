@@ -19,9 +19,8 @@ func before_each():
 	friendly_ship.faction = "UPF"
 	friendly_ship.grid_position = Vector3i(0, 0, 0)
 	if friendly_ship.get_parent() == null:
-		_game_manager.add_child(friendly_ship)
+		game_manager.add_child(friendly_ship)
 	game_manager.ships.append(friendly_ship)
-	game_manager.add_child(friendly_ship)
 
 func test_phase_indicator_initial_state():
 	assert_not_null(game_manager.label_phase_indicator, "Phase Indicator Label should exist")

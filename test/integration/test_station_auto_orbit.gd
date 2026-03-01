@@ -25,9 +25,8 @@ func before_each():
 	station.orbit_direction = 1 # CW
 	station.grid_position = Vector3i(0, 1, -1)
 	if station.get_parent() == null:
-		_game_manager.add_child(station)
-	game_manager.ships.append(station)
-	game_manager.add_child(station)
+		game_manager.add_child(station)
+		game_manager.ships.append(station)
 	
 	defiant = load("res://Scripts/Ship.gd").new()
 	defiant.name = "Defiant"
@@ -36,9 +35,8 @@ func before_each():
 	defiant.grid_position = Vector3i(0, 1, -1)
 	defiant.dock_at(station) # Defiant starts docked
 	if defiant.get_parent() == null:
-		_game_manager.add_child(defiant)
-	game_manager.ships.append(defiant)
-	game_manager.add_child(defiant)
+		game_manager.add_child(defiant)
+		game_manager.ships.append(defiant)
 	
 	# Set Game State
 	game_manager.current_phase = game_manager.Phase.MOVEMENT

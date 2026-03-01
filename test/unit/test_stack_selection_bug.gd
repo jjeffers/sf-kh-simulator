@@ -30,8 +30,6 @@ func before_each():
 	if enemy_ship.get_parent() == null:
 		game_manager.add_child(enemy_ship)
 	game_manager.ships.append(enemy_ship)
-	game_manager.add_child(friendly_ship)
-	game_manager.add_child(enemy_ship)
 	
 	# Set Phase to Combat
 	game_manager.current_phase = game_manager.Phase.COMBAT

@@ -54,7 +54,7 @@ func test_distinct_adf_and_mr_slots():
 	fighter.current_mr_modifier = 2
 	
 	if fighter.get_parent() == null:
-		_game_manager.add_child(fighter)
+		_gm.add_child(fighter)
 	_gm.ships.append(fighter)
 	
 	# Setup fake selection

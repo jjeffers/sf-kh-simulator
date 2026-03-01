@@ -8,7 +8,7 @@ func before_all():
 	_gm = GM_Script.new()
 	ShipScript = load("res://Scripts/Ship.gd")
 	add_child(_gm)
-	_gm.ships = []
+	_gm.ships.clear()
 
 func after_all():
 	_gm.queue_free()
@@ -40,9 +40,8 @@ func test_auto_orbit_authority_logic():
 	station.mr = 0
 	station.speed = 0
 	if station.get_parent() == null:
-		_game_manager.add_child(station)
-	_gm.ships.append(station)
-	_gm.add_child(station)
+		_gm.add_child(station)
+		_gm.ships.append(station)
 	
 	# Add Planet Hex at (1, -1, 0) (Adjacent to 0,0,0)
 	_gm.planet_hexes.append(Vector3i(1, -1, 0))
@@ -66,9 +65,8 @@ func test_auto_orbit_race_condition_protection():
 	station.grid_position = Vector3i(0, 0, 0)
 	station.orbit_direction = 1
 	if station.get_parent() == null:
-		_game_manager.add_child(station)
-	_gm.ships.append(station)
-	_gm.add_child(station)
+		_gm.add_child(station)
+		_gm.ships.append(station)
 	
 	# Add Planet Hex
 	_gm.planet_hexes.append(Vector3i(1, -1, 0))

@@ -14,9 +14,8 @@ func before_each():
 	_ship.name = "TestShip"
 	_ship.side_id = 1
 	if _ship.get_parent() == null:
-		_game_manager.add_child(_ship)
-	_gm.ships.append(_ship)
-	_gm.add_child(_ship)
+		_gm.add_child(_ship)
+		_gm.ships.append(_ship)
 
 func test_rpc_undo_move_resets_state():
 	# 1. Setup Initial State (as if Turn Started)

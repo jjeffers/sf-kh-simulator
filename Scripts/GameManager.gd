@@ -235,8 +235,8 @@ func _setup_network_identity():
 	var scen_key = lobby.get("scenario", null)
 	
 	var peer_id = 1 # Default (Server)
-	if multiplayer.has_multiplayer_peer():
-		peer_id = multiplayer.get_unique_id()
+	if _is_networked():
+		peer_id = (multiplayer.get_unique_id() if _is_networked() else 1)
 		
 	# Determine MY Team ID (1 or 2)
 	# If in Lobby, we use lobby["teams"].
@@ -291,7 +291,7 @@ func _setup_network_identity():
 	_update_phase_indicator() # NEW
 		
 	# Game Start Handshake
-	if multiplayer.has_multiplayer_peer():
+	if _is_networked():
 		# Notify Host that we are loaded
 		player_loaded.rpc_id(1)
 	else:
@@ -305,9 +305,9 @@ var loaded_players = {}
 @rpc("any_peer", "call_local", "reliable")
 func player_loaded():
 	var sender_id = 1
-	if multiplayer.has_multiplayer_peer():
+	if _is_networked():
 		sender_id = multiplayer.get_remote_sender_id()
-		if sender_id == 0: sender_id = multiplayer.get_unique_id() # Local call
+		if sender_id == 0: sender_id = (multiplayer.get_unique_id() if _is_networked() else 1) # Local call
 	
 	log_message("Player %d finished loading." % sender_id)
 	loaded_players[sender_id] = true
@@ -335,8 +335,10 @@ func _check_all_players_ready():
 		var scen_key = lobby.get("scenario", null)
 		if setup and not setup.is_empty():
 			scen_key = setup.get("scenario", null)
-			
-		setup_game.rpc(seed_val, scen_key if scen_key else "")
+		if _is_networked():
+			setup_game.rpc(seed_val, scen_key if scen_key else "")
+		else:
+			setup_game(seed_val, scen_key if scen_key else "")
 
 @rpc("authority", "call_local", "reliable")
 func setup_game(seed_val: int, scen_key: String):
@@ -1170,7 +1172,7 @@ func _handle_combat_click(hex: Vector3i):
 			var atk = queued_attacks[i]
 			if atk["source"] == selected_ship and atk["weapon_idx"] == selected_ship.current_weapon_index:
 				# Use RPC to remove locally and remotely
-				if multiplayer.has_multiplayer_peer():
+				if _is_networked():
 					rpc("rpc_remove_attack", selected_ship.name, selected_ship.current_weapon_index)
 				else:
 					rpc_remove_attack(selected_ship.name, selected_ship.current_weapon_index)
@@ -1178,7 +1180,7 @@ func _handle_combat_click(hex: Vector3i):
 
 		if not is_toggle_off:
 			# ADD TO PLAN (Broadcast)
-			if multiplayer.has_multiplayer_peer():
+			if _is_networked():
 				rpc("rpc_add_attack", selected_ship.name, s.name, selected_ship.current_weapon_index)
 			else:
 				rpc_add_attack(selected_ship.name, s.name, selected_ship.current_weapon_index)
@@ -1511,7 +1513,7 @@ func _on_combat_commit():
 		})
 	
 	var seed_val = randi()
-	if multiplayer.has_multiplayer_peer():
+	if _is_networked():
 		# Client: Send Request to Server
 		rpc_id(1, "execute_commit_combat", attacks_data, seed_val)
 	else:
@@ -1522,9 +1524,9 @@ func _on_combat_commit():
 func execute_commit_combat(attacks_data: Array, rng_seed: int):
 	# SECURITY CHECK
 	var sender_id = 1
-	if multiplayer.has_multiplayer_peer():
+	if _is_networked():
 		sender_id = multiplayer.get_remote_sender_id()
-		if sender_id == 0: sender_id = multiplayer.get_unique_id() # Handle local call
+		if sender_id == 0: sender_id = (multiplayer.get_unique_id() if _is_networked() else 1) # Handle local call
 	
 	if current_phase != Phase.COMBAT:
 		print("[Security] Combat rejected: Wrong Phase (%s)" % current_phase)
@@ -1535,10 +1537,13 @@ func execute_commit_combat(attacks_data: Array, rng_seed: int):
 		return
 		
 
-	if multiplayer.is_server():
+	if _is_server_or_offline():
 		# Broadcast to all clients (Authority -> Clients)
 		# We use the SAME seed provided by the client to ensure fairness/sync
-		rpc("rpc_resolve_combat", attacks_data, rng_seed)
+		if _is_networked() and multiplayer.get_peers().size() > 0:
+			rpc("rpc_resolve_combat", attacks_data, rng_seed)
+		else:
+			rpc_resolve_combat(attacks_data, rng_seed)
 	else:
 		# If a client somehow received this (shouldn't happen if we only rpc_id(1)), ignore or log
 		pass
@@ -2175,7 +2180,7 @@ func _start_turn_for_side(sid: int):
 	# Fire Damage Phase (after Turn Start reset)
 	# Fire Damage Phase (after Turn Start reset)
 	# AUTHORITY ONLY: Calculate and broadcast fire damage results to ensure sync
-	if not multiplayer.has_multiplayer_peer() or multiplayer.is_server():
+	if not _is_networked() or multiplayer.is_server():
 		for s in ships:
 			if is_instance_valid(s) and (s.fire_damage_stack > 0 or s.has_electrical_fire or s.has_disastrous_fire):
 				var dtm = s.fire_damage_stack
@@ -2188,7 +2193,7 @@ func _start_turn_for_side(sid: int):
 				var hull_dmg = Combat.roll_damage("1d10") # For Hull Hit result
 				var fb_dmg = Combat.roll_damage("1d10") # For Fallback
 				
-				if multiplayer.has_multiplayer_peer():
+				if _is_networked():
 					rpc_apply_fire_damage.rpc(s.name, dtm, roll, effect, hull_dmg, fb_dmg)
 				else:
 					rpc_apply_fire_damage(s.name, dtm, roll, effect, hull_dmg, fb_dmg)
@@ -2431,7 +2436,7 @@ func _handle_auto_skip_combat():
 	# when there are no valid choices to make.
 	if _is_server_or_offline():
 		# Bypass _on_combat_commit authority check and call RPC directly
-		if multiplayer.has_multiplayer_peer():
+		if _is_networked():
 			rpc("execute_commit_combat", [], randi())
 		else:
 			execute_commit_combat([], randi())
@@ -2538,7 +2543,10 @@ func _clear_all_attacks():
 	var attacks_to_clear = queued_attacks.duplicate()
 	for atk in attacks_to_clear:
 		if is_instance_valid(atk["source"]):
-			rpc_remove_attack.rpc(atk["source"].name, atk["weapon_idx"])
+			if _is_networked():
+				rpc_remove_attack.rpc(atk["source"].name, atk["weapon_idx"])
+			else:
+				rpc_remove_attack(atk["source"].name, atk["weapon_idx"])
 			
 func _update_attack_queue_ui():
 	# Clear List
@@ -2943,7 +2951,7 @@ func _on_deploy_complete_pressed():
 			
 	var deployed_mines_data = deployment_mines_placed.duplicate()
 	
-	if multiplayer.has_multiplayer_peer() and not _is_server_or_offline():
+	if _is_networked() and not _is_server_or_offline():
 		rpc_submit_deployment.rpc_id(1, deployment_subphase, dep_data, deployed_mines_data)
 	else:
 		rpc_submit_deployment(deployment_subphase, dep_data, deployed_mines_data)
@@ -2954,7 +2962,7 @@ func rpc_submit_deployment(side_id: int, deployment_data: Dictionary, deployed_m
 	if not _is_server_or_offline(): return
 	
 	# Apply and broadcast the final placed positions to everyone
-	if multiplayer.has_multiplayer_peer():
+	if _is_networked():
 		rpc_apply_deployment_data.rpc(side_id, deployment_data, deployed_mines_data)
 	else:
 		rpc_apply_deployment_data(side_id, deployment_data, deployed_mines_data)
@@ -3004,11 +3012,17 @@ func rpc_apply_deployment_data(side_id: int, deployment_data: Dictionary, deploy
 		# Next steps
 		if has_deployed_side_1 and has_deployed_side_2:
 			# All deployed, start the game
-			rpc_finalize_deployment.rpc()
+			if _is_networked():
+				rpc_finalize_deployment.rpc()
+			else:
+				rpc_finalize_deployment()
 		else:
 			# Someone is missing
 			var next_side = 1 if side_id == 2 else 2
-			rpc_sync_deployment_state.rpc(next_side)
+			if _is_networked():
+				rpc_sync_deployment_state.rpc(next_side)
+			else:
+				rpc_sync_deployment_state(next_side)
 
 @rpc("authority", "call_local", "reliable")
 func rpc_sync_deployment_state(subphase: int):
@@ -3030,7 +3044,7 @@ func rpc_finalize_deployment():
 
 func start_repair_phase():
 	# Only authority orchestrates the transition
-	if multiplayer.has_multiplayer_peer() and multiplayer.get_unique_id() != 1:
+	if _is_networked() and (multiplayer.get_unique_id() if _is_networked() else 1) != 1:
 		return 
 
 	current_combat_state = CombatState.NONE # AI DEADLOCK FIX: clear resolving state for repair phase
@@ -3039,7 +3053,7 @@ func start_repair_phase():
 	has_submitted_final_repairs = false
 	active_repair_animations = 0
 	
-	if multiplayer.has_multiplayer_peer():
+	if _is_networked():
 		rpc_sync_repair_state.rpc(1, repair_allocations)
 	else:
 		rpc_sync_repair_state(1, repair_allocations)
@@ -3241,7 +3255,7 @@ func _on_repair_exec_pressed():
 			
 		log_message("Submitting Repair Allocations for Side %d" % repair_subphase)
 		
-		if multiplayer.has_multiplayer_peer() and not _is_server_or_offline():
+		if _is_networked() and not _is_server_or_offline():
 			rpc_submit_repair_allocations.rpc_id(1, repair_subphase, repair_allocations)
 		else:
 			rpc_submit_repair_allocations(repair_subphase, repair_allocations)
@@ -3259,7 +3273,7 @@ func rpc_submit_repair_allocations(side_id: int, allocations: Dictionary):
 		repair_allocations = allocations
 		repair_subphase = 2
 		
-		if multiplayer.has_multiplayer_peer():
+		if _is_networked():
 			rpc_sync_repair_state.rpc(repair_subphase, repair_allocations)
 			rpc_execute_repairs_for_side.rpc(1, allocations, seed_val, false)
 		else:
@@ -3274,7 +3288,7 @@ func rpc_submit_repair_allocations(side_id: int, allocations: Dictionary):
 		repair_subphase = 3
 		var seed_val = randi()
 		
-		if multiplayer.has_multiplayer_peer():
+		if _is_networked():
 			rpc_sync_repair_state.rpc(repair_subphase, repair_allocations)
 			rpc_execute_repairs_for_side.rpc(2, allocations, seed_val, true)
 		else:
@@ -3313,14 +3327,17 @@ func rpc_execute_repairs_for_side(side_id: int, allocs_for_side: Dictionary, rng
 		
 		if total_allocated == 0: continue
 		
-		_update_camera(s) # Focus on ship being repaired
-		await get_tree().create_timer(1.0).timeout
+		if not test_force_online:
+			_update_camera(s) # Focus on ship being repaired
+			await get_tree().create_timer(1.0).timeout
+			
 		var target_pos = HexGrid.hex_to_pixel(s.grid_position)
 		
 		if total_allocated > s.current_dcr:
 			log_message("[color=red]%s exceeded DCR budget! All repairs failed.[/color]" % s.name)
 			_spawn_hit_text(target_pos, "BUDGET EXCEEDED")
-			await get_tree().create_timer(1.5).timeout
+			if not test_force_online:
+				await get_tree().create_timer(1.5).timeout
 			continue
 			
 		for key in ship_allocs:
@@ -3361,7 +3378,8 @@ func rpc_execute_repairs_for_side(side_id: int, allocs_for_side: Dictionary, rng
 					audio_repair_failure.play()
 				_spawn_hit_text(target_pos, pre_text + "FAILED")
 			
-			await get_tree().create_timer(2.0).timeout
+			if not test_force_online:
+				await get_tree().create_timer(2.0).timeout
 
 	if is_final_side:
 		has_submitted_final_repairs = true
@@ -3490,7 +3508,7 @@ func _spawn_ghost():
 	
 	
 	# Fix: Host Player (Side 1) should NOT bypass checks. Only Admin (Side 0) or Offline (Hotseat) can bypass.
-	var is_offline = (not multiplayer.has_multiplayer_peer()) and (not test_force_online)
+	var is_offline = (not _is_networked()) and (not test_force_online)
 	var is_admin_or_offline = (my_side_id == 0) or is_offline
 	
 	if not is_admin_or_offline:
@@ -3828,8 +3846,8 @@ func _update_ui_state():
 	if label_player_info:
 		var p_txt = "Side: %d (%s)" % [my_side_id, get_side_name(my_side_id)]
 		var pid = 1
-		if multiplayer.has_multiplayer_peer():
-			pid = multiplayer.get_unique_id()
+		if _is_networked():
+			pid = (multiplayer.get_unique_id() if _is_networked() else 1)
 			
 		label_player_info.text = "%s\nPID: %d" % [p_txt, pid]
 		
@@ -3844,7 +3862,7 @@ func _on_undo():
 	# Case 1: Committed Move (Needs RPC / Full Reset)
 	if selected_ship.has_moved:
 		log_message("Requesting Undo for Committed Move...")
-		if multiplayer.has_multiplayer_peer():
+		if _is_networked():
 			rpc_undo_move.rpc_id(1, selected_ship.name)
 		else:
 			rpc_undo_move(selected_ship.name)
@@ -3872,9 +3890,9 @@ func rpc_undo_move(ship_name: String):
 	
 	# Security: Check Ownership
 	var sender = 1
-	if multiplayer.has_multiplayer_peer():
+	if _is_networked():
 		sender = multiplayer.get_remote_sender_id()
-		if sender == 0: sender = multiplayer.get_unique_id()
+		if sender == 0: sender = (multiplayer.get_unique_id() if _is_networked() else 1)
 		
 	if not _validate_rpc_ownership(sender, s_obj.side_id):
 		return
@@ -3982,7 +4000,7 @@ func _on_active_screen_selected(index: int):
 	var text = opt_active_screen.get_item_text(index)
 	selected_ship.active_screen = text
 	
-	if multiplayer.has_multiplayer_peer() and not _is_server_or_offline():
+	if _is_networked() and not _is_server_or_offline():
 		rpc_update_screen_state.rpc_id(1, selected_ship.name, text)
 	elif _is_server_or_offline():
 		rpc_update_screen_state(selected_ship.name, text)
@@ -3991,7 +4009,7 @@ func _on_active_screen_selected(index: int):
 	
 @rpc("any_peer", "call_local", "reliable")
 func rpc_update_screen_state(ship_name: String, screen_type: String):
-	if multiplayer.has_multiplayer_peer() and multiplayer.is_server():
+	if _is_networked() and multiplayer.is_server():
 		var sender_id = multiplayer.get_remote_sender_id()
 		var player_side = 0
 		if NetworkManager and NetworkManager.lobby_data.has("teams") and NetworkManager.lobby_data["teams"].has(sender_id):
@@ -4001,7 +4019,7 @@ func rpc_update_screen_state(ship_name: String, screen_type: String):
 		if s and s.side_id == player_side:
 			s.active_screen = screen_type
 			rpc_sync_screen_state.rpc(ship_name, screen_type)
-	elif not multiplayer.has_multiplayer_peer():
+	elif not _is_networked():
 		# Hotseat
 		var s = _find_ship_by_name(ship_name)
 		if s: s.active_screen = screen_type
@@ -4168,7 +4186,7 @@ func _on_commit_move():
 	print("DEBUG: _on_commit_move for ", selected_ship.name)
 	print("DEBUG: Path size: ", path_data.size())
 	
-	if multiplayer.has_multiplayer_peer() and not _is_server_or_offline():
+	if _is_networked() and not _is_server_or_offline():
 		rpc("register_movement_plan", selected_ship.name, path_data.duplicate(), ghost_ship.facing, current_orbit_direction, state_is_orbiting, selected_ship.planned_mines_to_drop.duplicate())
 	else:
 		print("DEBUG: Calling register_movement_plan locally")
@@ -4247,9 +4265,9 @@ func register_movement_plan(ship_name: String, path: Array, final_facing: int, o
 	
 	# SECURITY CHECK
 	var sender_id = 1
-	if multiplayer.has_multiplayer_peer():
+	if _is_networked():
 		sender_id = multiplayer.get_remote_sender_id()
-		if sender_id == 0: sender_id = multiplayer.get_unique_id() # Handle local call
+		if sender_id == 0: sender_id = (multiplayer.get_unique_id() if _is_networked() else 1) # Handle local call
 	
 	if not _validate_rpc_ownership(sender_id, ship.side_id):
 		return
@@ -4291,7 +4309,7 @@ func register_movement_plan(ship_name: String, path: Array, final_facing: int, o
 		_update_ui_state()
 		
 	# SERVER BROADCAST: Ensure all OTHER clients get this plan
-	if multiplayer.has_multiplayer_peer() and multiplayer.is_server():
+	if _is_networked() and multiplayer.is_server():
 		# Use duplicate() to prevent end-of-frame execution clearing from emptying the network packet payload!
 		rpc_sync_movement_plan.rpc(ship_name, typed_path.duplicate(), final_facing, orbit_dir, is_orbiting, planned_mines.duplicate())
 
@@ -4350,7 +4368,7 @@ func _on_exec_move_pressed():
 			log_message("Auto-committing plotted movement for %s..." % selected_ship.name)
 			_on_commit_move()
 			
-	if multiplayer.has_multiplayer_peer():
+	if _is_networked():
 		rpc_id(1, "request_execute_movement")
 	else:
 		execute_all_movement()
@@ -4359,19 +4377,23 @@ func _on_exec_move_pressed():
 func request_execute_movement():
 	# Security: Only Active Side can request end
 	var sender_id = 1
-	if multiplayer.has_multiplayer_peer():
+	if _is_networked():
 		sender_id = multiplayer.get_remote_sender_id()
-		if sender_id == 0: sender_id = multiplayer.get_unique_id()
+		if sender_id == 0: sender_id = (multiplayer.get_unique_id() if _is_networked() else 1)
 		
 	if not _validate_rpc_ownership(sender_id, current_side_id):
 		return
 		
 	# Call Authority Method and Broadcast
-	execute_all_movement.rpc()
+	if _is_networked():
+		execute_all_movement.rpc()
+	else:
+		execute_all_movement()
 
 @rpc("authority", "call_local", "reliable")
 func execute_all_movement():
-	print(">>> DIAGNOSTIC: execute_all_movement running for side: ", current_side_id, " on peer: ", multiplayer.get_unique_id())
+	var peer_id = (multiplayer.get_unique_id() if _is_networked() else 1) if _is_networked() else "Offline"
+	print(">>> DIAGNOSTIC: execute_all_movement running for side: ", current_side_id, " on peer: ", peer_id)
 	log_message("Executing Movement Phase for Side %s" % _get_side_name(current_side_id))
 	
 	for s in ships:
@@ -4430,7 +4452,8 @@ func execute_all_movement():
 func _resolve_mine_detonations():
 	var detonated_indices = []
 	
-	print(">>> DIAGNOSTIC: Entering Mine Detonations. Active Mines: ", active_mines.size(), " on peer: ", multiplayer.get_unique_id())
+	var peer_id = (multiplayer.get_unique_id() if _is_networked() else 1) if _is_networked() else "Offline"
+	print(">>> DIAGNOSTIC: Entering Mine Detonations. Active Mines: ", active_mines.size(), " on peer: ", peer_id)
 	log_message("[color=cyan]!!! DEBUG !!! Entering Mine Detonations. Active Mines: %d[/color]" % active_mines.size())
 	for m in active_mines:
 		log_message("[color=cyan]  Mine at %v (Side %d)[/color]" % [m["pos"], m["side_id"]])
@@ -4503,7 +4526,7 @@ func _resolve_mine_detonations():
 									break
 									
 					if icm_used > 0:
-						if multiplayer.has_multiplayer_peer() and multiplayer.is_server():
+						if _is_networked() and multiplayer.is_server():
 							rpc_log_message.rpc("Point defense uses %d ICMs against mine fragment." % icm_used)
 						else:
 							log_message("Point defense uses %d ICMs against mine fragment." % icm_used)
@@ -4514,7 +4537,7 @@ func _resolve_mine_detonations():
 				var hit_str = "HIT" if hit else "MISS"
 				
 				var msg1 = "Mine attacks %s: Rolled %d vs %d%% -> %s" % [s.get_display_name(), result["roll"], result["chance"], hit_str]
-				if multiplayer.has_multiplayer_peer() and multiplayer.is_server():
+				if _is_networked() and multiplayer.is_server():
 					rpc_log_message.rpc(msg1)
 				else:
 					log_message(msg1)
@@ -4524,19 +4547,19 @@ func _resolve_mine_detonations():
 					raw_dmg = Combat.roll_damage("3d10+5")
 					s.take_hull_damage(raw_dmg)
 					var msg2 = "%s took %d damage from spatial mine!" % [s.get_display_name(), raw_dmg]
-					if multiplayer.has_multiplayer_peer() and multiplayer.is_server():
+					if _is_networked() and multiplayer.is_server():
 						rpc_log_message.rpc(msg2)
 					else:
 						log_message(msg2)
 				else:
 					var msg3 = "Mine exploded harmlessly against %s defenses." % s.get_display_name()
-					if multiplayer.has_multiplayer_peer() and multiplayer.is_server():
+					if _is_networked() and multiplayer.is_server():
 						rpc_log_message.rpc(msg3)
 					else:
 						log_message(msg3)
 					
 				# Broadcast visual FX for detonation
-				if multiplayer.has_multiplayer_peer() and multiplayer.is_server():
+				if _is_networked() and multiplayer.is_server():
 					rpc_play_mine_fx.rpc(m["pos"], s.name, hit, raw_dmg)
 				else:
 					rpc_play_mine_fx(m["pos"], s.name, hit, raw_dmg)
@@ -4576,7 +4599,7 @@ func rpc_play_mine_fx(mine_pos_hex: Vector3i, target_name: String, hit: bool, da
 				
 	# If we are a client, we MUST apply the damage locally so the ship dies instantly visually!
 	# The Host already applied it in _resolve_mine_detonations.
-	if multiplayer.has_multiplayer_peer() and not multiplayer.is_server():
+	if _is_networked() and not multiplayer.is_server():
 		if is_instance_valid(target) and hit:
 			target.take_hull_damage(damage)
 
@@ -5975,6 +5998,7 @@ func _spawn_floating_text(text: String, grid_pos: Vector2, color: Color = Color.
 	tween.tween_callback(lbl.queue_free)
 
 func _trigger_icm_decision(attacker_name: String, weapon_name: String, weapon_type: String, current_chance: int, target: Ship, eligible_ships: Array = []):
+	print(">>> TRIGGER ICM TOP. Target=", target.name if target else "NULL")
 	var eligible_names = []
 	for s in eligible_ships:
 		if is_instance_valid(s):
@@ -5983,15 +6007,19 @@ func _trigger_icm_decision(attacker_name: String, weapon_name: String, weapon_ty
 	if eligible_names.is_empty() and is_instance_valid(target):
 		eligible_names.append(target.name)
 		
-	if multiplayer.has_multiplayer_peer() and multiplayer.is_server():
+	print(">>> TRIGGER ICM MID: is_networked=", _is_networked())
+	if _is_networked() and multiplayer.is_server():
 		rpc_trigger_icm_decision.rpc(attacker_name, weapon_name, weapon_type, current_chance, target.name, eligible_names)
 	else:
 		rpc_trigger_icm_decision(attacker_name, weapon_name, weapon_type, current_chance, target.name, eligible_names)
 		
 @rpc("authority", "call_local", "reliable")
 func rpc_trigger_icm_decision(attacker_name: String, weapon_name: String, weapon_type: String, current_chance: int, target_name: String, eligible_ship_names: Array):
+	print(">>> DEBUG RPC ICM: Target Name string = ", target_name)
 	var target = _find_ship_by_name(target_name)
-	if not target: return
+	if not target: 
+		print(">>> DEBUG RPC ICM: TARGET NOT FOUND!")
+		return
 	
 	var eligible_ships = []
 	for n in eligible_ship_names:
@@ -6000,6 +6028,7 @@ func rpc_trigger_icm_decision(attacker_name: String, weapon_name: String, weapon
 
 	# Fallback if eligible_ships not properly passed
 	if eligible_ships.is_empty():
+		print(">>> DEBUG RPC ICM: EMPTY ELIGIBLE SHIPS, falling back to target.")
 		eligible_ships = [target]
 		
 	# --- AI AUTO-RESOLUTION HOOK ---
@@ -6009,6 +6038,8 @@ func rpc_trigger_icm_decision(attacker_name: String, weapon_name: String, weapon
 		if is_instance_valid(ai) and ai.side_id == target.side_id:
 			is_ai_target = true
 			break
+			
+	print(">>> DEBUG RPC ICM: IS AI TARGET = ", is_ai_target)
 			
 	if is_ai_target and _is_server_or_offline():
 		# The server automatically resolves AI ICM decisions without UI
@@ -6141,16 +6172,16 @@ func get_side_name(side_id: int) -> String:
 
 func _submit_icm_decision(allocations: Dictionary):
 	# Send RPC to broadcast decision
-	if multiplayer.has_multiplayer_peer() and not _is_server_or_offline():
+	if _is_networked() and not _is_server_or_offline():
 		broadcast_icm_decision.rpc(allocations)
-	elif multiplayer.has_multiplayer_peer() and _is_server_or_offline():
+	elif _is_networked() and _is_server_or_offline():
 		broadcast_icm_decision.rpc(allocations)
 	else:
 		broadcast_icm_decision(allocations)
 
 @rpc("any_peer", "call_local", "reliable")
 func broadcast_icm_decision(allocations: Dictionary):
-	print("DEBUG: broadcast_icm_decision called on peer %d" % multiplayer.get_unique_id())
+	print("DEBUG: broadcast_icm_decision called on peer %d" % (multiplayer.get_unique_id() if _is_networked() else 1))
 	# Close UI on all clients
 	if panel_icm:
 		panel_icm.queue_free()
@@ -6492,7 +6523,7 @@ func rpc_add_attack(source_name: String, target_name: String, weapon_idx: int):
 # STATE SYNC LOGIC
 func broadcast_game_state():
 	# Only Authority (Server/Host) should broadcast state
-	if multiplayer.has_multiplayer_peer() and not multiplayer.is_server():
+	if _is_networked() and not multiplayer.is_server():
 		return
 		
 	var state_data = {}
@@ -6500,7 +6531,7 @@ func broadcast_game_state():
 		if is_instance_valid(s):
 			state_data[s.name] = s.get_net_state()
 			
-	if multiplayer.has_multiplayer_peer():
+	if _is_networked():
 		rpc_sync_ship_states.rpc(state_data)
 	else:
 		# Local singleplayer (or just testing)
@@ -6905,7 +6936,7 @@ func _spawn_computer_opponents():
 	if not _is_server_or_offline(): return
 	
 	var assigned_sides = []
-	if multiplayer.has_multiplayer_peer():
+	if _is_networked():
 		for pid in NetworkManager.lobby_data.get("teams", {}):
 			assigned_sides.append(NetworkManager.lobby_data["teams"][pid])
 	else:
@@ -6931,7 +6962,7 @@ func _spawn_computer_opponents():
 
 func _is_server_or_offline() -> bool:
 	# Server Authority (Logic/State)
-	if not multiplayer.has_multiplayer_peer(): return true
+	if not _is_networked(): return true
 	return multiplayer.is_server()
 
 func _has_admin_authority() -> bool:
@@ -6940,8 +6971,15 @@ func _has_admin_authority() -> bool:
 	if test_force_online: return (my_side_id == 0)
 	
 	# Offline = Full Control
-	if not multiplayer.has_multiplayer_peer(): return true
+	if not _is_networked(): return true
 	
 	# Online = Only Side 0 (Spectator/Admin) has full control
 	# Host (Side 1) is restricted like a normal player
 	return (my_side_id == 0)
+
+func _is_networked() -> bool:
+	if not multiplayer.has_multiplayer_peer(): return false
+	if multiplayer.multiplayer_peer == null: return false
+	if multiplayer.multiplayer_peer.get_class() == "OfflineMultiplayerPeer": return false
+	if multiplayer.multiplayer_peer.get_connection_status() == MultiplayerPeer.CONNECTION_DISCONNECTED: return false
+	return true

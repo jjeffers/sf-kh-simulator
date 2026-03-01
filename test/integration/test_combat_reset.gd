@@ -37,9 +37,8 @@ func test_combat_target_validation():
 		"fired": false
 	}]
 	if defiant.get_parent() == null:
-		_game_manager.add_child(defiant)
-	game_manager.ships.append(defiant)
-	game_manager.add_child(defiant)
+		game_manager.add_child(defiant)
+		game_manager.ships.append(defiant)
 	
 	# Enemy Ship at (0, 5, -5) (Dist 5, well within range)
 	enemy = load("res://Scripts/Ship.gd").new()
@@ -47,9 +46,8 @@ func test_combat_target_validation():
 	enemy.side_id = 2
 	enemy.grid_position = Vector3i(0, 5, -5)
 	if enemy.get_parent() == null:
-		_game_manager.add_child(enemy)
-	game_manager.ships.append(enemy)
-	game_manager.add_child(enemy)
+		game_manager.add_child(enemy)
+		game_manager.ships.append(enemy)
 	
 	# SETUP GAME MANAGER STATE
 	game_manager.current_phase = game_manager.Phase.COMBAT

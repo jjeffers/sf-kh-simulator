@@ -21,6 +21,8 @@ func before_each():
 		_gm.panel_icm.queue_free()
 		_gm.panel_icm = null
 		
+	_gm.computer_opponents.clear()
+		
 	_gm.current_phase = _gm.Phase.COMBAT
 	_gm.my_side_id = 1
 	_gm.current_side_id = 1
@@ -33,7 +35,7 @@ func test_shared_icm_defense_allocations():
 	attacker.facing = 0
 	attacker.weapons = [{"name": "Torps", "type": "Torpedo", "range": 4, "arc": "360", "ammo": 2, "fired": false}]
 	if attacker.get_parent() == null:
-		_game_manager.add_child(attacker)
+		_gm.add_child(attacker)
 	_gm.ships.append(attacker)
 	
 	var defender_target = ShipScript.new()
@@ -44,7 +46,7 @@ func test_shared_icm_defense_allocations():
 	defender_target.icm_current = 4
 	defender_target.hull = 40
 	if defender_target.get_parent() == null:
-		_game_manager.add_child(defender_target)
+		_gm.add_child(defender_target)
 	_gm.ships.append(defender_target)
 	
 	var defender_helper = ShipScript.new()
@@ -55,7 +57,7 @@ func test_shared_icm_defense_allocations():
 	defender_helper.icm_current = 2
 	defender_helper.hull = 40
 	if defender_helper.get_parent() == null:
-		_game_manager.add_child(defender_helper)
+		_gm.add_child(defender_helper)
 	_gm.ships.append(defender_helper)
 	
 	# Simulate trigger decision

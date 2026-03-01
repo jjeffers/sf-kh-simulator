@@ -30,7 +30,7 @@ func test_turn_cycle_switch():
 	s1.side_id = 1
 	s1.has_moved = false
 	if s1.get_parent() == null:
-		_game_manager.add_child(s1)
+		_gm.add_child(s1)
 	_gm.ships.append(s1)
 	
 	var s2 = ShipScript.new()
@@ -38,7 +38,7 @@ func test_turn_cycle_switch():
 	s2.side_id = 2
 	s2.has_moved = false
 	if s2.get_parent() == null:
-		_game_manager.add_child(s2)
+		_gm.add_child(s2)
 	_gm.ships.append(s2)
 	autofree(s1)
 	autofree(s2)
@@ -71,9 +71,8 @@ func test_ship_destruction_handling():
 	s1.side_id = 2
 	s1.hull = 5
 	if s1.get_parent() == null:
-		_game_manager.add_child(s1)
-	_gm.ships.append(s1)
-	_gm.add_child(s1) # Needs to be in tree for queue_free/signals?
+		_gm.add_child(s1)
+		_gm.ships.append(s1) # Needs to be in tree for queue_free/signals?
 	
 	# Manually trigger destruction logic
 	# GameManager._on_ship_destroyed(s1) is likely connected to signal or called directly

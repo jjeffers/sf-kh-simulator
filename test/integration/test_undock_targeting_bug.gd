@@ -22,9 +22,8 @@ func before_each():
 	_station.configure_space_station()
 	_station.grid_position = Vector3i(0, 0, 0)
 	if _station.get_parent() == null:
-		_game_manager.add_child(_station)
+		_gm.add_child(_station)
 	_gm.ships.append(_station)
-	_gm.add_child(_station)
 	
 	# Create Scout (Dock Guest)
 	_scout = Ship.new()
@@ -33,9 +32,8 @@ func before_each():
 	_scout.configure_assault_scout()
 	_scout.grid_position = Vector3i(0, 0, 0)
 	if _scout.get_parent() == null:
-		_game_manager.add_child(_scout)
+		_gm.add_child(_scout)
 	_gm.ships.append(_scout)
-	_gm.add_child(_scout)
 	
 	# Dock them
 	_scout.dock_at(_station)
@@ -48,9 +46,8 @@ func before_each():
 	_attacker.configure_destroyer()
 	_attacker.grid_position = Vector3i(2, -2, 0) # Just nearby
 	if _attacker.get_parent() == null:
-		_game_manager.add_child(_attacker)
+		_gm.add_child(_attacker)
 	_gm.ships.append(_attacker)
-	_gm.add_child(_attacker)
 
 func after_each():
 	_gm.free()

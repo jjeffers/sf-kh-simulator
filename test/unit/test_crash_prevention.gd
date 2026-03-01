@@ -20,7 +20,6 @@ func before_each():
 	if s1.get_parent() == null:
 		_gm.add_child(s1)
 	_gm.ships.append(s1)
-	_gm.add_child(s1)
 	
 	var s2 = ShipScript.new()
 	s2.name = "Victim"
@@ -29,7 +28,6 @@ func before_each():
 	if s2.get_parent() == null:
 		_gm.add_child(s2)
 	_gm.ships.append(s2)
-	_gm.add_child(s2)
 	
 	_mm = MiniMapScript.new()
 	_mm.game_manager = _gm

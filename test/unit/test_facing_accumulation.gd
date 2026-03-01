@@ -17,9 +17,8 @@ func before_each():
 	ship.adf = 1
 	
 	if ship.get_parent() == null:
-		_game_manager.add_child(ship)
+		game_manager.add_child(ship)
 	game_manager.ships.append(ship)
-	game_manager.add_child(ship)
 	game_manager.selected_ship = ship
 	game_manager.my_side_id = 1
 	game_manager.current_side_id = 1

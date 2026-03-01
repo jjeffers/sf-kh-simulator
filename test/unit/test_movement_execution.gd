@@ -22,18 +22,16 @@ func before_each():
 	Ship1.side_id = 1
 	Ship1.grid_position = Vector3i(0, 0, 0)
 	if Ship1.get_parent() == null:
-		_game_manager.add_child(Ship1)
+		Game.add_child(Ship1)
 	Game.ships.append(Ship1)
-	Game.add_child(Ship1)
 	
 	Ship2 = ShipScript.new()
 	Ship2.name = "Ship2"
 	Ship2.side_id = 2
 	Ship2.grid_position = Vector3i(1, -1, 0)
 	if Ship2.get_parent() == null:
-		_game_manager.add_child(Ship2)
+		Game.add_child(Ship2)
 	Game.ships.append(Ship2)
-	Game.add_child(Ship2)
 
 func test_execute_all_movement_advances_side():
 	# Setup
