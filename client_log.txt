@@ -5,26 +5,7 @@ ERROR: Error opening file 'res://icon.svg'.
    at: load_image (core/io/image_loader.cpp:89)
 [MainMenu] Auto-Joining match...
 Connecting to ws://127.0.0.1:7000
-[NetworkManager] Starting Game RPC received. Changing Scene to Main.tscn...
-WARNING: res://Scenes/Main.tscn:3 - ext_resource, invalid UID: uid://cvru4lxy5bnj1 - using text path instead: res://Scripts/GameManager.gd
-     at: load (scene/resources/resource_format_text.cpp:500)
-     GDScript backtrace (most recent call first):
-         [0] start_game_rpc (res://Scripts/NetworkManager.gd:157)
-[DEBUG] _build_repair_panel called
-[Turn 1] [DEBUG] Initializing repair_panel
-[Turn 1] Game Setup Received: Seed 1108156832
-[SCENARIO] Sathar Entry Edge: 5 (Vec: (1, -1, 0)), Facing: 2
-[Turn 1] Loading Scenario: Surprise Attack!
-[DEBUG] Ship Station Alpha loaded with Orbit Dir 1
-[Turn 1] Defiant docked at Station Alpha
-[Turn 1] Stiletto docked at Station Alpha
-[Turn 1] [color=cyan]=== DEPLOYMENT Phase ===[/color]
-[DEBUG] _update_deployment_ui called - Subphase: 2, my_side_id: 2
-[DEBUG] _update_deployment_ui called - Subphase: 2, my_side_id: 2
-[Turn 1] Station Alpha deployed at (0, -1, 1), facing 0, speed 0.
-[Turn 1] Defiant (docked to Station Alpha) deployed automatically.
-[Turn 1] Stiletto (docked to Station Alpha) deployed automatically.
-[DEBUG] _update_deployment_ui called - Subphase: 2, my_side_id: 2
-[Turn 1] Submitting Deployment for Side 2
-[Turn 1] Side 1 is now Deploying.
-[DEBUG] _update_deployment_ui called - Subphase: 1, my_side_id: 2
+WARNING: ObjectDB instances leaked at exit (run with --verbose for details).
+     at: cleanup (core/object/object.cpp:2641)
+ERROR: 1 resources still in use at exit (run with --verbose for details).
+   at: clear (core/io/resource.cpp:810)

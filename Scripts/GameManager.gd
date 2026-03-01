@@ -5251,6 +5251,13 @@ func _draw():
 					draw_string_outline(font, center + text_offset, "MINE", HORIZONTAL_ALIGNMENT_CENTER, -1, 14, 2, Color.BLACK)
 					draw_string(font, center + text_offset, "MINE", HORIZONTAL_ALIGNMENT_CENTER, -1, 14, Color.YELLOW)
 					
+		if deployment_seekers_placed.size() > 0:
+			for h in deployment_seekers_placed:
+				var s_pos = HexGrid.hex_to_pixel(h)
+				_draw_filled_hex(h, Color(1, 0.5, 0, 0.4)) # Translucent Orange
+				draw_circle(s_pos, 10.0, Color(1.0, 0.5, 0.0, 0.9)) # Orange Circle
+				draw_circle(s_pos, 4.0, Color(1.0, 1.0, 1.0, 0.9)) # White Center Eye
+					
 		if is_deploying_ship and is_instance_valid(selected_ship):
 			var valid_hexes = ScenarioManager.get_valid_deployment_hexes(deployment_subphase, ships, planet_hexes, selected_ship)
 			# Only highlight if there are restrictions (not the whole map)
@@ -5664,7 +5671,7 @@ func _draw():
 			draw_circle(s_pos, 10.0, Color(1.0, 0.5, 0.0, 0.9)) # Orange Circle
 			draw_circle(s_pos, 4.0, Color(1.0, 1.0, 1.0, 0.9)) # White Center Eye
 			
-	# Draw Planned Seekers (Text Indicator)
+	# Draw Planned Seekers
 	if current_phase == Phase.MOVEMENT and is_instance_valid(selected_ship) and selected_ship.planned_seekers_to_drop.size() > 0:
 		for hex in selected_ship.planned_seekers_to_drop:
 			if state_seeker_placement:
@@ -5673,9 +5680,8 @@ func _draw():
 					_draw_filled_hex(hex, Color(1.0, 0.5, 0.0, 0.2)) # Faintest Orange
 			
 			var s_pos = HexGrid.hex_to_pixel(hex)
-			var font = ThemeDB.fallback_font
-			draw_string_outline(font, s_pos + Vector2(0, 5), "SEEKER", HORIZONTAL_ALIGNMENT_CENTER, -1, 12, 2, Color.BLACK)
-			draw_string(font, s_pos + Vector2(0, 5), "SEEKER", HORIZONTAL_ALIGNMENT_CENTER, -1, 12, Color.ORANGE)
+			draw_circle(s_pos, 10.0, Color(1.0, 0.5, 0.0, 0.9)) # Orange Circle
+			draw_circle(s_pos, 4.0, Color(1.0, 1.0, 1.0, 0.9)) # White Center Eye
 
 	# If Placement mode is on but we have no planned seekers yet (or highlighting rest of path)
 	if current_phase == Phase.MOVEMENT and is_instance_valid(selected_ship) and state_seeker_placement:
@@ -5791,13 +5797,21 @@ func _unhandled_input(event):
 					if is_instance_valid(selected_ship) and deployable_ships.has(selected_ship):
 						current_idx = deployable_ships.find(selected_ship)
 						
-					current_idx = (current_idx + 1) % deployable_ships.size()
+					var shift_held = Input.is_key_pressed(KEY_SHIFT)
+					if shift_held:
+						current_idx = (current_idx - 1 + deployable_ships.size()) % deployable_ships.size()
+					else:
+						current_idx = (current_idx + 1) % deployable_ships.size()
+						
 					var s = deployable_ships[current_idx]
 					
 					selected_ship = s
 					is_deploying_ship = true
 					state_deployment_mine_placement = false
+					state_deployment_seeker_placement = false
 					if btn_deploy_mine: btn_deploy_mine.set_pressed_no_signal(false)
+					if btn_deploy_seeker: btn_deploy_seeker.set_pressed_no_signal(false)
+					
 					if s.is_deployed:
 						deploy_tentative_hex = s.grid_position
 						deploy_facing_val = s.facing
@@ -6046,6 +6060,21 @@ func _handle_deployment_click(hex: Vector3i):
 			else:
 				log_message("[color=red]You have no remaining mines to drop![/color]")
 				
+		_update_deployment_ui()
+		queue_redraw()
+		return
+
+	# Enable implicit UNDO of deployed ordnance if we click an existing token without placement mode active
+	if deployment_mines_placed.has(hex):
+		deployment_mines_placed.erase(hex)
+		log_message("Recovered deployed mine at %v." % hex)
+		_update_deployment_ui()
+		queue_redraw()
+		return
+		
+	if deployment_seekers_placed.has(hex):
+		deployment_seekers_placed.erase(hex)
+		log_message("Recovered deployed seeker at %v." % hex)
 		_update_deployment_ui()
 		queue_redraw()
 		return

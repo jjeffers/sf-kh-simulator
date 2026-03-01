@@ -4,28 +4,4 @@ Vulkan 1.4.318 - Forward+ - Using Device #0: Intel - Intel(R) Graphics (RPL-P)
 ERROR: Error opening file 'res://icon.svg'.
    at: load_image (core/io/image_loader.cpp:89)
 [MainMenu] Auto-Hosting local match...
-[MainMenu] Pre-loading scenario:test_gravity
-Assigned Player 2 to Peer 1313477570
-[Lobby] Start Game Pressed!
-[NetworkManager] Starting Game RPC received. Changing Scene to Main.tscn...
-WARNING: res://Scenes/Main.tscn:3 - ext_resource, invalid UID: uid://cvru4lxy5bnj1 - using text path instead: res://Scripts/GameManager.gd
-     at: load (scene/resources/resource_format_text.cpp:500)
-     GDScript backtrace (most recent call first):
-         [0] start_game_rpc (res://Scripts/NetworkManager.gd:157)
-         [1] _on_start_pressed (res://Scripts/Lobby.gd:147)
-[DEBUG] _build_repair_panel called
-[Turn 1] [DEBUG] Initializing repair_panel
-[Turn 1] Player 1 finished loading.
-[Turn 1] Player 1313477570 finished loading.
-[Turn 1] All Players Ready. Starting Game...
-GameManager: Generated Random Seed: 1108156832
-[Turn 1] Game Setup Received: Seed 1108156832
-[SCENARIO] Sathar Entry Edge: 5 (Vec: (1, -1, 0)), Facing: 2
-[Turn 1] Loading Scenario: Surprise Attack!
-[DEBUG] Ship Station Alpha loaded with Orbit Dir 1
-[Turn 1] Defiant docked at Station Alpha
-[Turn 1] Stiletto docked at Station Alpha
-[Turn 1] [color=cyan]=== DEPLOYMENT Phase ===[/color]
-[DEBUG] _update_deployment_ui called - Subphase: 2, my_side_id: 1
-[Turn 1] Side 1 is now Deploying.
-[DEBUG] _update_deployment_ui called - Subphase: 1, my_side_id: 1
+[MainMenu] Pre-loading scenario:battle_of_kenzah
