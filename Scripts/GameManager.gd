@@ -941,9 +941,7 @@ func _build_deployment_panel(parent: Container):
 	btn_deploy_mine.toggled.connect(func(toggled_on): 
 		if current_phase == Phase.DEPLOYMENT:
 			state_deployment_mine_placement = toggled_on
-			
-			if not toggled_on:
-				btn_deploy_mine.text = btn_deploy_mine.text.replace("Cancel Placement", "Place Mine")
+			_update_deployment_ui()
 			queue_redraw()
 	)
 	dep_vbox.add_child(btn_deploy_mine)
@@ -956,9 +954,7 @@ func _build_deployment_panel(parent: Container):
 	btn_deploy_seeker.toggled.connect(func(toggled_on): 
 		if current_phase == Phase.DEPLOYMENT:
 			state_deployment_seeker_placement = toggled_on
-			
-			if not toggled_on:
-				btn_deploy_seeker.text = btn_deploy_seeker.text.replace("Cancel Placement", "Place Seeker")
+			_update_deployment_ui()
 			queue_redraw()
 	)
 	dep_vbox.add_child(btn_deploy_seeker)
@@ -2866,7 +2862,9 @@ func _update_deployment_ui():
 	if total_mine_capacity > 0:
 		btn_deploy_mine.visible = true
 		var mines_remaining = total_mine_capacity - deployment_mines_placed.size()
-		if not state_deployment_mine_placement:
+		if state_deployment_mine_placement:
+			btn_deploy_mine.text = "Cancel Placement (%d Left)" % mines_remaining
+		else:
 			btn_deploy_mine.text = "Place Mine (%d Left)" % mines_remaining
 		btn_deploy_mine.disabled = (mines_remaining <= 0 and not state_deployment_mine_placement)
 	else:
@@ -2876,7 +2874,9 @@ func _update_deployment_ui():
 	if total_seeker_capacity > 0:
 		btn_deploy_seeker.visible = true
 		var seekers_remaining = total_seeker_capacity - deployment_seekers_placed.size()
-		if not state_deployment_seeker_placement:
+		if state_deployment_seeker_placement:
+			btn_deploy_seeker.text = "Cancel Placement (%d Left)" % seekers_remaining
+		else:
 			btn_deploy_seeker.text = "Place Seeker (%d Left)" % seekers_remaining
 		btn_deploy_seeker.disabled = (seekers_remaining <= 0 and not state_deployment_seeker_placement)
 	else:
@@ -6063,6 +6063,44 @@ func _handle_deployment_click(hex: Vector3i):
 		_update_deployment_ui()
 		queue_redraw()
 		return
+
+	if state_deployment_seeker_placement:
+		var valid_hexes = ScenarioManager.get_valid_deployment_hexes(deployment_subphase, ships, planet_hexes, null) # Null ship since we just want general deployment zones
+		
+		if valid_hexes.size() > 0 and not valid_hexes.has(hex):
+			log_message("[color=red]You can only place seekers inside your deployment zone![/color]")
+			state_deployment_seeker_placement = false # Cancel placement
+			if btn_deploy_seeker: btn_deploy_seeker.set_pressed_no_signal(false)
+			_update_deployment_ui()
+			queue_redraw()
+			return
+			
+		if planet_hexes.has(hex):
+			log_message("[color=red]Cannot deploy a seeker inside a planet![/color]")
+			return
+
+		# Toggle seeker logic
+		if deployment_seekers_placed.has(hex):
+			deployment_seekers_placed.erase(hex)
+			log_message("Removed planned seeker at %v." % hex)
+		else:
+			var total_capacity = 0
+			for s in ships:
+				if is_instance_valid(s) and s.side_id == deployment_subphase:
+					for w in s.weapons:
+						if w.get("type", "") == "Seeker":
+							total_capacity += w.get("ammo", 0)
+			
+			if deployment_seekers_placed.size() < total_capacity:
+				deployment_seekers_placed.append(hex)
+				log_message("Placed seeker at %v." % hex)
+			else:
+				log_message("[color=red]You have no remaining seekers to drop![/color]")
+				
+		_update_deployment_ui()
+		queue_redraw()
+		return
+
 
 	# Enable implicit UNDO of deployed ordnance if we click an existing token without placement mode active
 	if deployment_mines_placed.has(hex):

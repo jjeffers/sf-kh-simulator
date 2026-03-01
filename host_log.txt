@@ -5,3 +5,48 @@ ERROR: Error opening file 'res://icon.svg'.
    at: load_image (core/io/image_loader.cpp:89)
 [MainMenu] Auto-Hosting local match...
 [MainMenu] Pre-loading scenario:battle_of_kenzah
+Assigned Player 2 to Peer 2135407475
+[Lobby] Start Game Pressed!
+[NetworkManager] Starting Game RPC received. Changing Scene to Main.tscn...
+WARNING: res://Scenes/Main.tscn:3 - ext_resource, invalid UID: uid://cvru4lxy5bnj1 - using text path instead: res://Scripts/GameManager.gd
+     at: load (scene/resources/resource_format_text.cpp:500)
+     GDScript backtrace (most recent call first):
+         [0] start_game_rpc (res://Scripts/NetworkManager.gd:157)
+         [1] _on_start_pressed (res://Scripts/Lobby.gd:156)
+[DEBUG] _build_repair_panel called
+[Turn 1] [DEBUG] Initializing repair_panel
+[Turn 1] Player 1 finished loading.
+[Turn 1] Player 2135407475 finished loading.
+[Turn 1] All Players Ready. Starting Game...
+GameManager: Generated Random Seed: 3755871247
+[Turn 1] Game Setup Received: Seed 3755871247
+[Turn 1] Loading Scenario: Battle of Ken'zah
+[DEBUG] Ship Ken'zah Station loaded with Orbit Dir 1
+[Turn 1] Fighter A docked at Ken'zah Station
+[Turn 1] Fighter B docked at Ken'zah Station
+[Turn 1] Fighter C docked at Ken'zah Station
+[Turn 1] Fighter D docked at Ken'zah Station
+[Turn 1] Fighter E docked at Ken'zah Station
+[Turn 1] Fighter F docked at Ken'zah Station
+[Turn 1] Sathar Fighter A docked at Maelstrom
+[Turn 1] Sathar Fighter B docked at Maelstrom
+[Turn 1] Sathar Fighter C docked at Maelstrom
+[Turn 1] Sathar Fighter D docked at Maelstrom
+[Turn 1] Sathar Fighter E docked at Maelstrom
+[Turn 1] Sathar Fighter F docked at Maelstrom
+[Turn 1] [color=cyan]=== DEPLOYMENT Phase ===[/color]
+[DEBUG] _update_deployment_ui called - Subphase: 1, my_side_id: 1
+[DEBUG] _update_deployment_ui called - Subphase: 1, my_side_id: 1
+[Turn 1] Recovered deployed seeker at (-1.000000, -8.000000, 9.000000).
+[DEBUG] _update_deployment_ui called - Subphase: 1, my_side_id: 1
+[Turn 1] Recovered deployed mine at (0.000000, -7.000000, 7.000000).
+[DEBUG] _update_deployment_ui called - Subphase: 1, my_side_id: 1
+[Turn 1] Placed mine at (-1.000000, -6.000000, 7.000000).
+[DEBUG] _update_deployment_ui called - Subphase: 1, my_side_id: 1
+[Turn 1] [color=red]You have no remaining mines to drop![/color]
+[DEBUG] _update_deployment_ui called - Subphase: 1, my_side_id: 1
+[DEBUG] _update_deployment_ui called - Subphase: 1, my_side_id: 1
+[DEBUG] Orbit UI Visible? CW: false | CCW: false | Is Station: false
+[Turn 1] Shimmer deployed at (4, -7, 3), facing 3, speed 11.
+[DEBUG] _update_deployment_ui called - Subphase: 1, my_side_id: 1
+[DEBUG] Orbit UI Visible? CW: false | CCW: false | Is Station: false
