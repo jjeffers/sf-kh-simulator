@@ -69,7 +69,7 @@ func get_ship_count() -> int:
 func serialize() -> Dictionary:
 	var ship_data_list = []
 	for s in ships:
-		if s.has_method("serialize"):
+		if typeof(s) == TYPE_OBJECT and s.has_method("serialize"):
 			ship_data_list.append(s.serialize())
 		else:
 			# Assume it's already a dict if not an object with serialize

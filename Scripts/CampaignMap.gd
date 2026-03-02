@@ -496,6 +496,7 @@ func _update_fleet_list():
 	cancel_jump_btn.disabled = true
 	
 	var my_faction = _get_my_faction()
+	
 	for i in range(campaign.fleets.size()):
 		var f = campaign.fleets[i]
 		if f.faction == my_faction:
