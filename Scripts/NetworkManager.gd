@@ -149,7 +149,7 @@ func update_lobby_data(data: Dictionary):
 	lobby_data = data
 	lobby_updated.emit()
 
-@rpc("authority", "call_local", "reliable")
+@rpc("authority", "reliable")
 func sync_campaign_state(state_data: Dictionary):
 	print("[NetworkManager] Received Campaign State Sync")
 	var cm = get_tree().root.get_node_or_null("CampaignManager")

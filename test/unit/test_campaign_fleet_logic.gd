@@ -4,8 +4,13 @@ var campaign_mgr
 
 func before_each():
 	campaign_mgr = preload("res://Scripts/CampaignManager.gd").new()
-	add_child_autofree(campaign_mgr)
+	campaign_mgr.name = "CampaignManager"
+	get_tree().root.add_child(campaign_mgr)
 	campaign_mgr._load_map_data()
+	
+func after_each():
+	if is_instance_valid(campaign_mgr):
+		campaign_mgr.queue_free()
 	
 func test_fleet_movement_and_arrival():
 	# Manually spawn fleets for testing

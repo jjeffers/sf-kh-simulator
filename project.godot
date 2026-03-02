@@ -23,6 +23,7 @@ config/icon="uid://buxqpiwusk5wp"
 
 NetworkManager="*res://Scripts/NetworkManager.gd"
 MusicManager="*res://Scripts/MusicManager.gd"
+ConsoleManager="*res://Scripts/ConsoleManager.gd"
 
 [display]
 

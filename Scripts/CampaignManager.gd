@@ -2,8 +2,9 @@ extends Node
 
 signal campaign_day_advanced(new_day: int)
 signal fleet_arrived(fleet: CampaignFleet, system_id: String)
-signal campaign_encounter_triggered(system_id: String, upf_fleets: Array, sathar_fleets: Array)
+signal campaign_encounter_triggered(system_id: String, upf_forces: Array, sathar_forces: Array)
 signal map_data_loaded()
+signal turn_ready_changed(upf_ready: bool, sathar_ready: bool)
 
 var map_data: Dictionary = {}
 var systems: Dictionary = {} # system_name -> data
@@ -12,6 +13,9 @@ var start_circles: Array = []
 
 var fleets: Array[CampaignFleet] = []
 var current_day: int = 1
+
+var upf_ready: bool = false
+var sathar_ready: bool = false
 
 # Tracks destroyed stations for win/loss conditions
 var destroyed_stations_count: int = 0
@@ -262,8 +266,31 @@ func order_fleet_move(fleet: CampaignFleet, destination_id: String) -> bool:
 	fleet.start_move(destination_id, TRANSIT_DAYS)
 	return true
 
+@rpc("any_peer", "call_local", "reliable")
+func request_end_turn(faction: String):
+	if multiplayer.is_server():
+		if faction == "UPF": upf_ready = true
+		elif faction == "Sathar": sathar_ready = true
+		
+		# Broadcast updated readiness to all clients
+		update_turn_ready.rpc(upf_ready, sathar_ready)
+		
+		ConsoleManager.log_message("[color=yellow]End Turn Requested: %s. Status - UPF:%s, Sathar:%s[/color]" % [faction, str(upf_ready), str(sathar_ready)])
+		
+		if upf_ready and sathar_ready:
+			end_turn()
+
+@rpc("authority", "call_local", "reliable")
+func update_turn_ready(upf: bool, sathar: bool):
+	upf_ready = upf
+	sathar_ready = sathar
+	emit_signal("turn_ready_changed", upf_ready, sathar_ready)
+
 func end_turn():
+	ConsoleManager.log_message("[color=green]Both factions ready. Advancing from Day %d to Day %d[/color]" % [current_day, current_day + 1])
 	current_day += 1
+	upf_ready = false
+	sathar_ready = false
 	var arriving_fleets: Array[CampaignFleet] = []
 	
 	for fleet in fleets:
@@ -274,6 +301,23 @@ func end_turn():
 	emit_signal("campaign_day_advanced", current_day)
 	
 	_check_for_encounters()
+	
+	# After processing the turn, broadcast the new state and readiness
+	if multiplayer.is_server() and has_node("/root/NetworkManager"):
+		var nm = get_node("/root/NetworkManager")
+		nm.sync_campaign_state.rpc(serialize_state())
+		update_turn_ready.rpc(upf_ready, sathar_ready)
+
+func serialize_state() -> Dictionary:
+	var state = {
+		"current_day": current_day,
+		"destroyed_stations": destroyed_stations_count,
+		"destroyed_fortresses": destroyed_fortresses_count,
+		"fleets": []
+	}
+	for f in fleets:
+		state["fleets"].append(f.serialize())
+	return state
 
 func _check_for_encounters():
 	# Group all stationary fleets by system

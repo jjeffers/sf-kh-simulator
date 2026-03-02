@@ -33,8 +33,12 @@ layout_mode = 2
 
 [node name="TurnLabel" type="Label" parent="HBoxContainer/VBoxLeft/TopBar/HBox"]
 layout_mode = 2
-size_flags_horizontal = 3
 text = "Day: 1"
+
+[node name="TurnStatusLabel" type="Label" parent="HBoxContainer/VBoxLeft/TopBar/HBox"]
+layout_mode = 2
+size_flags_horizontal = 3
+horizontal_alignment = 1
 
 [node name="EndTurnBtn" type="Button" parent="HBoxContainer/VBoxLeft/TopBar/HBox"]
 layout_mode = 2

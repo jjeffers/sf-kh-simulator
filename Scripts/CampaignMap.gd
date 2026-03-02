@@ -14,6 +14,7 @@ extends Control
 @onready var cancel_jump_btn = $HBoxContainer/VBoxRight/Panel/VBox/ActionHBox/CancelJumpBtn
 @onready var plot_jump_btn = $HBoxContainer/VBoxRight/Panel/VBox/ActionHBox/PlotJumpBtn
 @onready var end_turn_btn = $HBoxContainer/VBoxLeft/TopBar/HBox/EndTurnBtn
+@onready var turn_status_label = $HBoxContainer/VBoxLeft/TopBar/HBox/TurnStatusLabel
 
 const MAP_GRID_WIDTH = 45.0
 const MAP_GRID_HEIGHT = 55.0
@@ -41,6 +42,7 @@ func _ready():
 	
 	campaign.map_data_loaded.connect(_on_map_data_loaded)
 	campaign.campaign_day_advanced.connect(_on_day_advanced)
+	campaign.turn_ready_changed.connect(_on_turn_ready_changed)
 	campaign.fleet_arrived.connect(_on_fleet_arrived)
 	campaign.campaign_encounter_triggered.connect(_on_encounter)
 	
@@ -135,9 +137,10 @@ func _setup_background():
 	layer.add_child(rect)
 
 func _log_event(msg: String):
-	event_log.text += "\\nLOG Day %d: %s" % [campaign.current_day, msg]
+	event_log.text += "\nLOG Day %d: %s" % [campaign.current_day, msg]
 	# Auto-scroll
 	event_log.scroll_to_line(event_log.get_line_count() - 1)
+	ConsoleManager.log_message(msg)
 
 func _on_map_data_loaded():
 	_draw_routes()
@@ -427,35 +430,32 @@ func _on_plot_jump_toggled(pressed: bool):
 
 func _on_system_gui_input(event: InputEvent, sys_name: String):
 	if event is InputEventMouseButton and event.pressed:
-		print("DEBUG Map GUI Input: sys=", sys_name, " btn=", event.button_index, " shift=", event.shift_pressed)
+		ConsoleManager.log_message("DEBUG Map GUI Input: sys=%s btn=%d" % [sys_name, event.button_index])
 		
 		# If we have a fleet selected
 		var sel_fac = "None"
 		if selected_fleet: sel_fac = selected_fleet.faction
-		print("DEBUG Map State: selected_fleet=", (selected_fleet != null), " fac=", sel_fac, " my_fac=", _get_my_faction(), " is_plotting=", is_plotting_jump)
 		
 		if event.button_index == MOUSE_BUTTON_LEFT:
 			if is_plotting_jump and selected_fleet != null and selected_fleet.faction == _get_my_faction() and not selected_fleet.is_moving():
-				print("DEBUG Map: Initiating Left-Click Plotting")
+				ConsoleManager.log_message("DEBUG Map: Left-Click Plotting")
 				if campaign.are_systems_connected(selected_fleet.current_system_id, sys_name):
-					print("DEBUG Map: Route connected, executing!")
 					_execute_jump(sys_name)
 					plot_jump_btn.button_pressed = false
 					return
 				else:
-					print("DEBUG Map: Route NOT connected from ", selected_fleet.current_system_id)
+					ConsoleManager.log_message("[color=red]Route NOT connected from %s[/color]" % selected_fleet.current_system_id)
 					
 			_focus_system_only(sys_name)
 			
 		elif event.button_index == MOUSE_BUTTON_RIGHT:
-			print("DEBUG Map: Initiating Right-Click Plotting")
+			ConsoleManager.log_message("DEBUG Map: Right-Click Plotting")
 			if selected_fleet != null and selected_fleet.faction == _get_my_faction() and not selected_fleet.is_moving():
 				if campaign.are_systems_connected(selected_fleet.current_system_id, sys_name):
-					print("DEBUG Map: Route connected, executing!")
 					_execute_jump(sys_name)
 					plot_jump_btn.button_pressed = false
 				else:
-					print("DEBUG Map: Route NOT connected from ", selected_fleet.current_system_id)
+					ConsoleManager.log_message("[color=red]Route NOT connected from %s[/color]" % selected_fleet.current_system_id)
 
 func _focus_system_only(sys_name: String):
 	if selected_system_id != sys_name:
@@ -616,23 +616,25 @@ func _on_ship_selection_changed(_row, _selected):
 	pass
 
 func _execute_jump(target_id: String):
-	print("DEBUG Map Execute Jump: Fleet=", selected_fleet.fleet_name, " Target=", target_id)
-	if campaign.order_fleet_move(selected_fleet, target_id):
-		_log_event("%s has jumped for %s. ETA: Day %d." % [selected_fleet.fleet_name, target_id, campaign.current_day + campaign.TRANSIT_DAYS])
-		plot_jump_btn.button_pressed = false
-		plot_jump_btn.disabled = true
-		cancel_jump_btn.disabled = false
-		_update_fleet_list()
-		# Re-select the fleet to highlight it
-		for i in range(fleet_list.item_count):
-			if fleet_list.get_item_metadata(i) == selected_fleet:
-				fleet_list.select(i)
-				break
-		_update_composition_panel()
-		_draw_fleets()
-		_draw_routes()
-	else:
-		print("DEBUG Map Execute Jump FAILED from CampaignManager.order_fleet_move")
+	if selected_fleet:
+		ConsoleManager.log_message("DEBUG Map Executing Jump: %s -> %s" % [selected_fleet.current_system_id, target_id])
+		if campaign.order_fleet_move(selected_fleet, target_id):
+			ConsoleManager.log_message("[color=green]DEBUG Map Success![/color]")
+			_log_event("%s has jumped for %s. ETA: Day %d." % [selected_fleet.fleet_name, target_id, campaign.TRANSIT_DAYS])
+			plot_jump_btn.button_pressed = false
+			plot_jump_btn.disabled = true
+			cancel_jump_btn.disabled = false
+			_update_fleet_list()
+			# Re-select the fleet to highlight it
+			for i in range(fleet_list.item_count):
+				if fleet_list.get_item_metadata(i) == selected_fleet:
+					fleet_list.select(i)
+					break
+			_update_composition_panel()
+			_draw_fleets()
+			_draw_routes()
+		else:
+			ConsoleManager.log_message("[color=red]DEBUG Map Execute Jump FAILED from CampaignManager.order_fleet_move[/color]")
 
 func _on_cancel_jump_pressed():
 	if selected_fleet == null or not selected_fleet.is_moving():
@@ -655,9 +657,31 @@ func _on_cancel_jump_pressed():
 	_draw_routes()
 
 func _on_end_turn_pressed():
-	campaign.end_turn()
+	var my_fac = _get_my_faction()
+	if my_fac in ["UPF", "Sathar"]:
+		end_turn_btn.disabled = true
+		turn_status_label.text = "Waiting for other player..."
+		campaign.request_end_turn.rpc_id(1, my_fac)
+	else:
+		# Fallback if testing locally as GM
+		campaign.request_end_turn("UPF")
+		campaign.request_end_turn("Sathar")
+
+func _on_turn_ready_changed(upf_ready: bool, sathar_ready: bool):
+	var my_fac = _get_my_faction()
+	var other_fac = "Sathar" if my_fac == "UPF" else "UPF"
+	
+	if my_fac == "UPF" and upf_ready and not sathar_ready:
+		turn_status_label.text = "Waiting for Sathar to confirm Day %d operations." % campaign.current_day
+	elif my_fac == "Sathar" and sathar_ready and not upf_ready:
+		turn_status_label.text = "Waiting for UPF to confirm Day %d operations." % campaign.current_day
+	elif not upf_ready and not sathar_ready:
+		turn_status_label.text = "" # Will reset normally with _on_day_advanced
 
 func _on_day_advanced(day: int):
+	# Re-enable the button
+	end_turn_btn.disabled = false
+	turn_status_label.text = ""
 	_update_ui()
 	_draw_fleets()
 
@@ -667,4 +691,5 @@ func _on_fleet_arrived(fleet: CampaignFleet, sys_id: String):
 
 func _on_encounter(sys_id, upf, sathar):
 	_log_event("COMBAT TRIGGERED AT %s!" % sys_id)
+	# TODO: Transition to tactical Scene!
 	# TODO: Transition to tactical Scene!
