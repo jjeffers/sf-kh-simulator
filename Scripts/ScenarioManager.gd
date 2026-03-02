@@ -1,6 +1,17 @@
 class_name ScenarioManager
 
 const SCENARIOS = {
+	"campaign_encounter": {
+		"name": "Campaign Encounter",
+		"description": "Tactical resolution of a campaign map encounter.",
+		"sides": {
+			0: {"name": "Defender", "color": Color.GREEN, "role": "Defender"}, # Could be UPF or Sathar
+			1: {"name": "Attacker", "color": Color.RED, "role": "Attacker"}
+		},
+		"ships": [], # Populated dynamically by CampaignManager
+		"special_rules": [],
+		"planets": [Vector3i(0, 0, 0)] # Center planet
+	},
 	"surprise_attack": {
 		"name": "Surprise Attack!",
 		"description": "Attackers ambush Station Alpha. Defiant must escape.",
@@ -134,7 +145,16 @@ static func generate_scenario(key: String, rng_seed: int) -> Dictionary:
 	rng.seed = rng_seed
 	var ships = []
 	
-	if key == "surprise_attack":
+	if key == "campaign_encounter":
+		# In a real campaign, the ships array is passed in or pre-populated in Lobby/Game Setup.
+		# Here we just ensure the planet is set.
+		# The deployment logic is handled in get_valid_deployment_hexes.
+		if not scen.has("ships") or scen["ships"].is_empty():
+			# This is a fallback if someone loads it naked
+			scen["ships"] = []
+		scen["planets"] = [Vector3i(0, 0, 0)]
+
+	elif key == "surprise_attack":
 		# Defender Setup
 		# Station Alpha is placed by the player during Deployment phase.
 		# We start it at an arbitrary position until then.
@@ -750,8 +770,26 @@ static func get_valid_deployment_hexes(side_id: int, ships: Array, planets: Arra
 			valid_hexes.append_array(HexGrid.get_neighbors(p))
 		if planets.size() > 0:
 			return valid_hexes
+			
+	if scen_key == "campaign_encounter":
+		if side_id == 2: # Assuming Attacker is side 2 (index 1 + 1)
+			# Attackers: Must deploy exactly 34 hexes from center.
+			var spawn_dist = 34
+			for x in range(-spawn_dist, spawn_dist + 1):
+				for y in range(max(-spawn_dist, -x-spawn_dist), min(spawn_dist, -x+spawn_dist) + 1):
+					var z = -x - y
+					var dist = HexGrid.hex_distance(Vector3i.ZERO, Vector3i(x, y, z))
+					if dist == spawn_dist:
+						valid_hexes.append(Vector3i(x, y, z))
+		else:
+			# Defenders: Can deploy anywhere < 34 hexes
+			var max_dist = 33
+			for x in range(-max_dist, max_dist + 1):
+				for y in range(max(-max_dist, -x-max_dist), min(max_dist, -x+max_dist) + 1):
+					var z = -x - y
+					valid_hexes.append(Vector3i(x, y, z))
 	
-	if scen_key == "surprise_attack":
+	elif scen_key == "surprise_attack":
 		if side_id == 2:
 			# Defenders (UPF): Must deploy near Station Alpha.
 			# Or if pre-deployed, this might not even be called if no ships are undeployed.

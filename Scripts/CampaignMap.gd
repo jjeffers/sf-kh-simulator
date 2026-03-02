@@ -126,6 +126,14 @@ func _draw_systems():
 		btn.text = "O\\n" + sys_name
 		btn.position = pos - Vector2(20, 20) # Center offset roughly
 		
+		# Draw space station indicator if present
+		if sys_name in campaign.UPF_FORTRESSES or sys_name in campaign.UPF_ARMED_STATIONS:
+			var stat_lbl = Label.new()
+			stat_lbl.text = "[S]"
+			stat_lbl.modulate = Color.YELLOW
+			stat_lbl.position = pos + Vector2(10, 10)
+			systems_container.add_child(stat_lbl)
+
 		# Determine if UI style should be UPF empty circle
 		# We'll use custom styles or modulating in the polish phase
 		
@@ -160,7 +168,7 @@ func _draw_systems():
 			btn.modulate = Color(1.0, 0.4, 0.4, 1.0)
 			
 			# Ensure we can select start circles too! We treat them as 'systems' for fleet management
-			var circle_id = "StartCircle_" + str(start_c.get("id"))
+			var circle_id = "Start Circle " + str(start_c.get("id"))
 			btn.pressed.connect(func(): _on_system_clicked(circle_id))
 			systems_container.add_child(btn)
 			
@@ -195,8 +203,8 @@ func _draw_fleets():
 		if campaign.systems.has(sys_id):
 			pos = _coord_to_screen(campaign.systems[sys_id]["x"], campaign.systems[sys_id]["y"])
 		# Check if it's a Start Circle
-		elif sys_id.begins_with("StartCircle_"):
-			var circle_id = sys_id.replace("StartCircle_", "").to_int()
+		elif sys_id.begins_with("Start Circle "):
+			var circle_id = sys_id.replace("Start Circle ", "").to_int()
 			for sc in campaign.start_circles:
 				if sc.get("id") == circle_id:
 					var parent_sys_id = sc.get("connected_system", "")
@@ -218,6 +226,10 @@ func _draw_fleets():
 			for i in range(local_fleets.size()):
 				var f = local_fleets[i]
 				var offset = Vector2(30 * (i+1), -30) # Stack them up and right
+				
+				var is_enemy = f.faction != _get_my_faction()
+				if is_enemy and not _can_see_system(f.current_system_id):
+					continue # Hidden by Fog of War
 				
 				var lbl = Label.new()
 				lbl.text = "[F]"
@@ -260,8 +272,30 @@ func _on_system_clicked(sys_name: String):
 	_update_fleet_list()
 
 func _update_ui():
+	# Update Window Title
+	var my_faction = _get_my_faction()
+	var peer_id = multiplayer.get_unique_id() if NetworkManager.multiplayer.has_multiplayer_peer() else 1
+	var num = NetworkManager.lobby_data["player_numbers"].get(peer_id, peer_id)
+	DisplayServer.window_set_title("SFKH Campaign - [%s] Player %d" % [my_faction, num])
+
 	top_bar_turn.text = "Day: %d" % campaign.current_day
 	_update_fleet_list()
+
+func _can_see_system(sys_id: String) -> bool:
+	var my_faction = _get_my_faction()
+	if my_faction == "UPF":
+		if sys_id in campaign.UPF_FORTRESSES or sys_id in campaign.UPF_ARMED_STATIONS:
+			return true
+	
+	for f in campaign.fleets:
+		if f.faction == my_faction and f.current_system_id == sys_id:
+			return true
+	return false
+
+func _get_my_faction() -> String:
+	var peer_id = multiplayer.get_unique_id() if NetworkManager.multiplayer.has_multiplayer_peer() else 1
+	var team_id = NetworkManager.lobby_data["teams"].get(peer_id, 0)
+	return "UPF" if team_id == 1 else "Sathar"
 
 func _update_fleet_list():
 	fleet_list.clear()
@@ -273,8 +307,12 @@ func _update_fleet_list():
 		
 	var local_fleets = campaign.get_fleets_at_system(selected_system_id)
 	for i in range(local_fleets.size()):
-		fleet_list.add_item(local_fleets[i].fleet_name)
-		fleet_list.set_item_metadata(i, local_fleets[i])
+		var f = local_fleets[i]
+		if f.faction != _get_my_faction() and not _can_see_system(f.current_system_id):
+			continue # Fog of War
+			
+		fleet_list.add_item(f.fleet_name)
+		fleet_list.set_item_metadata(fleet_list.item_count - 1, f)
 
 func _on_fleet_list_selected(idx: int):
 	selected_fleet = fleet_list.get_item_metadata(idx)

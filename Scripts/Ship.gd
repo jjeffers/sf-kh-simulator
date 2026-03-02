@@ -75,6 +75,7 @@ var speed: int = 0
 var has_moved: bool = false
 var has_fired: bool = false
 var orbit_direction: int = 0 # 0=None, 1=CW, -1=CCW
+var has_withdrawn: bool = false # Tracks if ship retreated from combat
 
 # Undo State
 var turn_start_state: Dictionary = {}
@@ -108,6 +109,7 @@ func get_net_state() -> Dictionary:
 		"current_mr_modifier": current_mr_modifier,
 		"has_moved": has_moved,
 		"has_fired": has_fired,
+		"has_withdrawn": has_withdrawn,
 		"is_docked": is_docked, # Sync Docking State
 		"grid_position": grid_position,
 		"facing": facing,
@@ -165,6 +167,7 @@ func apply_net_state(data: Dictionary):
 	is_deployed = data.get("is_deployed", is_deployed)
 	has_moved = data.get("has_moved", has_moved)
 	has_fired = data.get("has_fired", has_fired)
+	has_withdrawn = data.get("has_withdrawn", has_withdrawn)
 	
 	# Docking Sync
 	var net_is_docked = data.get("is_docked", is_docked)
