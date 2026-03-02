@@ -7,7 +7,6 @@ extends Control
 @onready var systems_container = $HBoxContainer/VBoxLeft/MapView/MapContainer/SystemsContainer
 @onready var routes_container = $HBoxContainer/VBoxLeft/MapView/MapContainer/RoutesContainer
 @onready var fleets_container = $HBoxContainer/VBoxLeft/MapView/MapContainer/FleetsContainer
-@onready var event_log = $HBoxContainer/VBoxLeft/EventLogPanel/EventLogText
 
 @onready var fleet_list = $HBoxContainer/VBoxRight/Panel/VBox/FleetList
 @onready var ship_list_ui = $HBoxContainer/VBoxRight/Panel/VBox/ShipList
@@ -130,9 +129,6 @@ func _setup_background():
 	layer.add_child(rect)
 
 func _log_event(msg: String):
-	event_log.text += "\nLOG Day %d: %s" % [campaign.current_day, msg]
-	# Auto-scroll
-	event_log.scroll_to_line(event_log.get_line_count() - 1)
 	ConsoleManager.log_message(msg)
 
 func _on_map_data_loaded():

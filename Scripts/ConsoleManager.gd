@@ -14,7 +14,7 @@ func _ready():
 	
 	panel = PanelContainer.new()
 	panel.custom_minimum_size = Vector2(0, 300)
-	panel.set_anchors_preset(Control.PRESET_TOP_WIDE)
+	panel.set_anchors_preset(Control.PRESET_BOTTOM_WIDE)
 	
 	# Transparent black background
 	var style = StyleBoxFlat.new()
