@@ -79,20 +79,25 @@ func _center_map_initially():
 	if selected_system_id != "":
 		_focus_camera_on_system(selected_system_id)
 
-func _process(delta):
-	var move_vec = Vector2.ZERO
-	if Input.is_action_pressed("ui_left"):
-		move_vec.x -= 1
-	if Input.is_action_pressed("ui_right"):
-		move_vec.x += 1
-	if Input.is_action_pressed("ui_up"):
-		move_vec.y -= 1
-	if Input.is_action_pressed("ui_down"):
-		move_vec.y += 1
+var map_move_dir: Vector2 = Vector2.ZERO
+
+func _input(event):
+	# Prioritize Map Panning over UI Element focus navigation
+	if event is InputEventKey:
+		var handled_arrow = false
+		if event.is_action("ui_left"): map_move_dir.x = -1.0 if event.pressed else (1.0 if Input.is_action_pressed("ui_right") else 0.0); handled_arrow = true
+		elif event.is_action("ui_right"): map_move_dir.x = 1.0 if event.pressed else (-1.0 if Input.is_action_pressed("ui_left") else 0.0); handled_arrow = true
+		elif event.is_action("ui_up"): map_move_dir.y = -1.0 if event.pressed else (1.0 if Input.is_action_pressed("ui_down") else 0.0); handled_arrow = true
+		elif event.is_action("ui_down"): map_move_dir.y = 1.0 if event.pressed else (-1.0 if Input.is_action_pressed("ui_up") else 0.0); handled_arrow = true
 		
-	if move_vec != Vector2.ZERO:
-		move_vec = move_vec.normalized()
-		var move_amount = move_vec * pan_speed * delta
+		# If user pressed an arrow key, consume it so the Ship lists don't tab around
+		if handled_arrow:
+			get_viewport().set_input_as_handled()
+
+func _process(delta):
+	if map_move_dir != Vector2.ZERO:
+		var normalized_dir = map_move_dir.normalized()
+		var move_amount = normalized_dir * pan_speed * delta
 		map_view.scroll_horizontal += int(move_amount.x)
 		map_view.scroll_vertical += int(move_amount.y)
 			
