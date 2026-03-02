@@ -101,6 +101,7 @@ var btn_dock: Button
 var btn_rearm: Button
 var btn_drop_mine: Button # NEW: Mine placement flag
 var btn_drop_seeker: Button # NEW: Seeker placement flag
+var btn_withdraw: Button # NEW: Strategic Retreat flag
 
 # Mines State
 var active_mines: Array[Dictionary] = [] # Format: {"pos": Vector3i, "side_id": int, "owner_name": String}
@@ -589,6 +590,13 @@ func _setup_ui():
 	btn_rearm.pressed.connect(_on_rearm_pressed)
 	btn_rearm.visible = false
 	dock_box.add_child(btn_rearm)
+	
+	btn_withdraw = Button.new()
+	btn_withdraw.text = "Withdraw"
+	btn_withdraw.pressed.connect(_on_withdraw_pressed)
+	btn_withdraw.visible = false
+	btn_withdraw.modulate = Color(1, 0.5, 0.2)
+	vbox.add_child(btn_withdraw)
 	
 	# MS Toggle
 	btn_ms_toggle = CheckBox.new()
@@ -3517,9 +3525,11 @@ func _apply_repair(s: Ship, key: String):
 func _end_round_cycle():
 	# Trigger repair phase every 3 turns, before the turn increments.
 	if turn_count > 0 and turn_count % 3 == 0:
-		if current_phase != Phase.REPAIR:
-			call_deferred("start_repair_phase")
-		return
+		var scen_key = NetworkManager.lobby_data.get("scenario", "")
+		if scen_key != "campaign_encounter":
+			if current_phase != Phase.REPAIR:
+				call_deferred("start_repair_phase")
+			return
 
 	turn_count += 1
 	log_message("Round Complete. Starting New Round.")
@@ -3649,6 +3659,7 @@ func _update_ui_state():
 		btn_ms_toggle.visible = false
 		if btn_dock: btn_dock.visible = false
 		if btn_rearm: btn_rearm.visible = false
+		if btn_withdraw: btn_withdraw.visible = false
 		if btn_drop_mine: btn_drop_mine.visible = false
 		if btn_drop_seeker: btn_drop_seeker.visible = false
 		if opt_active_screen: opt_active_screen.visible = false
@@ -3734,6 +3745,12 @@ func _update_ui_state():
 					if can_dock:
 						btn_dock.visible = true
 						btn_dock.text = "Dock"
+			
+			# Withdrawal Check
+			if btn_withdraw:
+				if is_stationary and not is_locked:
+					var can_w = _can_withdraw(selected_ship)
+					btn_withdraw.visible = can_w
 			
 			# MS Toggle Check
 			# Visible if ship has Max MS > 0
@@ -4482,6 +4499,90 @@ func _load_plan_visualization(s: Ship):
 	else:
 		_spawn_ghost()
 
+
+func _can_withdraw(ship: Ship) -> bool:
+	if not ship: return false
+	
+	# Only allow retreat in Campaign Encounters for now.
+	# Or globally if desired, but rules state Campaign specific.
+	# Actually, players might want to retreat from standard scenarios too if outside range?
+	# Let's check scenario. "campaign_encounter" is the primary one.
+	var scen_key = NetworkManager.lobby_data.get("scenario", "")
+	if scen_key != "campaign_encounter": return false
+
+	# Cannot withdraw if they have moved this turn yet (must be starting stationary? "movement planning")
+	# If they have plotted a path, the button is hidden above anyway since is_stationary = false.
+	
+	# Militia MUST attack before withdrawing from home system.
+	# This requires checking if they are in home system (not tracked here easily) and if they have attacked.
+	# For now, we will assume Militia without weapons can withdraw, or we'll simplify:
+	if ship.faction == "UPF" and ship.name.begins_with("Militia"):
+		if not ship.has_fired: 
+			# In a full implementation, check if this is their home system (Militia <System>).
+			# For now, restrict them if they haven't fired.
+			var has_armed_weapons = false
+			for w in ship.weapons:
+				if w.get("ammo", 0) > 0 and not w.get("is_crippled", false):
+					has_armed_weapons = true
+			if has_armed_weapons:
+				return false # Must fire first if armed
+
+	# Check range to all living enemies
+	for enemy in ships:
+		if is_instance_valid(enemy) and enemy.side_id != ship.side_id and not enemy.is_destroyed and not enemy.has_withdrawn:
+			# Check all enemy weapons
+			for w in enemy.weapons:
+				if w.get("ammo", 0) > 0 and not w.get("is_crippled", false):
+					var dist = HexGrid.hex_distance(ship.grid_position, enemy.grid_position)
+					if dist <= w.get("range", 0):
+						return false # An enemy is in range
+
+	return true
+
+func _on_withdraw_pressed():
+	if not is_instance_valid(selected_ship): return
+	
+	log_message("[color=orange]%s is withdrawing from combat![/color]" % selected_ship.name)
+	
+	if _is_networked():
+		rpc_execute_withdraw.rpc_id(1, selected_ship.name)
+	else:
+		rpc_execute_withdraw(selected_ship.name)
+
+@rpc("any_peer", "call_local", "reliable")
+func rpc_execute_withdraw(ship_name: String):
+	# Authority check
+	var sender = 1
+	if _is_networked():
+		sender = multiplayer.get_remote_sender_id()
+		if sender == 0: sender = (multiplayer.get_unique_id() if _is_networked() else 1)
+	
+	var ship = _find_ship_by_name(ship_name)
+	if not ship: return
+	
+	if not _validate_rpc_ownership(sender, ship.side_id):
+		return
+		
+	# Broadcast withdrawal
+	if _is_networked():
+		rpc_sync_withdraw.rpc(ship_name)
+	else:
+		rpc_sync_withdraw(ship_name)
+
+@rpc("authority", "call_local", "reliable")
+func rpc_sync_withdraw(ship_name: String):
+	var ship = _find_ship_by_name(ship_name)
+	if not ship: return
+	
+	if not ship.has_withdrawn:
+		ship.has_withdrawn = true
+		ship.is_destroyed = true # To trigger logic skipping elsewhere
+		log_message("[color=orange]%s has withdrawn and left the tactical area.[/color]" % ship.name)
+		ship.visible = false
+		_update_movement_ui_list()
+		# Needs to be sent back as an event to Campaign? 
+		# We'll handle this at battle-end by checking has_withdrawn or surviving ships.
+		_check_victory() # Maybe the last ship withdrew?
 
 func _on_exec_move_pressed():
 	# Authority Check
@@ -6668,12 +6769,15 @@ func _on_ship_destroyed(ship: Ship):
 	ships.erase(ship)
 	_update_ship_visuals() # Re-calc stacks
 	log_message("Ship destroyed: %s" % ship.name)
-	
+	_check_victory()
+
+func _check_victory():
 	# Check for Victory
 	var s1_count = 0
 	var s2_count = 0
 	for s in ships:
 		if not is_instance_valid(s): continue
+		if s.is_destroyed: continue # Just in case it's still in the list but destroyed
 		if s.side_id == 1: s1_count += 1
 		elif s.side_id == 2: s2_count += 1
 	
