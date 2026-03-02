@@ -94,6 +94,7 @@ func _log_event(msg: String):
 func _on_map_data_loaded():
 	_draw_routes()
 	_draw_systems()
+	_draw_fleets()
 	# The grid X=0-45, Y=0-55 need to map to the MapBackground rect size
 	get_viewport().size_changed.connect(_on_resize)
 	call_deferred("_on_resize")
@@ -106,6 +107,7 @@ func _on_resize():
 		child.queue_free()
 	_draw_routes()
 	_draw_systems()
+	_draw_fleets()
 
 func _coord_to_screen(x: float, y: float) -> Vector2:
 	var rect = map_bg.get_global_rect()
@@ -131,9 +133,103 @@ func _draw_systems():
 		systems_container.add_child(btn)
 		
 	for start_c in campaign.start_circles:
-		# Need to interpolate or guess position for start circles
-		# We'll place them slightly off from their connected system
-		pass
+		# Check if the connected system exists to use as an anchor point
+		var parent_sys_id = start_c.get("connected_system", "")
+		if campaign.systems.has(parent_sys_id):
+			var sys = campaign.systems[parent_sys_id]
+			# Positional offset for void circles: move them outwards (-x or +y depending on zone string or just a generic offset)
+			# For simplicity, we'll shift them left and up relative to the anchor node
+			var offset_x = -3.0
+			var offset_y = 3.0
+			
+			var zone = start_c.get("entry_zone", "").to_lower()
+			if "north" in zone: offset_y = 4.0
+			if "south" in zone: offset_y = -4.0
+			if "east" in zone: offset_x = 4.0
+			if "west" in zone: offset_x = -4.0
+			
+			var visual_x = sys["x"] + offset_x
+			var visual_y = sys["y"] + offset_y
+			
+			var pos = _coord_to_screen(visual_x, visual_y)
+			
+			var btn = Button.new()
+			btn.text = "Sathar\\nStart " + str(start_c.get("id"))
+			btn.position = pos - Vector2(20, 20)
+			# Tint Sathar starts red
+			btn.modulate = Color(1.0, 0.4, 0.4, 1.0)
+			
+			# Ensure we can select start circles too! We treat them as 'systems' for fleet management
+			var circle_id = "StartCircle_" + str(start_c.get("id"))
+			btn.pressed.connect(func(): _on_system_clicked(circle_id))
+			systems_container.add_child(btn)
+			
+			# Draw a dotted/dashed or faint line connecting to the anchor point
+			var p1 = pos
+			var p2 = _coord_to_screen(sys["x"], sys["y"])
+			var line = Line2D.new()
+			line.add_point(p1)
+			line.add_point(p2)
+			line.width = 1.0
+			line.default_color = Color(1.0, 0.4, 0.4, 0.5)
+			routes_container.add_child(line)
+
+func _draw_fleets():
+	for child in fleets_container.get_children():
+		child.queue_free()
+		
+	# Draw fleets clustered at their systems
+	var fleets_by_system = {}
+	for f in campaign.fleets:
+		if f.current_system_id != "":
+			if not fleets_by_system.has(f.current_system_id):
+				fleets_by_system[f.current_system_id] = []
+			fleets_by_system[f.current_system_id].append(f)
+			
+	for sys_id in fleets_by_system:
+		var local_fleets = fleets_by_system[sys_id]
+		# Find the screen coordinate of the system
+		var pos = Vector2.ZERO
+		
+		# Check if it's a normal system
+		if campaign.systems.has(sys_id):
+			pos = _coord_to_screen(campaign.systems[sys_id]["x"], campaign.systems[sys_id]["y"])
+		# Check if it's a Start Circle
+		elif sys_id.begins_with("StartCircle_"):
+			var circle_id = sys_id.replace("StartCircle_", "").to_int()
+			for sc in campaign.start_circles:
+				if sc.get("id") == circle_id:
+					var parent_sys_id = sc.get("connected_system", "")
+					if campaign.systems.has(parent_sys_id):
+						var sys = campaign.systems[parent_sys_id]
+						var offset_x = -3.0
+						var offset_y = 3.0
+						var zone = sc.get("entry_zone", "").to_lower()
+						if "north" in zone: offset_y = 4.0
+						if "south" in zone: offset_y = -4.0
+						if "east" in zone: offset_x = 4.0
+						if "west" in zone: offset_x = -4.0
+						pos = _coord_to_screen(sys["x"] + offset_x, sys["y"] + offset_y)
+					break
+		
+		# If we found a valid position, draw the fleet icons
+		if pos != Vector2.ZERO:
+			# If multiple fleets, space them out slightly
+			for i in range(local_fleets.size()):
+				var f = local_fleets[i]
+				var offset = Vector2(30 * (i+1), -30) # Stack them up and right
+				
+				var lbl = Label.new()
+				lbl.text = "[F]"
+				if f.faction == "Sathar":
+					lbl.modulate = Color.RED
+				elif f.faction == "UPF":
+					lbl.modulate = Color.CYAN
+					
+				lbl.position = (pos - Vector2(10, 10)) + offset
+				fleets_container.add_child(lbl)
+				
+	# Also maybe draw migrating fleets between routes? (Optional polish phase)
 
 func _draw_routes():
 	for route in campaign.routes:
@@ -214,6 +310,7 @@ func _on_execute_jump_pressed():
 		exec_jump_btn.disabled = true
 		_update_fleet_list()
 		_update_composition_panel()
+		_draw_fleets()
 	else:
 		print("Invalid jump order")
 
@@ -222,9 +319,11 @@ func _on_end_turn_pressed():
 
 func _on_day_advanced(day: int):
 	_update_ui()
+	_draw_fleets()
 
 func _on_fleet_arrived(fleet: CampaignFleet, sys_id: String):
 	_log_event("%s arrived at %s." % [fleet.fleet_name, sys_id])
+	_draw_fleets()
 
 func _on_encounter(sys_id, upf, sathar):
 	_log_event("COMBAT TRIGGERED AT %s!" % sys_id)
