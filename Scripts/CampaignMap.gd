@@ -30,15 +30,8 @@ var is_plotting_jump: bool = false
 var pan_speed: float = 600.0
 
 func _ready():
-	# For now, let's look for a global CampaignManager. If not found, create one for testing.
-	if get_tree().root.has_node("CampaignManager"):
-		campaign = get_tree().root.get_node("CampaignManager")
-	else:
-		# Fallback/standalone testing mode
-		var cm_script = load("res://Scripts/CampaignManager.gd")
-		campaign = cm_script.new()
-		add_child(campaign)
-		campaign.name = "CampaignManager"
+	# CampaignManager is now a guaranteed Autoload
+	campaign = CampaignManager
 	
 	campaign.map_data_loaded.connect(_on_map_data_loaded)
 	campaign.campaign_day_advanced.connect(_on_day_advanced)

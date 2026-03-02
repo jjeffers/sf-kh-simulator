@@ -104,21 +104,20 @@ func _on_start_pressed():
 		MusicManager.fade_out(2.0)
 		
 		# INITIALIZE CAMPAIGN FOR SERVER
-		var cm = get_tree().root.get_node_or_null("CampaignManager")
-		if cm:
-			cm.start_new_campaign()
+		var cm = CampaignManager
+		cm.start_new_campaign()
+		
+		# BUILD SYNC PAYLOAD
+		var state_payload = {
+			"current_day": cm.current_day,
+			"destroyed_stations": cm.destroyed_stations_count,
+			"destroyed_fortresses": cm.destroyed_fortresses_count,
+			"fleets": []
+		}
+		for f in cm.fleets:
+			state_payload["fleets"].append(f.serialize())
 			
-			# BUILD SYNC PAYLOAD
-			var state_payload = {
-				"current_day": cm.current_day,
-				"destroyed_stations": cm.destroyed_stations_count,
-				"destroyed_fortresses": cm.destroyed_fortresses_count,
-				"fleets": []
-			}
-			for f in cm.fleets:
-				state_payload["fleets"].append(f.serialize())
-				
-			NetworkManager.rpc("sync_campaign_state", state_payload)
+		NetworkManager.rpc("sync_campaign_state", state_payload)
 		NetworkManager.rpc("start_game_rpc")
 
 func _on_back_pressed():

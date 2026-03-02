@@ -152,10 +152,7 @@ func update_lobby_data(data: Dictionary):
 @rpc("authority", "reliable")
 func sync_campaign_state(state_data: Dictionary):
 	print("[NetworkManager] Received Campaign State Sync")
-	var cm = get_tree().root.get_node_or_null("CampaignManager")
-	if not cm:
-		push_error("[NetworkManager] CampaignManager Autoload not found!")
-		return
+	var cm = CampaignManager
 		
 	cm.current_day = state_data.get("current_day", 1)
 	cm.destroyed_stations_count = state_data.get("destroyed_stations", 0)
