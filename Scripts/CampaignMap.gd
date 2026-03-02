@@ -398,6 +398,13 @@ func _draw_fleets():
 			btn.position = (interp_pos - Vector2(10, 10)) + offset
 			btn.pressed.connect(func(): _on_fleet_map_icon_clicked(f))
 			fleets_container.add_child(btn)
+			
+			var lbl = Label.new()
+			lbl.text = "%d Days" % f.days_to_arrival
+			lbl.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+			lbl.add_theme_font_size_override("font_size", 12)
+			lbl.position = btn.position + Vector2(-15, 25) # Centered beneath the [F] button
+			fleets_container.add_child(lbl)
 
 func _draw_routes():
 	for route in campaign.routes:
@@ -498,7 +505,7 @@ func _update_fleet_list():
 		if f.faction == my_faction:
 			var display_text = f.fleet_name
 			if f.is_moving():
-				display_text += " (In Transit)"
+				display_text += " (In Transit: %s days remaining)" % f.days_to_arrival
 				
 			if selected_fleet == f:
 				display_text = "> " + display_text + " <"
@@ -631,7 +638,7 @@ func _on_cancel_jump_pressed():
 		return
 		
 	_log_event("Movement order cancelled for %s." % selected_fleet.fleet_name)
-	selected_fleet.cancel_move()
+	campaign.cancel_fleet_move(selected_fleet)
 	
 	cancel_jump_btn.disabled = true
 	plot_jump_btn.disabled = false

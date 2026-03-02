@@ -263,8 +263,26 @@ func order_fleet_move(fleet: CampaignFleet, destination_id: String) -> bool:
 	if fleet.current_system_id.begins_with("Start Circle") and fleet.faction != "Sathar":
 		return false
 		
-	fleet.start_move(destination_id, TRANSIT_DAYS)
-	return true
+	var idx = fleets.find(fleet)
+	if idx != -1:
+		rpc_order_fleet_move.rpc(idx, destination_id)
+		return true
+	return false
+
+@rpc("any_peer", "call_local", "reliable")
+func rpc_order_fleet_move(fleet_idx: int, destination_id: String):
+	if fleet_idx >= 0 and fleet_idx < fleets.size():
+		fleets[fleet_idx].start_move(destination_id, TRANSIT_DAYS)
+
+func cancel_fleet_move(fleet: CampaignFleet):
+	var idx = fleets.find(fleet)
+	if idx != -1:
+		rpc_cancel_fleet_move.rpc(idx)
+
+@rpc("any_peer", "call_local", "reliable")
+func rpc_cancel_fleet_move(fleet_idx: int):
+	if fleet_idx >= 0 and fleet_idx < fleets.size():
+		fleets[fleet_idx].cancel_move()
 
 @rpc("any_peer", "call_local", "reliable")
 func request_end_turn(faction: String):
