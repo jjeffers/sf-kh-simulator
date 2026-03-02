@@ -649,8 +649,9 @@ func _on_cancel_jump_pressed():
 func _on_end_turn_pressed():
 	var my_fac = _get_my_faction()
 	if my_fac in ["UPF", "Sathar"]:
+		var other_fac = "Sathar" if my_fac == "UPF" else "UPF"
 		end_turn_btn.disabled = true
-		turn_status_label.text = "Waiting for other player..."
+		turn_status_label.text = "Waiting for %s to confirm day %d operations." % [other_fac, campaign.current_day]
 		campaign.request_end_turn.rpc_id(1, my_fac)
 	else:
 		# Fallback if testing locally as GM
@@ -662,9 +663,9 @@ func _on_turn_ready_changed(upf_ready: bool, sathar_ready: bool):
 	var other_fac = "Sathar" if my_fac == "UPF" else "UPF"
 	
 	if my_fac == "UPF" and upf_ready and not sathar_ready:
-		turn_status_label.text = "Waiting for Sathar to confirm Day %d operations." % campaign.current_day
+		turn_status_label.text = "Waiting for Sathar to confirm day %d operations." % campaign.current_day
 	elif my_fac == "Sathar" and sathar_ready and not upf_ready:
-		turn_status_label.text = "Waiting for UPF to confirm Day %d operations." % campaign.current_day
+		turn_status_label.text = "Waiting for UPF to confirm day %d operations." % campaign.current_day
 	elif not upf_ready and not sathar_ready:
 		turn_status_label.text = "" # Will reset normally with _on_day_advanced
 
