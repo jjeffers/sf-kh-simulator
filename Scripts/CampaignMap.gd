@@ -116,37 +116,81 @@ func _coord_to_screen(x: float, y: float) -> Vector2:
 	var screen_y = rect.position.y + rect.size.y - ((y / MAP_GRID_HEIGHT) * rect.size.y)
 	return Vector2(screen_x, screen_y)
 
+func _create_system_node(node_id: String, display_name: String, pos: Vector2, is_sathar: bool) -> Control:
+	var vbox = VBoxContainer.new()
+	vbox.alignment = BoxContainer.ALIGNMENT_CENTER
+	var width = 120
+	vbox.position = pos - Vector2(width / 2.0, 15)
+	vbox.size = Vector2(width, 60)
+	vbox.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	
+	var center_hbox = HBoxContainer.new()
+	center_hbox.alignment = BoxContainer.ALIGNMENT_CENTER
+	center_hbox.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	
+	var btn = Button.new()
+	btn.custom_minimum_size = Vector2(24, 24)
+	
+	var style = StyleBoxFlat.new()
+	style.corner_radius_top_left = 12
+	style.corner_radius_top_right = 12
+	style.corner_radius_bottom_left = 12
+	style.corner_radius_bottom_right = 12
+	
+	if is_sathar:
+		style.bg_color = Color(1.0, 0.2, 0.2, 1.0)
+	else:
+		style.bg_color = Color(0.05, 0.05, 0.1, 1.0)
+		style.border_width_left = 2
+		style.border_width_top = 2
+		style.border_width_right = 2
+		style.border_width_bottom = 2
+		style.border_color = Color(0.3, 0.6, 1.0, 1.0)
+		
+	var hover_style = style.duplicate()
+	hover_style.bg_color = style.bg_color.lightened(0.3)
+	if not is_sathar:
+		hover_style.bg_color = Color(0.3, 0.6, 1.0, 0.3)
+		
+	btn.add_theme_stylebox_override("normal", style)
+	btn.add_theme_stylebox_override("hover", hover_style)
+	btn.add_theme_stylebox_override("pressed", hover_style)
+	
+	btn.pressed.connect(func(): _on_system_clicked(node_id))
+	center_hbox.add_child(btn)
+	
+	var lbl = Label.new()
+	lbl.text = display_name
+	lbl.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	lbl.add_theme_font_size_override("font_size", 12)
+	
+	if is_sathar:
+		lbl.modulate = Color(1.0, 0.4, 0.4, 1.0)
+	
+	vbox.add_child(center_hbox)
+	vbox.add_child(lbl)
+	return vbox
+
 func _draw_systems():
 	for sys_name in campaign.systems:
 		var sys = campaign.systems[sys_name]
 		var pos = _coord_to_screen(sys["x"], sys["y"])
 		
-		# Create visual node
-		var btn = Button.new()
-		btn.text = "O\\n" + sys_name
-		btn.position = pos - Vector2(20, 20) # Center offset roughly
+		var node = _create_system_node(sys_name, sys_name, pos, false)
+		systems_container.add_child(node)
 		
 		# Draw space station indicator if present
 		if sys_name in campaign.UPF_FORTRESSES or sys_name in campaign.UPF_ARMED_STATIONS:
 			var stat_lbl = Label.new()
 			stat_lbl.text = "[S]"
 			stat_lbl.modulate = Color.YELLOW
-			stat_lbl.position = pos + Vector2(10, 10)
+			stat_lbl.position = pos + Vector2(12, -20)
 			systems_container.add_child(stat_lbl)
-
-		# Determine if UI style should be UPF empty circle
-		# We'll use custom styles or modulating in the polish phase
-		
-		btn.pressed.connect(func(): _on_system_clicked(sys_name))
-		systems_container.add_child(btn)
 		
 	for start_c in campaign.start_circles:
-		# Check if the connected system exists to use as an anchor point
 		var parent_sys_id = start_c.get("connected_system", "")
 		if campaign.systems.has(parent_sys_id):
 			var sys = campaign.systems[parent_sys_id]
-			# Positional offset for void circles: move them outwards (-x or +y depending on zone string or just a generic offset)
-			# For simplicity, we'll shift them left and up relative to the anchor node
 			var offset_x = -3.0
 			var offset_y = 3.0
 			
@@ -160,19 +204,12 @@ func _draw_systems():
 			var visual_y = sys["y"] + offset_y
 			
 			var pos = _coord_to_screen(visual_x, visual_y)
-			
-			var btn = Button.new()
-			btn.text = "Sathar\\nStart " + str(start_c.get("id"))
-			btn.position = pos - Vector2(20, 20)
-			# Tint Sathar starts red
-			btn.modulate = Color(1.0, 0.4, 0.4, 1.0)
-			
-			# Ensure we can select start circles too! We treat them as 'systems' for fleet management
 			var circle_id = "Start Circle " + str(start_c.get("id"))
-			btn.pressed.connect(func(): _on_system_clicked(circle_id))
-			systems_container.add_child(btn)
+			var display_name = "Sathar Start " + str(start_c.get("id"))
 			
-			# Draw a dotted/dashed or faint line connecting to the anchor point
+			var node = _create_system_node(circle_id, display_name, pos, true)
+			systems_container.add_child(node)
+			
 			var p1 = pos
 			var p2 = _coord_to_screen(sys["x"], sys["y"])
 			var line = Line2D.new()
