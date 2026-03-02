@@ -68,6 +68,14 @@ func _ready():
 			if i + 1 < args.size() and not args[i+1].begins_with("--"):
 				address_input.text = args[i+1]
 			call_deferred("_on_tactical_join")
+		elif args[i] == "--campaign-host":
+			print("[MainMenu] Auto-Hosting Campaign...")
+			call_deferred("_on_campaign_host_start")
+		elif args[i] == "--campaign-join":
+			print("[MainMenu] Auto-Joining Campaign...")
+			if i + 1 < args.size() and not args[i+1].begins_with("--"):
+				join_ip_input.text = args[i+1]
+			call_deferred("_on_campaign_join_connect")
 		elif args[i] == "--scenario" and i + 1 < args.size():
 			var scen_name = args[i + 1]
 			print("[MainMenu] Pre-loading scenario:", scen_name)

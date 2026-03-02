@@ -238,9 +238,9 @@ func _setup_background():
 
 func _setup_network_identity():
 	# Network Setup
-	var setup = NetworkManager.game_setup_data
+	var setup = NetworkManager.game_setup_data if NetworkManager.game_setup_data != null else {}
 	# Lobby Data fallback
-	var lobby = NetworkManager.lobby_data
+	var lobby = NetworkManager.lobby_data if NetworkManager.lobby_data != null else {}
 	var scen_key = lobby.get("scenario", null)
 	
 	var peer_id = 1 # Default (Server)
@@ -461,7 +461,9 @@ func _process(delta):
 					var dist = HexGrid.hex_distance(deploy_tentative_hex, hex_hover)
 					deploy_speed_val = clampi(dist, 0, 20)
 					
-					var scen_key = NetworkManager.lobby_data.get("scenario", "")
+					var scen_key = ""
+					if NetworkManager.lobby_data != null:
+						scen_key = NetworkManager.lobby_data.get("scenario", "")
 					if scen_key == "close_escort" and selected_ship.name == "Megasaurus":
 						deploy_speed_val = 5
 						deploy_facing_val = 3
@@ -2817,7 +2819,10 @@ func _update_deployment_ui():
 			spin_deploy_speed.max_value = 20
 		
 		# [SCENARIO RULE] Close Escort - Megasaurus locked speed limits.
-		var scen_key = NetworkManager.lobby_data.get("scenario", "simple_test")
+		var scen_key = "simple_test"
+		if NetworkManager.lobby_data != null:
+			scen_key = NetworkManager.lobby_data.get("scenario", "simple_test")
+			
 		if scen_key == "close_escort" and selected_ship.name == "Megasaurus":
 			deploy_speed_val = 5
 			deploy_facing_val = 3
@@ -3525,7 +3530,9 @@ func _apply_repair(s: Ship, key: String):
 func _end_round_cycle():
 	# Trigger repair phase every 3 turns, before the turn increments.
 	if turn_count > 0 and turn_count % 3 == 0:
-		var scen_key = NetworkManager.lobby_data.get("scenario", "")
+		var scen_key = ""
+		if NetworkManager.lobby_data != null:
+			scen_key = NetworkManager.lobby_data.get("scenario", "")
 		if scen_key != "campaign_encounter":
 			if current_phase != Phase.REPAIR:
 				call_deferred("start_repair_phase")
@@ -4333,7 +4340,9 @@ func _validate_rpc_ownership(sender_id: int, required_side_id: int) -> bool:
 		
 	# 2. Map Sender ID to Side ID
 	# NetworkManager.lobby_data["teams"] = { peer_id: side_id }
-	var sender_side = NetworkManager.lobby_data["teams"].get(sender_id, 0)
+	var sender_side = 0
+	if NetworkManager.lobby_data != null and NetworkManager.lobby_data.has("teams"):
+		sender_side = NetworkManager.lobby_data["teams"].get(sender_id, 0)
 	
 	if sender_side == required_side_id:
 		return true
@@ -4507,7 +4516,9 @@ func _can_withdraw(ship: Ship) -> bool:
 	# Or globally if desired, but rules state Campaign specific.
 	# Actually, players might want to retreat from standard scenarios too if outside range?
 	# Let's check scenario. "campaign_encounter" is the primary one.
-	var scen_key = NetworkManager.lobby_data.get("scenario", "")
+	var scen_key = ""
+	if NetworkManager.lobby_data != null:
+		scen_key = NetworkManager.lobby_data.get("scenario", "")
 	if scen_key != "campaign_encounter": return false
 
 	# Cannot withdraw if they have moved this turn yet (must be starting stationary? "movement planning")
@@ -6732,7 +6743,9 @@ func get_side_name(side_id: int) -> String:
 	# Side ID 1 = Scenario Index 0 (Attackers/P1)
 	# Side ID 2 = Scenario Index 1 (Defenders/P2)
 	# Assuming 1-based Side ID maps to 0-based Array Index
-	var scen_key = NetworkManager.lobby_data.get("scenario", "surprise_attack")
+	var scen_key = "surprise_attack"
+	if NetworkManager.lobby_data != null:
+		scen_key = NetworkManager.lobby_data.get("scenario", "surprise_attack")
 	var scen = ScenarioManager.get_scenario(scen_key)
 	if scen and scen.has("sides"):
 		var side_idx = side_id - 1
@@ -6964,7 +6977,9 @@ func load_scenario(key: String, seed_val: int = 12345):
 					s.set(k, val)
 				
 		# Assign Ownership from Lobby
-		var owner_pid = NetworkManager.lobby_data["ship_assignments"].get(s.name, 0)
+		var owner_pid = 0
+		if NetworkManager.lobby_data != null and NetworkManager.lobby_data.has("ship_assignments"):
+			owner_pid = NetworkManager.lobby_data["ship_assignments"].get(s.name, 0)
 		
 		# Default Assignment Logic (Fallback)
 		if owner_pid == 0:
@@ -7197,7 +7212,9 @@ func _handle_mouse_facing(hex: Vector3i):
 	if not ghost_ship: return
 	
 	# Scenario rule lock
-	var scen_key = NetworkManager.lobby_data.get("scenario", "simple_test")
+	var scen_key = "simple_test"
+	if NetworkManager.lobby_data != null:
+		scen_key = NetworkManager.lobby_data.get("scenario", "simple_test")
 	if scen_key == "close_escort" and is_instance_valid(selected_ship) and selected_ship.name == "Megasaurus":
 		return
 	

@@ -11,6 +11,8 @@ extends Control
 @onready var start_btn = $MarginContainer/VBoxContainer/StartBtn
 @onready var back_btn = $MarginContainer/VBoxContainer/BackBtn
 
+var auto_started = false
+
 func _ready():
 	btn_join_upf.pressed.connect(_on_join_upf)
 	btn_join_sathar.pressed.connect(_on_join_sathar)
@@ -71,6 +73,25 @@ func _refresh_ui():
 			start_btn.disabled = true
 			start_btn.text = "Waiting for Players..."
 
+	# Handle Auto-CLI actions
+	var args = OS.get_cmdline_args()
+	for i in range(args.size()):
+		if args[i] == "--faction" and i + 1 < args.size():
+			var fac = args[i+1].to_upper()
+			var my_id = multiplayer.get_unique_id()
+			var current_team = lobby["teams"].get(my_id, 0)
+			
+			if fac == "UPF" and current_team != 1:
+				_on_join_upf()
+			elif fac == "SATHAR" and current_team != 2:
+				_on_join_sathar()
+
+	if multiplayer.is_server() and not auto_started and not start_btn.disabled:
+		if "--auto-start" in args:
+			auto_started = true
+			# Small delay to ensure client synced before scene switch
+			get_tree().create_timer(1.0).timeout.connect(_on_start_pressed)
+
 func _on_join_upf():
 	NetworkManager.rpc("request_team_change", 1)
 
@@ -81,6 +102,23 @@ func _on_start_pressed():
 	if multiplayer.is_server():
 		print("[CampaignLobby] Launch Campaign Pressed!")
 		MusicManager.fade_out(2.0)
+		
+		# INITIALIZE CAMPAIGN FOR SERVER
+		var cm = get_tree().root.get_node_or_null("CampaignManager")
+		if cm:
+			cm.start_new_campaign()
+			
+			# BUILD SYNC PAYLOAD
+			var state_payload = {
+				"current_day": cm.current_day,
+				"destroyed_stations": cm.destroyed_stations_count,
+				"destroyed_fortresses": cm.destroyed_fortresses_count,
+				"fleets": []
+			}
+			for f in cm.fleets:
+				state_payload["fleets"].append(f.serialize())
+				
+			NetworkManager.rpc("sync_campaign_state", state_payload)
 		NetworkManager.rpc("start_game_rpc")
 
 func _on_back_pressed():

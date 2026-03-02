@@ -150,6 +150,25 @@ func update_lobby_data(data: Dictionary):
 	lobby_updated.emit()
 
 @rpc("authority", "call_local", "reliable")
+func sync_campaign_state(state_data: Dictionary):
+	print("[NetworkManager] Received Campaign State Sync")
+	var cm = get_tree().root.get_node_or_null("CampaignManager")
+	if not cm:
+		push_error("[NetworkManager] CampaignManager Autoload not found!")
+		return
+		
+	cm.current_day = state_data.get("current_day", 1)
+	cm.destroyed_stations_count = state_data.get("destroyed_stations", 0)
+	cm.destroyed_fortresses_count = state_data.get("destroyed_fortresses", 0)
+	
+	cm.fleets.clear()
+	var fleets_arr = state_data.get("fleets", [])
+	for f_data in fleets_arr:
+		var fleet = CampaignFleet.new("", "", "")
+		fleet.deserialize(f_data)
+		cm.fleets.append(fleet)
+
+@rpc("authority", "call_local", "reliable")
 func start_game_rpc():
 	print("[NetworkManager] Starting Game RPC received.")
 	game_started.emit()
