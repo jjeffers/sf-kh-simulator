@@ -153,6 +153,7 @@ func update_lobby_data(data: Dictionary):
 func sync_campaign_state(state_data: Dictionary):
 	print("[NetworkManager] Received Campaign State Sync")
 	var cm = CampaignManager
+	var old_day = cm.current_day
 		
 	cm.current_day = state_data.get("current_day", 1)
 	cm.destroyed_stations_count = state_data.get("destroyed_stations", 0)
@@ -164,6 +165,9 @@ func sync_campaign_state(state_data: Dictionary):
 		var fleet = CampaignFleet.new("", "", "")
 		fleet.deserialize(f_data)
 		cm.fleets.append(fleet)
+		
+	if cm.current_day > old_day:
+		cm.campaign_day_advanced.emit(cm.current_day)
 
 @rpc("authority", "call_local", "reliable")
 func start_game_rpc():

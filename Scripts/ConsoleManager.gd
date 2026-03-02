@@ -15,6 +15,7 @@ func _ready():
 	panel = PanelContainer.new()
 	panel.custom_minimum_size = Vector2(0, 300)
 	panel.set_anchors_preset(Control.PRESET_BOTTOM_WIDE)
+	panel.grow_vertical = Control.GROW_DIRECTION_BEGIN
 	
 	# Transparent black background
 	var style = StyleBoxFlat.new()
