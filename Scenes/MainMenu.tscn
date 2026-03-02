@@ -11,7 +11,48 @@ grow_horizontal = 2
 grow_vertical = 2
 script = ExtResource("1_mainmenu")
 
-[node name="VBoxContainer" type="VBoxContainer" parent="."]
+[node name="StartupMenu" type="VBoxContainer" parent="."]
+layout_mode = 1
+anchors_preset = 8
+anchor_left = 0.5
+anchor_top = 0.5
+anchor_right = 0.5
+anchor_bottom = 0.5
+offset_left = -150.0
+offset_top = -120.0
+offset_right = 150.0
+offset_bottom = 120.0
+grow_horizontal = 2
+grow_vertical = 2
+theme_override_constants/separation = 20
+
+[node name="Label" type="Label" parent="StartupMenu"]
+layout_mode = 2
+text = "Second Sathar War"
+horizontal_alignment = 1
+
+[node name="BtnStartCampaign" type="Button" parent="StartupMenu"]
+layout_mode = 2
+text = "Start Campaign"
+
+[node name="BtnLoadCampaign" type="Button" parent="StartupMenu"]
+layout_mode = 2
+text = "Load Campaign"
+
+[node name="BtnJoinCampaign" type="Button" parent="StartupMenu"]
+layout_mode = 2
+text = "Join Campaign"
+
+[node name="BtnStartScenario" type="Button" parent="StartupMenu"]
+layout_mode = 2
+text = "Start Scenario"
+
+[node name="BtnQuit" type="Button" parent="StartupMenu"]
+layout_mode = 2
+text = "Quit"
+
+[node name="CampaignHostMenu" type="VBoxContainer" parent="."]
+visible = false
 layout_mode = 1
 anchors_preset = 8
 anchor_left = 0.5
@@ -26,24 +67,135 @@ grow_horizontal = 2
 grow_vertical = 2
 theme_override_constants/separation = 20
 
-[node name="Label" type="Label" parent="VBoxContainer"]
+[node name="Label" type="Label" parent="CampaignHostMenu"]
 layout_mode = 2
-text = "Hex Space Combat"
+text = "Host Campaign"
 horizontal_alignment = 1
 
-[node name="AddressInput" type="LineEdit" parent="VBoxContainer"]
+[node name="HBoxIP" type="HBoxContainer" parent="CampaignHostMenu"]
+layout_mode = 2
+
+[node name="Label" type="Label" parent="CampaignHostMenu/HBoxIP"]
+layout_mode = 2
+text = "IP:"
+
+[node name="HostIPInput" type="LineEdit" parent="CampaignHostMenu/HBoxIP"]
+layout_mode = 2
+size_flags_horizontal = 3
+text = "127.0.0.1"
+editable = false
+
+[node name="HBoxPort" type="HBoxContainer" parent="CampaignHostMenu"]
+layout_mode = 2
+
+[node name="Label" type="Label" parent="CampaignHostMenu/HBoxPort"]
+layout_mode = 2
+text = "Port:"
+
+[node name="HostPortInput" type="LineEdit" parent="CampaignHostMenu/HBoxPort"]
+layout_mode = 2
+size_flags_horizontal = 3
+text = "7000"
+
+[node name="BtnHostStart" type="Button" parent="CampaignHostMenu"]
+layout_mode = 2
+text = "Start Hosting"
+
+[node name="BtnHostBack" type="Button" parent="CampaignHostMenu"]
+layout_mode = 2
+text = "Back"
+
+[node name="CampaignJoinMenu" type="VBoxContainer" parent="."]
+visible = false
+layout_mode = 1
+anchors_preset = 8
+anchor_left = 0.5
+anchor_top = 0.5
+anchor_right = 0.5
+anchor_bottom = 0.5
+offset_left = -150.0
+offset_top = -100.0
+offset_right = 150.0
+offset_bottom = 100.0
+grow_horizontal = 2
+grow_vertical = 2
+theme_override_constants/separation = 20
+
+[node name="Label" type="Label" parent="CampaignJoinMenu"]
+layout_mode = 2
+text = "Join Campaign"
+horizontal_alignment = 1
+
+[node name="HBoxIP" type="HBoxContainer" parent="CampaignJoinMenu"]
+layout_mode = 2
+
+[node name="Label" type="Label" parent="CampaignJoinMenu/HBoxIP"]
+layout_mode = 2
+text = "IP:"
+
+[node name="JoinIPInput" type="LineEdit" parent="CampaignJoinMenu/HBoxIP"]
+layout_mode = 2
+size_flags_horizontal = 3
+text = "127.0.0.1"
+
+[node name="HBoxPort" type="HBoxContainer" parent="CampaignJoinMenu"]
+layout_mode = 2
+
+[node name="Label" type="Label" parent="CampaignJoinMenu/HBoxPort"]
+layout_mode = 2
+text = "Port:"
+
+[node name="JoinPortInput" type="LineEdit" parent="CampaignJoinMenu/HBoxPort"]
+layout_mode = 2
+size_flags_horizontal = 3
+text = "7000"
+
+[node name="BtnJoinConnect" type="Button" parent="CampaignJoinMenu"]
+layout_mode = 2
+text = "Connect"
+
+[node name="BtnJoinBack" type="Button" parent="CampaignJoinMenu"]
+layout_mode = 2
+text = "Back"
+
+[node name="TacticalMenu" type="VBoxContainer" parent="."]
+visible = false
+layout_mode = 1
+anchors_preset = 8
+anchor_left = 0.5
+anchor_top = 0.5
+anchor_right = 0.5
+anchor_bottom = 0.5
+offset_left = -150.0
+offset_top = -100.0
+offset_right = 150.0
+offset_bottom = 100.0
+grow_horizontal = 2
+grow_vertical = 2
+theme_override_constants/separation = 20
+
+[node name="Label" type="Label" parent="TacticalMenu"]
+layout_mode = 2
+text = "Tactical Scenario"
+horizontal_alignment = 1
+
+[node name="AddressInput" type="LineEdit" parent="TacticalMenu"]
 layout_mode = 2
 text = "127.0.0.1"
 placeholder_text = "Host Address"
 alignment = 1
 
-[node name="HostButton" type="Button" parent="VBoxContainer"]
+[node name="HostButton" type="Button" parent="TacticalMenu"]
 layout_mode = 2
 text = "Host Game"
 
-[node name="JoinButton" type="Button" parent="VBoxContainer"]
+[node name="JoinButton" type="Button" parent="TacticalMenu"]
 layout_mode = 2
 text = "Join Game"
+
+[node name="BtnBack" type="Button" parent="TacticalMenu"]
+layout_mode = 2
+text = "Back"
 
 [node name="StatusLabel" type="Label" parent="."]
 layout_mode = 1

@@ -151,7 +151,9 @@ func update_lobby_data(data: Dictionary):
 
 @rpc("authority", "call_local", "reliable")
 func start_game_rpc():
-	print("[NetworkManager] Starting Game RPC received. Changing Scene to Main.tscn...")
+	print("[NetworkManager] Starting Game RPC received.")
 	game_started.emit()
-	# Scene change handled by caller usually, but signal is good
-	get_tree().change_scene_to_file("res://Scenes/Main.tscn")
+	if lobby_data.get("game_mode", "") == "campaign":
+		get_tree().change_scene_to_file("res://Scenes/CampaignMap.tscn")
+	else:
+		get_tree().change_scene_to_file("res://Scenes/Main.tscn")
