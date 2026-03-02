@@ -18,11 +18,16 @@ func _ready():
 	back_btn.pressed.connect(_on_back_pressed)
 	
 	NetworkManager.lobby_updated.connect(_refresh_ui)
+	NetworkManager.game_started.connect(_on_game_started)
 	NetworkManager.player_connected.connect(_on_refresh)
 	NetworkManager.player_disconnected.connect(_on_refresh)
 	NetworkManager.server_disconnected.connect(_on_server_disconnect)
 	
 	_refresh_ui()
+
+func _on_game_started():
+	MusicManager.fade_out(2.0)
+	pass # Scene change is handled by NetworkManager
 
 func _on_refresh(_id = 0, _info = {}):
 	_refresh_ui()
@@ -74,6 +79,8 @@ func _on_join_sathar():
 
 func _on_start_pressed():
 	if multiplayer.is_server():
+		print("[CampaignLobby] Launch Campaign Pressed!")
+		MusicManager.fade_out(2.0)
 		NetworkManager.rpc("start_game_rpc")
 
 func _on_back_pressed():
