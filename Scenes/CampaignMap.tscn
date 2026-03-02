@@ -40,34 +40,51 @@ text = "Day: 1"
 layout_mode = 2
 text = "End Turn"
 
-[node name="MapView" type="Control" parent="HBoxContainer/VBoxLeft"]
+[node name="MapView" type="ScrollContainer" parent="HBoxContainer/VBoxLeft"]
 layout_mode = 2
 size_flags_vertical = 3
+horizontal_scroll_mode = 3
+vertical_scroll_mode = 3
 
-[node name="MapBackground" type="ColorRect" parent="HBoxContainer/VBoxLeft/MapView"]
+[node name="MapContainer" type="Control" parent="HBoxContainer/VBoxLeft/MapView"]
+custom_minimum_size = Vector2(2500, 2500)
+layout_mode = 2
+
+[node name="MapBackground" type="ColorRect" parent="HBoxContainer/VBoxLeft/MapView/MapContainer"]
 layout_mode = 1
 anchors_preset = 15
 anchor_right = 1.0
 anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
 color = Color(0, 0, 0, 0)
 
-[node name="SystemsContainer" type="Control" parent="HBoxContainer/VBoxLeft/MapView"]
+[node name="SystemsContainer" type="Control" parent="HBoxContainer/VBoxLeft/MapView/MapContainer"]
 layout_mode = 1
 anchors_preset = 15
 anchor_right = 1.0
 anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 2
 
-[node name="RoutesContainer" type="Control" parent="HBoxContainer/VBoxLeft/MapView"]
+[node name="RoutesContainer" type="Control" parent="HBoxContainer/VBoxLeft/MapView/MapContainer"]
 layout_mode = 1
 anchors_preset = 15
 anchor_right = 1.0
 anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 2
 
-[node name="FleetsContainer" type="Control" parent="HBoxContainer/VBoxLeft/MapView"]
+[node name="FleetsContainer" type="Control" parent="HBoxContainer/VBoxLeft/MapView/MapContainer"]
 layout_mode = 1
 anchors_preset = 15
 anchor_right = 1.0
 anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 2
 
 [node name="EventLogPanel" type="PanelContainer" parent="HBoxContainer/VBoxLeft"]
 layout_mode = 2
@@ -97,7 +114,7 @@ offset_bottom = -10.0
 
 [node name="Header" type="Label" parent="HBoxContainer/VBoxRight/Panel/VBox"]
 layout_mode = 2
-text = "Fleet Management"
+text = "Fleets at Selected System"
 horizontal_alignment = 1
 
 [node name="FleetList" type="ItemList" parent="HBoxContainer/VBoxRight/Panel/VBox"]
@@ -128,7 +145,15 @@ size_flags_horizontal = 3
 text = "New Fleet"
 disabled = true
 
-[node name="ExecuteJumpBtn" type="Button" parent="HBoxContainer/VBoxRight/Panel/VBox"]
+[node name="PlotJumpBtn" type="Button" parent="HBoxContainer/VBoxRight/Panel/VBox/ActionHBox"]
 layout_mode = 2
-text = "Execute Jump"
+size_flags_horizontal = 3
+toggle_mode = true
+text = "Plot Jump"
+disabled = true
+
+[node name="CancelJumpBtn" type="Button" parent="HBoxContainer/VBoxRight/Panel/VBox/ActionHBox"]
+layout_mode = 2
+size_flags_horizontal = 3
+text = "Cancel Jump"
 disabled = true

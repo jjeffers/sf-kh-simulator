@@ -87,6 +87,14 @@ func _initialize_upf_forces():
 	var tf_nova = create_new_fleet("UPF", nova_system, "Strike Force NOVA")
 	_add_ships_to_fleet(tf_nova, {"Battleship": 1, "Assault Carrier": 1, "Light Cruiser": 2, "Destroyer": 1, "Frigate": 2, "Assault Scout": 3, "Fighter": 6})
 	
+	# 1b. Task Force Cassidine
+	var tf_cassidine = create_new_fleet("UPF", "Cassidine", "Task Force Cassidine")
+	_add_ships_to_fleet(tf_cassidine, {"Battleship": 1, "Assault Carrier": 1, "Heavy Cruiser": 1, "Light Cruiser": 1, "Frigate": 2, "Assault Scout": 3, "Fighter": 6, "Minelayer": 1})
+	
+	# 1c. Task Force Prenglar
+	var tf_prenglar = create_new_fleet("UPF", "Prenglar", "Task Force Prenglar")
+	_add_ships_to_fleet(tf_prenglar, {"Battleship": 1, "Assault Carrier": 1, "Light Cruiser": 3, "Destroyer": 2, "Frigate": 3, "Assault Scout": 5, "Minelayer": 1})
+	
 	# 2. Planetary Militia Forces
 	var militias = [
 		{"sys": "White Light", "ships": {"Assault Scout": 3, "Frigate": 1}},
@@ -129,10 +137,10 @@ func _initialize_sathar_forces():
 	var sathar_composition = {
 		"Fighter": 25,
 		"Frigate": 8,
-		"Destroyer": 2,
-		"Light Cruiser": 3,
-		"Battleship": 1,
-		"Assault Carrier": 1
+		"Destroyer": 15,
+		"Light Cruiser": 7,
+		"Heavy Cruiser": 8,
+		"Assault Carrier": 4
 	}
 	
 	for type in sathar_composition.keys():
@@ -153,13 +161,53 @@ func _initialize_sathar_forces():
 	
 	var sathar_fleets = []
 	for i in range(chosen_circles.size()):
-		var circle_name = "Start Circle " + str(chosen_circles[i]["id"])
+		var circle_name = "Start Circle " + str(int(chosen_circles[i].get("id", 0)))
 		sathar_fleets.append(create_new_fleet("Sathar", circle_name, "Sathar Fleet " + str(i+1)))
 		
+	# Ensure each fleet gets at least 1 assault carrier
+	var carriers_left = sathar_composition["Assault Carrier"]
+	for i in range(num_fleets):
+		if carriers_left > 0:
+			_add_ships_to_fleet(sathar_fleets[i], {"Assault Carrier": 1})
+			sathar_pool.erase("Assault Carrier")
+			carriers_left -= 1
+			
 	var idx = 0
 	for ship in sathar_pool:
 		var target_fleet = sathar_fleets[idx % num_fleets]
-		_add_ships_to_fleet(target_fleet, {ship: 1})
+		
+		# Ensure no more than 8 fighters per assault carrier in a fleet
+		if ship == "Fighter":
+			var carrier_count = 0
+			var fighter_count = 0
+			for s in target_fleet.ships:
+				if typeof(s) == TYPE_DICTIONARY:
+					if s.get("class", "") == "Assault Carrier": carrier_count += 1
+					if s.get("class", "") == "Fighter": fighter_count += 1
+			
+			if fighter_count >= carrier_count * 8:
+				# This fleet is full of fighters relative to its carriers. Find another.
+				var alternate_found = false
+				for offset in range(1, num_fleets):
+					var alt_idx = (idx + offset) % num_fleets
+					var alt_fleet = sathar_fleets[alt_idx]
+					var alt_carrier_count = 0
+					var alt_fighter_count = 0
+					for s in alt_fleet.ships:
+						if typeof(s) == TYPE_DICTIONARY:
+							if s.get("class", "") == "Assault Carrier": alt_carrier_count += 1
+							if s.get("class", "") == "Fighter": alt_fighter_count += 1
+					if alt_fighter_count < alt_carrier_count * 8:
+						_add_ships_to_fleet(alt_fleet, {ship: 1})
+						alternate_found = true
+						break
+				if not alternate_found:
+					_add_ships_to_fleet(target_fleet, {ship: 1}) # Fallback, shouldn't happen with correct pool numbers
+			else:
+				_add_ships_to_fleet(target_fleet, {ship: 1})
+		else:
+			_add_ships_to_fleet(target_fleet, {ship: 1})
+			
 		idx += 1
 
 func _add_ships_to_fleet(fleet: CampaignFleet, composition: Dictionary):
@@ -181,18 +229,22 @@ func get_fleets_at_system(system_id: String) -> Array[CampaignFleet]:
 	return result
 
 func are_systems_connected(sys_a: String, sys_b: String) -> bool:
+	print("DEBUG are_systems_connected: Checking A=", sys_a, " B=", sys_b)
 	for route in routes:
 		if (route["origin"] == sys_a and route["destination"] == sys_b) or \
 		   (route["origin"] == sys_b and route["destination"] == sys_a):
+			print("DEBUG are_systems_connected: Found normal route match!")
 			return true
 	
 	# Also check Sathar start circles
 	for circle in start_circles:
-		var circle_name = "Start Circle %d" % circle["id"]
+		var circle_name = "Start Circle %d" % int(circle.get("id", 0))
 		if (sys_a == circle_name and sys_b == circle["connected_system"]) or \
 		   (sys_b == circle_name and sys_a == circle["connected_system"]):
+			print("DEBUG are_systems_connected: Found START CIRCLE route match!")
 			return true
 			
+	print("DEBUG are_systems_connected: NO MATCH. Returning false.")
 	return false
 
 func order_fleet_move(fleet: CampaignFleet, destination_id: String) -> bool:

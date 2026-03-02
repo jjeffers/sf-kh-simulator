@@ -38,11 +38,11 @@ func test_force_initialization():
 				if s["class"] == "Fighter":
 					total_sathar_fighters += 1
 					
-	# UPF: 1 Strike Force + 10 Militias = 11 Fleets initially
-	assert_eq(upf_count, 11, "Should initialize 11 UPF fleets")
+	# UPF: 1 Strike Force + 1 TF Cassidine + 1 TF Prenglar + 10 Militias = 13 Fleets initially
+	assert_eq(upf_count, 13, "Should initialize 13 UPF fleets")
 	assert_eq(sathar_count, 3, "Should initialize 3 Sathar fleets")
 	assert_not_null(tf_nova, "Strike Force NOVA should exist")
 	
-	# Total Sathar Ships should be 25 + 8 + 2 + 3 + 1 + 1 = 40
-	assert_eq(total_sathar_ships, 40, "Total Sathar ships across fleets should be exactly 40")
+	# Total Sathar Ships should be 25 + 8 + 15 + 7 + 8 + 4 = 67
+	assert_eq(total_sathar_ships, 67, "Total Sathar ships across fleets should be exactly 67")
 	assert_eq(total_sathar_fighters, 25, "Sathar should have exactly 25 fighters total")

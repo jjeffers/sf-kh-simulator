@@ -1,0 +1,268 @@
+{
+    "frontier_sector": {
+        "map_metadata": {
+            "source": "Star Frontiers: Knight Hawks Fleet Deployment Map (FDM)",
+            "grid_origin": "Bottom-Left (0,0)",
+            "grid_units": "Light Years / Days of Travel"
+        },
+        "systems": [
+            {
+                "name": "Athor",
+                "x": 11,
+                "y": 25,
+                "colonists": "Yazirian"
+            },
+            {
+                "name": "Araks",
+                "x": 5,
+                "y": 13,
+                "colonists": "Yazirian"
+            },
+            {
+                "name": "Cassidine",
+                "x": 21,
+                "y": 37,
+                "colonists": "Mixed"
+            },
+            {
+                "name": "Dixon's Star",
+                "x": 21,
+                "y": 31,
+                "colonists": "Mixed"
+            },
+            {
+                "name": "Dramune",
+                "x": 25,
+                "y": 40,
+                "colonists": "Mixed"
+            },
+            {
+                "name": "Fromeltar",
+                "x": 27,
+                "y": 51,
+                "colonists": "Dralasite"
+            },
+            {
+                "name": "Gruna Garu",
+                "x": 12,
+                "y": 5,
+                "colonists": "Yazirian"
+            },
+            {
+                "name": "K'aken-Kar",
+                "x": 41,
+                "y": 39,
+                "colonists": "Vrusk"
+            },
+            {
+                "name": "Kizk-Kar",
+                "x": 35,
+                "y": 48,
+                "colonists": "Vrusk"
+            },
+            {
+                "name": "K'tsa-Kar",
+                "x": 37,
+                "y": 31,
+                "colonists": "Vrusk"
+            },
+            {
+                "name": "Madderly's Star",
+                "x": 30,
+                "y": 31,
+                "colonists": "Human"
+            },
+            {
+                "name": "Prenglar",
+                "x": 25,
+                "y": 25,
+                "colonists": "Mixed"
+            },
+            {
+                "name": "Scree Fron",
+                "x": 4,
+                "y": 39,
+                "colonists": "Yazirian"
+            },
+            {
+                "name": "Theseus",
+                "x": 41,
+                "y": 5,
+                "colonists": "Human"
+            },
+            {
+                "name": "Timeon",
+                "x": 26,
+                "y": 13,
+                "colonists": "Human"
+            },
+            {
+                "name": "Truane's Star",
+                "x": 17,
+                "y": 37,
+                "colonists": "Mixed"
+            },
+            {
+                "name": "White Light",
+                "x": 35,
+                "y": 23,
+                "colonists": "Human"
+            },
+            {
+                "name": "Zebulon",
+                "x": 12,
+                "y": 42,
+                "colonists": "Mixed"
+            }
+        ],
+        "navigation_routes": [
+            {
+                "origin": "Scree Fron",
+                "destination": "Zebulon",
+                "distance": 5
+            },
+            {
+                "origin": "Zebulon",
+                "destination": "Truane's Star",
+                "distance": 5
+            },
+            {
+                "origin": "Truane's Star",
+                "destination": "Dixon's Star",
+                "distance": 5
+            },
+            {
+                "origin": "Athor",
+                "destination": "Dixon's Star",
+                "distance": 11
+            },
+            {
+                "origin": "Athor",
+                "destination": "Araks",
+                "distance": 8
+            },
+            {
+                "origin": "Athor",
+                "destination": "Gruna Garu",
+                "distance": 9
+            },
+            {
+                "origin": "Araks",
+                "destination": "Gruna Garu",
+                "distance": 9
+            },
+            {
+                "origin": "Gruna Garu",
+                "destination": "Prenglar",
+                "distance": 14
+            },
+            {
+                "origin": "Dixon's Star",
+                "destination": "Cassidine",
+                "distance": 5
+            },
+            {
+                "origin": "Dixon's Star",
+                "destination": "Prenglar",
+                "distance": 5
+            },
+            {
+                "origin": "Cassidine",
+                "destination": "Dramune",
+                "distance": 4
+            },
+            {
+                "origin": "Cassidine",
+                "destination": "Fromeltar",
+                "distance": 7
+            },
+            {
+                "origin": "Prenglar",
+                "destination": "Cassidine",
+                "distance": 7
+            },
+            {
+                "origin": "Prenglar",
+                "destination": "Timeon",
+                "distance": 8
+            },
+            {
+                "origin": "Prenglar",
+                "destination": "Madderly's Star",
+                "distance": 8
+            },
+            {
+                "origin": "Fromeltar",
+                "destination": "Kizk-Kar",
+                "distance": 8
+            },
+            {
+                "origin": "Kizk-Kar",
+                "destination": "K'aken-Kar",
+                "distance": 7
+            },
+            {
+                "origin": "K'aken-Kar",
+                "destination": "K'tsa-Kar",
+                "distance": 5
+            },
+            {
+                "origin": "K'tsa-Kar",
+                "destination": "White Light",
+                "distance": 6
+            },
+            {
+                "origin": "White Light",
+                "destination": "Madderly's Star",
+                "distance": 6
+            },
+            {
+                "origin": "White Light",
+                "destination": "Timeon",
+                "distance": 10
+            },
+            {
+                "origin": "White Light",
+                "destination": "Theseus",
+                "distance": 10
+            },
+            {
+                "origin": "Timeon",
+                "destination": "Theseus",
+                "distance": 10
+            }
+        ],
+        "sathar_start_circles": [
+            {
+                "id": 1,
+                "connected_system": "Zebulon",
+                "entry_zone": "Western Void"
+            },
+            {
+                "id": 2,
+                "connected_system": "Kizk-Kar",
+                "entry_zone": "Northwestern Void"
+            },
+            {
+                "id": 3,
+                "connected_system": "K'tsa-Kar",
+                "entry_zone": "Northeastern Void"
+            },
+            {
+                "id": 4,
+                "connected_system": "Fromeltar",
+                "entry_zone": "Northern Void"
+            },
+            {
+                "id": 5,
+                "connected_system": "K'aken-Kar",
+                "entry_zone": "Eastern Void"
+            },
+            {
+                "id": 6,
+                "connected_system": "Prenglar",
+                "entry_zone": "Central Infiltration"
+            }
+        ]
+    }
+}
