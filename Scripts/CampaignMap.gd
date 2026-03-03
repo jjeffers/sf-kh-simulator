@@ -25,8 +25,10 @@ var campaign: Node
 var selected_fleet: CampaignFleet = null
 var selected_system_id: String = ""
 var is_plotting_jump: bool = false
-
 var pan_speed: float = 600.0
+var map_move_dir: Vector2 = Vector2.ZERO
+
+var active_encounter_dialog: Node = null
 
 func _ready():
 	# CampaignManager is now a guaranteed Autoload
@@ -37,6 +39,7 @@ func _ready():
 	campaign.turn_ready_changed.connect(_on_turn_ready_changed)
 	campaign.fleet_arrived.connect(_on_fleet_arrived)
 	campaign.campaign_encounter_triggered.connect(_on_encounter)
+	campaign.open_encounter_dialog.connect(_handle_encounter_click)
 	
 	end_turn_btn.pressed.connect(_on_end_turn_pressed)
 	cancel_jump_btn.pressed.connect(_on_cancel_jump_pressed)
@@ -79,8 +82,6 @@ func _center_map_initially():
 	if selected_system_id != "":
 		_focus_camera_on_system(selected_system_id)
 
-var map_move_dir: Vector2 = Vector2.ZERO
-
 func _input(event):
 	# Prioritize Map Panning over UI Element focus navigation
 	if event is InputEventKey:
@@ -100,6 +101,13 @@ func _process(delta):
 		var move_amount = normalized_dir * pan_speed * delta
 		map_view.scroll_horizontal += int(move_amount.x)
 		map_view.scroll_vertical += int(move_amount.y)
+		
+	if is_instance_valid(active_encounter_dialog):
+		if active_encounter_dialog.has_meta("sys_name"):
+			var sys = active_encounter_dialog.get_meta("sys_name")
+			if sys != "" and sys not in campaign.active_encounters:
+				active_encounter_dialog.queue_free()
+				active_encounter_dialog = null
 			
 func _setup_background():
 	# Static Starfield using ParallaxBackground and Downloaded Texture
@@ -204,13 +212,13 @@ func _create_system_node(node_id: String, display_name: String, pos: Vector2, is
 	center_hbox.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	
 	var btn = Panel.new()
-	btn.custom_minimum_size = Vector2(32, 32)
+	btn.custom_minimum_size = Vector2(48, 48)
 	
 	var style = StyleBoxFlat.new()
-	style.corner_radius_top_left = 16
-	style.corner_radius_top_right = 16
-	style.corner_radius_bottom_left = 16
-	style.corner_radius_bottom_right = 16
+	style.corner_radius_top_left = 24
+	style.corner_radius_top_right = 24
+	style.corner_radius_bottom_left = 24
+	style.corner_radius_bottom_right = 24
 	
 	if is_sathar:
 		style.bg_color = Color(1.0, 0.2, 0.2, 1.0)
@@ -248,6 +256,28 @@ func _draw_systems():
 	for sys_name in campaign.systems:
 		var pos = _get_system_pos(sys_name)
 		
+		# Draw encounter indicator
+		if sys_name in campaign.active_encounters:
+			var encounter_circle = Panel.new()
+			var enc_style = StyleBoxFlat.new()
+			enc_style.bg_color = Color(1.0, 0.0, 0.0, 0.4) # Red translucent
+			enc_style.border_color = Color(1.0, 1.0, 1.0, 1.0) # White border
+			enc_style.border_width_left = 3
+			enc_style.border_width_top = 3
+			enc_style.border_width_right = 3
+			enc_style.border_width_bottom = 3
+			enc_style.corner_radius_top_left = 52
+			enc_style.corner_radius_top_right = 52
+			enc_style.corner_radius_bottom_left = 52
+			enc_style.corner_radius_bottom_right = 52
+			
+			encounter_circle.add_theme_stylebox_override("panel", enc_style)
+			encounter_circle.custom_minimum_size = Vector2(105, 105)
+			encounter_circle.mouse_filter = Control.MOUSE_FILTER_STOP
+			encounter_circle.gui_input.connect(func(event): _on_system_gui_input(event, sys_name))
+			encounter_circle.position = pos - Vector2(52, 52) # Center it visually
+			systems_container.add_child(encounter_circle)
+			
 		var node = _create_system_node(sys_name, sys_name, pos, false)
 		systems_container.add_child(node)
 		
@@ -433,6 +463,10 @@ func _on_system_gui_input(event: InputEvent, sys_name: String):
 	if event is InputEventMouseButton and event.pressed:
 		ConsoleManager.log_message("DEBUG Map GUI Input: sys=%s btn=%d" % [sys_name, event.button_index])
 		
+		if sys_name in campaign.active_encounters and event.button_index == MOUSE_BUTTON_LEFT:
+			campaign.rpc_open_encounter_dialog.rpc(sys_name)
+			return
+		
 		# If we have a fleet selected
 		var sel_fac = "None"
 		if selected_fleet: sel_fac = selected_fleet.faction
@@ -481,6 +515,8 @@ func _update_ui():
 
 	top_bar_turn.text = "Day: %d" % campaign.current_day
 	_update_fleet_list()
+	
+	end_turn_btn.disabled = campaign.active_encounters.size() > 0
 
 func _can_see_system(sys_id: String) -> bool:
 	var my_faction = _get_my_faction()
@@ -495,7 +531,8 @@ func _can_see_system(sys_id: String) -> bool:
 
 func _get_my_faction() -> String:
 	var peer_id = multiplayer.get_unique_id() if NetworkManager.multiplayer.has_multiplayer_peer() else 1
-	var team_id = NetworkManager.lobby_data["teams"].get(peer_id, NetworkManager.lobby_data["teams"].get(str(peer_id), 0))
+	var teams = NetworkManager.lobby_data.get("teams", {})
+	var team_id = teams.get(peer_id, teams.get(str(peer_id), 1 if peer_id == 1 else 0))
 	return "UPF" if team_id == 1 else "Sathar"
 
 func _update_fleet_list():
@@ -659,6 +696,10 @@ func _on_cancel_jump_pressed():
 	_draw_routes()
 
 func _on_end_turn_pressed():
+	if campaign.active_encounters.size() > 0:
+		ConsoleManager.log_message("[color=red]Cannot end turn while encounters are unresolved![/color]")
+		return
+		
 	var my_fac = _get_my_faction()
 	if my_fac in ["UPF", "Sathar"]:
 		var other_fac = "Sathar" if my_fac == "UPF" else "UPF"
@@ -686,7 +727,7 @@ func _on_day_advanced(day: int):
 	end_turn_btn.disabled = false
 	turn_status_label.text = ""
 	_update_ui()
-	_draw_fleets()
+	_on_resize() # Re-draw systems (for encounter circles), fleets, and routes
 
 func _on_fleet_arrived(fleet: CampaignFleet, sys_id: String):
 	_log_event("%s arrived at %s." % [fleet.fleet_name, sys_id])
@@ -694,5 +735,177 @@ func _on_fleet_arrived(fleet: CampaignFleet, sys_id: String):
 
 func _on_encounter(sys_id, upf, sathar):
 	_log_event("COMBAT TRIGGERED AT %s!" % sys_id)
-	# TODO: Transition to tactical Scene!
-	# TODO: Transition to tactical Scene!
+	pass
+
+func _handle_encounter_click(sys_name: String):
+	ConsoleManager.log_message("DEBUG: _handle_encounter_click called for " + sys_name)
+	# Don't open duplicates
+	if is_instance_valid(active_encounter_dialog) and active_encounter_dialog.get_meta("sys_name") == sys_name:
+		ConsoleManager.log_message("DEBUG: _handle_encounter_click aborted (EncounterDialog for this system already exists!)")
+		return
+	elif is_instance_valid(active_encounter_dialog):
+		active_encounter_dialog.queue_free()
+		
+	var my_fac = _get_my_faction()
+	ConsoleManager.log_message("DEBUG: _handle_encounter_click proceeding for faction " + my_fac)
+	var is_defender = false
+	
+	# Determine if we are defending (UPF has stations, or we check who has militia)
+	if sys_name in campaign.UPF_FORTRESSES or sys_name in campaign.UPF_ARMED_STATIONS:
+		is_defender = (my_fac == "UPF")
+	else:
+		# Simple fallback: if Sathar is present, they are usually attacking deeply into UPF space.
+		is_defender = (my_fac == "UPF")
+		
+	var layer = CanvasLayer.new()
+	layer.name = "EncounterDialog"
+	layer.layer = 95
+	layer.set_meta("sys_name", sys_name)
+		
+	active_encounter_dialog = layer
+		
+	# Build the popup UI panel
+	var panel = PanelContainer.new()
+	panel.set_anchors_and_offsets_preset(Control.PRESET_CENTER)
+	panel.custom_minimum_size = Vector2(500, 350)
+	
+	var vbox = VBoxContainer.new()
+	vbox.set_anchors_preset(Control.PRESET_FULL_RECT)
+	panel.add_child(vbox)
+	
+	var title = Label.new()
+	title.text = "Combat Encounter: " + sys_name
+	title.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	title.add_theme_font_size_override("font_size", 24)
+	vbox.add_child(title)
+	
+	var hs = HSeparator.new()
+	vbox.add_child(hs)
+	
+	var ship_list_label = RichTextLabel.new()
+	ship_list_label.bbcode_enabled = true
+	ship_list_label.custom_minimum_size = Vector2(0, 150)
+	ship_list_label.text = "[b]Friendly Forces Present:[/b]\n"
+	
+	var friendly_ships = []
+	var has_militia = false
+	
+	# Check for UPF Stations if we are UPF
+	if my_fac == "UPF":
+		if sys_name in campaign.UPF_FORTRESSES:
+			friendly_ships.append({"class": "Space Station (Fortress)", "name": "Fortress " + sys_name})
+			ship_list_label.text += "[color=green]Fortress %s - READY[/color]\n" % sys_name
+		elif sys_name in campaign.UPF_ARMED_STATIONS:
+			friendly_ships.append({"class": "Space Station", "name": sys_name + " Station"})
+			ship_list_label.text += "[color=green]Space Station %s - READY[/color]\n" % sys_name
+			
+	# Append ships from fleets
+	for f in campaign.fleets:
+		if f.current_system_id == sys_name and not f.is_moving() and f.faction == my_fac:
+			for s in f.ships:
+				var hp = 100
+				var sn = "Ship"
+				var cls = "Unknown"
+				if typeof(s) == TYPE_DICTIONARY:
+					sn = s.get("name", "Ship")
+					cls = s.get("class", "Unknown")
+					hp = int(s.get("hull", 100))
+					if s.get("is_militia", false): has_militia = true
+				if hp < 50:
+					ship_list_label.text += "[color=red]%s (%s) - Hull: %d%% - CRIPPLED[/color]\n" % [sn, cls, hp]
+				elif hp < 100:
+					ship_list_label.text += "[color=yellow]%s (%s) - Hull: %d%% - DAMAGED[/color]\n" % [sn, cls, hp]
+				else:
+					ship_list_label.text += "[color=green]%s (%s) - Hull: %d%% - READY[/color]\n" % [sn, cls, hp]
+				friendly_ships.append(s)
+	
+	vbox.add_child(ship_list_label)
+	
+	var routes_dropdown = OptionButton.new()
+	var valid_routes = []
+	if is_defender:
+		var retreat_label = Label.new()
+		retreat_label.text = "Select Retreat Destination:"
+		vbox.add_child(retreat_label)
+		
+		# Find connected systems
+		for route in campaign.routes:
+			var target = ""
+			var origin = route.get("origin", "")
+			var dest = route.get("destination", "")
+			if origin == sys_name: target = dest
+			elif dest == sys_name: target = origin
+			
+			if target != "":
+				var dist = campaign.TRANSIT_DAYS # Simplified fallback
+				valid_routes.append({"sys": target, "dist": dist})
+				routes_dropdown.add_item("%s (%d Days Transit)" % [target, dist])
+				
+		if has_militia:
+			var mil_warning = Label.new()
+			mil_warning.text = "WARNING: Militia ships cannot retreat from their home system."
+			mil_warning.modulate = Color.ORANGE
+			vbox.add_child(mil_warning)
+			
+		vbox.add_child(routes_dropdown)
+	else:
+		var attack_lbl = Label.new()
+		attack_lbl.text = "You are the Attacker."
+		attack_lbl.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+		vbox.add_child(attack_lbl)
+	
+	var btn_hbox = HBoxContainer.new()
+	btn_hbox.alignment = BoxContainer.ALIGNMENT_CENTER
+	
+	var close_btn = Button.new()
+	close_btn.text = "Cancel"
+	close_btn.pressed.connect(func():
+		layer.name = "ClosingDialog" 
+		layer.queue_free()
+	)
+	btn_hbox.add_child(close_btn)
+	
+	if is_defender and valid_routes.size() > 0 and friendly_ships.size() > 0:
+		var retreat_btn = Button.new()
+		retreat_btn.text = "Order Fleet Retreat"
+		var callable_retreat = func():
+			var selected_idx = routes_dropdown.selected
+			var target_sys = valid_routes[selected_idx]["sys"]
+			_execute_retreat(sys_name, target_sys)
+			if is_instance_valid(active_encounter_dialog):
+				active_encounter_dialog.queue_free()
+				active_encounter_dialog = null
+		retreat_btn.pressed.connect(callable_retreat)
+		btn_hbox.add_child(retreat_btn)
+		
+	var start_battle_btn = Button.new()
+	start_battle_btn.text = "Ready For Battle"
+	start_battle_btn.modulate = Color(1.0, 0.4, 0.4)
+	start_battle_btn.pressed.connect(func():
+		start_battle_btn.text = "Waiting for other player..."
+		start_battle_btn.disabled = true
+		_initiate_tactical_battle(sys_name)
+	)
+	btn_hbox.add_child(start_battle_btn)
+	
+	vbox.add_child(btn_hbox)
+	layer.add_child(panel)
+	add_child(layer)
+	ConsoleManager.log_message("DEBUG: _handle_encounter_click successfully added EncounterDialog to UI tree.")
+
+func _execute_retreat(from_sys: String, to_sys: String):
+	ConsoleManager.log_message("Ordering Retreat from %s to %s" % [from_sys, to_sys])
+	var my_fac = _get_my_faction()
+	for f in campaign.fleets:
+		if f.current_system_id == from_sys and not f.is_moving() and f.faction == my_fac:
+			# Militia stripping could happen here, or handled inside start_move
+			campaign.order_fleet_move(f, to_sys)
+			
+	# Update map to remove encounter circle potentially if fleet evacuated?
+	# We should really sync this so Sathar knows UPF retreated.
+	# With RPC order_fleet_move it broadcasts correctly.
+
+func _initiate_tactical_battle(sys_name: String):
+	ConsoleManager.log_message("[color=red]Confirming Readiness for Tactical Battle at %s...[/color]" % sys_name)
+	var my_fac = _get_my_faction()
+	CampaignManager.rpc_id(1, "set_encounter_ready", sys_name, my_fac, true)

@@ -3,6 +3,7 @@ extends Node
 signal campaign_day_advanced(new_day: int)
 signal fleet_arrived(fleet: CampaignFleet, system_id: String)
 signal campaign_encounter_triggered(system_id: String, upf_forces: Array, sathar_forces: Array)
+signal open_encounter_dialog(system_id: String)
 signal map_data_loaded()
 signal turn_ready_changed(upf_ready: bool, sathar_ready: bool)
 
@@ -16,6 +17,8 @@ var current_day: int = 1
 
 var upf_ready: bool = false
 var sathar_ready: bool = false
+
+var active_encounters: Array[String] = []
 
 # Tracks destroyed stations for win/loss conditions
 var destroyed_stations_count: int = 0
@@ -273,6 +276,11 @@ func order_fleet_move(fleet: CampaignFleet, destination_id: String) -> bool:
 func rpc_order_fleet_move(fleet_idx: int, destination_id: String):
 	if fleet_idx >= 0 and fleet_idx < fleets.size():
 		fleets[fleet_idx].start_move(destination_id, TRANSIT_DAYS)
+		_check_for_encounters()
+		if multiplayer.is_server() and has_node("/root/NetworkManager"):
+			var nm = get_node("/root/NetworkManager")
+			nm.sync_campaign_state.rpc(serialize_state())
+			emit_signal("campaign_day_advanced", current_day)
 
 func cancel_fleet_move(fleet: CampaignFleet):
 	var idx = fleets.find(fleet)
@@ -283,6 +291,11 @@ func cancel_fleet_move(fleet: CampaignFleet):
 func rpc_cancel_fleet_move(fleet_idx: int):
 	if fleet_idx >= 0 and fleet_idx < fleets.size():
 		fleets[fleet_idx].cancel_move()
+		_check_for_encounters()
+		if multiplayer.is_server() and has_node("/root/NetworkManager"):
+			var nm = get_node("/root/NetworkManager")
+			nm.sync_campaign_state.rpc(serialize_state())
+			emit_signal("campaign_day_advanced", current_day)
 
 @rpc("any_peer", "call_local", "reliable")
 func request_end_turn(faction: String):
@@ -304,6 +317,31 @@ func update_turn_ready(upf: bool, sathar: bool):
 	sathar_ready = sathar
 	emit_signal("turn_ready_changed", upf_ready, sathar_ready)
 
+@rpc("any_peer", "call_local", "reliable")
+func rpc_open_encounter_dialog(sys_name: String):
+	ConsoleManager.log_message("Network requested open encounter dialog for: " + sys_name)
+	emit_signal("campaign_encounter_triggered", sys_name, [], []) # This signal is just for logging now
+	# Actually we need the CampaignMap to open it. We can emit a specific signal
+	emit_signal("open_encounter_dialog", sys_name)
+
+var encounter_ready_state = {}
+
+@rpc("any_peer", "call_local", "reliable")
+func set_encounter_ready(sys_name: String, faction: String, is_ready: bool):
+	if not encounter_ready_state.has(sys_name):
+		encounter_ready_state[sys_name] = {"UPF": false, "Sathar": false}
+	encounter_ready_state[sys_name][faction] = is_ready
+	
+	ConsoleManager.log_message("[color=yellow]Encounter %s: %s is Ready[/color]" % [sys_name, faction])
+	
+	if multiplayer.is_server():
+		if encounter_ready_state[sys_name]["UPF"] and encounter_ready_state[sys_name]["Sathar"]:
+			var nm = get_node("/root/NetworkManager")
+			nm.lobby_data["scenario"] = "campaign_encounter"
+			nm.lobby_data["encounter_system"] = sys_name
+			nm.update_lobby_data.rpc(nm.lobby_data)
+			nm.start_game_rpc.rpc()
+
 func end_turn():
 	ConsoleManager.log_message("[color=green]Both factions ready. Advancing from Day %d to Day %d[/color]" % [current_day, current_day + 1])
 	current_day += 1
@@ -316,9 +354,8 @@ func end_turn():
 			arriving_fleets.append(fleet)
 			emit_signal("fleet_arrived", fleet, fleet.current_system_id)
 			
-	emit_signal("campaign_day_advanced", current_day)
-	
 	_check_for_encounters()
+	emit_signal("campaign_day_advanced", current_day)
 	
 	# After processing the turn, broadcast the new state and readiness
 	if multiplayer.is_server() and has_node("/root/NetworkManager"):
@@ -331,6 +368,7 @@ func serialize_state() -> Dictionary:
 		"current_day": current_day,
 		"destroyed_stations": destroyed_stations_count,
 		"destroyed_fortresses": destroyed_fortresses_count,
+		"active_encounters": active_encounters,
 		"fleets": []
 	}
 	for f in fleets:
@@ -338,6 +376,7 @@ func serialize_state() -> Dictionary:
 	return state
 
 func _check_for_encounters():
+	active_encounters.clear()
 	# Group all stationary fleets by system
 	var systems_with_fleets = {}
 	for f in fleets:
@@ -356,6 +395,7 @@ func _check_for_encounters():
 		var has_station = (sys in UPF_FORTRESSES or sys in UPF_ARMED_STATIONS)
 		
 		if sathar_forces.size() > 0 and (upf_forces.size() > 0 or has_station):
+			active_encounters.append(sys)
 			emit_signal("campaign_encounter_triggered", sys, upf_forces, sathar_forces)
 
 func create_new_fleet(faction: String, system_id: String, fleet_name: String) -> CampaignFleet:

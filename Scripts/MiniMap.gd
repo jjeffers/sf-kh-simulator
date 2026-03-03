@@ -76,7 +76,7 @@ func _draw():
 		elif s.side_id == 2: color = Color.RED
 		
 		var radius = 3.0
-		if s.ship_class == "Space Station":
+		if s.ship_class in ["Space Station", "Armed Station", "Fortified Station"]:
 			radius = 5.0
 			color = Color.WHITE
 		

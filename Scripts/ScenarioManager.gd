@@ -146,13 +146,119 @@ static func generate_scenario(key: String, rng_seed: int) -> Dictionary:
 	var ships = []
 	
 	if key == "campaign_encounter":
-		# In a real campaign, the ships array is passed in or pre-populated in Lobby/Game Setup.
-		# Here we just ensure the planet is set.
-		# The deployment logic is handled in get_valid_deployment_hexes.
-		if not scen.has("ships") or scen["ships"].is_empty():
-			# This is a fallback if someone loads it naked
-			scen["ships"] = []
+		var sys_name = ""
+		# In a real networked campaign, this comes from CampaignManager or NetworkManager context
+		if Engine.get_main_loop().root.has_node("NetworkManager"):
+			var nm = Engine.get_main_loop().root.get_node("NetworkManager")
+			if nm.lobby_data != null and nm.lobby_data.has("encounter_system"):
+				sys_name = nm.lobby_data["encounter_system"]
+		
 		scen["planets"] = [Vector3i(0, 0, 0)]
+		scen["sides"] = {
+			0: {"name": "UPF", "color": Color.GREEN, "role": "Defender"},
+			1: {"name": "Sathar", "color": Color.RED, "role": "Attacker"}
+		}
+		
+		# Inject UPF Station if applicable
+		if sys_name in CampaignManager.UPF_FORTRESSES:
+			ships.append({
+				"name": "Fortress " + sys_name,
+				"class": "Space Station",
+				"faction": "UPF",
+				"side_index": 0,
+				"position": Vector3i.ZERO,
+				"orbit_direction": 1,
+				"overrides": {
+					"hull": 100, "max_hull": 100, "icm_max": 8, "icm_current": 8, "ms_max": 2, "ms_current": 2,
+					"weapons": [
+						{"name": "Laser Battery 1", "type": "Laser", "range": 9, "arc": "360", "ammo": 999, "max_ammo": 999, "damage_dice": "1d10", "damage_bonus": 0, "fired": false},
+						{"name": "Laser Battery 2", "type": "Laser", "range": 9, "arc": "360", "ammo": 999, "max_ammo": 999, "damage_dice": "1d10", "damage_bonus": 0, "fired": false},
+						{"name": "Rocket Battery Swarm", "type": "Rocket Battery", "range": 3, "arc": "360", "ammo": 12, "max_ammo": 12, "damage_dice": "2d10", "damage_bonus": 0, "fired": false}
+					]
+				}
+			})
+		elif sys_name in CampaignManager.UPF_ARMED_STATIONS:
+			ships.append({
+				"name": sys_name + " Station",
+				"class": "Space Station",
+				"faction": "UPF",
+				"side_index": 0,
+				"position": Vector3i.ZERO,
+				"orbit_direction": 1,
+				"overrides": {
+					"hull": 50, "max_hull": 50, "icm_max": 4, "icm_current": 4, "ms_max": 0, "ms_current": 0,
+					"weapons": [
+						{"name": "Laser Battery", "type": "Laser", "range": 9, "arc": "360", "ammo": 999, "max_ammo": 999, "damage_dice": "1d10", "damage_bonus": 0, "fired": false}
+					]
+				}
+			})
+		
+		var sathar_spawned = 0
+		var sathar_spawn_hexes = [
+			Vector3i(1, 0, -1) * 24, Vector3i(0, 1, -1) * 24, Vector3i(-1, 1, 0) * 24,
+			Vector3i(-1, 0, 1) * 24, Vector3i(0, -1, 1) * 24, Vector3i(1, -1, 0) * 24
+		]
+		
+		for f in CampaignManager.fleets:
+			if f.current_system_id == sys_name and not f.is_moving():
+				var side_idx = 0 if f.faction == "UPF" else 1
+				
+				# Track basic spawn formation offset so ships don't stack
+				var ship_idx = 0
+				
+				for s in f.ships:
+					var ship_data = {}
+					var sn = "Ship"
+					var cls = "Unknown"
+					
+					if typeof(s) == TYPE_DICTIONARY:
+						sn = s.get("name", "Ship")
+						cls = s.get("class", "Unknown")
+					elif typeof(s) == TYPE_OBJECT:
+						if s.has_method("get_ship_name"): sn = s.get_ship_name()
+						if "ship_class" in s: cls = s.ship_class
+					
+					var spawn_pos = Vector3i.ZERO
+					var facing = 0
+					if side_idx == 0: # UPF Defender
+						spawn_pos = Vector3i.ZERO # Defending the planet/station
+						facing = 0
+					else: # Sathar Attacker
+						# Pick an edge for this fleet / ship
+						var edge_dir_idx = sathar_spawned % 6
+						var base_pos = sathar_spawn_hexes[edge_dir_idx]
+						# Simple offset to avoid stacking perfectly
+						spawn_pos = base_pos + Vector3i(ship_idx % 2, -(ship_idx % 2), 0)
+						facing = (edge_dir_idx + 3) % 6
+						sathar_spawned += 1
+
+					var final_ship = {
+						"name": sn,
+						"class": cls,
+						"faction": f.faction,
+						"side_index": side_idx,
+						"position": spawn_pos,
+						"facing": facing,
+						"start_speed": 4 if side_idx == 1 else 0,
+						"docked_at": s.get("docked_at", "") if typeof(s) == TYPE_DICTIONARY else "",
+						"is_deployed": true if side_idx == 1 else false # Attackers start deployed
+					}
+					
+					var overrides = {}
+					if typeof(s) == TYPE_DICTIONARY:
+						if s.has("hull"): overrides["hull"] = int(s["hull"])
+						if s.has("max_hull"): overrides["max_hull"] = int(s["max_hull"])
+						if s.has("current_dcr"): overrides["current_dcr"] = int(s["current_dcr"])
+						if s.has("max_dcr"): overrides["max_dcr"] = int(s["max_dcr"])
+						if s.has("weapons"): overrides["weapons"] = s["weapons"].duplicate(true)
+						
+					if overrides.size() > 0:
+						final_ship["overrides"] = overrides
+						
+					ships.append(final_ship)
+					ship_idx += 1
+					
+		scen["ships"] = ships
 
 	elif key == "surprise_attack":
 		# Defender Setup
@@ -765,7 +871,7 @@ static func get_valid_deployment_hexes(side_id: int, ships: Array, planets: Arra
 	
 	var valid_hexes: Array[Vector3i] = []
 	
-	if ship and (ship.ship_class == "Space Station" or ship.ship_class == "Station"):
+	if ship and (ship.ship_class in ["Space Station", "Station", "Armed Station", "Fortified Station"]):
 		for p in planets:
 			valid_hexes.append_array(HexGrid.get_neighbors(p))
 		if planets.size() > 0:
@@ -781,6 +887,7 @@ static func get_valid_deployment_hexes(side_id: int, ships: Array, planets: Arra
 					var dist = HexGrid.hex_distance(Vector3i.ZERO, Vector3i(x, y, z))
 					if dist == spawn_dist:
 						valid_hexes.append(Vector3i(x, y, z))
+			return valid_hexes
 		else:
 			# Defenders: Can deploy anywhere < 34 hexes
 			var max_dist = 33
@@ -788,6 +895,7 @@ static func get_valid_deployment_hexes(side_id: int, ships: Array, planets: Arra
 				for y in range(max(-max_dist, -x-max_dist), min(max_dist, -x+max_dist) + 1):
 					var z = -x - y
 					valid_hexes.append(Vector3i(x, y, z))
+			return valid_hexes
 	
 	elif scen_key == "surprise_attack":
 		if side_id == 2:

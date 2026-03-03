@@ -219,15 +219,28 @@ Once the campaign parameters are set, the game transitions to the Strategic Phas
                 9 Gollywog (White Light)
                 0 Kawdl-Kit (K'tsa-Kar)
             - Non-attached ships are randomly distributed among the UPF fleets.
+        - armed stations have the following stats: hull points 80, DCR75, weapons: laser battery, rocket battery (x6), defenses: reflective hull, masking screen (x2), ICMs (x6)
+        - fortified stations have the following stats: hull points 140, DCR100, weapons: laser battery (x2), rocket battery (x8), defenses: reflective hull, masking screen (x2), ICMs (x10)
 
 *   **Detection & Intelligence:** Fleets may have limited visibility. Scouting and detection mechanics determine what information players have about enemy fleet locations and compositions. 
     - Each side has full visibility in systems where the have a fleet or station, otherwise they have no visibility and cannot see or detect enemy ships. 
     
 *   **Encounters:** When a Sathar fleet and a UPF fleet occupy the same location (or when the Sathar arrive at a UPF station), an encounter is triggered.
+- Encounters are marked with a red circle with a white border around the system on the strategic map.
+- Neither side may click "end turn" until all battles are resolved.
+- Only the attacker may initiate a tactical battle - the attacker is the side that moved into the system to cause the encounter.
+- Clicking on the encounter as the attacker (which ever side entered the system to cause the encounter) will start a tactical battle. This will also lock out other clients from clicking on other or the same encounter system until the tactical battle is over.
+- The defender will always have the option to retreat from the battle via a dialog panel (similar to the ICM dialog panel). 
+    - The dialog panel will list all ships in the encounter and their current status (damaged, crippled, etc.)
+    - The dialog panel will also list all connected systems and the distance to each system.
+    - If the defender elects to retreat the controlling side must decide on connected system to retreat to.
+    - Militia ships may not retreat from combat in their home system.
+    
 
 ### 3. Tactical Phase (Space Battles)
 
-*   **Combat Resolution:** Encounters triggered in the Strategic Phase are fought out using the existing tactical space battle system.
+*   **Combat Resolution:** Encounters triggered in the Strategic Phase are fought out using the existing tactical space battle system. 
+ - When an battle occurs, it starts with the setup phase just like the scenario setup phase.
 *   **Deployment & Setup:** The forces involved are directly determined by the fleets that engaged on the strategic map. The tactical scenario is generated based on the location (e.g., fighting near a planet, defending a starbase, or deep space).
     - planets are always placed at the center of the map
     - stations are always placed in orbit around planets
