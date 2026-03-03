@@ -6,7 +6,7 @@ var _tween: Tween
 func _ready():
 	_player = AudioStreamPlayer.new()
 	add_child(_player)
-	_player.bus = "Master" # Or "Music" if we had one
+	_player.bus = "Music"
 
 func play_music(stream_path: String, volume_db: float = 0.0, fade_in: float = 0.0):
 	var stream = load(stream_path)

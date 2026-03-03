@@ -223,8 +223,7 @@ func _add_ships_to_fleet(fleet: CampaignFleet, composition: Dictionary):
 		for i in range(count):
 			var data = {
 				"name": "%s %s %d" % [fleet.faction, ship_class, fleet.ships.size() + 1],
-				"class": ship_class,
-				"hull": 100 # Percentage or full max hull logic can be applied later when moving to tactical
+				"class": ship_class
 			}
 			fleet.ships.append(data)
 
@@ -422,3 +421,48 @@ func check_victory_conditions() -> int:
 		return 2 # UPF Victory
 		
 	return 0 # Ongoing
+
+func save_campaign(file_path: String = "user://campaign_save.json") -> bool:
+	var state = serialize_state()
+	var file = FileAccess.open(file_path, FileAccess.WRITE)
+	if file:
+		var json = JSON.stringify(state, "\t")
+		file.store_string(json)
+		file.close()
+		return true
+	return false
+
+func load_campaign(file_path: String = "user://campaign_save.json") -> bool:
+	if not FileAccess.file_exists(file_path):
+		return false
+		
+	var file = FileAccess.open(file_path, FileAccess.READ)
+	if file:
+		var json_string = file.get_as_text()
+		var json = JSON.new()
+		var error = json.parse(json_string)
+		if error == OK:
+			deserialize_state(json.data)
+			file.close()
+			
+			if multiplayer.is_server() and has_node("/root/NetworkManager"):
+				var nm = get_node("/root/NetworkManager")
+				nm.sync_campaign_state.rpc(json.data)
+			return true
+	return false
+
+func deserialize_state(state_data: Dictionary):
+	current_day = state_data.get("current_day", 1)
+	destroyed_stations_count = state_data.get("destroyed_stations", 0)
+	destroyed_fortresses_count = state_data.get("destroyed_fortresses", 0)
+	
+	active_encounters.clear()
+	for e in state_data.get("active_encounters", []):
+		active_encounters.append(e)
+		
+	fleets.clear()
+	var fleets_arr = state_data.get("fleets", [])
+	for f_data in fleets_arr:
+		var fleet = CampaignFleet.new("", "", "")
+		fleet.deserialize(f_data)
+		fleets.append(fleet)

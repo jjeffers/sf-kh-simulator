@@ -83,6 +83,13 @@ func _center_map_initially():
 		_focus_camera_on_system(selected_system_id)
 
 func _input(event):
+	if event.is_action_pressed("ui_cancel") and not has_node("CampaignMenu"):
+		var menu_scn = load("res://Scenes/CampaignMenu.tscn").instantiate()
+		menu_scn.name = "CampaignMenu"
+		add_child(menu_scn)
+		get_viewport().set_input_as_handled()
+		return
+		
 	# Prioritize Map Panning over UI Element focus navigation
 	if event is InputEventKey:
 		var handled_arrow = false

@@ -779,40 +779,49 @@ func _setup_ui():
 	
 	audio_laser = AudioStreamPlayer.new()
 	audio_laser.stream = load("res://Assets/Audio/laser.mp3")
+	audio_laser.bus = "SFX"
 	add_child(audio_laser)
 	
 	audio_hit = AudioStreamPlayer.new()
 	audio_hit.stream = load("res://Assets/Audio/hit.mp3")
+	audio_hit.bus = "SFX"
 	add_child(audio_hit)
 
 	audio_beep = AudioStreamPlayer.new()
 	audio_beep.stream = load("res://Assets/Audio/short-low-beep.mp3")
+	audio_beep.bus = "SFX"
 	add_child(audio_beep)
 
 	audio_action_complete = AudioStreamPlayer.new()
 	audio_action_complete.stream = load("res://Assets/Audio/short-next-selection.mp3")
+	audio_action_complete.bus = "SFX"
 	add_child(audio_action_complete)
 	
 	audio_phase_change = AudioStreamPlayer.new()
 	# 'short-sound.mp3' was missing, using 'short-computer.mp3'
 	audio_phase_change.stream = load("res://Assets/Audio/short-computer.mp3")
+	audio_phase_change.bus = "SFX"
 	add_child(audio_phase_change)
 
 	audio_ship_select = AudioStreamPlayer.new()
 	audio_ship_select.stream = load("res://Assets/Audio/short-departure.mp3")
+	audio_ship_select.bus = "SFX"
 	add_child(audio_ship_select)
 
 	audio_repair_roll = AudioStreamPlayer.new()
+	audio_repair_roll.bus = "SFX"
 	if not OS.get_cmdline_args().has("--headless") and FileAccess.file_exists("res://Assets/Audio/glitch-sound-short.mp3.import"):
 		audio_repair_roll.stream = load("res://Assets/Audio/glitch-sound-short.mp3")
 	add_child(audio_repair_roll)
 
 	audio_repair_success = AudioStreamPlayer.new()
+	audio_repair_success.bus = "SFX"
 	if not OS.get_cmdline_args().has("--headless") and FileAccess.file_exists("res://Assets/Audio/made-repair.mp3.import"):
 		audio_repair_success.stream = load("res://Assets/Audio/made-repair.mp3")
 	add_child(audio_repair_success)
 
 	audio_repair_failure = AudioStreamPlayer.new()
+	audio_repair_failure.bus = "SFX"
 	if not OS.get_cmdline_args().has("--headless") and FileAccess.file_exists("res://Assets/Audio/failed-repair.mp3.import"):
 		audio_repair_failure.stream = load("res://Assets/Audio/failed-repair.mp3")
 	add_child(audio_repair_failure)
