@@ -101,6 +101,7 @@ var btn_dock: Button
 var btn_rearm: Button
 var btn_drop_mine: Button # NEW: Mine placement flag
 var btn_drop_seeker: Button # NEW: Seeker placement flag
+var btn_withdraw: Button # NEW: Strategic Retreat flag
 
 # Mines State
 var active_mines: Array[Dictionary] = [] # Format: {"pos": Vector3i, "side_id": int, "owner_name": String}
@@ -237,9 +238,9 @@ func _setup_background():
 
 func _setup_network_identity():
 	# Network Setup
-	var setup = NetworkManager.game_setup_data
+	var setup = NetworkManager.game_setup_data if NetworkManager.game_setup_data != null else {}
 	# Lobby Data fallback
-	var lobby = NetworkManager.lobby_data
+	var lobby = NetworkManager.lobby_data if NetworkManager.lobby_data != null else {}
 	var scen_key = lobby.get("scenario", null)
 	
 	var peer_id = 1 # Default (Server)
@@ -367,16 +368,16 @@ func start_deployment_phase(scen_key: String = ""):
 	if scen_key == "":
 		scen_key = NetworkManager.lobby_data.get("scenario", "simple_test")
 		
-	if scen_key == "surprise_attack" or scen_key == "the_last_stand" or scen_key == "battle_of_kenzah":
-		# Dynamically determine which side is UPF
+	if scen_key in ["surprise_attack", "the_last_stand", "battle_of_kenzah", "campaign_encounter"]:
+		# Dynamically determine which side is the Defender
 		var scen = ScenarioManager.get_scenario(scen_key)
-		var upf_side_id = 2 # Default fallback
+		var defender_side_id = 1 # Default fallback
 		if scen.has("sides"):
 			for idx in scen["sides"]:
-				if scen["sides"][idx].get("name") == "UPF":
-					upf_side_id = idx + 1
+				if scen["sides"][idx].get("role") == "Defender":
+					defender_side_id = int(str(idx)) + 1
 					break
-		deployment_subphase = upf_side_id
+		deployment_subphase = defender_side_id
 	else:
 		deployment_subphase = 2
 	
@@ -446,7 +447,7 @@ func _process(delta):
 	
 	elif current_phase == Phase.DEPLOYMENT and is_deploying_ship and is_instance_valid(selected_ship) and deploy_hex_selected:
 		# Space Stations and Stations don't have facing or speed mechanics during deployment
-		if selected_ship.ship_class != "Space Station" and selected_ship.ship_class != "Station":
+		if selected_ship.ship_class not in ["Space Station", "Station", "Armed Station", "Fortified Station"]:
 			# Check if it's my turn
 			if deployment_subphase == my_side_id or my_side_id == 0:
 				var local_mouse = get_local_mouse_position()
@@ -460,7 +461,9 @@ func _process(delta):
 					var dist = HexGrid.hex_distance(deploy_tentative_hex, hex_hover)
 					deploy_speed_val = clampi(dist, 0, 20)
 					
-					var scen_key = NetworkManager.lobby_data.get("scenario", "")
+					var scen_key = ""
+					if NetworkManager.lobby_data != null:
+						scen_key = NetworkManager.lobby_data.get("scenario", "")
 					if scen_key == "close_escort" and selected_ship.name == "Megasaurus":
 						deploy_speed_val = 5
 						deploy_facing_val = 3
@@ -589,6 +592,13 @@ func _setup_ui():
 	btn_rearm.pressed.connect(_on_rearm_pressed)
 	btn_rearm.visible = false
 	dock_box.add_child(btn_rearm)
+	
+	btn_withdraw = Button.new()
+	btn_withdraw.text = "Withdraw"
+	btn_withdraw.pressed.connect(_on_withdraw_pressed)
+	btn_withdraw.visible = false
+	btn_withdraw.modulate = Color(1, 0.5, 0.2)
+	vbox.add_child(btn_withdraw)
 	
 	# MS Toggle
 	btn_ms_toggle = CheckBox.new()
@@ -1659,6 +1669,7 @@ func _process_next_attack():
 	# Strict Ammo Consumption (happens now at resolution)
 	weapon["ammo"] -= 1
 	weapon["fired"] = true
+	source.has_ever_fired = true
 	
 	var start_pos = HexGrid.hex_to_pixel(source.grid_position)
 	var target_pos = atk["target_pos"]
@@ -1920,7 +1931,7 @@ func _reset_plotting_state():
 		start_ms_active = selected_ship.is_ms_active
 		
 		# Space Stations can NEVER have speed > 0
-		if selected_ship.ship_class in ["Space Station", "Station"]:
+		if selected_ship.ship_class in ["Space Station", "Station", "Armed Station", "Fortified Station"]:
 			selected_ship.speed = 0
 			start_speed = 0
 	else:
@@ -2285,7 +2296,7 @@ func start_movement_phase():
 	# Check if ANY available ship is a station in orbit
 	var auto_candidate = null
 	for s in available:
-		if s.ship_class in ["Space Station", "Station"] and s.orbit_direction != 0:
+		if s.ship_class in ["Space Station", "Station", "Armed Station", "Fortified Station"] and s.orbit_direction != 0:
 			auto_candidate = s
 			print("DEBUG: Auto-Orbit Candidate Found: %s (Class: %s, Orbit: %d)" % [s.name, s.ship_class, s.orbit_direction])
 			break
@@ -2809,7 +2820,10 @@ func _update_deployment_ui():
 			spin_deploy_speed.max_value = 20
 		
 		# [SCENARIO RULE] Close Escort - Megasaurus locked speed limits.
-		var scen_key = NetworkManager.lobby_data.get("scenario", "simple_test")
+		var scen_key = "simple_test"
+		if NetworkManager.lobby_data != null:
+			scen_key = NetworkManager.lobby_data.get("scenario", "simple_test")
+			
 		if scen_key == "close_escort" and selected_ship.name == "Megasaurus":
 			deploy_speed_val = 5
 			deploy_facing_val = 3
@@ -2821,7 +2835,7 @@ func _update_deployment_ui():
 			btn_deploy_facing_cw.disabled = true
 			btn_deploy_facing_ccw.disabled = true
 			
-		var is_station = selected_ship.ship_class in ["Space Station", "Station"]
+		var is_station = selected_ship.ship_class in ["Space Station", "Station", "Armed Station", "Fortified Station"]
 		if is_instance_valid(btn_deploy_orbit_cw):
 			if is_instance_valid(hbox_deploy_orbit): hbox_deploy_orbit.visible = is_station
 			btn_deploy_orbit_cw.visible = is_station
@@ -2950,7 +2964,7 @@ func _on_deploy_ship_pressed():
 		
 	selected_ship.grid_position = deploy_tentative_hex
 	selected_ship.facing = deploy_facing_val
-	if selected_ship.ship_class in ["Space Station", "Station"]:
+	if selected_ship.ship_class in ["Space Station", "Station", "Armed Station", "Fortified Station"]:
 		deploy_speed_val = 0
 		selected_ship.orbit_direction = deploy_orbit_dir_val
 	else:
@@ -3517,9 +3531,13 @@ func _apply_repair(s: Ship, key: String):
 func _end_round_cycle():
 	# Trigger repair phase every 3 turns, before the turn increments.
 	if turn_count > 0 and turn_count % 3 == 0:
-		if current_phase != Phase.REPAIR:
-			call_deferred("start_repair_phase")
-		return
+		var scen_key = ""
+		if NetworkManager.lobby_data != null:
+			scen_key = NetworkManager.lobby_data.get("scenario", "")
+		if scen_key != "campaign_encounter":
+			if current_phase != Phase.REPAIR:
+				call_deferred("start_repair_phase")
+			return
 
 	turn_count += 1
 	log_message("Round Complete. Starting New Round.")
@@ -3649,6 +3667,7 @@ func _update_ui_state():
 		btn_ms_toggle.visible = false
 		if btn_dock: btn_dock.visible = false
 		if btn_rearm: btn_rearm.visible = false
+		if btn_withdraw: btn_withdraw.visible = false
 		if btn_drop_mine: btn_drop_mine.visible = false
 		if btn_drop_seeker: btn_drop_seeker.visible = false
 		if opt_active_screen: opt_active_screen.visible = false
@@ -3734,6 +3753,12 @@ func _update_ui_state():
 					if can_dock:
 						btn_dock.visible = true
 						btn_dock.text = "Dock"
+			
+			# Withdrawal Check
+			if btn_withdraw:
+				if is_stationary and not is_locked:
+					var can_w = _can_withdraw(selected_ship)
+					btn_withdraw.visible = can_w
 			
 			# MS Toggle Check
 			# Visible if ship has Max MS > 0
@@ -4316,7 +4341,9 @@ func _validate_rpc_ownership(sender_id: int, required_side_id: int) -> bool:
 		
 	# 2. Map Sender ID to Side ID
 	# NetworkManager.lobby_data["teams"] = { peer_id: side_id }
-	var sender_side = NetworkManager.lobby_data["teams"].get(sender_id, 0)
+	var sender_side = 0
+	if NetworkManager.lobby_data != null and NetworkManager.lobby_data.has("teams"):
+		sender_side = NetworkManager.lobby_data["teams"].get(sender_id, 0)
 	
 	if sender_side == required_side_id:
 		return true
@@ -4482,6 +4509,85 @@ func _load_plan_visualization(s: Ship):
 	else:
 		_spawn_ghost()
 
+
+func _can_withdraw(ship: Ship) -> bool:
+	if not ship: return false
+	
+	# Only allow retreat in Campaign Encounters for now.
+	# Or globally if desired, but rules state Campaign specific.
+	# Actually, players might want to retreat from standard scenarios too if outside range?
+	# Let's check scenario. "campaign_encounter" is the primary one.
+	var scen_key = ""
+	if NetworkManager.lobby_data != null:
+		scen_key = NetworkManager.lobby_data.get("scenario", "")
+	if scen_key != "campaign_encounter": 
+		print("DEBUG _can_withdraw: rejected bad scen_key: ", scen_key)
+		return false
+	# Cannot withdraw if they have moved this turn yet (must be starting stationary? "movement planning")
+	# If they have plotted a path, the button is hidden above anyway since is_stationary = false.
+	
+	if ship.is_militia and not ship.has_ever_fired:
+		print("DEBUG _can_withdraw: rejected militia that hasn't fired")
+		return false # Militia must attack at least once before fleeing
+
+	# Check range to all living enemies
+	for enemy in ships:
+		if is_instance_valid(enemy) and enemy.side_id != ship.side_id and not enemy.is_destroyed and not enemy.has_withdrawn:
+			# Check all enemy weapons
+			for w in enemy.weapons:
+				if w.get("ammo", 0) > 0 and not w.get("is_crippled", false):
+					var dist = HexGrid.hex_distance(ship.grid_position, enemy.grid_position)
+					if dist <= w.get("range", 0):
+						print("DEBUG _can_withdraw: rejected enemy in range. Dist: ", dist, " Range: ", w.get("range", 0))
+						return false # An enemy is in range
+
+	print("DEBUG _can_withdraw: Success!")
+	return true
+
+func _on_withdraw_pressed():
+	if not is_instance_valid(selected_ship): return
+	
+	log_message("[color=orange]%s is withdrawing from combat![/color]" % selected_ship.name)
+	
+	if _is_networked():
+		rpc_execute_withdraw.rpc_id(1, selected_ship.name)
+	else:
+		rpc_execute_withdraw(selected_ship.name)
+
+@rpc("any_peer", "call_local", "reliable")
+func rpc_execute_withdraw(ship_name: String):
+	# Authority check
+	var sender = 1
+	if _is_networked():
+		sender = multiplayer.get_remote_sender_id()
+		if sender == 0: sender = (multiplayer.get_unique_id() if _is_networked() else 1)
+	
+	var ship = _find_ship_by_name(ship_name)
+	if not ship: return
+	
+	if not _validate_rpc_ownership(sender, ship.side_id):
+		return
+		
+	# Broadcast withdrawal
+	if _is_networked():
+		rpc_sync_withdraw.rpc(ship_name)
+	else:
+		rpc_sync_withdraw(ship_name)
+
+@rpc("authority", "call_local", "reliable")
+func rpc_sync_withdraw(ship_name: String):
+	var ship = _find_ship_by_name(ship_name)
+	if not ship: return
+	
+	if not ship.has_withdrawn:
+		ship.has_withdrawn = true
+		ship.is_destroyed = true # To trigger logic skipping elsewhere
+		log_message("[color=orange]%s has withdrawn and left the tactical area.[/color]" % ship.name)
+		ship.visible = false
+		_update_movement_ui_list()
+		# Needs to be sent back as an event to Campaign? 
+		# We'll handle this at battle-end by checking has_withdrawn or surviving ships.
+		_check_victory() # Maybe the last ship withdrew?
 
 func _on_exec_move_pressed():
 	# Authority Check
@@ -4984,7 +5090,7 @@ func _apply_movement_plan(s: Ship):
 		s.facing = s.planned_facing # Always apply facing change?
 		new_speed = max(0, old_speed - s.get_effective_adf())
 		
-	if s.ship_class in ["Space Station", "Station"]:
+	if s.ship_class in ["Space Station", "Station", "Armed Station", "Fortified Station"]:
 		new_speed = 0
 		
 	s.speed = new_speed
@@ -5050,7 +5156,7 @@ func _handle_docking_states(ship: Ship):
 	# 1. Check for Auto-Docking
 	var potential_hosts = ships.filter(func(s): return is_instance_valid(s) and s.side_id == ship.side_id and s != ship and s.grid_position == ship.grid_position)
 	# Filter for valid hosts
-	potential_hosts = potential_hosts.filter(func(s): return s.ship_class in ["Space Station", "Assault Carrier"])
+	potential_hosts = potential_hosts.filter(func(s): return s.ship_class in ["Space Station", "Armed Station", "Fortified Station", "Assault Carrier"])
 	
 	if potential_hosts.size() > 0:
 		var host = potential_hosts[0]
@@ -5270,7 +5376,7 @@ func _draw():
 						_draw_hex_outline(h, Color(0, 1, 0, 0.5), 2.0)
 						
 		# Render projected speed for non-station ships during deployment
-		if deploy_hex_selected and deploy_speed_val > 0 and not (selected_ship.ship_class in ["Space Station", "Station"]):
+		if deploy_hex_selected and deploy_speed_val > 0 and not (selected_ship.ship_class in ["Space Station", "Station", "Armed Station", "Fortified Station"]):
 			var forward_vec = HexGrid.get_direction_vec(deploy_facing_val)
 			var current_check_hex = deploy_tentative_hex
 			
@@ -5279,7 +5385,7 @@ func _draw():
 				_draw_hex_outline(current_check_hex, Color(0, 1, 1, 0.6), 4.0) # Cyan for deployment speed
 				
 		# Render orbit preview for stations during deployment
-		if deploy_hex_selected and deploy_orbit_dir_val != 0 and (selected_ship.ship_class in ["Space Station", "Station"]):
+		if deploy_hex_selected and deploy_orbit_dir_val != 0 and (selected_ship.ship_class in ["Space Station", "Station", "Armed Station", "Fortified Station"]):
 			var planet = null
 			for neighbor in HexGrid.get_neighbors(deploy_tentative_hex):
 				if neighbor in planet_hexes:
@@ -5292,7 +5398,7 @@ func _draw():
 	if current_phase == Phase.DEPLOYMENT:
 		for s in ships:
 			if is_instance_valid(s) and s.is_deployed and s.side_id == deployment_subphase:
-				if s.ship_class != "Space Station" and s.ship_class != "Station" and s.speed > 0:
+				if s.ship_class not in ["Space Station", "Station", "Armed Station", "Fortified Station"] and s.speed > 0:
 					var start_pos = HexGrid.hex_to_pixel(s.grid_position)
 					var forward_vec = HexGrid.get_direction_vec(s.facing)
 					var end_pos = HexGrid.hex_to_pixel(s.grid_position + forward_vec * s.speed)
@@ -5308,7 +5414,7 @@ func _draw():
 			
 	# Draw orbital rings for all orbiting Space Stations
 	for s in ships:
-		if is_instance_valid(s) and s.ship_class in ["Space Station", "Station"] and s.orbit_direction != 0 and s.is_deployed and not s.is_destroyed:
+		if is_instance_valid(s) and s.ship_class in ["Space Station", "Station", "Armed Station", "Fortified Station"] and s.orbit_direction != 0 and s.is_deployed and not s.is_destroyed:
 			# Skip drawing the permanent ring if we are actively re-deploying this station (it draws a preview instead)
 			if current_phase == Phase.DEPLOYMENT and is_deploying_ship and s == selected_ship:
 				continue
@@ -6147,7 +6253,7 @@ func _handle_deployment_click(hex: Vector3i):
 	queue_redraw()
 	
 	# Auto-commit deployment for stations (they don't need facing/speed dragging)
-	if selected_ship.ship_class == "Space Station" or selected_ship.ship_class == "Station":
+	if selected_ship.ship_class in ["Space Station", "Station", "Armed Station", "Fortified Station"]:
 		_on_deploy_ship_pressed()
 
 func _handle_movement_click(hex: Vector3i):
@@ -6631,7 +6737,9 @@ func get_side_name(side_id: int) -> String:
 	# Side ID 1 = Scenario Index 0 (Attackers/P1)
 	# Side ID 2 = Scenario Index 1 (Defenders/P2)
 	# Assuming 1-based Side ID maps to 0-based Array Index
-	var scen_key = NetworkManager.lobby_data.get("scenario", "surprise_attack")
+	var scen_key = "surprise_attack"
+	if NetworkManager.lobby_data != null:
+		scen_key = NetworkManager.lobby_data.get("scenario", "surprise_attack")
 	var scen = ScenarioManager.get_scenario(scen_key)
 	if scen and scen.has("sides"):
 		var side_idx = side_id - 1
@@ -6668,12 +6776,15 @@ func _on_ship_destroyed(ship: Ship):
 	ships.erase(ship)
 	_update_ship_visuals() # Re-calc stacks
 	log_message("Ship destroyed: %s" % ship.name)
-	
+	_check_victory()
+
+func _check_victory():
 	# Check for Victory
 	var s1_count = 0
 	var s2_count = 0
 	for s in ships:
 		if not is_instance_valid(s): continue
+		if s.is_destroyed: continue # Just in case it's still in the list but destroyed
 		if s.side_id == 1: s1_count += 1
 		elif s.side_id == 2: s2_count += 1
 	
@@ -6687,12 +6798,23 @@ func _on_ship_destroyed(ship: Ship):
 func show_game_over(msg: String):
 	current_phase = Phase.END
 	label_winner.text = msg
+	
+	if NetworkManager.lobby_data != null and NetworkManager.lobby_data.get("scenario", "") == "campaign_encounter":
+		if is_instance_valid(btn_restart):
+			btn_restart.text = "Return to Campaign Map"
+			
 	panel_game_over.visible = true
 	_update_ui_state()
 	log_message(msg)
 
 func _on_restart():
-	get_tree().reload_current_scene()
+	if NetworkManager.lobby_data != null and NetworkManager.lobby_data.get("scenario", "") == "campaign_encounter":
+		# Clear the active encounter from the campaign manager? 
+		# If CampaignManager is singletons/autoloads, we might need to remove the resolved encounter.
+		# For now, just return to the map. The map might prompt again if the encounter isn't cleared!
+		get_tree().change_scene_to_file("res://Scenes/CampaignMap.tscn")
+	else:
+		get_tree().reload_current_scene()
 
 func end_turn():
 	if current_phase == Phase.END: return
@@ -6806,6 +6928,8 @@ func load_scenario(key: String, seed_val: int = 12345):
 		var cls = data.get("class", "Fighter")
 		match cls:
 			"Station", "Space Station": s.configure_space_station()
+			"Armed Station": s.configure_armed_station()
+			"Fortified Station": s.configure_fortified_station()
 			"Fighter": s.configure_fighter()
 			"Assault Scout": s.configure_assault_scout()
 			"Frigate": s.configure_frigate()
@@ -6860,7 +6984,9 @@ func load_scenario(key: String, seed_val: int = 12345):
 					s.set(k, val)
 				
 		# Assign Ownership from Lobby
-		var owner_pid = NetworkManager.lobby_data["ship_assignments"].get(s.name, 0)
+		var owner_pid = 0
+		if NetworkManager.lobby_data != null and NetworkManager.lobby_data.has("ship_assignments"):
+			owner_pid = NetworkManager.lobby_data["ship_assignments"].get(s.name, 0)
 		
 		# Default Assignment Logic (Fallback)
 		if owner_pid == 0:
@@ -6910,7 +7036,7 @@ func load_scenario(key: String, seed_val: int = 12345):
 	# Pass 3: Initialize Space Station Rearm Capacity
 	# A space station carries a re-arm capacity of x2 per fighter group stationed
 	for s in ships:
-		if is_instance_valid(s) and s.ship_class == "Space Station":
+		if is_instance_valid(s) and s.ship_class in ["Space Station", "Armed Station", "Fortified Station"]:
 			s.rearm_capacity = s.docked_guests.size() * 2
 
 	_update_ship_visuals()
@@ -7093,7 +7219,9 @@ func _handle_mouse_facing(hex: Vector3i):
 	if not ghost_ship: return
 	
 	# Scenario rule lock
-	var scen_key = NetworkManager.lobby_data.get("scenario", "simple_test")
+	var scen_key = "simple_test"
+	if NetworkManager.lobby_data != null:
+		scen_key = NetworkManager.lobby_data.get("scenario", "simple_test")
 	if scen_key == "close_escort" and is_instance_valid(selected_ship) and selected_ship.name == "Megasaurus":
 		return
 	

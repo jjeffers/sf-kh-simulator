@@ -1,0 +1,156 @@
+[gd_scene format=3 uid="uid://c1d2e3f4g5h6i"]
+
+[ext_resource type="Script" path="res://Scripts/CampaignMap.gd" id="1_d1e2f"]
+
+[node name="CampaignMap" type="Control"]
+layout_mode = 3
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+script = ExtResource("1_d1e2f")
+
+[node name="HBoxContainer" type="HBoxContainer" parent="."]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+
+[node name="VBoxLeft" type="VBoxContainer" parent="HBoxContainer"]
+layout_mode = 2
+size_flags_horizontal = 3
+size_flags_stretch_ratio = 3.0
+
+[node name="TopBar" type="PanelContainer" parent="HBoxContainer/VBoxLeft"]
+layout_mode = 2
+custom_minimum_size = Vector2(0, 50)
+
+[node name="HBox" type="HBoxContainer" parent="HBoxContainer/VBoxLeft/TopBar"]
+layout_mode = 2
+
+[node name="TurnLabel" type="Label" parent="HBoxContainer/VBoxLeft/TopBar/HBox"]
+layout_mode = 2
+text = "Day: 1"
+
+[node name="TurnStatusLabel" type="Label" parent="HBoxContainer/VBoxLeft/TopBar/HBox"]
+layout_mode = 2
+size_flags_horizontal = 3
+horizontal_alignment = 1
+
+[node name="EndTurnBtn" type="Button" parent="HBoxContainer/VBoxLeft/TopBar/HBox"]
+layout_mode = 2
+text = "End Turn"
+
+[node name="MapView" type="ScrollContainer" parent="HBoxContainer/VBoxLeft"]
+layout_mode = 2
+size_flags_vertical = 3
+horizontal_scroll_mode = 3
+vertical_scroll_mode = 3
+
+[node name="MapContainer" type="Control" parent="HBoxContainer/VBoxLeft/MapView"]
+custom_minimum_size = Vector2(2500, 2500)
+layout_mode = 2
+
+[node name="MapBackground" type="ColorRect" parent="HBoxContainer/VBoxLeft/MapView/MapContainer"]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+color = Color(0, 0, 0, 0)
+
+[node name="SystemsContainer" type="Control" parent="HBoxContainer/VBoxLeft/MapView/MapContainer"]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 2
+
+[node name="RoutesContainer" type="Control" parent="HBoxContainer/VBoxLeft/MapView/MapContainer"]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 2
+
+[node name="FleetsContainer" type="Control" parent="HBoxContainer/VBoxLeft/MapView/MapContainer"]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 2
+
+[node name="VBoxRight" type="VBoxContainer" parent="HBoxContainer"]
+layout_mode = 2
+size_flags_horizontal = 3
+size_flags_stretch_ratio = 1.0
+
+[node name="Panel" type="Panel" parent="HBoxContainer/VBoxRight"]
+layout_mode = 2
+size_flags_vertical = 3
+
+[node name="VBox" type="VBoxContainer" parent="HBoxContainer/VBoxRight/Panel"]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+offset_left = 10.0
+offset_top = 10.0
+offset_right = -10.0
+offset_bottom = -10.0
+
+[node name="Header" type="Label" parent="HBoxContainer/VBoxRight/Panel/VBox"]
+layout_mode = 2
+text = "Fleets at Selected System"
+horizontal_alignment = 1
+
+[node name="FleetList" type="ItemList" parent="HBoxContainer/VBoxRight/Panel/VBox"]
+layout_mode = 2
+size_flags_vertical = 3
+
+[node name="CompositionHeader" type="Label" parent="HBoxContainer/VBoxRight/Panel/VBox"]
+layout_mode = 2
+text = "Composition"
+
+[node name="ShipList" type="ItemList" parent="HBoxContainer/VBoxRight/Panel/VBox"]
+layout_mode = 2
+size_flags_vertical = 3
+select_mode = 2
+
+[node name="ActionHBox" type="HBoxContainer" parent="HBoxContainer/VBoxRight/Panel/VBox"]
+layout_mode = 2
+
+[node name="TransferBtn" type="Button" parent="HBoxContainer/VBoxRight/Panel/VBox/ActionHBox"]
+layout_mode = 2
+size_flags_horizontal = 3
+text = "Transfer"
+disabled = true
+
+[node name="NewFleetBtn" type="Button" parent="HBoxContainer/VBoxRight/Panel/VBox/ActionHBox"]
+layout_mode = 2
+size_flags_horizontal = 3
+text = "New Fleet"
+disabled = true
+
+[node name="PlotJumpBtn" type="Button" parent="HBoxContainer/VBoxRight/Panel/VBox/ActionHBox"]
+layout_mode = 2
+size_flags_horizontal = 3
+toggle_mode = true
+text = "Plot Jump"
+disabled = true
+
+[node name="CancelJumpBtn" type="Button" parent="HBoxContainer/VBoxRight/Panel/VBox/ActionHBox"]
+layout_mode = 2
+size_flags_horizontal = 3
+text = "Cancel Jump"
+disabled = true

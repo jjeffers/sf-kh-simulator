@@ -46,7 +46,7 @@ func execute(ships: Array, valid_hexes: Array[Vector3i], game_manager: Node) -> 
             s.speed = 5
             
         # Space stations
-        if s.ship_class in ["Space Station", "Station"]:
+        if s.ship_class in ["Space Station", "Station", "Armed Station", "Fortified Station"]:
             s.orbit_direction = 1 # Default CW
             s.speed = 0
             
@@ -71,7 +71,7 @@ func _deploy_seekers(active_side_id: int, game_manager: Node) -> void:
     # 2. Find planets defended by space stations of our side
     var target_planets = []
     for s in game_manager.ships:
-        if is_instance_valid(s) and s.side_id == active_side_id and s.ship_class in ["Space Station", "Station"]:
+        if is_instance_valid(s) and s.side_id == active_side_id and s.ship_class in ["Space Station", "Station", "Armed Station", "Fortified Station"]:
             # Find closest planet (typically orbit distance)
             for p in game_manager.planet_hexes:
                 if HexGrid.hex_distance(s.grid_position, p) <= 5: 
@@ -126,7 +126,7 @@ func _deploy_mines(active_side_id: int, game_manager: Node) -> void:
     # 2. Find planets defended by space stations of our side
     var target_planets = []
     for s in game_manager.ships:
-        if is_instance_valid(s) and s.side_id == active_side_id and s.ship_class in ["Space Station", "Station"]:
+        if is_instance_valid(s) and s.side_id == active_side_id and s.ship_class in ["Space Station", "Station", "Armed Station", "Fortified Station"]:
             # Find closest planet (typically orbit distance)
             for p in game_manager.planet_hexes:
                 if HexGrid.hex_distance(s.grid_position, p) <= 5: 
@@ -177,7 +177,7 @@ func _categorize_ships(ships: Array) -> Dictionary:
         match s.ship_class:
             "Battleship", "Heavy Cruiser":
                 roles[ROLE_FRONT_LINE].append(s)
-            "Assault Carrier", "Minelayer", "Space Station", "Station":
+            "Assault Carrier", "Minelayer", "Space Station", "Station", "Armed Station", "Fortified Station":
                 roles[ROLE_SUPPORT].append(s)
             "Assault Scout", "Frigate", "Destroyer", "Light Cruiser":
                 roles[ROLE_ESCORT].append(s)
@@ -232,7 +232,7 @@ func _find_best_hex(ship: Node, valid_hexes: Array[Vector3i], placed_ships: Arra
             score -= 500.0 # Extreme penalty, but not hard fail in case valid_hexes is smaller than fleet
             
         # 1.5. Planetary Orbit Preference for Stations
-        if ship.ship_class in ["Space Station", "Station"]:
+        if ship.ship_class in ["Space Station", "Station", "Armed Station", "Fortified Station"]:
             var min_dist_to_planet = 999
             for p in game_manager.planet_hexes:
                 var d = HexGrid.hex_distance(h, p)
@@ -246,7 +246,7 @@ func _find_best_hex(ship: Node, valid_hexes: Array[Vector3i], placed_ships: Arra
                     score -= min_dist_to_planet * 100.0 # Strong pull towards the planet
             
         # Also avoid stacking on existing environmental hazards (planets) if not a station
-        if ship.ship_class not in ["Space Station", "Station"]:
+        if ship.ship_class not in ["Space Station", "Station", "Armed Station", "Fortified Station"]:
             if h in game_manager.planet_hexes:
                 score -= 1000.0
                 

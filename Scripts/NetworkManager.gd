@@ -149,9 +149,47 @@ func update_lobby_data(data: Dictionary):
 	lobby_data = data
 	lobby_updated.emit()
 
+@rpc("authority", "reliable")
+func sync_campaign_state(state_data: Dictionary):
+	print("[NetworkManager] Received Campaign State Sync")
+	var cm = CampaignManager
+	var old_day = cm.current_day
+		
+	cm.current_day = state_data.get("current_day", 1)
+	cm.destroyed_stations_count = state_data.get("destroyed_stations", 0)
+	cm.destroyed_fortresses_count = state_data.get("destroyed_fortresses", 0)
+	
+	var new_encounters = []
+	if state_data.has("active_encounters"):
+		var old_encounters = cm.active_encounters.duplicate()
+		cm.active_encounters.clear()
+		for e in state_data.get("active_encounters", []):
+			cm.active_encounters.append(e)
+			if not old_encounters.has(e):
+				new_encounters.append(e)
+			
+	cm.fleets.clear()
+	var fleets_arr = state_data.get("fleets", [])
+	for f_data in fleets_arr:
+		var fleet = CampaignFleet.new("", "", "")
+		fleet.deserialize(f_data)
+		cm.fleets.append(fleet)
+		
+	# Now that state is fully hydrated, fire UI log events
+	for e in new_encounters:
+		cm.campaign_encounter_triggered.emit(e, [], [])
+		
+	if cm.current_day > old_day:
+		cm.campaign_day_advanced.emit(cm.current_day)
+	else:
+		# Always emit an update trigger so the map redraws and auto-prompts fire
+		cm.campaign_day_advanced.emit(cm.current_day)
+
 @rpc("authority", "call_local", "reliable")
 func start_game_rpc():
-	print("[NetworkManager] Starting Game RPC received. Changing Scene to Main.tscn...")
+	print("[NetworkManager] Starting Game RPC received.")
 	game_started.emit()
-	# Scene change handled by caller usually, but signal is good
-	get_tree().change_scene_to_file("res://Scenes/Main.tscn")
+	if lobby_data.get("game_mode", "") == "campaign" and lobby_data.get("scenario", "") != "campaign_encounter":
+		get_tree().change_scene_to_file("res://Scenes/CampaignMap.tscn")
+	else:
+		get_tree().change_scene_to_file("res://Scenes/Main.tscn")

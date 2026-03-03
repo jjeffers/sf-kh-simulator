@@ -13,3 +13,4 @@ trigger: always_on
 **Invariants:**
 - Never commit code that breaks the existing ship combat mechanics.
 - If a test requires a specific scene (like `combat_manager.tscn`), ensure the scene is properly instanced in the test script.
+- Avoid tests that start a headless game then waits for 300 seconds. This is a tremendous waste of time.

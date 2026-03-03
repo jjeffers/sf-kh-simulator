@@ -75,6 +75,9 @@ var speed: int = 0
 var has_moved: bool = false
 var has_fired: bool = false
 var orbit_direction: int = 0 # 0=None, 1=CW, -1=CCW
+var has_withdrawn: bool = false # Tracks if ship retreated from combat
+var has_ever_fired: bool = false # Tracks if ship ever attacked in this battle
+var is_militia: bool = false # Tracks if ship is localized planetary militia
 
 # Undo State
 var turn_start_state: Dictionary = {}
@@ -108,6 +111,9 @@ func get_net_state() -> Dictionary:
 		"current_mr_modifier": current_mr_modifier,
 		"has_moved": has_moved,
 		"has_fired": has_fired,
+		"has_ever_fired": has_ever_fired,
+		"has_withdrawn": has_withdrawn,
+		"is_militia": is_militia,
 		"is_docked": is_docked, # Sync Docking State
 		"grid_position": grid_position,
 		"facing": facing,
@@ -165,6 +171,9 @@ func apply_net_state(data: Dictionary):
 	is_deployed = data.get("is_deployed", is_deployed)
 	has_moved = data.get("has_moved", has_moved)
 	has_fired = data.get("has_fired", has_fired)
+	has_ever_fired = data.get("has_ever_fired", has_ever_fired)
+	has_withdrawn = data.get("has_withdrawn", has_withdrawn)
+	is_militia = data.get("is_militia", is_militia)
 	
 	# Docking Sync
 	var net_is_docked = data.get("is_docked", is_docked)
@@ -1258,6 +1267,49 @@ func configure_space_station(force_hull: int = -1):
 	
 	current_weapon_index = 0
 
+func configure_armed_station():
+	ship_class = "Armed Station"
+	defense = "RH"
+	hull = 80
+	max_hull = 80
+	max_dcr = 75
+	current_dcr = 75
+	adf = 0
+	mr = 0
+	icm_max = 6
+	icm_current = 6
+	ms_max = 2
+	ms_current = 2
+	equipped_screens = ["ES", "SS", "PS"]
+	
+	weapons.clear()
+	weapons.append({"name": "Laser Battery", "type": "Laser", "range": 9, "arc": "360", "ammo": 999, "max_ammo": 999, "damage_dice": "1d10", "damage_bonus": 0, "dtm": 0, "fired": false})
+	for i in range(6):
+		weapons.append({"name": "Rocket Battery %d" % (i+1), "type": "Rocket Battery", "range": 3, "arc": "360", "ammo": 1, "max_ammo": 1, "damage_dice": "2d10", "damage_bonus": 0, "dtm": -10, "fired": false})
+	current_weapon_index = 0
+
+func configure_fortified_station():
+	ship_class = "Fortified Station"
+	defense = "RH"
+	hull = 140
+	max_hull = 140
+	max_dcr = 100
+	current_dcr = 100
+	adf = 0
+	mr = 0
+	icm_max = 10
+	icm_current = 10
+	ms_max = 2
+	ms_current = 2
+	equipped_screens = ["ES", "SS", "PS"]
+	
+	weapons.clear()
+	for i in range(2):
+		weapons.append({"name": "Laser Battery %d" % (i+1), "type": "Laser", "range": 9, "arc": "360", "ammo": 999, "max_ammo": 999, "damage_dice": "1d10", "damage_bonus": 0, "dtm": 0, "fired": false})
+	for i in range(8):
+		weapons.append({"name": "Rocket Battery %d" % (i+1), "type": "Rocket Battery", "range": 3, "arc": "360", "ammo": 1, "max_ammo": 1, "damage_dice": "2d10", "damage_bonus": 0, "dtm": -10, "fired": false})
+	current_weapon_index = 0
+
 func reset_weapons():
 	has_fired = false
 	for w in weapons:
@@ -1566,7 +1618,7 @@ func _draw():
 				draw_texture_rect(texture_upf_battleship, rect, false, Color.WHITE)
 				draw_set_transform(Vector2.ZERO, 0, Vector2(1, 1))
 				points = PackedVector2Array()
-		"Space Station":
+		"Space Station", "Armed Station", "Fortified Station":
 			# Sprite Rendering
 			# Scale based on Hull Points: 1.0 + (max_hull / 200.0) -> Max ~2.0x
 			# Examples: 100 HP -> 1.5x, 200 HP -> 2.0x relative to Tile Size
@@ -1785,7 +1837,7 @@ func reset_turn_state():
 		turns_docked_since_action = 0
 
 func get_docking_capacity() -> int:
-	if ship_class == "Space Station": return 999
+	if ship_class in ["Space Station", "Armed Station", "Fortified Station"]: return 999
 	if ship_class == "Assault Carrier": return 10
 	return 0
 
@@ -1807,7 +1859,7 @@ func get_display_name() -> String:
 		"Heavy Cruiser": abbrev = "CA"
 		"Battleship": abbrev = "BB"
 		"Civilian": abbrev = "SS"
-		"Space Station": abbrev = "ST"
+		"Space Station", "Armed Station", "Fortified Station": abbrev = "ST"
 		"Assault Scout": abbrev = "AS"
 		"Assault Carrier": abbrev = "AC"
 		_: abbrev = "?"
@@ -1817,7 +1869,7 @@ func get_display_name() -> String:
 func can_dock_with(station: Ship) -> bool:
 	if not is_instance_valid(station) or station == self:
 		return false
-	if station.ship_class not in ["Space Station", "Assault Carrier"]:
+	if station.ship_class not in ["Space Station", "Armed Station", "Fortified Station", "Assault Carrier"]:
 		return false
 	if station.docked_guests.size() >= station.get_docking_capacity():
 		return false
@@ -1903,7 +1955,7 @@ func get_texture() -> Texture2D:
 			return texture_civilian_1
 		"Shuttle":
 			return texture_shuttle
-		"Space Station":
+		"Space Station", "Armed Station", "Fortified Station":
 			return texture_space_station
 	return texture_fighter # Fallback
 
@@ -1941,7 +1993,7 @@ func draw_sprite_custom(canvas: CanvasItem, pos: Vector2, facing_dir: int, alpha
 		"Heavy Cruiser": target_size = HexGrid.TILE_SIZE * 1.4
 		"Battleship": target_size = HexGrid.TILE_SIZE * 1.7
 		"Assault Carrier": target_size = HexGrid.TILE_SIZE * 2.0
-		"Space Station":
+		"Space Station", "Armed Station", "Fortified Station":
 			var hp_scale_bonus = float(max_hull) / 200.0
 			target_size = HexGrid.TILE_SIZE * (1.0 + hp_scale_bonus)
 

@@ -1,0 +1,140 @@
+[gd_scene format=3 uid="uid://b0x2y304a5b6c"]
+
+[ext_resource type="Script" path="res://Scripts/CampaignLobby.gd" id="1_a1b2c"]
+
+[node name="CampaignLobby" type="Control"]
+layout_mode = 3
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+script = ExtResource("1_a1b2c")
+
+[node name="Panel" type="Panel" parent="."]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+
+[node name="MarginContainer" type="MarginContainer" parent="."]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+theme_override_constants/margin_left = 50
+theme_override_constants/margin_top = 50
+theme_override_constants/margin_right = 50
+theme_override_constants/margin_bottom = 50
+
+[node name="VBoxContainer" type="VBoxContainer" parent="MarginContainer"]
+layout_mode = 2
+theme_override_constants/separation = 20
+
+[node name="Title" type="Label" parent="MarginContainer/VBoxContainer"]
+layout_mode = 2
+theme_override_font_sizes/font_size = 32
+text = "Second Sathar War - Campaign Lobby"
+horizontal_alignment = 1
+
+[node name="HBoxContainer" type="HBoxContainer" parent="MarginContainer/VBoxContainer"]
+layout_mode = 2
+size_flags_vertical = 3
+theme_override_constants/separation = 20
+
+[node name="InfoPanel" type="PanelContainer" parent="MarginContainer/VBoxContainer/HBoxContainer"]
+layout_mode = 2
+size_flags_horizontal = 3
+
+[node name="VBoxContainer" type="VBoxContainer" parent="MarginContainer/VBoxContainer/HBoxContainer/InfoPanel"]
+layout_mode = 2
+theme_override_constants/separation = 15
+
+[node name="StateLabel" type="Label" parent="MarginContainer/VBoxContainer/HBoxContainer/InfoPanel/VBoxContainer"]
+layout_mode = 2
+theme_override_font_sizes/font_size = 24
+text = "Campaign State: Turn 1 (Day 1)"
+
+[node name="HSeparator" type="HSeparator" parent="MarginContainer/VBoxContainer/HBoxContainer/InfoPanel/VBoxContainer"]
+layout_mode = 2
+
+[node name="UPFVictory" type="Label" parent="MarginContainer/VBoxContainer/HBoxContainer/InfoPanel/VBoxContainer"]
+layout_mode = 2
+theme_override_colors/font_color = Color(0.4, 0.7, 1, 1)
+text = "UPF Victory: Defend systems, eliminate Sathar fleets."
+autowrap_mode = 2
+
+[node name="SatharVictory" type="Label" parent="MarginContainer/VBoxContainer/HBoxContainer/InfoPanel/VBoxContainer"]
+layout_mode = 2
+theme_override_colors/font_color = Color(1, 0.4, 0.4, 1)
+text = "Sathar Victory: Destroy 12 stations and 4 fortresses."
+autowrap_mode = 2
+
+[node name="ForcesPanel" type="PanelContainer" parent="MarginContainer/VBoxContainer/HBoxContainer"]
+layout_mode = 2
+size_flags_horizontal = 3
+size_flags_stretch_ratio = 2.0
+
+[node name="HBox" type="HBoxContainer" parent="MarginContainer/VBoxContainer/HBoxContainer/ForcesPanel"]
+layout_mode = 2
+theme_override_constants/separation = 15
+
+[node name="UPFPanel" type="VBoxContainer" parent="MarginContainer/VBoxContainer/HBoxContainer/ForcesPanel/HBox"]
+layout_mode = 2
+size_flags_horizontal = 3
+
+[node name="Label" type="Label" parent="MarginContainer/VBoxContainer/HBoxContainer/ForcesPanel/HBox/UPFPanel"]
+layout_mode = 2
+theme_override_colors/font_color = Color(0.4, 0.7, 1, 1)
+text = "UPF Players"
+horizontal_alignment = 1
+
+[node name="List" type="ItemList" parent="MarginContainer/VBoxContainer/HBoxContainer/ForcesPanel/HBox/UPFPanel"]
+layout_mode = 2
+size_flags_vertical = 3
+
+[node name="JoinBtn" type="Button" parent="MarginContainer/VBoxContainer/HBoxContainer/ForcesPanel/HBox/UPFPanel"]
+layout_mode = 2
+text = "Join UPF"
+
+[node name="SatharPanel" type="VBoxContainer" parent="MarginContainer/VBoxContainer/HBoxContainer/ForcesPanel/HBox"]
+layout_mode = 2
+size_flags_horizontal = 3
+
+[node name="Label" type="Label" parent="MarginContainer/VBoxContainer/HBoxContainer/ForcesPanel/HBox/SatharPanel"]
+layout_mode = 2
+theme_override_colors/font_color = Color(1, 0.4, 0.4, 1)
+text = "Sathar Players"
+horizontal_alignment = 1
+
+[node name="List" type="ItemList" parent="MarginContainer/VBoxContainer/HBoxContainer/ForcesPanel/HBox/SatharPanel"]
+layout_mode = 2
+size_flags_vertical = 3
+
+[node name="JoinBtn" type="Button" parent="MarginContainer/VBoxContainer/HBoxContainer/ForcesPanel/HBox/SatharPanel"]
+layout_mode = 2
+text = "Join Sathar"
+
+[node name="UnassignedPanel" type="VBoxContainer" parent="MarginContainer/VBoxContainer/HBoxContainer/ForcesPanel/HBox"]
+layout_mode = 2
+size_flags_horizontal = 3
+
+[node name="Label" type="Label" parent="MarginContainer/VBoxContainer/HBoxContainer/ForcesPanel/HBox/UnassignedPanel"]
+layout_mode = 2
+text = "Unassigned"
+horizontal_alignment = 1
+
+[node name="List" type="ItemList" parent="MarginContainer/VBoxContainer/HBoxContainer/ForcesPanel/HBox/UnassignedPanel"]
+layout_mode = 2
+size_flags_vertical = 3
+
+[node name="StartBtn" type="Button" parent="MarginContainer/VBoxContainer"]
+layout_mode = 2
+theme_override_font_sizes/font_size = 24
+text = "Launch Campaign"
+
+[node name="BackBtn" type="Button" parent="MarginContainer/VBoxContainer"]
+layout_mode = 2
+text = "Disconnect / Back"
