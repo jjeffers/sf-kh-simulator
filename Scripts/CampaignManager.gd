@@ -261,7 +261,8 @@ func _add_ships_to_fleet(fleet: CampaignFleet, composition: Dictionary):
 			
 			var data = {
 				"name": designated_name,
-				"class": ship_class
+				"class": ship_class,
+				"hull": 100 # Percentage or full max hull logic can be applied later when moving to tactical
 			}
 			fleet.ships.append(data)
 
@@ -459,7 +460,6 @@ func check_victory_conditions() -> int:
 		return 2 # UPF Victory
 		
 	return 0 # Ongoing
-
 func save_campaign(file_path: String = "user://campaign_save.json") -> bool:
 	var state = serialize_state()
 	var file = FileAccess.open(file_path, FileAccess.WRITE)

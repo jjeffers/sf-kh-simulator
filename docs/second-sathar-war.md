@@ -25,9 +25,7 @@ When starting a new campaign of the "Second Sathar War", the player will be pres
 **Join Campaign** - Joins an existing campaign of the Second Sathar War.
     - Remembers the last ip and port used to join a campaign
     - default is localhost port 7000
-
-
-
+ 
 ## Campaign Game Flow
 
 The campaign operates in a loop consisting of a Strategic Phase where fleets are moved on a star map, and a Tactical Phase where encounters are resolved using the core space battle mechanics.
@@ -54,10 +52,6 @@ At any time during the campaign, the player can open the campaign menu by pressi
             - **Sound Effects** - The volume of the sound effects.
         - **Quit** - Closes the settings menu and returns to the campaign menu.
 **Quit** - Exits the campaign and returns to the main menu.
-
-
-
-
 ### 1a. Lobby
 
 This screen shows the current campaign state, including the current turn number, the current date, and the current factions. Also displays the victory conditions for each faction.

@@ -89,7 +89,6 @@ func _input(event):
 		add_child(menu_scn)
 		get_viewport().set_input_as_handled()
 		return
-		
 	# Prioritize Map Panning over UI Element focus navigation
 	if event is InputEventKey:
 		var handled_arrow = false
