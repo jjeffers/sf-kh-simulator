@@ -45,8 +45,6 @@ func _ready():
 	campaign.campaign_encounter_triggered.connect(_on_encounter)
 	campaign.open_encounter_dialog.connect(_handle_encounter_click)
 	
-	map_view.gui_input.connect(_on_map_view_gui_input)
-	
 	end_turn_btn.pressed.connect(_on_end_turn_pressed)
 	cancel_jump_btn.pressed.connect(_on_cancel_jump_pressed)
 	plot_jump_btn.toggled.connect(_on_plot_jump_toggled)
@@ -116,6 +114,15 @@ func _input(event):
 			map_move_dir.y = 1.0 if event.pressed else (-1.0 if Input.is_action_pressed("ui_up") or Input.is_physical_key_pressed(KEY_W) else 0.0)
 			handled_arrow = true
 			
+		# Zoom Map (PgUp/PgDn)
+		if event.pressed and not event.is_echo():
+			if event.keycode == KEY_PAGEUP:
+				_set_zoom(current_zoom + 0.1)
+				handled_arrow = true
+			elif event.keycode == KEY_PAGEDOWN:
+				_set_zoom(current_zoom - 0.1)
+				handled_arrow = true
+		
 		# If user pressed an arrow key, consume it so the Ship lists don't tab around
 		if handled_arrow:
 			get_viewport().set_input_as_handled()
@@ -125,17 +132,6 @@ func _input(event):
 			_set_zoom(current_zoom + 0.1)
 		elif event.button_index == MOUSE_BUTTON_WHEEL_DOWN:
 			_set_zoom(current_zoom - 0.1)
-
-func _on_map_view_gui_input(event):
-	# The ScrollContainer naturally consumes PgUp/PgDn via _gui_input before our parent _input hooks fire.
-	# We intercept it here and consume the event so it zooms instead of wildly scrolling.
-	if event is InputEventKey and event.pressed and not event.is_echo():
-		if event.keycode == KEY_PAGEUP:
-			_set_zoom(current_zoom + 0.1)
-			map_view.accept_event()
-		elif event.keycode == KEY_PAGEDOWN:
-			_set_zoom(current_zoom - 0.1)
-			map_view.accept_event()
 
 func _set_zoom(new_zoom: float):
 	current_zoom = clamp(new_zoom, min_zoom, 1.0)
