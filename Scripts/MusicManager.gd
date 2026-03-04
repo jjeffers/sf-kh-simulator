@@ -21,9 +21,10 @@ func play_music(stream_path: String, volume_db: float = 0.0, fade_in: float = 0.
 	_player.volume_db = volume_db
 	_player.play()
 	
+	if _tween: _tween.kill()
+	
 	if fade_in > 0:
 		_player.volume_db = -80.0
-		if _tween: _tween.kill()
 		_tween = create_tween()
 		_tween.tween_property(_player, "volume_db", volume_db, fade_in)
 
