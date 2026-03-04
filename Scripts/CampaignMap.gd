@@ -28,6 +28,10 @@ var is_plotting_jump: bool = false
 var pan_speed: float = 600.0
 var map_move_dir: Vector2 = Vector2.ZERO
 
+var current_zoom: float = 1.0
+var min_zoom: float = 0.5
+const BASE_MAP_SIZE := Vector2(2500, 2500)
+
 var active_encounter_dialog: Node = null
 
 func _ready():
@@ -92,14 +96,49 @@ func _input(event):
 	# Prioritize Map Panning over UI Element focus navigation
 	if event is InputEventKey:
 		var handled_arrow = false
-		if event.is_action("ui_left"): map_move_dir.x = -1.0 if event.pressed else (1.0 if Input.is_action_pressed("ui_right") else 0.0); handled_arrow = true
-		elif event.is_action("ui_right"): map_move_dir.x = 1.0 if event.pressed else (-1.0 if Input.is_action_pressed("ui_left") else 0.0); handled_arrow = true
-		elif event.is_action("ui_up"): map_move_dir.y = -1.0 if event.pressed else (1.0 if Input.is_action_pressed("ui_down") else 0.0); handled_arrow = true
-		elif event.is_action("ui_down"): map_move_dir.y = 1.0 if event.pressed else (-1.0 if Input.is_action_pressed("ui_up") else 0.0); handled_arrow = true
+		
+		# Left
+		if event.is_action("ui_left") or event.keycode == KEY_A: 
+			map_move_dir.x = -1.0 if event.pressed else (1.0 if Input.is_action_pressed("ui_right") or Input.is_physical_key_pressed(KEY_D) else 0.0)
+			handled_arrow = true
+		# Right
+		elif event.is_action("ui_right") or event.keycode == KEY_D: 
+			map_move_dir.x = 1.0 if event.pressed else (-1.0 if Input.is_action_pressed("ui_left") or Input.is_physical_key_pressed(KEY_A) else 0.0)
+			handled_arrow = true
+		# Up
+		elif event.is_action("ui_up") or event.keycode == KEY_W: 
+			map_move_dir.y = -1.0 if event.pressed else (1.0 if Input.is_action_pressed("ui_down") or Input.is_physical_key_pressed(KEY_S) else 0.0)
+			handled_arrow = true
+		# Down
+		elif event.is_action("ui_down") or event.keycode == KEY_S: 
+			map_move_dir.y = 1.0 if event.pressed else (-1.0 if Input.is_action_pressed("ui_up") or Input.is_physical_key_pressed(KEY_W) else 0.0)
+			handled_arrow = true
+			
+		# Zoom Map (PgUp/PgDn)
+		if event.pressed and not event.is_echo():
+			if event.keycode == KEY_PAGEUP:
+				_set_zoom(current_zoom + 0.1)
+				handled_arrow = true
+			elif event.keycode == KEY_PAGEDOWN:
+				_set_zoom(current_zoom - 0.1)
+				handled_arrow = true
 		
 		# If user pressed an arrow key, consume it so the Ship lists don't tab around
 		if handled_arrow:
 			get_viewport().set_input_as_handled()
+			
+	if event is InputEventMouseButton and event.pressed:
+		if event.button_index == MOUSE_BUTTON_WHEEL_UP:
+			_set_zoom(current_zoom + 0.1)
+		elif event.button_index == MOUSE_BUTTON_WHEEL_DOWN:
+			_set_zoom(current_zoom - 0.1)
+
+func _set_zoom(new_zoom: float):
+	current_zoom = clamp(new_zoom, min_zoom, 1.0)
+	map_container.scale = Vector2(current_zoom, current_zoom)
+	
+	# Update scroll container internal size constraints to preserve accurate panning
+	map_container.custom_minimum_size = BASE_MAP_SIZE * current_zoom
 
 func _process(delta):
 	if map_move_dir != Vector2.ZERO:
@@ -159,6 +198,15 @@ func _on_map_data_loaded():
 	call_deferred("_on_resize")
 
 func _on_resize():
+	# Calculate how small we're allowed to shrink the map before it leaves screen layout bounds
+	var view_size = map_view.size
+	var min_scale_x = view_size.x / BASE_MAP_SIZE.x
+	var min_scale_y = view_size.y / BASE_MAP_SIZE.y
+	min_zoom = max(min_scale_x, min_scale_y)
+	
+	# Restrict the current zoom if the screen bounds squeezed passed the floor
+	_set_zoom(current_zoom)
+	
 	# Redraw positions when window resizes
 	for child in systems_container.get_children():
 		child.queue_free()
@@ -170,7 +218,7 @@ func _on_resize():
 
 func _coord_to_screen(x: float, y: float) -> Vector2:
 	# Coords relative to the total MapContainer size (2500x2500)
-	var map_size = map_container.custom_minimum_size
+	var map_size = BASE_MAP_SIZE
 	# Margin around edge of map bounds inside container
 	var margin_x = map_size.x * 0.1
 	var margin_y = map_size.y * 0.1
