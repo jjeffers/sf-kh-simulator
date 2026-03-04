@@ -83,6 +83,12 @@ func _center_map_initially():
 		_focus_camera_on_system(selected_system_id)
 
 func _input(event):
+	if event.is_action_pressed("ui_cancel") and not has_node("CampaignMenu"):
+		var menu_scn = load("res://Scenes/CampaignMenu.tscn").instantiate()
+		menu_scn.name = "CampaignMenu"
+		add_child(menu_scn)
+		get_viewport().set_input_as_handled()
+		return
 	# Prioritize Map Panning over UI Element focus navigation
 	if event is InputEventKey:
 		var handled_arrow = false
@@ -335,37 +341,56 @@ func _draw_fleets():
 		
 		# If we found a valid position, draw the fleet icons
 		if pos != Vector2.ZERO:
-			# If multiple fleets, space them out slightly
-			for i in range(local_fleets.size()):
-				var f = local_fleets[i]
-				var offset = Vector2(45 * (i+1), -45) # Stack them up and right, larger spacing
+			var fleets_by_faction = {}
+			for f in local_fleets:
+				if not fleets_by_faction.has(f.faction):
+					fleets_by_faction[f.faction] = []
+				fleets_by_faction[f.faction].append(f)
+			
+			var faction_idx = 0
+			for faction in fleets_by_faction:
+				var faction_fleets = fleets_by_faction[faction]
+				if faction_fleets.is_empty(): continue
 				
-				var is_enemy = f.faction != _get_my_faction()
-				if is_enemy and not _can_see_system(f.current_system_id):
+				var first_f = faction_fleets[0]
+				var is_enemy = faction != _get_my_faction()
+				if is_enemy and not _can_see_system(first_f.current_system_id):
 					continue # Hidden by Fog of War
-				
-				var btn = Button.new()
-				btn.text = "[F]"
-				
-				var style = StyleBoxFlat.new()
-				style.bg_color = Color(0, 0, 0, 0) # Transparent bg
-				var hover_style = style.duplicate()
-				hover_style.bg_color = Color(0.3, 0.3, 0.3, 0.5)
-				
-				btn.add_theme_stylebox_override("normal", style)
-				btn.add_theme_stylebox_override("hover", hover_style)
-				btn.add_theme_stylebox_override("pressed", hover_style)
-				btn.add_theme_stylebox_override("focus", hover_style)
-				btn.add_theme_font_size_override("font_size", 24)
-				
-				if f.faction == "Sathar":
-					btn.add_theme_color_override("font_color", Color.RED)
-				elif f.faction == "UPF":
-					btn.add_theme_color_override("font_color", Color.CYAN)
 					
-				btn.position = (pos - Vector2(10, 10)) + offset
-				btn.pressed.connect(func(): _on_fleet_map_icon_clicked(f))
+				var offset = Vector2(0, -70)
+				if faction_idx > 0:
+					offset = Vector2(50, -70) # Shift second faction slightly right and up
+					
+				var btn = TextureButton.new()
+				btn.custom_minimum_size = Vector2(40, 40)
+				btn.stretch_mode = TextureButton.STRETCH_KEEP_ASPECT_CENTERED
+				
+				var total_ships = 0
+				var names_array = []
+				for f in faction_fleets:
+					total_ships += f.ships.size()
+					names_array.append(f.fleet_name)
+					
+				btn.tooltip_text = "%s forces: %d ships" % [faction, total_ships]
+				
+				if faction == "UPF":
+					btn.texture_normal = preload("res://Assets/UI/fleet_enemy_upf.svg") if is_enemy else preload("res://Assets/UI/fleet_friendly_upf.svg")
+				elif faction == "Sathar":
+					btn.texture_normal = preload("res://Assets/UI/fleet_enemy_sathar.svg") if is_enemy else preload("res://Assets/UI/fleet_friendly_sathar.svg")
+				
+				btn.position = (pos - Vector2(20, 20)) + offset
+				btn.pressed.connect(func(): _on_fleet_map_icon_clicked(first_f))
 				fleets_container.add_child(btn)
+				
+				var lbl = Label.new()
+				lbl.text = "\n".join(names_array)
+				lbl.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+				lbl.add_theme_font_size_override("font_size", 12)
+				lbl.position = btn.position + Vector2(-40, 42)
+				lbl.custom_minimum_size = Vector2(120, 20)
+				fleets_container.add_child(lbl)
+				
+				faction_idx += 1
 				
 	# Group moving fleets by route
 	var fleets_by_route = {}
@@ -405,41 +430,38 @@ func _draw_fleets():
 		fleets_container.add_child(head)
 		
 		var interp_pos = pos1.lerp(pos2, 0.5) # Center point
-		for i in range(moving_fleets.size()):
-			var f = moving_fleets[i]
-			var offset = Vector2(0, -45 + (30 * i))
+		var offset = Vector2(0, -45)
+		
+		var btn = TextureButton.new()
+		btn.custom_minimum_size = Vector2(40, 40)
+		btn.stretch_mode = TextureButton.STRETCH_KEEP_ASPECT_CENTERED
+		
+		var total_ships = 0
+		var names_array = []
+		for f in moving_fleets:
+			total_ships += f.ships.size()
+			names_array.append("%s (%dd)" % [f.fleet_name, f.days_to_arrival])
 			
-			var btn = Button.new()
-			btn.text = "[F]"
+		btn.tooltip_text = "Moving forces: %d ships" % total_ships
+		
+		if f_first.faction == "UPF":
+			btn.texture_normal = preload("res://Assets/UI/fleet_friendly_upf.svg")
+		elif f_first.faction == "Sathar":
+			btn.texture_normal = preload("res://Assets/UI/fleet_friendly_sathar.svg")
 			
-			var style = StyleBoxFlat.new()
-			style.bg_color = Color(0, 0, 0, 0)
-			var hover_style = style.duplicate()
-			hover_style.bg_color = Color(0.3, 0.3, 0.3, 0.5)
+		btn.modulate.a = 0.6 # Ghosted for in-transit
 			
-			btn.add_theme_stylebox_override("normal", style)
-			btn.add_theme_stylebox_override("hover", hover_style)
-			btn.add_theme_stylebox_override("pressed", hover_style)
-			btn.add_theme_stylebox_override("focus", hover_style)
-			btn.add_theme_font_size_override("font_size", 24)
-			
-			if f.faction == "Sathar":
-				btn.add_theme_color_override("font_color", Color.RED)
-			elif f.faction == "UPF":
-				btn.add_theme_color_override("font_color", Color.CYAN)
-				
-			btn.modulate.a = 0.6 # Ghosted
-				
-			btn.position = (interp_pos - Vector2(10, 10)) + offset
-			btn.pressed.connect(func(): _on_fleet_map_icon_clicked(f))
-			fleets_container.add_child(btn)
-			
-			var lbl = Label.new()
-			lbl.text = "%d Days" % f.days_to_arrival
-			lbl.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-			lbl.add_theme_font_size_override("font_size", 12)
-			lbl.position = btn.position + Vector2(-15, 25) # Centered beneath the [F] button
-			fleets_container.add_child(lbl)
+		btn.position = (interp_pos - Vector2(20, 20)) + offset
+		btn.pressed.connect(func(): _on_fleet_map_icon_clicked(f_first))
+		fleets_container.add_child(btn)
+		
+		var lbl = Label.new()
+		lbl.text = "\n".join(names_array)
+		lbl.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+		lbl.add_theme_font_size_override("font_size", 12)
+		lbl.position = btn.position + Vector2(-40, 42) # Centered beneath icon
+		lbl.custom_minimum_size = Vector2(120, 20)
+		fleets_container.add_child(lbl)
 
 func _draw_routes():
 	for route in campaign.routes:

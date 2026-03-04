@@ -15,6 +15,7 @@ When starting a new campaign of the "Second Sathar War", the player will be pres
 **Load Campaign** - Loads a saved campaign of the Second Sathar War.
 **Join Campaign** - Joins a campaign of the Second Sathar War hosted by another player.
 **Start Scenario** - Begins a specific scenario of the Second Sathar War campaign.
+**Settings** - Opens the settings menu - see below for more information.
 **Quit** - Exits the game.
 
 **Start Campaign** - Hosts a new campaign of the Second Sathar War.
@@ -24,10 +25,33 @@ When starting a new campaign of the "Second Sathar War", the player will be pres
 **Join Campaign** - Joins an existing campaign of the Second Sathar War.
     - Remembers the last ip and port used to join a campaign
     - default is localhost port 7000
+ 
 ## Campaign Game Flow
 
 The campaign operates in a loop consisting of a Strategic Phase where fleets are moved on a star map, and a Tactical Phase where encounters are resolved using the core space battle mechanics.
 
+### Campaign Menu
+At any time during the campaign, the player can open the campaign menu by pressing the Escape key. The campaign menu has the following options:
+
+**Resume** - Returns to the campaign map.
+**Save Campaign** - Saves the current campaign state.
+    - The user is shown a file save interface to select the location and name of the save game data file.
+    - The campaign state includes the current turn number, the current date, and the current factions.
+    - The campaign state also includes the current fleets and their compositions.
+    - The campaign state also includes the current star systems and their status.
+    - The campaign state also includes the current navigation routes and their status.
+    - The campaign state also includes the current tactical battles and their status.
+
+
+**Load Campaign** - Loads a saved campaign state.
+    - The user is shown a file open interface to select the location and name of the save game data file.
+**Settings** - Opens the settings menu.
+    - The settings menu has the following options:
+        - **Audio** - Opens the audio settings menu. There are 2 audio settings:
+            - **Music** - The volume of the music.
+            - **Sound Effects** - The volume of the sound effects.
+        - **Quit** - Closes the settings menu and returns to the campaign menu.
+**Quit** - Exits the campaign and returns to the main menu.
 ### 1a. Lobby
 
 This screen shows the current campaign state, including the current turn number, the current date, and the current factions. Also displays the victory conditions for each faction.
@@ -245,7 +269,10 @@ Once the campaign parameters are set, the game transitions to the Strategic Phas
     - planets are always placed at the center of the map
     - stations are always placed in orbit around planets
     - defenders may deploy anywhere within 34 hexes, any facing or speed
-    - attackers must deploy 34 hexes from the center, any facing or speed
+    - attackers must:
+        - deploy 34 hexes from the center, any facing or speed
+        - each ship must be deployed within 2 hexes of at least one other friendly ship
+        - fighters start docked with a friendly assault carrier
 *  **Retreat**
     - Retreating forces must be outside of enemy weapon range and a button will appear during movement planning labbelled "Withdraw". Clicking this will remove the ship from the map and be counted as reteated.
     - Militia ships must make 1 attack before retreating from combat in their home system.

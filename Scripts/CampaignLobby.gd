@@ -14,6 +14,7 @@ extends Control
 var auto_started = false
 
 func _ready():
+	MusicManager.play_music("res://Assets/Audio/Orbital Siege (Drums).mp3")
 	btn_join_upf.pressed.connect(_on_join_upf)
 	btn_join_sathar.pressed.connect(_on_join_sathar)
 	start_btn.pressed.connect(_on_start_pressed)
@@ -101,7 +102,6 @@ func _on_join_sathar():
 func _on_start_pressed():
 	if multiplayer.is_server():
 		print("[CampaignLobby] Launch Campaign Pressed!")
-		MusicManager.fade_out(2.0)
 		
 		# INITIALIZE CAMPAIGN FOR SERVER
 		var cm = CampaignManager

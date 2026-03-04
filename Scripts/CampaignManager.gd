@@ -11,6 +11,7 @@ var map_data: Dictionary = {}
 var systems: Dictionary = {} # system_name -> data
 var routes: Array = []
 var start_circles: Array = []
+var _ship_names_data: Dictionary = {}
 
 var fleets: Array[CampaignFleet] = []
 var current_day: int = 1
@@ -39,6 +40,40 @@ const UPF_ARMED_STATIONS = [
 
 func _ready():
 	_load_map_data()
+	_load_ship_names_db()
+
+func _load_ship_names_db():
+	var file = FileAccess.open("res://Data/ship_names.json", FileAccess.READ)
+	if file:
+		var json_string = file.get_as_text()
+		var json = JSON.new()
+		var error = json.parse(json_string)
+		if error == OK:
+			_ship_names_data = json.data
+			print("[CampaignManager] Successfully loaded ship_names.json dictionary.")
+		else:
+			push_error("Failed to parse ship_names.json")
+	else:
+		push_error("Could not find res://Data/ship_names.json")
+
+func _generate_ship_name(faction: String, ship_class: String, default_fallback: String) -> String:
+	if _ship_names_data.is_empty():
+		return default_fallback
+		
+	var faction_key = "UPF_Fleet" if faction.to_upper() == "UPF" else "Sathar_Fleet"
+	if not _ship_names_data.has(faction_key):
+		return default_fallback
+		
+	var data_block = _ship_names_data[faction_key]
+	var class_key = ship_class.replace(" ", "_") + "s" # e.g. "Assault Carrier" -> "Assault_Carriers"
+	
+	if data_block.has(class_key) and data_block[class_key].size() > 0:
+		var name_list = data_block[class_key]
+		var chosen: String = name_list[randi() % name_list.size()]
+		var prefix = data_block.get("Prefix", faction)
+		return "%s %s" % [prefix, chosen]
+		
+	return default_fallback
 
 func _load_map_data():
 	var file = FileAccess.open("res://Data/campaign_map.json", FileAccess.READ)
@@ -169,7 +204,7 @@ func _initialize_sathar_forces():
 	var sathar_fleets = []
 	for i in range(chosen_circles.size()):
 		var circle_name = "Start Circle " + str(int(chosen_circles[i].get("id", 0)))
-		sathar_fleets.append(create_new_fleet("Sathar", circle_name, "Sathar Fleet " + str(i+1)))
+		sathar_fleets.append(create_new_fleet("Sathar", circle_name, "Fleet " + str(i+1)))
 		
 	# Ensure each fleet gets at least 1 assault carrier
 	var carriers_left = sathar_composition["Assault Carrier"]
@@ -221,8 +256,11 @@ func _add_ships_to_fleet(fleet: CampaignFleet, composition: Dictionary):
 	for ship_class in composition.keys():
 		var count = composition[ship_class]
 		for i in range(count):
+			var fallback_name = "%s %s %d" % [fleet.faction, ship_class, fleet.ships.size() + 1]
+			var designated_name = _generate_ship_name(fleet.faction, ship_class, fallback_name)
+			
 			var data = {
-				"name": "%s %s %d" % [fleet.faction, ship_class, fleet.ships.size() + 1],
+				"name": designated_name,
 				"class": ship_class,
 				"hull": 100 # Percentage or full max hull logic can be applied later when moving to tactical
 			}
@@ -422,3 +460,47 @@ func check_victory_conditions() -> int:
 		return 2 # UPF Victory
 		
 	return 0 # Ongoing
+func save_campaign(file_path: String = "user://campaign_save.json") -> bool:
+	var state = serialize_state()
+	var file = FileAccess.open(file_path, FileAccess.WRITE)
+	if file:
+		var json = JSON.stringify(state, "\t")
+		file.store_string(json)
+		file.close()
+		return true
+	return false
+
+func load_campaign(file_path: String = "user://campaign_save.json") -> bool:
+	if not FileAccess.file_exists(file_path):
+		return false
+		
+	var file = FileAccess.open(file_path, FileAccess.READ)
+	if file:
+		var json_string = file.get_as_text()
+		var json = JSON.new()
+		var error = json.parse(json_string)
+		if error == OK:
+			deserialize_state(json.data)
+			file.close()
+			
+			if multiplayer.is_server() and has_node("/root/NetworkManager"):
+				var nm = get_node("/root/NetworkManager")
+				nm.sync_campaign_state.rpc(json.data)
+			return true
+	return false
+
+func deserialize_state(state_data: Dictionary):
+	current_day = state_data.get("current_day", 1)
+	destroyed_stations_count = state_data.get("destroyed_stations", 0)
+	destroyed_fortresses_count = state_data.get("destroyed_fortresses", 0)
+	
+	active_encounters.clear()
+	for e in state_data.get("active_encounters", []):
+		active_encounters.append(e)
+		
+	fleets.clear()
+	var fleets_arr = state_data.get("fleets", [])
+	for f_data in fleets_arr:
+		var fleet = CampaignFleet.new("", "", "")
+		fleet.deserialize(f_data)
+		fleets.append(fleet)

@@ -14,6 +14,7 @@ extends Control
 @onready var btn_load_campaign = $StartupMenu/BtnLoadCampaign
 @onready var btn_join_campaign = $StartupMenu/BtnJoinCampaign
 @onready var btn_start_scenario = $StartupMenu/BtnStartScenario
+@onready var btn_settings = $StartupMenu/BtnSettings
 @onready var btn_quit = $StartupMenu/BtnQuit
 
 @onready var host_ip_input = $CampaignHostMenu/HBoxIP/HostIPInput
@@ -37,6 +38,8 @@ func _ready():
 	btn_load_campaign.pressed.connect(_on_btn_load_campaign)
 	btn_join_campaign.pressed.connect(_on_btn_join_campaign)
 	btn_start_scenario.pressed.connect(_on_btn_start_scenario)
+	if btn_settings:
+		btn_settings.pressed.connect(_on_btn_settings)
 	btn_quit.pressed.connect(_on_quit_pressed)
 	
 	btn_host_start.pressed.connect(_on_campaign_host_start)
@@ -98,7 +101,37 @@ func _on_btn_start_campaign():
 	_show_menu("campaign_host")
 
 func _on_btn_load_campaign():
-	status_label.text = "Load Campaign is not implemented yet."
+	var fd = FileDialog.new()
+	fd.file_mode = FileDialog.FILE_MODE_OPEN_FILE
+	fd.access = FileDialog.ACCESS_USERDATA
+	fd.current_dir = "user://"
+	fd.filters = PackedStringArray(["*.json ; JSON Files"])
+	fd.title = "Load Campaign"
+	fd.use_native_dialog = true
+	fd.file_selected.connect(func(path):
+		target_lobby_scene = "res://Scenes/CampaignMap.tscn"
+		NetworkManager.lobby_data["game_mode"] = "campaign"
+		
+		# Automatically host locally so we bypass the lobby and re-hydrate
+		var err = NetworkManager.host_game(7000)
+		if err != OK:
+			status_label.text = "Error hosting restored game: %s" % err
+			fd.queue_free()
+			return
+		
+		if CampaignManager.load_campaign(path):
+			get_tree().change_scene_to_file("res://Scenes/CampaignMap.tscn")
+		else:
+			status_label.text = "Failed to load campaign from %s" % path.get_file()
+		fd.queue_free()
+	)
+	fd.canceled.connect(func(): fd.queue_free())
+	add_child(fd)
+	fd.popup_centered(Vector2(600, 400))
+
+func _on_btn_settings():
+	var settings_scn = load("res://Scenes/SettingsMenu.tscn").instantiate()
+	add_child(settings_scn)
 
 func _on_btn_join_campaign():
 	_show_menu("campaign_join")

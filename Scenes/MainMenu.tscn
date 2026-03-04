@@ -47,6 +47,10 @@ text = "Join Campaign"
 layout_mode = 2
 text = "Start Scenario"
 
+[node name="BtnSettings" type="Button" parent="StartupMenu"]
+layout_mode = 2
+text = "Settings"
+
 [node name="BtnQuit" type="Button" parent="StartupMenu"]
 layout_mode = 2
 text = "Quit"
