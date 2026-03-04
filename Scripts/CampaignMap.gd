@@ -60,6 +60,14 @@ func _ready():
 	if campaign.fleets.is_empty():
 		campaign.start_new_campaign()
 		
+	# Wrap MapContainer to fix ScrollContainer zoom scaling bug
+	var map_wrapper = Control.new()
+	map_wrapper.name = "MapWrapper"
+	map_wrapper.custom_minimum_size = BASE_MAP_SIZE
+	map_view.remove_child(map_container)
+	map_view.add_child(map_wrapper)
+	map_wrapper.add_child(map_container)
+		
 	# Select an initial system to populate the lists
 	var my_fac = _get_my_faction()
 	var my_fleets = []
@@ -134,11 +142,32 @@ func _input(event):
 			_set_zoom(current_zoom - 0.1)
 
 func _set_zoom(new_zoom: float):
+	var old_zoom = current_zoom
 	current_zoom = clamp(new_zoom, min_zoom, 1.0)
+	
+	# Determine logical center percentage of the view so we can refocus
+	var center_x = map_view.scroll_horizontal + (map_view.size.x / 2.0)
+	var center_y = map_view.scroll_vertical + (map_view.size.y / 2.0)
+	
+	var old_size = BASE_MAP_SIZE * old_zoom
+	var pct_x = center_x / old_size.x if old_size.x > 0 else 0.5
+	var pct_y = center_y / old_size.y if old_size.y > 0 else 0.5
+	
 	map_container.scale = Vector2(current_zoom, current_zoom)
 	
 	# Update scroll container internal size constraints to preserve accurate panning
-	map_container.custom_minimum_size = BASE_MAP_SIZE * current_zoom
+	var map_wrapper = map_container.get_parent()
+	map_wrapper.custom_minimum_size = BASE_MAP_SIZE * current_zoom
+	
+	# Re-apply the zoom focus after the ScrollContainer's internal layout recalculates the scrollbars
+	call_deferred("_apply_scroll_after_zoom", pct_x, pct_y)
+
+func _apply_scroll_after_zoom(pct_x: float, pct_y: float):
+	var new_size = BASE_MAP_SIZE * current_zoom
+	var new_center_x = new_size.x * pct_x
+	var new_center_y = new_size.y * pct_y
+	map_view.scroll_horizontal = int(new_center_x - (map_view.size.x / 2.0))
+	map_view.scroll_vertical = int(new_center_y - (map_view.size.y / 2.0))
 
 func _process(delta):
 	if map_move_dir != Vector2.ZERO:
@@ -686,9 +715,11 @@ func _focus_camera_on_system(sys_id: String):
 	
 	if pos != Vector2.ZERO:
 		# Scroll to center the target position in the current viewport size
+		# Apply current_zoom math since pos is the unscaled BASE_MAP_SIZE coordinate
+		var scaled_pos = pos * current_zoom
 		var view_size = map_view.size
-		map_view.scroll_horizontal = int(pos.x - view_size.x / 2.0)
-		map_view.scroll_vertical = int(pos.y - view_size.y / 2.0)
+		map_view.scroll_horizontal = int(scaled_pos.x - view_size.x / 2.0)
+		map_view.scroll_vertical = int(scaled_pos.y - view_size.y / 2.0)
 
 func _update_composition_panel():
 	ship_list_ui.clear()
