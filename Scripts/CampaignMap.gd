@@ -44,13 +44,16 @@ func _ready():
 	campaign.fleet_arrived.connect(_on_fleet_arrived)
 	campaign.campaign_encounter_triggered.connect(_on_encounter)
 	campaign.open_encounter_dialog.connect(_handle_encounter_click)
+	campaign.campaign_state_updated.connect(_on_campaign_state_updated)
 	
 	end_turn_btn.pressed.connect(_on_end_turn_pressed)
 	cancel_jump_btn.pressed.connect(_on_cancel_jump_pressed)
 	plot_jump_btn.toggled.connect(_on_plot_jump_toggled)
 	
 	fleet_list.item_selected.connect(_on_fleet_list_selected)
+	fleet_list.item_activated.connect(_on_fleet_list_activated)
 	ship_list_ui.multi_selected.connect(_on_ship_selection_changed)
+	ship_list_ui.item_activated.connect(_on_ship_list_activated)
 	
 	if campaign.map_data.is_empty():
 		campaign._load_map_data()
@@ -751,6 +754,96 @@ func _update_composition_panel():
 			ship_list_ui.set_item_custom_fg_color(item_idx, Color(1.0, 0.6, 0.2)) # Orange
 		else:
 			ship_list_ui.set_item_custom_fg_color(item_idx, Color(1.0, 0.2, 0.2)) # Red
+
+func _on_campaign_state_updated():
+	if selected_fleet:
+		var rebind_success = false
+		for f in campaign.fleets:
+			if f.fleet_name == selected_fleet.fleet_name and f.faction == selected_fleet.faction and f.current_system_id == selected_fleet.current_system_id:
+				selected_fleet = f
+				rebind_success = true
+				break
+		if not rebind_success:
+			selected_fleet = null
+
+	_draw_fleets()
+	_update_fleet_list()
+	if selected_fleet:
+		_update_composition_panel()
+
+func _on_fleet_list_activated(idx: int):
+	var fleet = fleet_list.get_item_metadata(idx)
+	if not fleet: return
+	if fleet.faction != _get_my_faction(): return
+	
+	var user_input = LineEdit.new()
+	user_input.text = fleet.fleet_name
+	user_input.custom_minimum_size = Vector2(250, 0)
+	user_input.caret_blink = true
+	user_input.select_all()
+	
+	var label = Label.new()
+	label.text = "Enter a new name for this fleet:"
+	
+	var vbox = VBoxContainer.new()
+	vbox.add_child(label)
+	vbox.add_child(user_input)
+	
+	var dialog = ConfirmationDialog.new()
+	dialog.title = "Rename Fleet"
+	dialog.add_child(vbox)
+	add_child(dialog)
+	
+	dialog.about_to_popup.connect(func(): user_input.grab_focus())
+	dialog.confirmed.connect(func():
+		var new_val = user_input.text.strip_edges()
+		if new_val != "" and new_val != fleet.fleet_name:
+			var global_idx = campaign.fleets.find(fleet)
+			if global_idx != -1:
+				campaign.rpc_rename_fleet.rpc(global_idx, new_val)
+		dialog.queue_free()
+	)
+	dialog.canceled.connect(func(): dialog.queue_free())
+	
+	dialog.popup_centered()
+
+func _on_ship_list_activated(idx: int):
+	if not selected_fleet: return
+	if selected_fleet.faction != _get_my_faction(): return
+	
+	var ship = selected_fleet.ships[idx]
+	var current_name = ship.get("name", ship.get("ship_name", "Ship"))
+	
+	var user_input = LineEdit.new()
+	user_input.text = current_name
+	user_input.custom_minimum_size = Vector2(250, 0)
+	user_input.caret_blink = true
+	user_input.select_all()
+	
+	var label = Label.new()
+	label.text = "Enter a new designation for this ship:"
+	
+	var vbox = VBoxContainer.new()
+	vbox.add_child(label)
+	vbox.add_child(user_input)
+	
+	var dialog = ConfirmationDialog.new()
+	dialog.title = "Rename Ship"
+	dialog.add_child(vbox)
+	add_child(dialog)
+	
+	dialog.about_to_popup.connect(func(): user_input.grab_focus())
+	dialog.confirmed.connect(func():
+		var new_val = user_input.text.strip_edges()
+		if new_val != "" and new_val != current_name:
+			var global_idx = campaign.fleets.find(selected_fleet)
+			if global_idx != -1:
+				campaign.rpc_rename_ship.rpc(global_idx, idx, new_val)
+		dialog.queue_free()
+	)
+	dialog.canceled.connect(func(): dialog.queue_free())
+	
+	dialog.popup_centered()
 
 func _on_ship_selection_changed(_row, _selected):
 	pass

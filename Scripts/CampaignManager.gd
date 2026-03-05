@@ -6,6 +6,7 @@ signal campaign_encounter_triggered(system_id: String, upf_forces: Array, sathar
 signal open_encounter_dialog(system_id: String)
 signal map_data_loaded()
 signal turn_ready_changed(upf_ready: bool, sathar_ready: bool)
+signal campaign_state_updated()
 
 var map_data: Dictionary = {}
 var systems: Dictionary = {} # system_name -> data
@@ -440,6 +441,25 @@ func create_new_fleet(faction: String, system_id: String, fleet_name: String) ->
 	var new_fleet = CampaignFleet.new(fleet_name, faction, system_id)
 	fleets.append(new_fleet)
 	return new_fleet
+
+@rpc("any_peer", "call_local", "reliable")
+func rpc_rename_fleet(fleet_idx: int, new_name: String):
+	if fleet_idx >= 0 and fleet_idx < fleets.size():
+		fleets[fleet_idx].fleet_name = new_name
+		emit_signal("campaign_state_updated")
+		if multiplayer.is_server() and has_node("/root/NetworkManager"):
+			var nm = get_node("/root/NetworkManager")
+			nm.sync_campaign_state.rpc(serialize_state())
+
+@rpc("any_peer", "call_local", "reliable")
+func rpc_rename_ship(fleet_idx: int, ship_idx: int, new_name: String):
+	if fleet_idx >= 0 and fleet_idx < fleets.size():
+		if ship_idx >= 0 and ship_idx < fleets[fleet_idx].ships.size():
+			fleets[fleet_idx].ships[ship_idx]["name"] = new_name
+			emit_signal("campaign_state_updated")
+			if multiplayer.is_server() and has_node("/root/NetworkManager"):
+				var nm = get_node("/root/NetworkManager")
+				nm.sync_campaign_state.rpc(serialize_state())
 
 func remove_fleet(fleet: CampaignFleet):
 	fleets.erase(fleet)
