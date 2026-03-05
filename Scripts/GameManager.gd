@@ -6819,8 +6819,32 @@ func show_game_over(msg: String):
 	log_message(msg)
 
 func _sync_campaign_results():
-	log_message("[color=cyan]=== SYNCING CAMPAIGN RESULTS ===[/color]")
+	log_message("[color=cyan]=== AFTERMATH: REPAIRS AND SYNC ===[/color]")
 	
+	for s in ships:
+		if not is_instance_valid(s): continue
+		if s.is_destroyed or s.hull <= 0: continue
+			
+		var damage_keys = AutoRepairProcessor._get_repairable_keys(s)
+		for dk in damage_keys:
+			var roll = randi() % 100 + 1
+			var chance = s.max_dcr
+			if roll <= chance:
+				_apply_repair(s, dk)
+				log_message("[color=green]%s repaired %s (Roll: %d <= %d)[/color]" % [s.name, dk, roll, chance])
+			else:
+				if roll >= 99:
+					_mark_unrepairable(s, dk)
+					log_message("[color=red]%s permanently damaged %s (Roll: %d)[/color]" % [s.name, dk, roll])
+				else:
+					if dk == "hull": s.unrepairable_hull = true
+					log_message("[color=yellow]%s failed to repair %s (Roll: %d)[/color]" % [s.name, dk, roll])
+					
+		if s.has_electrical_fire or s.has_disastrous_fire:
+			log_message("[color=red]%s was consumed by unresolved fires and destroyed![/color]" % s.name)
+			s.is_destroyed = true
+			s.hull = 0
+			
 	# Update CampaignManager
 	var sys_name = NetworkManager.lobby_data.get("encounter_system", "")
 	for f in CampaignManager.fleets:
