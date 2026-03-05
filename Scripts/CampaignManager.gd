@@ -274,6 +274,83 @@ func get_fleets_at_system(system_id: String) -> Array[CampaignFleet]:
 			result.append(f)
 	return result
 
+func _get_systems_with_fleets() -> Dictionary:
+	var cache = {}
+	for f in fleets:
+		if not f.is_moving():
+			var sys = f.current_system_id
+			if not cache.has(sys):
+				cache[sys] = {"UPF": [], "Sathar": []}
+			cache[sys][f.faction].append(f)
+	return cache
+
+func _get_connected_systems(sys_id: String) -> Array[String]:
+	var connected = []
+	for r in routes:
+		if r["origin"] == sys_id: connected.append(r["destination"])
+		elif r["destination"] == sys_id: connected.append(r["origin"])
+		
+	for sc in start_circles:
+		var sc_name = "Start Circle " + str(sc.get("id", 0))
+		if sys_id == sc_name: connected.append(sc.get("connected_system", ""))
+		elif sys_id == sc.get("connected_system", ""): connected.append(sc_name)
+		
+	return connected
+
+func _check_upf_supply(start_system_id: String, occupation_cache: Dictionary) -> bool:
+	if start_system_id in UPF_FORTRESSES: return true
+	if start_system_id in UPF_ARMED_STATIONS: return true
+	
+	var visited = []
+	var queue = [start_system_id]
+	visited.append(start_system_id)
+	
+	while queue.size() > 0:
+		var current = queue.pop_front()
+		
+		# Trace block: Has Sathar?
+		if occupation_cache.has(current) and occupation_cache[current]["Sathar"].size() > 0:
+			if current != start_system_id: # Current occupied system blocks traversing THROUGH it
+				continue
+		
+		if current in UPF_FORTRESSES or current in UPF_ARMED_STATIONS:
+			return true
+			
+		for n_sys in _get_connected_systems(current):
+			if not visited.has(n_sys):
+				visited.append(n_sys)
+				queue.push_back(n_sys)
+				
+	return false
+
+func _check_sathar_supply(start_system_id: String, occupation_cache: Dictionary) -> bool:
+	if start_system_id.begins_with("Start Circle"): return true
+	
+	var visited = []
+	var queue = [start_system_id]
+	visited.append(start_system_id)
+	
+	while queue.size() > 0:
+		var current = queue.pop_front()
+		
+		# Trace block: Has UPF fleets or stations?
+		var has_upf = (occupation_cache.has(current) and occupation_cache[current]["UPF"].size() > 0)
+		var has_station = (current in UPF_FORTRESSES or current in UPF_ARMED_STATIONS)
+		
+		if has_upf or has_station:
+			if current != start_system_id: # Current occupied system blocks traversing THROUGH it
+				continue
+				
+		if current.begins_with("Start Circle"):
+			return true
+			
+		for n_sys in _get_connected_systems(current):
+			if not visited.has(n_sys):
+				visited.append(n_sys)
+				queue.push_back(n_sys)
+				
+	return false
+
 func are_systems_connected(sys_a: String, sys_b: String) -> bool:
 	print("DEBUG are_systems_connected: Checking A=", sys_a, " B=", sys_b)
 	for route in routes:
@@ -381,6 +458,30 @@ func set_encounter_ready(sys_name: String, faction: String, is_ready: bool):
 			nm.update_lobby_data.rpc(nm.lobby_data)
 			nm.start_game_rpc.rpc()
 
+func _resupply_fleet(fleet: CampaignFleet):
+	# "Ships resupplied restock items such as torpedoes, rocket battery ammunition, assault rockets, mines, seekers. 
+	# Assault carriers re-stock to replenish up to x20 fighter re-armings."
+	var restocked = false
+	for ship in fleet.ships:
+		if ship.has("weapons"):
+			for w in ship["weapons"]:
+				var max_val = w.get("max_ammo", 0)
+				if max_val > 0 and w.get("ammo", 0) < max_val:
+					w["ammo"] = max_val
+					restocked = true
+					
+		# Only Assault Carriers have rearm_capacity natively
+		if ship.get("class", "") == "Assault Carrier" and ship.has("rearm_capacity"):
+			# Pull baseline from a dummy construction
+			var dummy = Ship.new()
+			dummy.configure_assault_carrier()
+			if ship["rearm_capacity"] < dummy.rearm_capacity:
+				ship["rearm_capacity"] = dummy.rearm_capacity
+				restocked = true
+				
+	if restocked:
+		ConsoleManager.log_message("[color=aqua]Fleet %s has been resupplied.[/color]" % fleet.fleet_name)
+
 func end_turn():
 	ConsoleManager.log_message("[color=green]Both factions ready. Advancing from Day %d to Day %d[/color]" % [current_day, current_day + 1])
 	current_day += 1
@@ -388,12 +489,31 @@ func end_turn():
 	sathar_ready = false
 	var arriving_fleets: Array[CampaignFleet] = []
 	
+	# Track pre-resolution locations to check supply viability BEFORE combat occurs
+	var system_occupants = _get_systems_with_fleets()
+	
+	_check_for_encounters()
+	
 	for fleet in fleets:
+		var moved_this_turn = fleet.is_moving()
 		if fleet.advance_day():
 			arriving_fleets.append(fleet)
 			emit_signal("fleet_arrived", fleet, fleet.current_system_id)
+			moved_this_turn = true
 			
-	_check_for_encounters()
+		# Rearm check: "Ships in supply will re-arm if they spend an entire day without moving or engaging in combat."
+		if not moved_this_turn:
+			var can_supply = false
+			if active_encounters.has(fleet.current_system_id):
+				can_supply = false # Blocked by combat breaking out this turn
+			elif fleet.faction == "UPF":
+				can_supply = _check_upf_supply(fleet.current_system_id, system_occupants)
+			else:
+				can_supply = _check_sathar_supply(fleet.current_system_id, system_occupants)
+				
+			if can_supply:
+				_resupply_fleet(fleet)
+			
 	emit_signal("campaign_day_advanced", current_day)
 	
 	# After processing the turn, broadcast the new state and readiness
