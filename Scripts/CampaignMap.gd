@@ -28,6 +28,10 @@ var is_plotting_jump: bool = false
 var pan_speed: float = 600.0
 var map_move_dir: Vector2 = Vector2.ZERO
 
+var current_zoom: float = 1.0
+var min_zoom: float = 0.5
+const BASE_MAP_SIZE := Vector2(2500, 2500)
+
 var active_encounter_dialog: Node = null
 
 func _ready():
@@ -55,6 +59,14 @@ func _ready():
 		
 	if campaign.fleets.is_empty():
 		campaign.start_new_campaign()
+		
+	# Wrap MapContainer to fix ScrollContainer zoom scaling bug
+	var map_wrapper = Control.new()
+	map_wrapper.name = "MapWrapper"
+	map_wrapper.custom_minimum_size = BASE_MAP_SIZE
+	map_view.remove_child(map_container)
+	map_view.add_child(map_wrapper)
+	map_wrapper.add_child(map_container)
 		
 	# Select an initial system to populate the lists
 	var my_fac = _get_my_faction()
@@ -92,14 +104,70 @@ func _input(event):
 	# Prioritize Map Panning over UI Element focus navigation
 	if event is InputEventKey:
 		var handled_arrow = false
-		if event.is_action("ui_left"): map_move_dir.x = -1.0 if event.pressed else (1.0 if Input.is_action_pressed("ui_right") else 0.0); handled_arrow = true
-		elif event.is_action("ui_right"): map_move_dir.x = 1.0 if event.pressed else (-1.0 if Input.is_action_pressed("ui_left") else 0.0); handled_arrow = true
-		elif event.is_action("ui_up"): map_move_dir.y = -1.0 if event.pressed else (1.0 if Input.is_action_pressed("ui_down") else 0.0); handled_arrow = true
-		elif event.is_action("ui_down"): map_move_dir.y = 1.0 if event.pressed else (-1.0 if Input.is_action_pressed("ui_up") else 0.0); handled_arrow = true
+		
+		# Left
+		if event.is_action("ui_left") or event.keycode == KEY_A: 
+			map_move_dir.x = -1.0 if event.pressed else (1.0 if Input.is_action_pressed("ui_right") or Input.is_physical_key_pressed(KEY_D) else 0.0)
+			handled_arrow = true
+		# Right
+		elif event.is_action("ui_right") or event.keycode == KEY_D: 
+			map_move_dir.x = 1.0 if event.pressed else (-1.0 if Input.is_action_pressed("ui_left") or Input.is_physical_key_pressed(KEY_A) else 0.0)
+			handled_arrow = true
+		# Up
+		elif event.is_action("ui_up") or event.keycode == KEY_W: 
+			map_move_dir.y = -1.0 if event.pressed else (1.0 if Input.is_action_pressed("ui_down") or Input.is_physical_key_pressed(KEY_S) else 0.0)
+			handled_arrow = true
+		# Down
+		elif event.is_action("ui_down") or event.keycode == KEY_S: 
+			map_move_dir.y = 1.0 if event.pressed else (-1.0 if Input.is_action_pressed("ui_up") or Input.is_physical_key_pressed(KEY_W) else 0.0)
+			handled_arrow = true
+			
+		# Zoom Map (PgUp/PgDn)
+		if event.pressed and not event.is_echo():
+			if event.keycode == KEY_PAGEUP:
+				_set_zoom(current_zoom + 0.1)
+				handled_arrow = true
+			elif event.keycode == KEY_PAGEDOWN:
+				_set_zoom(current_zoom - 0.1)
+				handled_arrow = true
 		
 		# If user pressed an arrow key, consume it so the Ship lists don't tab around
 		if handled_arrow:
 			get_viewport().set_input_as_handled()
+			
+	if event is InputEventMouseButton and event.pressed:
+		if event.button_index == MOUSE_BUTTON_WHEEL_UP:
+			_set_zoom(current_zoom + 0.1)
+		elif event.button_index == MOUSE_BUTTON_WHEEL_DOWN:
+			_set_zoom(current_zoom - 0.1)
+
+func _set_zoom(new_zoom: float):
+	var old_zoom = current_zoom
+	current_zoom = clamp(new_zoom, min_zoom, 1.0)
+	
+	# Determine logical center percentage of the view so we can refocus
+	var center_x = map_view.scroll_horizontal + (map_view.size.x / 2.0)
+	var center_y = map_view.scroll_vertical + (map_view.size.y / 2.0)
+	
+	var old_size = BASE_MAP_SIZE * old_zoom
+	var pct_x = center_x / old_size.x if old_size.x > 0 else 0.5
+	var pct_y = center_y / old_size.y if old_size.y > 0 else 0.5
+	
+	map_container.scale = Vector2(current_zoom, current_zoom)
+	
+	# Update scroll container internal size constraints to preserve accurate panning
+	var map_wrapper = map_container.get_parent()
+	map_wrapper.custom_minimum_size = BASE_MAP_SIZE * current_zoom
+	
+	# Re-apply the zoom focus after the ScrollContainer's internal layout recalculates the scrollbars
+	call_deferred("_apply_scroll_after_zoom", pct_x, pct_y)
+
+func _apply_scroll_after_zoom(pct_x: float, pct_y: float):
+	var new_size = BASE_MAP_SIZE * current_zoom
+	var new_center_x = new_size.x * pct_x
+	var new_center_y = new_size.y * pct_y
+	map_view.scroll_horizontal = int(new_center_x - (map_view.size.x / 2.0))
+	map_view.scroll_vertical = int(new_center_y - (map_view.size.y / 2.0))
 
 func _process(delta):
 	if map_move_dir != Vector2.ZERO:
@@ -159,6 +227,15 @@ func _on_map_data_loaded():
 	call_deferred("_on_resize")
 
 func _on_resize():
+	# Calculate how small we're allowed to shrink the map before it leaves screen layout bounds
+	var view_size = map_view.size
+	var min_scale_x = view_size.x / BASE_MAP_SIZE.x
+	var min_scale_y = view_size.y / BASE_MAP_SIZE.y
+	min_zoom = max(min_scale_x, min_scale_y)
+	
+	# Restrict the current zoom if the screen bounds squeezed passed the floor
+	_set_zoom(current_zoom)
+	
 	# Redraw positions when window resizes
 	for child in systems_container.get_children():
 		child.queue_free()
@@ -170,7 +247,7 @@ func _on_resize():
 
 func _coord_to_screen(x: float, y: float) -> Vector2:
 	# Coords relative to the total MapContainer size (2500x2500)
-	var map_size = map_container.custom_minimum_size
+	var map_size = BASE_MAP_SIZE
 	# Margin around edge of map bounds inside container
 	var margin_x = map_size.x * 0.1
 	var margin_y = map_size.y * 0.1
@@ -638,9 +715,11 @@ func _focus_camera_on_system(sys_id: String):
 	
 	if pos != Vector2.ZERO:
 		# Scroll to center the target position in the current viewport size
+		# Apply current_zoom math since pos is the unscaled BASE_MAP_SIZE coordinate
+		var scaled_pos = pos * current_zoom
 		var view_size = map_view.size
-		map_view.scroll_horizontal = int(pos.x - view_size.x / 2.0)
-		map_view.scroll_vertical = int(pos.y - view_size.y / 2.0)
+		map_view.scroll_horizontal = int(scaled_pos.x - view_size.x / 2.0)
+		map_view.scroll_vertical = int(scaled_pos.y - view_size.y / 2.0)
 
 func _update_composition_panel():
 	ship_list_ui.clear()
