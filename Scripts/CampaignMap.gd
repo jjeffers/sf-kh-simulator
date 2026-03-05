@@ -677,6 +677,16 @@ func _update_composition_panel():
 			ship_list_ui.set_item_custom_fg_color(item_idx, Color(1.0, 0.2, 0.2)) # Red
 
 func _on_campaign_state_updated():
+	if selected_fleet:
+		var rebind_success = false
+		for f in campaign.fleets:
+			if f.fleet_name == selected_fleet.fleet_name and f.faction == selected_fleet.faction and f.current_system_id == selected_fleet.current_system_id:
+				selected_fleet = f
+				rebind_success = true
+				break
+		if not rebind_success:
+			selected_fleet = null
+
 	_draw_fleets()
 	_update_fleet_list()
 	if selected_fleet:
