@@ -6811,10 +6811,99 @@ func show_game_over(msg: String):
 	if NetworkManager.lobby_data != null and NetworkManager.lobby_data.get("scenario", "") == "campaign_encounter":
 		if is_instance_valid(btn_restart):
 			btn_restart.text = "Return to Campaign Map"
+		# Only process aftermath once on the server, local clients will just view the result
+		if _is_server_or_offline():
+			_process_aftermath_repairs()
 			
 	panel_game_over.visible = true
 	_update_ui_state()
 	log_message(msg)
+
+func _process_aftermath_repairs():
+	log_message("[color=cyan]=== PROCESSING AFTERMATH REPAIRS ===[/color]")
+	
+	for s in ships:
+		if not is_instance_valid(s): continue
+		if s.is_destroyed or s.hull <= 0: continue
+			
+		var damage_keys = AutoRepairProcessor._get_repairable_keys(s)
+		for dk in damage_keys:
+			var roll = randi() % 100 + 1
+			var chance = s.max_dcr
+			if roll <= chance:
+				_apply_repair(s, dk)
+				log_message("[color=green]%s repaired %s (Roll: %d <= %d)[/color]" % [s.name, dk, roll, chance])
+			else:
+				if roll >= 99:
+					_mark_unrepairable(s, dk)
+					log_message("[color=red]%s permanently damaged %s (Roll: %d)[/color]" % [s.name, dk, roll])
+				else:
+					if dk == "hull": s.unrepairable_hull = true # Track hull failure so we block it further? Rule says "Any failed hull damage roll means no further hull repairs may be made." We can handle this logic later if SCC tries to repair it. For now, mark it unrepairable? Let's just log it.
+					log_message("[color=yellow]%s failed to repair %s (Roll: %d)[/color]" % [s.name, dk, roll])
+					
+		if s.has_electrical_fire or s.has_disastrous_fire:
+			log_message("[color=red]%s was consumed by unresolved fires and destroyed![/color]" % s.name)
+			s.is_destroyed = true
+			s.hull = 0
+			
+	# Update CampaignManager
+	var sys_name = NetworkManager.lobby_data.get("encounter_system", "")
+	for f in CampaignManager.fleets:
+		if f.current_system_id == sys_name and not f.is_moving():
+			for i in range(f.ships.size() - 1, -1, -1):
+				var c_ship = f.ships[i]
+				var c_name = c_ship.get("name", "")
+				var c_faction = f.faction
+				
+				var tac_ship = null
+				for s in ships:
+					if is_instance_valid(s) and s.name == c_name and get_side_name(s.side_id) == c_faction:
+						tac_ship = s
+						break
+						
+				if tac_ship == null or tac_ship.is_destroyed or tac_ship.hull <= 0:
+					f.ships.remove_at(i)
+					log_message("[color=red]Campaign updated: %s removed from fleet.[/color]" % c_name)
+				else:
+					c_ship["hull"] = tac_ship.hull
+					c_ship["max_hull"] = tac_ship.max_hull
+					c_ship["current_adf_modifier"] = tac_ship.current_adf_modifier
+					c_ship["unrepairable_adf_modifier"] = tac_ship.unrepairable_adf_modifier
+					c_ship["current_mr_modifier"] = tac_ship.current_mr_modifier
+					c_ship["unrepairable_mr_modifier"] = tac_ship.unrepairable_mr_modifier
+					c_ship["has_electrical_fire"] = tac_ship.has_electrical_fire
+					c_ship["has_disastrous_fire"] = tac_ship.has_disastrous_fire
+					c_ship["unrepairable_electrical_fire"] = tac_ship.unrepairable_electrical_fire
+					c_ship["unrepairable_disastrous_fire"] = tac_ship.unrepairable_disastrous_fire
+					c_ship["ccs_damaged"] = tac_ship.ccs_damaged
+					c_ship["unrepairable_ccs"] = tac_ship.unrepairable_ccs
+					c_ship["icm_max"] = tac_ship.icm_max
+					c_ship["icm_current"] = tac_ship.icm_current
+					c_ship["unrepairable_icm"] = tac_ship.unrepairable_icm
+					c_ship["ms_max"] = tac_ship.ms_max
+					c_ship["ms_current"] = tac_ship.ms_current
+					c_ship["unrepairable_ms"] = tac_ship.unrepairable_ms
+					
+					if c_ship.has("weapons"):
+						for w_idx in range(c_ship["weapons"].size()):
+							if w_idx < tac_ship.weapons.size():
+								var cw = c_ship["weapons"][w_idx]
+								var tw = tac_ship.weapons[w_idx]
+								cw["ammo"] = tw.get("ammo", 0)
+								cw["is_crippled"] = tw.get("is_crippled", false)
+								cw["unrepairable"] = tw.get("unrepairable", false)
+					
+	for i in range(CampaignManager.fleets.size() - 1, -1, -1):
+		if CampaignManager.fleets[i].ships.size() == 0:
+			CampaignManager.fleets.remove_at(i)
+			
+	if CampaignManager.active_encounters.has(sys_name):
+		CampaignManager.active_encounters.erase(sys_name)
+		
+	if _is_networked():
+		NetworkManager.sync_campaign_state.rpc(CampaignManager.serialize_state())
+	else:
+		CampaignManager.emit_signal("campaign_state_updated")
 
 func _on_restart():
 	if NetworkManager.lobby_data != null and NetworkManager.lobby_data.get("scenario", "") == "campaign_encounter":

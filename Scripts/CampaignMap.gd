@@ -33,6 +33,7 @@ var min_zoom: float = 0.5
 const BASE_MAP_SIZE := Vector2(2500, 2500)
 
 var active_encounter_dialog: Node = null
+var scc_btn: Button
 
 func _ready():
 	# CampaignManager is now a guaranteed Autoload
@@ -49,6 +50,12 @@ func _ready():
 	end_turn_btn.pressed.connect(_on_end_turn_pressed)
 	cancel_jump_btn.pressed.connect(_on_cancel_jump_pressed)
 	plot_jump_btn.toggled.connect(_on_plot_jump_toggled)
+	
+	scc_btn = Button.new()
+	scc_btn.text = "Access Shipyard"
+	scc_btn.disabled = true
+	scc_btn.pressed.connect(_on_scc_btn_pressed)
+	cancel_jump_btn.get_parent().add_child(scc_btn)
 	
 	fleet_list.item_selected.connect(_on_fleet_list_selected)
 	fleet_list.item_activated.connect(_on_fleet_list_activated)
@@ -376,6 +383,16 @@ func _draw_systems():
 			# Position it nicely offset from the system circle
 			station_icon.position = pos + Vector2(-12, -30)
 			systems_container.add_child(station_icon)
+			
+		# Draw SCC indicator if present
+		if sys_name in campaign.UPF_STARSHIP_CONSTRUCTION_CENTERS:
+			var scc_icon = TextureRect.new()
+			scc_icon.texture = load("res://Assets/Maintenance.svg")
+			scc_icon.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+			scc_icon.custom_minimum_size = Vector2(24, 24)
+			# Position it offset to the other side of the circle
+			scc_icon.position = pos + Vector2(12, -30)
+			systems_container.add_child(scc_icon)
 		
 	for start_c in campaign.start_circles:
 		var circle_id = "Start Circle " + str(int(start_c.get("id", 0)))
@@ -384,6 +401,14 @@ func _draw_systems():
 		
 		var node = _create_system_node(circle_id, display_name, pos, true)
 		systems_container.add_child(node)
+		
+		# All Sathar Start Circles are SCCs
+		var scc_icon = TextureRect.new()
+		scc_icon.texture = load("res://Assets/Maintenance.svg")
+		scc_icon.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+		scc_icon.custom_minimum_size = Vector2(24, 24)
+		scc_icon.position = pos + Vector2(12, -30) # same top-right offset
+		systems_container.add_child(scc_icon)
 		
 		var parent_sys_id = start_c.get("connected_system", "")
 		if campaign.systems.has(parent_sys_id):
@@ -608,6 +633,12 @@ func _focus_system_only(sys_name: String):
 		_focus_camera_on_system(sys_name)
 		_draw_routes()
 
+func _on_scc_btn_pressed():
+	if selected_system_id == "": return
+	var repair_ui = load("res://Scripts/CampaignRepairUI.gd").new(selected_system_id, _get_my_faction())
+	add_child(repair_ui)
+	repair_ui.popup_centered()
+
 func _update_ui():
 	# Update Window Title
 	var my_faction = _get_my_faction()
@@ -641,8 +672,17 @@ func _update_fleet_list():
 	fleet_list.clear()
 	plot_jump_btn.disabled = true
 	cancel_jump_btn.disabled = true
+	scc_btn.disabled = true
 	
 	var my_faction = _get_my_faction()
+	
+	if my_faction == "UPF" and selected_system_id in campaign.UPF_STARSHIP_CONSTRUCTION_CENTERS:
+		scc_btn.disabled = false
+	elif my_faction == "Sathar":
+		for c in campaign.start_circles:
+			if "Start Circle %d" % c.get("id", 0) == selected_system_id:
+				scc_btn.disabled = false
+				break
 	
 	for i in range(campaign.fleets.size()):
 		var f = campaign.fleets[i]
