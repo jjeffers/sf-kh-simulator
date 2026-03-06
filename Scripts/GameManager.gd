@@ -2098,7 +2098,7 @@ func _cycle_selection():
 		
 		_load_plan_visualization(selected_ship)
 		
-		_update_camera()
+		_update_camera(selected_ship)
 		_update_ship_visuals() # Re-sort stack
 		_update_ui_state()
 
@@ -2620,7 +2620,7 @@ func _update_planning_ui_list():
 			_update_ui_state()
 			_update_planning_ui_list()
 			
-			_update_camera() # Refocus view on selected ship
+			_update_camera(selected_ship) # Refocus view on selected ship
 			_update_ship_visuals()
 			queue_redraw()
 		)
@@ -4295,7 +4295,7 @@ func _update_movement_ui_list():
 					
 				_update_ui_state()
 				_update_ship_visuals()
-				_update_camera() # Refocus view on selected ship
+				_update_camera(selected_ship) # Refocus view on selected ship
 				queue_redraw()
 		)
 		
@@ -6031,7 +6031,7 @@ func _unhandled_input(event):
 
 			queue_redraw()
 			_update_ui_state()
-			_update_camera()
+			_update_camera(selected_ship)
 
 func _is_weapon_available_in_phase(weapon: Dictionary, ship: Ship = null) -> bool:
 	if weapon.get("is_crippled", false):
@@ -6951,6 +6951,7 @@ func _build_summary_panel():
 	btn_summary_return.pressed.connect(func():
 		if _is_server_or_offline():
 			_sync_campaign_results()
+		_on_restart()
 	)
 	
 	var center_btn = CenterContainer.new()
@@ -7586,6 +7587,9 @@ func _handle_mouse_facing(hex: Vector3i):
 	# Speed 0 / Orbit Exception: Allow free rotation
 	var is_stationary = (current_path.size() == 0 and start_speed == 0)
 	if is_stationary or state_is_orbiting:
+		if not state_is_orbiting and is_instance_valid(selected_ship) and selected_ship.get_effective_mr() <= 0:
+			return # Ships with 0 MR cannot rotate freely
+			
 		ghost_ship.facing = dir_idx
 		ghost_head_facing = ghost_ship.facing # FIX: Ensure logic tracks the new facing!
 		ghost_ship.queue_redraw()
