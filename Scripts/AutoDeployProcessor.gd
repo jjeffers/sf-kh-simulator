@@ -37,7 +37,7 @@ func execute(ships: Array, valid_hexes: Array[Vector3i], game_manager: Node) -> 
             if s.ship_class == "Fighter":
                 if available_carriers.size() > 0:
                     var carrier = available_carriers[carrier_index % available_carriers.size()]
-                    s.dock_with(carrier)
+                    s.dock_at(carrier)
                     carrier_index += 1
                 else:
                     # Very strange edge case where attacker brings fighters without carriers.

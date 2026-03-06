@@ -253,13 +253,13 @@ func _find_best_legal_move(ship: Ship, target: Ship) -> Dictionary:
 			best_score = score
 			best_move = move
 			
-	# Desperation fallback -> generate a straight line at min speed if DFS somehow failed
+	# Desperation fallback -> generate a straight line at current speed if DFS somehow failed
 	if not best_move:
-		game_manager.log_message("[color=red]AI Warning: DFS returned NO paths for %s! Generating emergency straight-line path of length %d...[/color]" % [ship.name, min_speed])
+		game_manager.log_message("[color=red]AI Warning: DFS returned NO paths for %s! Generating emergency straight-line path of length %d...[/color]" % [ship.name, old_speed])
 		var emergency_path: Array[Vector3i] = []
 		var curr_hex = ship.grid_position
 		var fwd_vec = HexGrid.get_direction_vec(ship.facing)
-		for i in range(min_speed):
+		for i in range(old_speed):
 			curr_hex += fwd_vec
 			emergency_path.append(curr_hex)
 		best_move = {"path": emergency_path, "facing": ship.facing, "mr_left": max_mr}

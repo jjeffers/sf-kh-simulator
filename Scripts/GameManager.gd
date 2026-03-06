@@ -1089,6 +1089,9 @@ func log_message(msg: String):
 		combat_log.append_text(final_msg + "\n")
 	print(final_msg)
 	_log_to_file(final_msg)
+	
+	if has_node("/root/ConsoleManager"):
+		ConsoleManager.log_message(final_msg)
 
 @rpc("any_peer", "call_local", "reliable")
 func rpc_log_message(msg: String):
@@ -1745,7 +1748,11 @@ func _process_next_attack():
 		target_pos = target.position
 
 	if not is_instance_valid(target) or target.hull <= 0:
-		log_message("%s firing at WRECK of %s! (Wasted)" % [source.get_display_name(), target.get_display_name() if is_instance_valid(target) else "Unknown"])
+		var w_msg = "%s firing at WRECK of %s! (Wasted)" % [source.get_display_name(), target.get_display_name() if is_instance_valid(target) else "Unknown"]
+		if _is_networked() and multiplayer.is_server():
+			rpc_log_message.rpc(w_msg)
+		else:
+			log_message(w_msg)
 		_spawn_attack_fx(start_pos, target_pos, weapon.get("type"))
 		await get_tree().create_timer(1.5).timeout
 		_process_next_attack()
@@ -1755,14 +1762,22 @@ func _process_next_attack():
 
 	# DOCKING RULE: Targeting Immunity Check AGAIN (Safety)
 	if target.is_docked and target.ship_class in ["Fighter", "Assault Scout"]:
-		log_message("%s target is docked and invalid! Attack fizzles." % source.get_display_name())
+		var d_msg = "%s target is docked and invalid! Attack fizzles." % source.get_display_name()
+		if _is_networked() and multiplayer.is_server():
+			rpc_log_message.rpc(d_msg)
+		else:
+			log_message(d_msg)
 		source.weapons[weapon_idx]["ammo"] -= 1 # Wasted shot rule? Or refund? Let's burn ammo to be safe.
 		await get_tree().create_timer(1.0).timeout
 		_process_next_attack()
 		return
 
 	# Execute Fire Logic
-	log_message("%s firing %s at %s" % [source.get_display_name(), weapon["name"], target.get_display_name()])
+	var f_msg = "%s firing %s at %s" % [source.get_display_name(), weapon["name"], target.get_display_name()]
+	if _is_networked() and multiplayer.is_server():
+		rpc_log_message.rpc(f_msg)
+	else:
+		log_message(f_msg)
 	
 	# Hit Calc Setup
 	var d = HexGrid.hex_distance(source.grid_position, target.grid_position)
@@ -1867,11 +1882,9 @@ func _process_next_attack():
 			rpc_log_message.rpc(dmg_msg)
 		else:
 			log_message(dmg_msg)
-		# 3. Apply Effect (delayed for FX)
-		var damage_delay = travel_time
-		if damage_delay == 0: damage_delay = 0.5
-		
-		await get_tree().create_timer(damage_delay).timeout
+		# 3. Apply Effect (Ship handles structural vs conditional dmg, we just tell it the base roll if needed)
+		# Add fx wait
+		await get_tree().create_timer(travel_time).timeout
 		
 		if is_instance_valid(target):
 			# Check for Screen Half Damage Logic
@@ -4716,19 +4729,19 @@ func execute_all_movement():
 			log_message("[color=yellow]EXECUTE LOOP: Checking Ship %s (Class: %s, Mines: %d)[/color]" % [s.name, s.ship_class, s.planned_mines_to_drop.size()])
 			# If a ship did not receive orders (player pressed Execute Movement without plotting)
 			if not s.has_orders:
-				var min_speed = max(0, s.speed - s.get_effective_adf())
+				var current_speed = s.speed
 				var auto_path: Array[Vector3i] = []
 				var current_hex = s.grid_position
 				var dir_vec = HexGrid.get_direction_vec(s.facing)
 				
-				# If the ship is moving too fast to stop, it MUST move straight forward
-				for i in range(min_speed):
+				# If the ship is not given orders, it MUST maintain its current speed straight forward
+				for i in range(current_speed):
 					current_hex += dir_vec
 					auto_path.append(current_hex)
 					
 				s.planned_path = auto_path
 				s.planned_facing = s.facing
-				s.planned_orbit_dir = 0
+				s.planned_orbit_dir = s.orbit_direction # Preserve orbit!
 				s.has_orders = true
 				
 			# Apply Plan
@@ -5179,10 +5192,8 @@ func _apply_movement_plan(s: Ship):
 	s.speed = new_speed
 	
 	# Orbit Logic
-	if s.planned_orbit_dir != 0:
+	if s.has_orders:
 		s.orbit_direction = s.planned_orbit_dir
-	else:
-		s.orbit_direction = 0
 		
 	s.has_moved = true
 	s.has_orders = false
@@ -7321,8 +7332,6 @@ func load_scenario(key: String, seed_val: int = 12345):
 				log_message("Unknown class %s, defaulting to Scout" % cls)
 				s.configure_assault_scout()
 				
-		s.finalize_configuration()
-		
 		# Base Properties
 		s.name = data.get("name", "Ship")
 		s.faction = data.get("faction", "UPF")
@@ -7359,6 +7368,8 @@ func load_scenario(key: String, seed_val: int = 12345):
 				else:
 					s.set(k, val)
 				
+		s.finalize_configuration()
+		
 		# Assign Ownership from Lobby
 		var owner_pid = 0
 		if NetworkManager.lobby_data != null and NetworkManager.lobby_data.has("ship_assignments"):

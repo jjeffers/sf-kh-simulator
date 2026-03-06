@@ -155,28 +155,13 @@ func sync_campaign_state(state_data: Dictionary):
 	var cm = CampaignManager
 	var old_day = cm.current_day
 		
-	cm.current_day = state_data.get("current_day", 1)
-	cm.destroyed_stations_count = state_data.get("destroyed_stations", 0)
-	cm.destroyed_fortresses_count = state_data.get("destroyed_fortresses", 0)
+	var old_encounters = cm.active_encounters.duplicate()
+	cm.deserialize_state(state_data)
 	
 	var new_encounters = []
-	if state_data.has("active_encounters"):
-		var old_encounters = cm.active_encounters.duplicate()
-		cm.active_encounters.clear()
-		for e in state_data.get("active_encounters", []):
-			cm.active_encounters.append(e)
-			if not old_encounters.has(e):
-				new_encounters.append(e)
-			
-	cm.fleets.clear()
-	var fleets_arr = state_data.get("fleets", [])
-	for f_data in fleets_arr:
-		var fleet = CampaignFleet.new("", "", "")
-		fleet.deserialize(f_data)
-		cm.fleets.append(fleet)
-		
-	# Now that state is fully hydrated, fire UI log events
-	for e in new_encounters:
+	for e in cm.active_encounters:
+		if not old_encounters.has(e):
+			new_encounters.append(e)
 		cm.campaign_encounter_triggered.emit(e, [], [])
 		
 	if cm.current_day > old_day:

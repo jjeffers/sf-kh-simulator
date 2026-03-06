@@ -982,11 +982,21 @@ static func get_valid_deployment_hexes(side_id: int, ships: Array, planets: Arra
 							else:
 								valid_hexes.append(Vector3i(x, y, z))
 
-	# If valid_hexes is empty, we default to the entire playable map (radius 25)
+	# If valid_hexes is empty, we set up fallback defaults
 	if valid_hexes.is_empty():
-		for x in range(-25, 26):
-			for y in range(max(-25, -x-25), min(25, -x+25) + 1):
-				var z = -x - y
-				valid_hexes.append(Vector3i(x, y, z))
+		if side_id == 2:
+			# General Rule: Attackers deploy at exactly 20 hexes from center unless otherwise noted
+			var spawn_dist = 20
+			for x in range(-spawn_dist, spawn_dist + 1):
+				for y in range(max(-spawn_dist, -x-spawn_dist), min(spawn_dist, -x+spawn_dist) + 1):
+					var z = -x - y
+					if HexGrid.hex_distance(Vector3i.ZERO, Vector3i(x, y, z)) == spawn_dist:
+						valid_hexes.append(Vector3i(x, y, z))
+		else:
+			# Defenders default to the entire playable map (radius 25)
+			for x in range(-25, 26):
+				for y in range(max(-25, -x-25), min(25, -x+25) + 1):
+					var z = -x - y
+					valid_hexes.append(Vector3i(x, y, z))
 
 	return valid_hexes
