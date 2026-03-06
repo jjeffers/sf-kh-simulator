@@ -19,7 +19,7 @@ func execute(ships: Array, valid_hexes: Array[Vector3i], game_manager: Node) -> 
     # Attackers historically possess valid deployment hexes restricted entirely to the map's outer radius edge.
     var is_attacker = true
     for h in valid_hexes:
-        if HexGrid.hex_distance(Vector3i.ZERO, h) < game_manager.map_radius:
+        if HexGrid.hex_distance(Vector3i.ZERO, h) < game_manager.map_radius - 2:
             is_attacker = false
             break
 

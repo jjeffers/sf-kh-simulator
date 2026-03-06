@@ -6019,9 +6019,9 @@ func _unhandled_input(event):
 					
 				get_viewport().set_input_as_handled()
 				return
-		elif event.keycode == KEY_EQUAL: # Plus key
+		elif event.keycode == KEY_EQUAL or event.keycode == KEY_PAGEUP: # Plus key / Page Up
 			target_zoom = (target_zoom + Vector2(ZOOM_SPEED, ZOOM_SPEED)).clamp(ZOOM_MIN, ZOOM_MAX)
-		elif event.keycode == KEY_MINUS: # Minus key
+		elif event.keycode == KEY_MINUS or event.keycode == KEY_PAGEDOWN: # Minus key / Page Down
 			target_zoom = (target_zoom - Vector2(ZOOM_SPEED, ZOOM_SPEED)).clamp(ZOOM_MIN, ZOOM_MAX)
 
 	
