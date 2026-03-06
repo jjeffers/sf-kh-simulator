@@ -254,6 +254,7 @@ func _initialize_sathar_forces():
 		idx += 1
 
 func _add_ships_to_fleet(fleet: CampaignFleet, composition: Dictionary):
+	var ShipScript = load("res://Scripts/Ship.gd")
 	for ship_class in composition.keys():
 		var count = composition[ship_class]
 		for i in range(count):
@@ -263,8 +264,17 @@ func _add_ships_to_fleet(fleet: CampaignFleet, composition: Dictionary):
 			var data = {
 				"name": designated_name,
 				"class": ship_class,
-				"hull": 100 # Percentage or full max hull logic can be applied later when moving to tactical
+				"hull": 100
 			}
+			
+			if ShipScript:
+				var dummy = ShipScript.new()
+				var method_name = "configure_" + ship_class.replace(" ", "_").to_lower()
+				if dummy.has_method(method_name):
+					dummy.call(method_name)
+					data["hull"] = dummy.hull
+				dummy.free()
+				
 			fleet.ships.append(data)
 
 func get_fleets_at_system(system_id: String) -> Array[CampaignFleet]:
@@ -547,8 +557,8 @@ func _check_for_encounters():
 			
 	# Trigger encounters where both sides are present
 	for sys in systems_with_fleets:
-		var upf_forces = systems_with_fleets[sys]["UPF"]
-		var sathar_forces = systems_with_fleets[sys]["Sathar"]
+		var upf_forces = systems_with_fleets[sys].get("UPF", [])
+		var sathar_forces = systems_with_fleets[sys].get("Sathar", [])
 		
 		# Encounter triggers if fleets co-exist OR if Sathar arrives at a UPF system with a station
 		var has_station = (sys in UPF_FORTRESSES or sys in UPF_ARMED_STATIONS)

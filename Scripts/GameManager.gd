@@ -666,8 +666,14 @@ func _setup_ui():
 	pm_lbl.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	pm_vbox.add_child(pm_lbl)
 	
+	var scroll_movement = ScrollContainer.new()
+	scroll_movement.custom_minimum_size = Vector2(0, 300) # Give it enough height to scroll without dominating
+	scroll_movement.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	pm_vbox.add_child(scroll_movement)
+	
 	list_movement = VBoxContainer.new()
-	pm_vbox.add_child(list_movement)
+	list_movement.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	scroll_movement.add_child(list_movement)
 	
 	# Execute Movement Button (Manual Phase End)
 	btn_exec_move = Button.new()
