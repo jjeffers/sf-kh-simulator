@@ -138,11 +138,11 @@ func _initialize_upf_forces():
 	else: nova_system = "K'tsa-Kar"
 	
 	var tf_nova = create_new_fleet("UPF", nova_system, "Strike Force NOVA")
-	_add_ships_to_fleet(tf_nova, {"Battleship": 1, "Assault Carrier": 1, "Light Cruiser": 2, "Destroyer": 1, "Frigate": 2, "Assault Scout": 3, "Fighter": 6})
+	_add_ships_to_fleet(tf_nova, {"Battleship": 1, "Light Cruiser": 2})
 	
 	# 1b. Task Force Cassidine
 	var tf_cassidine = create_new_fleet("UPF", "Cassidine", "Task Force Cassidine")
-	_add_ships_to_fleet(tf_cassidine, {"Battleship": 1, "Assault Carrier": 1, "Heavy Cruiser": 1, "Light Cruiser": 1, "Frigate": 2, "Assault Scout": 3, "Fighter": 6, "Minelayer": 1})
+	_add_ships_to_fleet(tf_cassidine, {"Assault Carrier": 1, "Heavy Cruiser": 1, "Light Cruiser": 1, "Frigate": 2, "Assault Scout": 3, "Fighter": 6})
 	
 	# 1c. Task Force Prenglar
 	var tf_prenglar = create_new_fleet("UPF", "Prenglar", "Task Force Prenglar")
@@ -169,11 +169,7 @@ func _initialize_upf_forces():
 		
 	# 3. Non-Attached Ships (Randomly distributed among active UPF fleets)
 	var unattached = [
-		"Fighter", "Fighter", "Fighter", "Fighter", 
-		"Assault Scout", "Assault Scout", "Assault Scout", 
-		"Minelayer", 
-		"Destroyer", "Destroyer", 
-		"Light Cruiser", "Light Cruiser"
+		"Destroyer", "Destroyer"
 	]
 	
 	var upf_fleets = []
@@ -188,12 +184,12 @@ func _initialize_upf_forces():
 func _initialize_sathar_forces():
 	var sathar_pool = []
 	var sathar_composition = {
-		"Fighter": 25,
-		"Frigate": 8,
-		"Destroyer": 15,
-		"Light Cruiser": 7,
-		"Heavy Cruiser": 8,
-		"Assault Carrier": 4
+		"Fighter": 10,
+		"Frigate": 4,
+		"Destroyer": 4,
+		"Light Cruiser": 2,
+		"Heavy Cruiser": 2,
+		"Assault Carrier": 1
 	}
 	
 	for type in sathar_composition.keys():
@@ -202,7 +198,7 @@ func _initialize_sathar_forces():
 			
 	sathar_pool.shuffle()
 	
-	var num_fleets = 3
+	var num_fleets = 2
 	if start_circles.size() == 0: return # Fallback if map not loaded properly
 	
 	var chosen_circles = []

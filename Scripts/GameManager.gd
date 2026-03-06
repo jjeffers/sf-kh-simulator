@@ -5,6 +5,7 @@ extends Node2D
 @export var map_radius: int = 35
 
 var ships: Array[Ship] = []
+var campaign_casualties: Array[Ship] = []
 const LOG_FILE = "user://game_log.txt"
 var current_side_id: int = 1 # The "Active" moving side
 var firing_side_id: int = 0 # The side currently firing in Combat Phase
@@ -530,6 +531,7 @@ func _setup_ui():
 
 	_build_deployment_panel(vbox)
 	_build_repair_panel(vbox)
+	_build_summary_panel()
 
 
 	var hbox = HBoxContainer.new()
@@ -1838,7 +1840,7 @@ func _process_next_attack():
 	var hit = result["success"]
 	
 	var hit_str = "HIT" if hit else "MISS"
-	log_message("Rolled %d vs %d%% -> %s" % [result["roll"], result["chance"], hit_str])
+	log_message("Firing Ship: %s, Weapon: %s, Odds: %d%%, Roll: %d, Result: %s" % [source.get_display_name(), weapon["name"], result["chance"], result["roll"], hit_str])
 	
 	# Spawn Attack FX (Launch concurrently with ICMs)
 	var travel_time = _spawn_attack_fx(start_pos, target_pos, weapon.get("type", "Laser"))
@@ -3491,7 +3493,6 @@ func rpc_execute_repairs_for_side(side_id: int, allocs_for_side: Dictionary, rng
 			if chance <= 0: continue
 			
 			var roll = randi() % 100 + 1
-			log_message("%s repairing %s... (DCR %d%%) Roll: %d" % [s.name, key, chance, roll])
 			
 			var display_name = key.to_upper()
 			if key.begins_with("adf_"): display_name = "ADF"
@@ -3503,23 +3504,25 @@ func rpc_execute_repairs_for_side(side_id: int, allocs_for_side: Dictionary, rng
 				audio_repair_roll.play()
 			
 			if roll >= 90:
-				log_message("[color=red]Repair Failed![/color]")
-				if audio_repair_failure and audio_repair_failure.stream:
-					audio_repair_failure.play()
 				if roll >= 99:
-					log_message("[color=red]System permanently broken![/color]")
+					log_message("Repairing: %s, System: %s, Odds: %d%%, Roll: %d, Result: PERMANENTLY DESTROYED" % [s.name, display_name, chance, roll])
+					if audio_repair_failure and audio_repair_failure.stream:
+						audio_repair_failure.play()
 					_spawn_hit_text(target_pos, pre_text + "CRITICAL FAIL")
 					_mark_unrepairable(s, key)
 				else:
+					log_message("Repairing: %s, System: %s, Odds: %d%%, Roll: %d, Result: FAILED" % [s.name, display_name, chance, roll])
+					if audio_repair_failure and audio_repair_failure.stream:
+						audio_repair_failure.play()
 					_spawn_hit_text(target_pos, pre_text + "FAILED")
 			elif roll <= chance:
-				log_message("[color=green]Repair Successful![/color]")
+				log_message("Repairing: %s, System: %s, Odds: %d%%, Roll: %d, Result: SUCCESS" % [s.name, display_name, chance, roll])
 				if audio_repair_success and audio_repair_success.stream:
 					audio_repair_success.play()
 				_spawn_hit_text(target_pos, pre_text + "REPAIRED!")
 				_apply_repair(s, key)
 			else:
-				log_message("[color=yellow]Repair Failed. Roll too high.[/color]")
+				log_message("Repairing: %s, System: %s, Odds: %d%%, Roll: %d, Result: FAILED" % [s.name, display_name, chance, roll])
 				if audio_repair_failure and audio_repair_failure.stream:
 					audio_repair_failure.play()
 				_spawn_hit_text(target_pos, pre_text + "FAILED")
@@ -4855,7 +4858,7 @@ func _resolve_mine_detonations():
 				var hit = result["success"]
 				var hit_str = "HIT" if hit else "MISS"
 				
-				var msg1 = "Mine attacks %s: Rolled %d vs %d%% -> %s" % [s.get_display_name(), result["roll"], result["chance"], hit_str]
+				var msg1 = "Firing Ship: Spatial Mine, Weapon: Proximity Detonation, Odds: %d%%, Roll: %d, Result: %s" % [result["chance"], result["roll"], hit_str]
 				if _is_networked() and multiplayer.is_server():
 					rpc_log_message.rpc(msg1)
 				else:
@@ -5039,7 +5042,7 @@ func _resolve_seeker_movement_and_detonations():
 			var hit = result["success"]
 			var hit_str = "HIT" if hit else "MISS"
 			
-			var msg1 = "Seeker attacks %s: Rolled %d vs %d%% -> %s" % [target.get_display_name(), result["roll"], result["chance"], hit_str]
+			var msg1 = "Firing Ship: Autonomous Seeker, Weapon: Seeker Missile, Odds: %d%%, Roll: %d, Result: %s" % [result["chance"], result["roll"], hit_str]
 			if _is_networked() and multiplayer.is_server(): rpc_log_message.rpc(msg1)
 			else: log_message(msg1)
 			
@@ -6838,6 +6841,8 @@ func broadcast_icm_decision(allocations: Dictionary):
 	icm_decision_made.emit(allocations)
 
 func _on_ship_destroyed(ship: Ship):
+	if not campaign_casualties.has(ship):
+		campaign_casualties.append(ship)
 	ships.erase(ship)
 	_update_ship_visuals() # Re-calc stacks
 	log_message("Ship destroyed: %s" % ship.name)
@@ -6854,13 +6859,22 @@ func _check_victory():
 		elif s.side_id == 2: s2_count += 1
 	
 	if s1_count == 0 and s2_count == 0:
-		show_game_over("Draw!")
+		if NetworkManager.lobby_data != null and NetworkManager.lobby_data.get("scenario", "") == "campaign_encounter":
+			_show_battle_summary("Draw!", 0)
+		else:
+			show_game_over("Draw!")
 	elif s1_count == 0:
 		var winner_name = get_side_name(2)
-		show_game_over("Winner: " + winner_name + "!")
+		if NetworkManager.lobby_data != null and NetworkManager.lobby_data.get("scenario", "") == "campaign_encounter":
+			_show_battle_summary("VICTORY", 2)
+		else:
+			show_game_over("Winner: " + winner_name + "!")
 	elif s2_count == 0:
 		var winner_name = get_side_name(1)
-		show_game_over("Winner: " + winner_name + "!")
+		if NetworkManager.lobby_data != null and NetworkManager.lobby_data.get("scenario", "") == "campaign_encounter":
+			_show_battle_summary("VICTORY", 1)
+		else:
+			show_game_over("Winner: " + winner_name + "!")
 
 func show_game_over(msg: String):
 	current_phase = Phase.END
@@ -6875,6 +6889,138 @@ func show_game_over(msg: String):
 	panel_game_over.visible = true
 	_update_ui_state()
 	log_message(msg)
+
+var panel_summary: PanelContainer
+var lbl_summary_title: Label
+var vbox_summary_upf: VBoxContainer
+var vbox_summary_sathar: VBoxContainer
+var btn_summary_return: Button
+
+func _build_summary_panel():
+	panel_summary = PanelContainer.new()
+	var style = StyleBoxFlat.new()
+	style.bg_color = Color(0.1, 0.1, 0.1, 0.95)
+	style.border_width_bottom = 2
+	style.border_width_top = 2
+	style.border_width_left = 2
+	style.border_width_right = 2
+	style.border_color = Color(0.5, 0.5, 0.5, 1.0)
+	panel_summary.add_theme_stylebox_override("panel", style)
+	
+	panel_summary.set_anchors_preset(Control.PRESET_CENTER)
+	panel_summary.visible = false # Hidden initially
+	
+	var vbox_main = VBoxContainer.new()
+	vbox_main.add_theme_constant_override("separation", 20)
+	var margin = MarginContainer.new()
+	margin.add_theme_constant_override("margin_top", 20)
+	margin.add_theme_constant_override("margin_bottom", 20)
+	margin.add_theme_constant_override("margin_left", 30)
+	margin.add_theme_constant_override("margin_right", 30)
+	margin.add_child(vbox_main)
+	panel_summary.add_child(margin)
+	
+	lbl_summary_title = Label.new()
+	lbl_summary_title.add_theme_font_size_override("font_size", 32)
+	lbl_summary_title.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	vbox_main.add_child(lbl_summary_title)
+	
+	var hbox_cols = HBoxContainer.new()
+	hbox_cols.add_theme_constant_override("separation", 50)
+	hbox_cols.alignment = BoxContainer.ALIGNMENT_CENTER
+	vbox_main.add_child(hbox_cols)
+	
+	vbox_summary_upf = VBoxContainer.new()
+	var lbl_upf_col = Label.new()
+	lbl_upf_col.text = "UPF Casualties"
+	lbl_upf_col.add_theme_color_override("font_color", Color.CORNFLOWER_BLUE)
+	lbl_upf_col.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	vbox_summary_upf.add_child(lbl_upf_col)
+	hbox_cols.add_child(vbox_summary_upf)
+	
+	vbox_summary_sathar = VBoxContainer.new()
+	var lbl_sathar_col = Label.new()
+	lbl_sathar_col.text = "Sathar Casualties"
+	lbl_sathar_col.add_theme_color_override("font_color", Color.CRIMSON)
+	lbl_sathar_col.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	vbox_summary_sathar.add_child(lbl_sathar_col)
+	hbox_cols.add_child(vbox_summary_sathar)
+	
+	btn_summary_return = Button.new()
+	btn_summary_return.text = "Return to Campaign Map"
+	btn_summary_return.pressed.connect(func():
+		if _is_server_or_offline():
+			_sync_campaign_results()
+	)
+	
+	var center_btn = CenterContainer.new()
+	center_btn.add_child(btn_summary_return)
+	vbox_main.add_child(center_btn)
+	
+	ui_layer.add_child(panel_summary)
+
+func _show_battle_summary(title_text: String, side_id: int):
+	current_phase = Phase.END
+	_update_ui_state() # Hide standard tactical UI frames
+	
+	if side_id == 1:
+		lbl_summary_title.text = "UPF VICTORY"
+		lbl_summary_title.add_theme_color_override("font_color", Color.CORNFLOWER_BLUE)
+	elif side_id == 2:
+		lbl_summary_title.text = "SATHAR VICTORY"
+		lbl_summary_title.add_theme_color_override("font_color", Color.CRIMSON)
+	else:
+		lbl_summary_title.text = title_text
+		lbl_summary_title.add_theme_color_override("font_color", Color.WHITE)
+		
+	# Clear previous casualty lists (keep the headers)
+	for i in range(1, vbox_summary_upf.get_child_count()):
+		vbox_summary_upf.get_child(i).queue_free()
+	for i in range(1, vbox_summary_sathar.get_child_count()):
+		vbox_summary_sathar.get_child(i).queue_free()
+		
+	var all_ships = []
+	all_ships.append_array(ships)
+	all_ships.append_array(campaign_casualties)
+	
+	for s in all_ships:
+		if not is_instance_valid(s): continue
+		
+		# Define status
+		var status_str = ""
+		var col = Color.WHITE
+		if s.is_destroyed or s.hull <= 0:
+			status_str = "Destroyed"
+			col = Color.RED
+		else:
+			# Check crippled vs Damaged
+			var crippled = false
+			if s.speed_override_max_speed == 0 and s.get_effective_adf() <= 0:
+				crippled = true # Engines broken completely
+			else:
+				var unrepairable_count = 0
+				for w in s.weapons:
+					if w.get("is_crippled", false): unrepairable_count += 1
+				if s.weapons.size() > 0 and unrepairable_count == s.weapons.size():
+					crippled = true # All weapons broken
+					
+			if crippled:
+				status_str = "Crippled"
+				col = Color.ORANGE
+			elif (s.hull < s.max_hull) or (s.current_adf_modifier > 0) or (s.current_mr_modifier > 0) or s.has_electrical_fire or s.has_disastrous_fire or s.ccs_damaged or (s.icm_max < s.base_icm_max) or (s.ms_max < s.base_ms_max):
+				status_str = "Damaged"
+				col = Color.YELLOW
+				
+		if status_str != "":
+			var lbl = Label.new()
+			lbl.text = "[%s] %s" % [status_str, s.name]
+			lbl.add_theme_color_override("font_color", col)
+			if s.side_id == 1:
+				vbox_summary_upf.add_child(lbl)
+			else:
+				vbox_summary_sathar.add_child(lbl)
+				
+	panel_summary.visible = true
 
 func _get_faction_for_side(side_id: int) -> String:
 	# Side 1 is typically UPF in campaigns, Side 2 is Sathar.
