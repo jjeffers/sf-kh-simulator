@@ -2618,6 +2618,7 @@ func _update_planning_ui_list():
 			_update_ui_state()
 			_update_planning_ui_list()
 			
+			_update_camera() # Refocus view on selected ship
 			_update_ship_visuals()
 			queue_redraw()
 		)
@@ -4290,9 +4291,8 @@ func _update_movement_ui_list():
 				_load_plan_visualization(s)
 					
 				_update_ui_state()
-					
-				_update_ui_state()
 				_update_ship_visuals()
+				_update_camera() # Refocus view on selected ship
 				queue_redraw()
 		)
 		
