@@ -411,7 +411,6 @@ func order_fleet_move(fleet: CampaignFleet, destination_id: String) -> bool:
 func rpc_order_fleet_move(fleet_idx: int, destination_id: String):
 	if fleet_idx >= 0 and fleet_idx < fleets.size():
 		fleets[fleet_idx].start_move(destination_id, TRANSIT_DAYS)
-		_check_for_encounters()
 		if multiplayer.is_server() and has_node("/root/NetworkManager"):
 			var nm = get_node("/root/NetworkManager")
 			nm.sync_campaign_state.rpc(serialize_state())
@@ -426,7 +425,6 @@ func cancel_fleet_move(fleet: CampaignFleet):
 func rpc_cancel_fleet_move(fleet_idx: int):
 	if fleet_idx >= 0 and fleet_idx < fleets.size():
 		fleets[fleet_idx].cancel_move()
-		_check_for_encounters()
 		if multiplayer.is_server() and has_node("/root/NetworkManager"):
 			var nm = get_node("/root/NetworkManager")
 			nm.sync_campaign_state.rpc(serialize_state())
@@ -511,17 +509,19 @@ func end_turn():
 	# Track pre-resolution locations to check supply viability BEFORE combat occurs
 	var system_occupants = _get_systems_with_fleets()
 	
-	_check_for_encounters()
-	
+	var was_moving_flags = {}
 	for fleet in fleets:
-		var moved_this_turn = fleet.is_moving()
+		was_moving_flags[fleet] = fleet.is_moving()
 		if fleet.advance_day():
 			arriving_fleets.append(fleet)
 			emit_signal("fleet_arrived", fleet, fleet.current_system_id)
-			moved_this_turn = true
+			was_moving_flags[fleet] = true
 			
+	_check_for_encounters()
+			
+	for fleet in fleets:
 		# Rearm check: "Ships in supply will re-arm if they spend an entire day without moving or engaging in combat."
-		if not moved_this_turn:
+		if not was_moving_flags[fleet]:
 			var can_supply = false
 			if active_encounters.has(fleet.current_system_id):
 				can_supply = false # Blocked by combat breaking out this turn

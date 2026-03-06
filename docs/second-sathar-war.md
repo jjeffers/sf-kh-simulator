@@ -157,8 +157,8 @@ Once the campaign parameters are set, the game transitions to the Strategic Phas
 *   **Fleet Composition:** Fleets are composed of ships. Some sytems have stations - armed and/or fortified.
 
     - **Sathar Fleets**: 
-        - The Sathar starts with 3 fleets.
-        - The fleets are composed of: 25 Fighters, 8 Frigates, 15 Destroyers, 7 Light Cruisers, 8 Heavy Cruisers,4 Assault Carriers
+        - The Sathar starts with 2 fleets.
+        - The fleets are composed of: 10 Fighters, 4 Frigates, 4 Destroyers, 2 Light Cruisers, 2 Heavy Cruisers, 1 Assault Carriers
     - Ships will be randomly assigned to fleets with following constraints:
         - Each fleet must have at least 1 Assault Carrier
         - Each assault carrier wil have no more than 8 fighters
@@ -167,38 +167,21 @@ Once the campaign parameters are set, the game transitions to the Strategic Phas
     **UPF Fleets**:
         Task Force Cassidine (at Cassidine)
             6 Fighters
-            3 Assault Scouts
             2 Frigates
             1 Light Cruiser
-            1 Heavy Cruiser
-            1 Battleship
             1 Assault Carrier
             1 Minelayer
 
         Task Force Prenglar (at Prenglar)
-            1 Minelayer
-            5 Assault Scouts
-            3 Frigates
-            2 Destroyers
-            3 Light Cruisers
-            1 Battleship
-            1 Assault Carrier
+            2 Assault Scouts
+            2 Destroyer
 
         Strike Force NOVA
-            6 Fighters
-            3 Assault Scouts
-            2 Frigates
-            1 Destroyer
             2 Light Cruisers
             1 Battleship
-            1 Assault Carrier
 
         Non-Attached Ships
-            4 Fighters
-            3 Assault Scouts
-            1 Minelayer
             2 Destroyers
-            2 Light Cruisers
 
         Planetary Militia Forces
             Militia ships begin the game based at a station orbiting their respective planets.
@@ -260,32 +243,76 @@ Once the campaign parameters are set, the game transitions to the Strategic Phas
     - If the defender elects to retreat the controlling side must decide on connected system to retreat to.
     - Militia ships may not retreat from combat in their home system.
     
+* **Supply**
+- UPF fleets are in supply if they can trace a route from their current location to a UPF fortified station. The route traced must be free of Sathar ships or fleets.
+- Sathar fleets are in supply if they can trace a route from their current location to a Sathar Start Circle. The route traced must be free of UPF ships or fleets or space stations.
+
+* **Rearming**
+- Ships in supply will re-arm if they spend an entire day without moving or engaging in combat.
+- Ships resupplied restock items such as torpedoes, rocket battery ammunition, assault rockets, mines, seekers. Assault carriers re-stock to replenish up to x20 fighter re-armings.
+- Re-arming takes place at end of the day, after the campaign day has advanced, for ships that remained in supply and peformed no activity.
 
 ### 3. Tactical Phase (Space Battles)
 
 *   **Combat Resolution:** Encounters triggered in the Strategic Phase are fought out using the existing tactical space battle system. 
  - When an battle occurs, it starts with the setup phase just like the scenario setup phase.
+ - Every attack should be logged for all players - it should include the firing ship, the weapon used, the % odds of success, the attack roll, and the results (hit or miss, the damage done, etc.)
 *   **Deployment & Setup:** The forces involved are directly determined by the fleets that engaged on the strategic map. The tactical scenario is generated based on the location (e.g., fighting near a planet, defending a starbase, or deep space).
     - planets are always placed at the center of the map
     - stations are always placed in orbit around planets
-    - defenders may deploy anywhere within 34 hexes, any facing or speed
+    - defenders may deploy anywhere within 20 hexes, any facing or speed
     - attackers must:
-        - deploy 34 hexes from the center, any facing or speed
+        - deploy 20 hexes from the center, any facing or speed
         - each ship must be deployed within 2 hexes of at least one other friendly ship
         - fighters start docked with a friendly assault carrier
 *  **Retreat**
     - Retreating forces must be outside of enemy weapon range and a button will appear during movement planning labbelled "Withdraw". Clicking this will remove the ship from the map and be counted as reteated.
     - Militia ships must make 1 attack before retreating from combat in their home system.
-    - 
+
 *   **Battle Aftermath:**
     *   Destroyed ships are removed from the campaign.
+    *   Repairing Damaged Ships:
+        - Damaged ships will attempt repairs after the battle.
+        - Every damaged system , roll d100 vs DCR. If the roll is less than equal to the DCR rating that system is repaired. A result of 99 or 100 means the damage is too severe and cannot be repaired.
+        - If a fire condition is not repaired, that ship is destroyed.
+        - Any failed hull damage roll means no futher hull repairs may be made.
+        - Log the repair attempts in the combat log.
     *   Damaged or crippled ships carry their status back to the strategic map.
     *   Retreating forces must withdraw to an adjacent, safe system.
+
+* **Battle Summary**
+    - As soon as one side wins the battle, Show a battle summary in a panel that is centered on the display. 
+    - The summary should show the winner at the top "UPF VICTORY" or "SATHAR VICTORY".
+    - Display a list of all ships destroyed, damaged, or crippled during the battle. The casualties should be listed in two columns, one for each side.
+    - At the bottom include a button that returns the user back to the Campaign Map.
+
+
 
 
 ### 4. Campaign Management & Logistics
 
-*   **Repairs:** No repairs outside of combat
+*   **Repairs:** 
+    - **Starship Construction Centers**:
+        - All Sathar Start Circles and the following UPF systems: Araks, Cassadine, Dramune, Fromeltar,  Prenglar, Theseus, Traune's Star, White Light have a "Starship Construction Center", abbreviated "SCC.
+        - For systems that have a "Starship Construction Center", ships may be repaired in that system, including "permanently" damaged systems.
+        - UPF hull repair capacity:
+            - UPF SSCs may repair as many hull points as they have repair capacity points per day.
+                - Araks: 20
+                - Cassadine: 50
+                - Dramune: 10
+                - Fromeltar: 20
+                - Prenglar: 40
+                - Theseus: 20
+                - Traune's Star: 10
+                - White Light: 10
+            - A UPF SCC may repair either the hull points up to it's repair capacity among any and all ships in the system, or 1 single damaged/cripped system may be repaired per day.
+            - Damaged ADF and MR are treated as a single system by the SCC for repair purposes.
+            - A player will have a SCC interface to allocated hull repair capacity or dedicate the SCC to repairing a single damaged/cripped system on a ship.
+        - Sathar SCCs:
+            - Sathar players indicate damaged ships to be repaired by their SCCs.
+            - The ship is placed in a queue. After 6 days the ship is returned to play completely repaired at the SCC location.
+
+
 *   **Ordnance & Fighters:** Expenditure of seekers, mines, and fighters must be tracked. Fleets may need to return to bases or carriers to re-arm.
 *   **Reinforcements:** No reinforcements are allowed during the campaign. No ships may be built or repaired during the campaign. (TBD added later)
 
