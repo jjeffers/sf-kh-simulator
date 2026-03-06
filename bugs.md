@@ -1,4 +1,6 @@
 # Bug Tracker
+- [x] When the UPF selected auto-deploy, a space station wasn't put into orbit though it was placed on an adjacent hex.
+- [x] In the tactical game, the ship list is so long players cannot see the "Execute Movement" or "Execute Attack" buttons, so they cannot complete the movement planning phase.
 
 ## 🚨 Critical / High Priority
 
