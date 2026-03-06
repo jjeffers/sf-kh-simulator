@@ -16,10 +16,10 @@ func execute(ships: Array, valid_hexes: Array[Vector3i], game_manager: Node) -> 
     var roles = _categorize_ships(ships)
     
     # Determine if this side is the Attacker.
-    # Attackers historically possess valid deployment hexes restricted entirely to the map's outer radius edge.
+    # Attackers historically possess valid deployment hexes restricted to the map's outer radius edge.
     var is_attacker = true
     for h in valid_hexes:
-        if HexGrid.hex_distance(Vector3i.ZERO, h) < game_manager.map_radius - 2:
+        if HexGrid.hex_distance(Vector3i.ZERO, h) < 15: # Defenders deploy near the center (<= 14)
             is_attacker = false
             break
 
@@ -248,16 +248,50 @@ func _find_best_hex(ship: Node, valid_hexes: Array[Vector3i], placed_ships: Arra
     if roles[ROLE_FRONT_LINE].size() > 0: role = ROLE_FRONT_LINE
     elif roles[ROLE_SUPPORT].size() > 0: role = ROLE_SUPPORT
     
-    for h in valid_hexes:
-        # Constraint: Attackers must deploy every ship within 2 hexes of another friendly ship
-        if is_attacker and placed_ships.size() > 0:
+    var valid_attacker_hexes = valid_hexes.duplicate()
+    
+    # Pre-filter hexes for Attackers to absolutely enforce the 2-hex mutual support constraint
+    if is_attacker and placed_ships.size() > 0:
+        valid_attacker_hexes.clear()
+        for h in valid_hexes:
             var is_within_range = false
             for p in placed_ships:
                 if HexGrid.hex_distance(h, p.grid_position) <= 2:
                     is_within_range = true
                     break
-            if not is_within_range:
-                continue # Hard skip this hex, invalid per Attacker constraints
+            
+            # Additional constraint: Attackers arriving on the periphery shouldn't stack on top of each other blindly.
+            var is_occupied = false
+            for p in placed_ships:
+                if p.grid_position == h:
+                    is_occupied = true
+                    break
+                    
+            if is_within_range and not is_occupied:
+                valid_attacker_hexes.append(h)
+                
+        # If mathematically trapped (e.g. edge geometry runs out of un-occupied 2-hex adjacent neighbors), 
+        # fallback to the closest valid hex to the flagship.
+        if valid_attacker_hexes.is_empty():
+            var closest_hex = valid_hexes[0]
+            var min_dist = 999
+            for h in valid_hexes:
+                var d = HexGrid.hex_distance(h, placed_ships[0].grid_position)
+                var empty = true
+                for p in placed_ships:
+                    if p.grid_position == h:
+                        empty = false
+                        break
+                if empty and d < min_dist:
+                    min_dist = d
+                    closest_hex = h
+            valid_attacker_hexes.append(closest_hex)
+            
+        # Re-assign valid_hexes array to our safely pre-filtered list
+        valid_hexes = valid_attacker_hexes
+        best_hex = valid_hexes[0]
+
+    for h in valid_hexes:
         # Introduce a baseline Gaussian noise (normal distribution) to slightly fuzz selections.
         # This prevents identical static layouts on every button press, but preserves mathematical preferences.
         var score = rng.randfn(0.0, 15.0)
