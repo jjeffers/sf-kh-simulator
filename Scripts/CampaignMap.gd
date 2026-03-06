@@ -78,6 +78,7 @@ func _ready():
 		ship_status_panel = panel_script.new()
 		ship_status_panel.set_anchors_and_offsets_preset(Control.PRESET_BOTTOM_LEFT, Control.PRESET_MODE_MINSIZE, 20)
 		ship_status_panel.offset_bottom = -20
+		ship_status_panel.grow_vertical = Control.GROW_DIRECTION_BEGIN # Force it to grow UPWARD from the bottom anchor
 		ship_status_panel.custom_minimum_size = Vector2(300, 400)
 		ship_status_panel.visible = false
 		add_child(ship_status_panel)
