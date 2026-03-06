@@ -1090,7 +1090,7 @@ func log_message(msg: String):
 	print(final_msg)
 	_log_to_file(final_msg)
 
-@rpc("authority", "call_local", "reliable")
+@rpc("any_peer", "call_local", "reliable")
 func rpc_log_message(msg: String):
 	log_message(msg)
 	
@@ -1840,7 +1840,8 @@ func _process_next_attack():
 	var hit = result["success"]
 	
 	var hit_str = "HIT" if hit else "MISS"
-	log_message("Firing Ship: %s, Weapon: %s, Odds: %d%%, Roll: %d, Result: %s" % [source.get_display_name(), weapon["name"], result["chance"], result["roll"], hit_str])
+	var hit_msg = "Firing Ship: %s, Weapon: %s, Odds: %d%%, Roll: %d, Result: %s" % [source.get_display_name(), weapon["name"], result["chance"], result["roll"], hit_str]
+	rpc_log_message.rpc(hit_msg)
 	
 	# Spawn Attack FX (Launch concurrently with ICMs)
 	var travel_time = _spawn_attack_fx(start_pos, target_pos, weapon.get("type", "Laser"))
@@ -1859,7 +1860,8 @@ func _process_next_attack():
 		var dtm = weapon.get("dtm", 0)
 		var table_roll = Combat.calculate_damage_roll(dtm)
 		var effect = Combat.get_damage_effect(table_roll)
-		log_message("[color=green]HIT![/color] Rolling Damage Table (d100+%d = %d)" % [dtm, table_roll])
+		var dmg_msg = "[color=green]HIT![/color] Rolling Damage Table (d100+%d = %d)" % [dtm, table_roll]
+		rpc_log_message.rpc(dmg_msg)
 		
 		# 3. Apply Effect (delayed for FX)
 		var damage_delay = travel_time
@@ -3505,24 +3507,28 @@ func rpc_execute_repairs_for_side(side_id: int, allocs_for_side: Dictionary, rng
 			
 			if roll >= 90:
 				if roll >= 99:
-					log_message("Repairing: %s, System: %s, Odds: %d%%, Roll: %d, Result: PERMANENTLY DESTROYED" % [s.name, display_name, chance, roll])
+					var d_msg = "Repairing: %s, System: %s, Odds: %d%%, Roll: %d, Result: PERMANENTLY DESTROYED" % [s.name, display_name, chance, roll]
+					rpc_log_message.rpc(d_msg)
 					if audio_repair_failure and audio_repair_failure.stream:
 						audio_repair_failure.play()
 					_spawn_hit_text(target_pos, pre_text + "CRITICAL FAIL")
 					_mark_unrepairable(s, key)
 				else:
-					log_message("Repairing: %s, System: %s, Odds: %d%%, Roll: %d, Result: FAILED" % [s.name, display_name, chance, roll])
+					var f_msg = "Repairing: %s, System: %s, Odds: %d%%, Roll: %d, Result: FAILED" % [s.name, display_name, chance, roll]
+					rpc_log_message.rpc(f_msg)
 					if audio_repair_failure and audio_repair_failure.stream:
 						audio_repair_failure.play()
 					_spawn_hit_text(target_pos, pre_text + "FAILED")
 			elif roll <= chance:
-				log_message("Repairing: %s, System: %s, Odds: %d%%, Roll: %d, Result: SUCCESS" % [s.name, display_name, chance, roll])
+				var s_msg = "Repairing: %s, System: %s, Odds: %d%%, Roll: %d, Result: SUCCESS" % [s.name, display_name, chance, roll]
+				rpc_log_message.rpc(s_msg)
 				if audio_repair_success and audio_repair_success.stream:
 					audio_repair_success.play()
 				_spawn_hit_text(target_pos, pre_text + "REPAIRED!")
 				_apply_repair(s, key)
 			else:
-				log_message("Repairing: %s, System: %s, Odds: %d%%, Roll: %d, Result: FAILED" % [s.name, display_name, chance, roll])
+				var fail_msg = "Repairing: %s, System: %s, Odds: %d%%, Roll: %d, Result: FAILED" % [s.name, display_name, chance, roll]
+				rpc_log_message.rpc(fail_msg)
 				if audio_repair_failure and audio_repair_failure.stream:
 					audio_repair_failure.play()
 				_spawn_hit_text(target_pos, pre_text + "FAILED")
