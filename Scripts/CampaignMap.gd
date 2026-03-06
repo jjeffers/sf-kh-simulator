@@ -1069,23 +1069,42 @@ func _handle_encounter_click(sys_name: String):
 			ship_list_label.text += "[color=green]Space Station %s - READY[/color]\n" % sys_name
 			
 	# Append ships from fleets
+	var ShipScript = load("res://Scripts/Ship.gd")
 	for f in campaign.fleets:
 		if f.current_system_id == sys_name and not f.is_moving() and f.faction == my_fac:
 			for s in f.ships:
-				var hp = 100
+				var current_hull = 100.0
+				var max_hull = 100.0
 				var sn = "Ship"
 				var cls = "Unknown"
 				if typeof(s) == TYPE_DICTIONARY:
 					sn = s.get("name", "Ship")
 					cls = s.get("class", "Unknown")
-					hp = int(s.get("hull", 100))
+					
+					var dummy = ShipScript.new()
+					var method_name = "configure_" + cls.replace(" ", "_").to_lower()
+					if dummy.has_method(method_name):
+						dummy.call(method_name)
+						max_hull = float(dummy.hull)
+					dummy.free()
+					
+					current_hull = float(s.get("hull", max_hull))
 					if s.get("is_militia", false): has_militia = true
-				if hp < 50:
-					ship_list_label.text += "[color=red]%s (%s) - Hull: %d%% - CRIPPLED[/color]\n" % [sn, cls, hp]
-				elif hp < 100:
-					ship_list_label.text += "[color=yellow]%s (%s) - Hull: %d%% - DAMAGED[/color]\n" % [sn, cls, hp]
+				elif typeof(s) == TYPE_OBJECT and s.has_method("get_ship_name"):
+					sn = s.get_ship_name()
+					cls = s.ship_class
+					max_hull = float(s.max_hull) if "max_hull" in s else float(s.hull)
+					current_hull = float(s.hull)
+					
+				var hp_pct = (current_hull / max_hull) * 100.0 if max_hull > 0 else 0.0
+				var hp_pct_int = int(hp_pct)
+				
+				if hp_pct < 50.0:
+					ship_list_label.text += "[color=red]%s (%s) - Hull: %d%% - CRIPPLED[/color]\n" % [sn, cls, hp_pct_int]
+				elif hp_pct < 100.0:
+					ship_list_label.text += "[color=yellow]%s (%s) - Hull: %d%% - DAMAGED[/color]\n" % [sn, cls, hp_pct_int]
 				else:
-					ship_list_label.text += "[color=green]%s (%s) - Hull: %d%% - READY[/color]\n" % [sn, cls, hp]
+					ship_list_label.text += "[color=green]%s (%s) - Hull: %d%% - READY[/color]\n" % [sn, cls, hp_pct_int]
 				friendly_ships.append(s)
 	
 	vbox.add_child(ship_list_label)
