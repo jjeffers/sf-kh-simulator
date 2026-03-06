@@ -1618,7 +1618,7 @@ func _draw():
 				draw_texture_rect(texture_upf_battleship, rect, false, Color.WHITE)
 				draw_set_transform(Vector2.ZERO, 0, Vector2(1, 1))
 				points = PackedVector2Array()
-		"Space Station", "Armed Station", "Fortified Station":
+		"Space Station", "Armed Station", "Fortified Station", "Space Station (Fortress)":
 			# Sprite Rendering
 			# Scale based on Hull Points: 1.0 + (max_hull / 200.0) -> Max ~2.0x
 			# Examples: 100 HP -> 1.5x, 200 HP -> 2.0x relative to Tile Size
@@ -1837,7 +1837,7 @@ func reset_turn_state():
 		turns_docked_since_action = 0
 
 func get_docking_capacity() -> int:
-	if ship_class in ["Space Station", "Armed Station", "Fortified Station"]: return 999
+	if ship_class in ["Space Station", "Armed Station", "Fortified Station", "Space Station (Fortress)"]: return 999
 	if ship_class == "Assault Carrier": return 10
 	return 0
 
@@ -1859,7 +1859,7 @@ func get_display_name() -> String:
 		"Heavy Cruiser": abbrev = "CA"
 		"Battleship": abbrev = "BB"
 		"Civilian": abbrev = "SS"
-		"Space Station", "Armed Station", "Fortified Station": abbrev = "ST"
+		"Space Station", "Armed Station", "Fortified Station", "Space Station (Fortress)": abbrev = "ST"
 		"Assault Scout": abbrev = "AS"
 		"Assault Carrier": abbrev = "AC"
 		_: abbrev = "?"
@@ -1869,7 +1869,7 @@ func get_display_name() -> String:
 func can_dock_with(station: Ship) -> bool:
 	if not is_instance_valid(station) or station == self:
 		return false
-	if station.ship_class not in ["Space Station", "Armed Station", "Fortified Station", "Assault Carrier"]:
+	if station.ship_class not in ["Space Station", "Armed Station", "Fortified Station", "Space Station (Fortress)", "Assault Carrier"]:
 		return false
 	if station.docked_guests.size() >= station.get_docking_capacity():
 		return false
@@ -1955,7 +1955,7 @@ func get_texture() -> Texture2D:
 			return texture_civilian_1
 		"Shuttle":
 			return texture_shuttle
-		"Space Station", "Armed Station", "Fortified Station":
+		"Space Station", "Armed Station", "Fortified Station", "Space Station (Fortress)":
 			return texture_space_station
 	return texture_fighter # Fallback
 
@@ -1993,7 +1993,7 @@ func draw_sprite_custom(canvas: CanvasItem, pos: Vector2, facing_dir: int, alpha
 		"Heavy Cruiser": target_size = HexGrid.TILE_SIZE * 1.4
 		"Battleship": target_size = HexGrid.TILE_SIZE * 1.7
 		"Assault Carrier": target_size = HexGrid.TILE_SIZE * 2.0
-		"Space Station", "Armed Station", "Fortified Station":
+		"Space Station", "Armed Station", "Fortified Station", "Space Station (Fortress)":
 			var hp_scale_bonus = float(max_hull) / 200.0
 			target_size = HexGrid.TILE_SIZE * (1.0 + hp_scale_bonus)
 

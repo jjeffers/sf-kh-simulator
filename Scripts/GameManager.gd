@@ -447,7 +447,7 @@ func _process(delta):
 	
 	elif current_phase == Phase.DEPLOYMENT and is_deploying_ship and is_instance_valid(selected_ship) and deploy_hex_selected:
 		# Space Stations and Stations don't have facing or speed mechanics during deployment
-		if selected_ship.ship_class not in ["Space Station", "Station", "Armed Station", "Fortified Station"]:
+		if selected_ship.ship_class not in ["Space Station", "Station", "Armed Station", "Fortified Station", "Space Station (Fortress)"]:
 			# Check if it's my turn
 			if deployment_subphase == my_side_id or my_side_id == 0:
 				var local_mouse = get_local_mouse_position()
@@ -1946,7 +1946,7 @@ func _reset_plotting_state():
 		start_ms_active = selected_ship.is_ms_active
 		
 		# Space Stations can NEVER have speed > 0
-		if selected_ship.ship_class in ["Space Station", "Station", "Armed Station", "Fortified Station"]:
+		if selected_ship.ship_class in ["Space Station", "Station", "Armed Station", "Fortified Station", "Space Station (Fortress)"]:
 			selected_ship.speed = 0
 			start_speed = 0
 	else:
@@ -2311,7 +2311,7 @@ func start_movement_phase():
 	# Check if ANY available ship is a station in orbit
 	var auto_candidate = null
 	for s in available:
-		if s.ship_class in ["Space Station", "Station", "Armed Station", "Fortified Station"] and s.orbit_direction != 0:
+		if s.ship_class in ["Space Station", "Station", "Armed Station", "Fortified Station", "Space Station (Fortress)"] and s.orbit_direction != 0:
 			auto_candidate = s
 			print("DEBUG: Auto-Orbit Candidate Found: %s (Class: %s, Orbit: %d)" % [s.name, s.ship_class, s.orbit_direction])
 			break
@@ -2850,7 +2850,7 @@ func _update_deployment_ui():
 			btn_deploy_facing_cw.disabled = true
 			btn_deploy_facing_ccw.disabled = true
 			
-		var is_station = selected_ship.ship_class in ["Space Station", "Station", "Armed Station", "Fortified Station"]
+		var is_station = selected_ship.ship_class in ["Space Station", "Station", "Armed Station", "Fortified Station", "Space Station (Fortress)"]
 		if is_instance_valid(btn_deploy_orbit_cw):
 			if is_instance_valid(hbox_deploy_orbit): hbox_deploy_orbit.visible = is_station
 			btn_deploy_orbit_cw.visible = is_station
@@ -2979,7 +2979,7 @@ func _on_deploy_ship_pressed():
 		
 	selected_ship.grid_position = deploy_tentative_hex
 	selected_ship.facing = deploy_facing_val
-	if selected_ship.ship_class in ["Space Station", "Station", "Armed Station", "Fortified Station"]:
+	if selected_ship.ship_class in ["Space Station", "Station", "Armed Station", "Fortified Station", "Space Station (Fortress)"]:
 		deploy_speed_val = 0
 		selected_ship.orbit_direction = deploy_orbit_dir_val
 	else:
@@ -5105,7 +5105,7 @@ func _apply_movement_plan(s: Ship):
 		s.facing = s.planned_facing # Always apply facing change?
 		new_speed = max(0, old_speed - s.get_effective_adf())
 		
-	if s.ship_class in ["Space Station", "Station", "Armed Station", "Fortified Station"]:
+	if s.ship_class in ["Space Station", "Station", "Armed Station", "Fortified Station", "Space Station (Fortress)"]:
 		new_speed = 0
 		
 	s.speed = new_speed
@@ -5391,7 +5391,7 @@ func _draw():
 						_draw_hex_outline(h, Color(0, 1, 0, 0.5), 2.0)
 						
 		# Render projected speed for non-station ships during deployment
-		if deploy_hex_selected and deploy_speed_val > 0 and not (selected_ship.ship_class in ["Space Station", "Station", "Armed Station", "Fortified Station"]):
+		if deploy_hex_selected and deploy_speed_val > 0 and not (selected_ship.ship_class in ["Space Station", "Station", "Armed Station", "Fortified Station", "Space Station (Fortress)"]):
 			var forward_vec = HexGrid.get_direction_vec(deploy_facing_val)
 			var current_check_hex = deploy_tentative_hex
 			
@@ -5400,7 +5400,7 @@ func _draw():
 				_draw_hex_outline(current_check_hex, Color(0, 1, 1, 0.6), 4.0) # Cyan for deployment speed
 				
 		# Render orbit preview for stations during deployment
-		if deploy_hex_selected and deploy_orbit_dir_val != 0 and (selected_ship.ship_class in ["Space Station", "Station", "Armed Station", "Fortified Station"]):
+		if deploy_hex_selected and deploy_orbit_dir_val != 0 and (selected_ship.ship_class in ["Space Station", "Station", "Armed Station", "Fortified Station", "Space Station (Fortress)"]):
 			var planet = null
 			for neighbor in HexGrid.get_neighbors(deploy_tentative_hex):
 				if neighbor in planet_hexes:
@@ -5413,7 +5413,7 @@ func _draw():
 	if current_phase == Phase.DEPLOYMENT:
 		for s in ships:
 			if is_instance_valid(s) and s.is_deployed and s.side_id == deployment_subphase:
-				if s.ship_class not in ["Space Station", "Station", "Armed Station", "Fortified Station"] and s.speed > 0:
+				if s.ship_class not in ["Space Station", "Station", "Armed Station", "Fortified Station", "Space Station (Fortress)"] and s.speed > 0:
 					var start_pos = HexGrid.hex_to_pixel(s.grid_position)
 					var forward_vec = HexGrid.get_direction_vec(s.facing)
 					var end_pos = HexGrid.hex_to_pixel(s.grid_position + forward_vec * s.speed)
@@ -5429,7 +5429,7 @@ func _draw():
 			
 	# Draw orbital rings for all orbiting Space Stations
 	for s in ships:
-		if is_instance_valid(s) and s.ship_class in ["Space Station", "Station", "Armed Station", "Fortified Station"] and s.orbit_direction != 0 and s.is_deployed and not s.is_destroyed:
+		if is_instance_valid(s) and s.ship_class in ["Space Station", "Station", "Armed Station", "Fortified Station", "Space Station (Fortress)"] and s.orbit_direction != 0 and s.is_deployed and not s.is_destroyed:
 			# Skip drawing the permanent ring if we are actively re-deploying this station (it draws a preview instead)
 			if current_phase == Phase.DEPLOYMENT and is_deploying_ship and s == selected_ship:
 				continue
@@ -6268,7 +6268,7 @@ func _handle_deployment_click(hex: Vector3i):
 	queue_redraw()
 	
 	# Auto-commit deployment for stations (they don't need facing/speed dragging)
-	if selected_ship.ship_class in ["Space Station", "Station", "Armed Station", "Fortified Station"]:
+	if selected_ship.ship_class in ["Space Station", "Station", "Armed Station", "Fortified Station", "Space Station (Fortress)"]:
 		_on_deploy_ship_pressed()
 
 func _handle_movement_click(hex: Vector3i):

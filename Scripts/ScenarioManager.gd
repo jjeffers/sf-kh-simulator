@@ -871,7 +871,7 @@ static func get_valid_deployment_hexes(side_id: int, ships: Array, planets: Arra
 	
 	var valid_hexes: Array[Vector3i] = []
 	
-	if ship and (ship.ship_class in ["Space Station", "Station", "Armed Station", "Fortified Station"]):
+	if ship and (ship.ship_class in ["Space Station", "Station", "Armed Station", "Fortified Station", "Space Station (Fortress)"]):
 		for p in planets:
 			valid_hexes.append_array(HexGrid.get_neighbors(p))
 		if planets.size() > 0:
