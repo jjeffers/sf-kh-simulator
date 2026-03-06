@@ -644,6 +644,9 @@ func _setup_ui():
 	# Minimap Bottom is 220 (20+200). So Panel Top should be ~240.
 	panel_planning.set_anchors_and_offsets_preset(Control.PRESET_TOP_RIGHT, Control.PRESET_MODE_MINSIZE, 20)
 	panel_planning.offset_top = 240 # Override top to be below minimap
+	panel_planning.offset_bottom = -240 # Add bottom constraint so it doesn't overlap the log or go off-screen
+	if panel_planning.anchor_bottom == 0.0:
+		panel_planning.anchor_bottom = 1.0 # Anchor to bottom
 	panel_planning.grow_horizontal = Control.GROW_DIRECTION_BEGIN
 	panel_planning.custom_minimum_size.x = 220
 	panel_planning.visible = false
@@ -653,6 +656,9 @@ func _setup_ui():
 	panel_movement = PanelContainer.new()
 	panel_movement.set_anchors_and_offsets_preset(Control.PRESET_TOP_RIGHT, Control.PRESET_MODE_MINSIZE, 20)
 	panel_movement.offset_top = 240
+	panel_movement.offset_bottom = -240 # Add bottom constraint so it doesn't overlap the log or go off-screen
+	if panel_movement.anchor_bottom == 0.0:
+		panel_movement.anchor_bottom = 1.0 # Anchor to bottom
 	panel_movement.grow_horizontal = Control.GROW_DIRECTION_BEGIN
 	panel_movement.custom_minimum_size.x = 220
 	panel_movement.visible = false
@@ -667,8 +673,9 @@ func _setup_ui():
 	pm_vbox.add_child(pm_lbl)
 	
 	var scroll_movement = ScrollContainer.new()
-	scroll_movement.custom_minimum_size = Vector2(0, 300) # Give it enough height to scroll without dominating
-	scroll_movement.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	scroll_movement.custom_minimum_size = Vector2(0, 150) # Fallback min size
+	scroll_movement.size_flags_vertical = Control.SIZE_EXPAND_FILL # Expands to fill available space
+	scroll_movement.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
 	pm_vbox.add_child(scroll_movement)
 	
 	list_movement = VBoxContainer.new()
@@ -698,8 +705,15 @@ func _setup_ui():
 	pp_lbl.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	pp_vbox.add_child(pp_lbl)
 	
+	var scroll_planning = ScrollContainer.new()
+	scroll_planning.custom_minimum_size = Vector2(0, 150)
+	scroll_planning.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	scroll_planning.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
+	pp_vbox.add_child(scroll_planning)
+	
 	container_ships = VBoxContainer.new()
-	pp_vbox.add_child(container_ships)
+	container_ships.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	scroll_planning.add_child(container_ships)
 	
 	# Execute Button
 	var btn_exec = Button.new()
