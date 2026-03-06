@@ -33,6 +33,7 @@ var min_zoom: float = 0.5
 const BASE_MAP_SIZE := Vector2(2500, 2500)
 
 var active_encounter_dialog: Node = null
+var ship_status_panel: Node = null
 
 func _ready():
 	# CampaignManager is now a guaranteed Autoload
@@ -70,6 +71,16 @@ func _ready():
 	map_view.remove_child(map_container)
 	map_view.add_child(map_wrapper)
 	map_wrapper.add_child(map_container)
+	
+	# Instantiate Ship Status Panel on the left side
+	var panel_script = load("res://Scripts/ShipStatusPanel.gd")
+	if panel_script is GDScript:
+		ship_status_panel = panel_script.new()
+		ship_status_panel.set_anchors_and_offsets_preset(Control.PRESET_BOTTOM_LEFT, Control.PRESET_MODE_MINSIZE, 20)
+		ship_status_panel.offset_bottom = -20
+		ship_status_panel.custom_minimum_size = Vector2(300, 400)
+		ship_status_panel.visible = false
+		add_child(ship_status_panel)
 		
 	# Select an initial system to populate the lists
 	var my_fac = _get_my_faction()
@@ -735,14 +746,26 @@ func _update_composition_panel():
 		var s_name = str(s)
 		var health_pct = 1.0
 		
+		var ShipScript = load("res://Scripts/Ship.gd")
+		var max_hull_val = 100.0 # Standardize later
+
 		if typeof(s) == TYPE_DICTIONARY:
 			s_name = s.get("name", s.get("ship_name", "Ship")) + " (" + s.get("class", s.get("ship_class", "Unknown")) + ")"
-			# Assuming hull defaults to 100 max in campaign dictionary representation right now
-			health_pct = float(s.get("hull", 100)) / 100.0
+			
+			if ShipScript:
+				var dummy = ShipScript.new()
+				var s_class_name = s.get("class", s.get("ship_class", ""))
+				var method_name = "configure_" + s_class_name.replace(" ", "_").to_lower()
+				if dummy.has_method(method_name):
+					dummy.call(method_name)
+					max_hull_val = float(dummy.hull)
+				dummy.free()
+			
+			health_pct = float(s.get("hull", max_hull_val)) / max_hull_val
+			
 		elif typeof(s) == TYPE_OBJECT and s.has_method("get_ship_name"):
 			s_name = s.get_ship_name()
 			if s.get("hull"):
-				var max_hull_val = 100.0 # Standardize later
 				health_pct = float(s.hull) / max_hull_val
 			
 		ship_list_ui.add_item(s_name)
@@ -846,8 +869,47 @@ func _on_ship_list_activated(idx: int):
 	
 	dialog.popup_centered()
 
-func _on_ship_selection_changed(_row, _selected):
-	pass
+func _on_ship_selection_changed():
+	if not ship_status_panel: return
+	
+	var selected_items = ship_list_ui.get_selected_items()
+	if selected_items.size() == 1:
+		var idx = selected_items[0]
+		if selected_fleet and idx < selected_fleet.ships.size():
+			var s_data = selected_fleet.ships[idx]
+			
+			var temp_ship = load("res://Scripts/Ship.gd").new()
+			# Apply data
+			if typeof(s_data) == TYPE_DICTIONARY:
+				temp_ship.name = s_data.get("name", s_data.get("ship_name", "Ship"))
+				temp_ship.ship_class = s_data.get("class", s_data.get("ship_class", "Unknown"))
+				temp_ship.faction = s_data.get("faction", selected_fleet.faction)
+				
+				# Call configure to get rules/max values
+				var method_name = "configure_" + temp_ship.ship_class.replace(" ", "_").to_lower()
+				if temp_ship.has_method(method_name):
+					temp_ship.call(method_name)
+					
+				# Override active campaign states
+				if s_data.has("hull"): temp_ship.hull = s_data["hull"]
+				if s_data.has("current_adf_modifier"): temp_ship.current_adf_modifier = s_data["current_adf_modifier"]
+				if s_data.has("current_mr_modifier"): temp_ship.current_mr_modifier = s_data["current_mr_modifier"]
+				if s_data.has("ccs_damaged"): temp_ship.ccs_damaged = s_data["ccs_damaged"]
+				if s_data.has("has_electrical_fire"): temp_ship.has_electrical_fire = s_data["has_electrical_fire"]
+				if s_data.has("has_disastrous_fire"): temp_ship.has_disastrous_fire = s_data["has_disastrous_fire"]
+				if s_data.has("icm_max"): temp_ship.icm_max = s_data["icm_max"]
+				if s_data.has("ms_max"): temp_ship.ms_max = s_data["ms_max"]
+				if s_data.has("weapons"): temp_ship.weapons = s_data["weapons"]
+				
+				# Display
+				ship_status_panel.update_from_ship(temp_ship)
+				ship_status_panel.show()
+				temp_ship.free()
+			elif typeof(s_data) == TYPE_OBJECT and s_data.has_method("get_ship_name"):
+				ship_status_panel.update_from_ship(s_data)
+				ship_status_panel.show()
+	else:
+		ship_status_panel.hide()
 
 func _execute_jump(target_id: String):
 	if selected_fleet:
