@@ -13,6 +13,7 @@ var systems: Dictionary = {} # system_name -> data
 var routes: Array = []
 var start_circles: Array = []
 var _ship_names_data: Dictionary = {}
+var _ship_sequential_counters: Dictionary = {}
 
 var fleets: Array[CampaignFleet] = []
 var current_day: int = 1
@@ -57,24 +58,33 @@ func _load_ship_names_db():
 	else:
 		push_error("Could not find res://Data/ship_names.json")
 
-func _generate_ship_name(faction: String, ship_class: String, default_fallback: String) -> String:
-	if _ship_names_data.is_empty():
-		return default_fallback
-		
+func _generate_ship_name(faction: String, ship_class: String) -> String:
 	var faction_key = "UPF_Fleet" if faction.to_upper() == "UPF" else "Sathar_Fleet"
-	if not _ship_names_data.has(faction_key):
-		return default_fallback
-		
-	var data_block = _ship_names_data[faction_key]
-	var class_key = ship_class.replace(" ", "_") + "s" # e.g. "Assault Carrier" -> "Assault_Carriers"
+	var prefix = faction
 	
-	if data_block.has(class_key) and data_block[class_key].size() > 0:
-		var name_list = data_block[class_key]
-		var chosen: String = name_list[randi() % name_list.size()]
-		var prefix = data_block.get("Prefix", faction)
-		return "%s %s" % [prefix, chosen]
+	if not _ship_names_data.is_empty() and _ship_names_data.has(faction_key):
+		var data_block = _ship_names_data[faction_key]
+		prefix = data_block.get("Prefix", faction)
+		var class_key = ship_class.replace(" ", "_") + "s" # e.g. "Assault Carrier" -> "Assault_Carriers"
 		
-	return default_fallback
+		if data_block.has(class_key) and data_block[class_key].size() > 0:
+			var name_list = data_block[class_key]
+			var rnd_idx = randi() % name_list.size()
+			var chosen: String = name_list[rnd_idx]
+			name_list.remove_at(rnd_idx) # Exhaust this name so it can't be reused
+			return "%s %s" % [prefix, chosen]
+			
+	# Fallback: <Prefix> <ship type> <ship number>
+	if not _ship_sequential_counters.has(faction_key):
+		_ship_sequential_counters[faction_key] = {}
+		
+	if not _ship_sequential_counters[faction_key].has(ship_class):
+		_ship_sequential_counters[faction_key][ship_class] = 1
+	else:
+		_ship_sequential_counters[faction_key][ship_class] += 1
+		
+	var counter = _ship_sequential_counters[faction_key][ship_class]
+	return "%s %s %d" % [prefix, ship_class, counter]
 
 func _load_map_data():
 	var file = FileAccess.open("res://Data/campaign_map.json", FileAccess.READ)
@@ -258,8 +268,7 @@ func _add_ships_to_fleet(fleet: CampaignFleet, composition: Dictionary):
 	for ship_class in composition.keys():
 		var count = composition[ship_class]
 		for i in range(count):
-			var fallback_name = "%s %s %d" % [fleet.faction, ship_class, fleet.ships.size() + 1]
-			var designated_name = _generate_ship_name(fleet.faction, ship_class, fallback_name)
+			var designated_name = _generate_ship_name(fleet.faction, ship_class)
 			
 			var data = {
 				"name": designated_name,
