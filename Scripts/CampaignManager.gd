@@ -31,14 +31,17 @@ const TRANSIT_DAYS = 5
 const SATHAR_REQUIREMENT_STATIONS = 12
 const SATHAR_REQUIREMENT_FORTRESSES = 4
 
-const UPF_FORTRESSES = ["Theseus", "K'aken-Kar", "Araks", "Prenglar"]
-const UPF_ARMED_STATIONS = [
+var INIT_UPF_FORTRESSES = ["Theseus", "K'aken-Kar", "Araks", "Prenglar"]
+var INIT_UPF_ARMED_STATIONS = [
 	"K'tsa-Kar", "Kizk-Kar", "Fromeltar", "Truane's Star", "Dramune", # Inner Reach
 	"Dramune", # Outer Reach - NOTE: Dramune has two! Need to handle multiple stations per system or specific names.
 	"Cassidine", # Rupert's Hole
 	"Cassidine", # Triad
 	"Gruna Garu", "Timeon"
 ]
+
+var UPF_FORTRESSES: Array = []
+var UPF_ARMED_STATIONS: Array = []
 
 func _ready():
 	_load_map_data()
@@ -120,6 +123,9 @@ func start_new_campaign():
 	fleets.clear()
 	destroyed_stations_count = 0
 	destroyed_fortresses_count = 0
+	
+	UPF_FORTRESSES = INIT_UPF_FORTRESSES.duplicate()
+	UPF_ARMED_STATIONS = INIT_UPF_ARMED_STATIONS.duplicate()
 	
 	_initialize_upf_forces()
 	_initialize_sathar_forces()
@@ -543,6 +549,8 @@ func serialize_state() -> Dictionary:
 		"destroyed_stations": destroyed_stations_count,
 		"destroyed_fortresses": destroyed_fortresses_count,
 		"active_encounters": active_encounters,
+		"upf_fortresses": UPF_FORTRESSES,
+		"upf_armed_stations": UPF_ARMED_STATIONS,
 		"fleets": []
 	}
 	for f in fleets:
@@ -648,6 +656,19 @@ func deserialize_state(state_data: Dictionary):
 	current_day = state_data.get("current_day", 1)
 	destroyed_stations_count = state_data.get("destroyed_stations", 0)
 	destroyed_fortresses_count = state_data.get("destroyed_fortresses", 0)
+	
+	# Load station existence arrays or fallback to full initial if not present (backwards compatibility)
+	var saved_fortresses = state_data.get("upf_fortresses", [])
+	if saved_fortresses.size() > 0 or state_data.has("upf_fortresses"):
+		UPF_FORTRESSES = saved_fortresses
+	else:
+		UPF_FORTRESSES = INIT_UPF_FORTRESSES.duplicate()
+		
+	var saved_stations = state_data.get("upf_armed_stations", [])
+	if saved_stations.size() > 0 or state_data.has("upf_armed_stations"):
+		UPF_ARMED_STATIONS = saved_stations
+	else:
+		UPF_ARMED_STATIONS = INIT_UPF_ARMED_STATIONS.duplicate()
 	
 	active_encounters.clear()
 	for e in state_data.get("active_encounters", []):

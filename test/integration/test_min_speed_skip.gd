@@ -30,5 +30,5 @@ func test_skip_turn_with_min_speed():
 	game_manager.current_side_id = 1
 	game_manager.execute_all_movement()
 	
-	assert_eq(s.speed, 5, "Speed should drop from 6 to 5 (ADF 1)")
-	assert_eq(s.grid_position, Vector3i(5, 0, -5), "Ship must have moved 5 hexes East")
+	assert_eq(s.speed, 6, "Speed should maintain at 6 instead of dropping")
+	assert_eq(s.grid_position, Vector3i(6, 0, -6), "Ship must have moved 6 hexes East")

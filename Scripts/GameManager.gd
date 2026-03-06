@@ -1089,6 +1089,9 @@ func log_message(msg: String):
 		combat_log.append_text(final_msg + "\n")
 	print(final_msg)
 	_log_to_file(final_msg)
+	
+	if has_node("/root/ConsoleManager"):
+		ConsoleManager.log_message(final_msg)
 
 @rpc("any_peer", "call_local", "reliable")
 func rpc_log_message(msg: String):
@@ -1745,7 +1748,11 @@ func _process_next_attack():
 		target_pos = target.position
 
 	if not is_instance_valid(target) or target.hull <= 0:
-		log_message("%s firing at WRECK of %s! (Wasted)" % [source.get_display_name(), target.get_display_name() if is_instance_valid(target) else "Unknown"])
+		var w_msg = "%s firing at WRECK of %s! (Wasted)" % [source.get_display_name(), target.get_display_name() if is_instance_valid(target) else "Unknown"]
+		if _is_networked() and multiplayer.is_server():
+			rpc_log_message.rpc(w_msg)
+		else:
+			log_message(w_msg)
 		_spawn_attack_fx(start_pos, target_pos, weapon.get("type"))
 		await get_tree().create_timer(1.5).timeout
 		_process_next_attack()
@@ -1755,14 +1762,22 @@ func _process_next_attack():
 
 	# DOCKING RULE: Targeting Immunity Check AGAIN (Safety)
 	if target.is_docked and target.ship_class in ["Fighter", "Assault Scout"]:
-		log_message("%s target is docked and invalid! Attack fizzles." % source.get_display_name())
+		var d_msg = "%s target is docked and invalid! Attack fizzles." % source.get_display_name()
+		if _is_networked() and multiplayer.is_server():
+			rpc_log_message.rpc(d_msg)
+		else:
+			log_message(d_msg)
 		source.weapons[weapon_idx]["ammo"] -= 1 # Wasted shot rule? Or refund? Let's burn ammo to be safe.
 		await get_tree().create_timer(1.0).timeout
 		_process_next_attack()
 		return
 
 	# Execute Fire Logic
-	log_message("%s firing %s at %s" % [source.get_display_name(), weapon["name"], target.get_display_name()])
+	var f_msg = "%s firing %s at %s" % [source.get_display_name(), weapon["name"], target.get_display_name()]
+	if _is_networked() and multiplayer.is_server():
+		rpc_log_message.rpc(f_msg)
+	else:
+		log_message(f_msg)
 	
 	# Hit Calc Setup
 	var d = HexGrid.hex_distance(source.grid_position, target.grid_position)
@@ -1867,11 +1882,9 @@ func _process_next_attack():
 			rpc_log_message.rpc(dmg_msg)
 		else:
 			log_message(dmg_msg)
-		# 3. Apply Effect (delayed for FX)
-		var damage_delay = travel_time
-		if damage_delay == 0: damage_delay = 0.5
-		
-		await get_tree().create_timer(damage_delay).timeout
+		# 3. Apply Effect (Ship handles structural vs conditional dmg, we just tell it the base roll if needed)
+		# Add fx wait
+		await get_tree().create_timer(travel_time).timeout
 		
 		if is_instance_valid(target):
 			# Check for Screen Half Damage Logic
@@ -4716,19 +4729,19 @@ func execute_all_movement():
 			log_message("[color=yellow]EXECUTE LOOP: Checking Ship %s (Class: %s, Mines: %d)[/color]" % [s.name, s.ship_class, s.planned_mines_to_drop.size()])
 			# If a ship did not receive orders (player pressed Execute Movement without plotting)
 			if not s.has_orders:
-				var min_speed = max(0, s.speed - s.get_effective_adf())
+				var current_speed = s.speed
 				var auto_path: Array[Vector3i] = []
 				var current_hex = s.grid_position
 				var dir_vec = HexGrid.get_direction_vec(s.facing)
 				
-				# If the ship is moving too fast to stop, it MUST move straight forward
-				for i in range(min_speed):
+				# If the ship is not given orders, it MUST maintain its current speed straight forward
+				for i in range(current_speed):
 					current_hex += dir_vec
 					auto_path.append(current_hex)
 					
 				s.planned_path = auto_path
 				s.planned_facing = s.facing
-				s.planned_orbit_dir = 0
+				s.planned_orbit_dir = s.orbit_direction # Preserve orbit!
 				s.has_orders = true
 				
 			# Apply Plan
@@ -5179,10 +5192,8 @@ func _apply_movement_plan(s: Ship):
 	s.speed = new_speed
 	
 	# Orbit Logic
-	if s.planned_orbit_dir != 0:
+	if s.has_orders:
 		s.orbit_direction = s.planned_orbit_dir
-	else:
-		s.orbit_direction = 0
 		
 	s.has_moved = true
 	s.has_orders = false
@@ -5575,10 +5586,9 @@ func _draw():
 	# UPDATE: Now handles ANY ship with orders (Selected or not)
 	if current_phase == Phase.MOVEMENT:
 		for s in ships:
-			# If ship has orders, we draw the "Committed" plan.
-			# We skip if it has moved.
-			# We do NOT skip if s == selected_ship (unless it has NO orders)
-			if is_instance_valid(s) and s.has_orders and not s.has_moved:
+			if not is_instance_valid(s) or s.has_moved or s.is_destroyed: continue
+			
+			if s.has_orders:
 				# Only show my side (or if spectator/host)
 				# UDPATE: User requests seeing ALL committed plans
 				if not _should_show_movement_plan(s): continue
@@ -5600,8 +5610,27 @@ func _draw():
 					
 					# Draw Ghost Ship Sprite at End
 					var end_pos = plan_points[plan_points.size() - 1]
-					# Use the new custom draw method on Ship
 					s.draw_sprite_custom(self, end_pos, s.planned_facing, 0.5)
+					
+			elif s.speed > 0 and s.ship_class not in ["Space Station", "Station", "Armed Station", "Fortified Station", "Space Station (Fortress)"]:
+				# User Request: If no new orders are issued, ship will move exactly its speed forward.
+				# Draw a translucent arrow projecting this default forward path.
+				# Suppress if this is the actively selected/plotting ship (since current_path logic takes over)
+				if is_instance_valid(selected_ship) and s == selected_ship and current_path.size() > 0:
+					continue
+					
+				var start_pos = HexGrid.hex_to_pixel(s.grid_position)
+				var forward_vec = HexGrid.get_direction_vec(s.facing)
+				var end_pos = HexGrid.hex_to_pixel(s.grid_position + forward_vec * s.speed)
+				
+				draw_line(start_pos, end_pos, Color(1, 1, 1, 0.3), 3.0, true) # Faint translucent white
+				
+				var angle = (end_pos - start_pos).angle()
+				var arrow_size = 12.0
+				var p1 = end_pos - Vector2(cos(angle - PI/6), sin(angle - PI/6)) * arrow_size
+				var p2 = end_pos - Vector2(cos(angle + PI/6), sin(angle + PI/6)) * arrow_size
+				var arrow_pts = PackedVector2Array([end_pos, p1, p2])
+				draw_polygon(arrow_pts, PackedColorArray([Color(1, 1, 1, 0.3)]))
 	
 	# Active Plotting Visualization
 	# Only draw if selected ship DOES NOT have orders (i.e. we are actively plotting)
@@ -6019,9 +6048,9 @@ func _unhandled_input(event):
 					
 				get_viewport().set_input_as_handled()
 				return
-		elif event.keycode == KEY_EQUAL: # Plus key
+		elif event.keycode == KEY_EQUAL or event.keycode == KEY_PAGEUP: # Plus key / Page Up
 			target_zoom = (target_zoom + Vector2(ZOOM_SPEED, ZOOM_SPEED)).clamp(ZOOM_MIN, ZOOM_MAX)
-		elif event.keycode == KEY_MINUS: # Minus key
+		elif event.keycode == KEY_MINUS or event.keycode == KEY_PAGEDOWN: # Minus key / Page Down
 			target_zoom = (target_zoom - Vector2(ZOOM_SPEED, ZOOM_SPEED)).clamp(ZOOM_MIN, ZOOM_MAX)
 
 	
@@ -7303,8 +7332,6 @@ func load_scenario(key: String, seed_val: int = 12345):
 				log_message("Unknown class %s, defaulting to Scout" % cls)
 				s.configure_assault_scout()
 				
-		s.finalize_configuration()
-		
 		# Base Properties
 		s.name = data.get("name", "Ship")
 		s.faction = data.get("faction", "UPF")
@@ -7341,6 +7368,8 @@ func load_scenario(key: String, seed_val: int = 12345):
 				else:
 					s.set(k, val)
 				
+		s.finalize_configuration()
+		
 		# Assign Ownership from Lobby
 		var owner_pid = 0
 		if NetworkManager.lobby_data != null and NetworkManager.lobby_data.has("ship_assignments"):

@@ -15,11 +15,42 @@ func execute(ships: Array, valid_hexes: Array[Vector3i], game_manager: Node) -> 
     var enemy_center_mass = _calculate_enemy_center_mass(game_manager, ships[0].side_id)
     var roles = _categorize_ships(ships)
     
-    # Priority: Support (Must be protected), Front-line (Take the hits), Escort (Screening)
+    # Determine if this side is the Attacker.
+    # Attackers historically possess valid deployment hexes restricted to the map's outer radius edge.
+    var is_attacker = true
+    for h in valid_hexes:
+        if HexGrid.hex_distance(Vector3i.ZERO, h) < 15: # Defenders deploy near the center (<= 14)
+            is_attacker = false
+            break
+
+    # Extract all Asset Carriers available for this deployment side to harbor Attack Fighters
+    var available_carriers = []
+    for s in ships:
+        if s.ship_class == "Assault Carrier" and not s.is_destroyed:
+            available_carriers.append(s)
+
     var deployment_queue = []
-    deployment_queue.append_array(roles[ROLE_SUPPORT])
-    deployment_queue.append_array(roles[ROLE_FRONT_LINE])
-    deployment_queue.append_array(roles[ROLE_ESCORT])
+    # If attacker, Fighters must dock with an Asset Carrier
+    if is_attacker:
+        var carrier_index = 0
+        for s in ships:
+            if s.ship_class == "Fighter":
+                if available_carriers.size() > 0:
+                    var carrier = available_carriers[carrier_index % available_carriers.size()]
+                    s.dock_at(carrier)
+                    carrier_index += 1
+                else:
+                    # Very strange edge case where attacker brings fighters without carriers.
+                    # Fallback to normal queue.
+                    pass
+            
+    # Priority: Support (Must be protected), Front-line (Take the hits), Escort (Screening)
+    for s in roles[ROLE_SUPPORT]:
+        if not s.is_docked: deployment_queue.append(s)
+    for s in roles[ROLE_FRONT_LINE]:
+        if not s.is_docked: deployment_queue.append(s)
+    for s in roles[ROLE_ESCORT]:
+        if not s.is_docked: deployment_queue.append(s)
     
     var placed_ships = []
     
@@ -29,7 +60,7 @@ func execute(ships: Array, valid_hexes: Array[Vector3i], game_manager: Node) -> 
         if scen_key == "close_escort" and s.name == "Megasaurus":
             ship_hexes = ship_hexes.filter(func(h): return h.y == 0)
             
-        var best_hex = _find_best_hex(s, ship_hexes, placed_ships, enemy_center_mass, game_manager, rng)
+        var best_hex = _find_best_hex(s, ship_hexes, placed_ships, enemy_center_mass, game_manager, rng, is_attacker)
         s.grid_position = best_hex
         s.position = HexGrid.hex_to_pixel(best_hex)
         s.is_deployed = true
@@ -207,7 +238,7 @@ func _calculate_enemy_center_mass(game_manager: Node, my_side_id: int) -> Vector
     # Integer division approximation
     return Vector3i(sum.x / enemy_ships.size(), sum.y / enemy_ships.size(), sum.z / enemy_ships.size())
 
-func _find_best_hex(ship: Node, valid_hexes: Array[Vector3i], placed_ships: Array, enemy_center_mass: Vector3i, game_manager: Node, rng: RandomNumberGenerator) -> Vector3i:
+func _find_best_hex(ship: Node, valid_hexes: Array[Vector3i], placed_ships: Array, enemy_center_mass: Vector3i, game_manager: Node, rng: RandomNumberGenerator, is_attacker: bool = false) -> Vector3i:
     var best_hex = valid_hexes[0]
     var best_score = -99999.0
     
@@ -217,6 +248,49 @@ func _find_best_hex(ship: Node, valid_hexes: Array[Vector3i], placed_ships: Arra
     if roles[ROLE_FRONT_LINE].size() > 0: role = ROLE_FRONT_LINE
     elif roles[ROLE_SUPPORT].size() > 0: role = ROLE_SUPPORT
     
+    var valid_attacker_hexes = valid_hexes.duplicate()
+    
+    # Pre-filter hexes for Attackers to absolutely enforce the 2-hex mutual support constraint
+    if is_attacker and placed_ships.size() > 0:
+        valid_attacker_hexes.clear()
+        for h in valid_hexes:
+            var is_within_range = false
+            for p in placed_ships:
+                if HexGrid.hex_distance(h, p.grid_position) <= 2:
+                    is_within_range = true
+                    break
+            
+            # Additional constraint: Attackers arriving on the periphery shouldn't stack on top of each other blindly.
+            var is_occupied = false
+            for p in placed_ships:
+                if p.grid_position == h:
+                    is_occupied = true
+                    break
+                    
+            if is_within_range and not is_occupied:
+                valid_attacker_hexes.append(h)
+                
+        # If mathematically trapped (e.g. edge geometry runs out of un-occupied 2-hex adjacent neighbors), 
+        # fallback to the closest valid hex to the flagship.
+        if valid_attacker_hexes.is_empty():
+            var closest_hex = valid_hexes[0]
+            var min_dist = 999
+            for h in valid_hexes:
+                var d = HexGrid.hex_distance(h, placed_ships[0].grid_position)
+                var empty = true
+                for p in placed_ships:
+                    if p.grid_position == h:
+                        empty = false
+                        break
+                if empty and d < min_dist:
+                    min_dist = d
+                    closest_hex = h
+            valid_attacker_hexes.append(closest_hex)
+            
+        # Re-assign valid_hexes array to our safely pre-filtered list
+        valid_hexes = valid_attacker_hexes
+        best_hex = valid_hexes[0]
+
     for h in valid_hexes:
         # Introduce a baseline Gaussian noise (normal distribution) to slightly fuzz selections.
         # This prevents identical static layouts on every button press, but preserves mathematical preferences.

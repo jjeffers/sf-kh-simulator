@@ -871,7 +871,7 @@ static func get_valid_deployment_hexes(side_id: int, ships: Array, planets: Arra
 	
 	var valid_hexes: Array[Vector3i] = []
 	
-	if ship and (ship.ship_class in ["Space Station", "Station", "Armed Station", "Fortified Station", "Space Station (Fortress)"]):
+	if side_id == 1 and ship and (ship.ship_class in ["Space Station", "Station", "Armed Station", "Fortified Station", "Space Station (Fortress)"]):
 		for p in planets:
 			valid_hexes.append_array(HexGrid.get_neighbors(p))
 		if planets.size() > 0:
@@ -879,8 +879,8 @@ static func get_valid_deployment_hexes(side_id: int, ships: Array, planets: Arra
 			
 	if scen_key == "campaign_encounter":
 		if side_id == 2: # Assuming Attacker is side 2 (index 1 + 1)
-			# Attackers: Must deploy exactly 34 hexes from center.
-			var spawn_dist = 34
+			# Attackers: Must deploy exactly 20 hexes from center.
+			var spawn_dist = 20
 			for x in range(-spawn_dist, spawn_dist + 1):
 				for y in range(max(-spawn_dist, -x-spawn_dist), min(spawn_dist, -x+spawn_dist) + 1):
 					var z = -x - y
@@ -889,8 +889,8 @@ static func get_valid_deployment_hexes(side_id: int, ships: Array, planets: Arra
 						valid_hexes.append(Vector3i(x, y, z))
 			return valid_hexes
 		else:
-			# Defenders: Can deploy anywhere < 34 hexes
-			var max_dist = 33
+			# Defenders: Can deploy anywhere < 20 hexes
+			var max_dist = 19
 			for x in range(-max_dist, max_dist + 1):
 				for y in range(max(-max_dist, -x-max_dist), min(max_dist, -x+max_dist) + 1):
 					var z = -x - y
@@ -914,8 +914,8 @@ static func get_valid_deployment_hexes(side_id: int, ships: Array, planets: Arra
 					var z = -x - y
 					valid_hexes.append(station_pos + Vector3i(x, y, z))
 		else:
-			# Attackers: Must deploy exactly 34 hexes from center.
-			var spawn_dist = 34
+			# Attackers: Must deploy exactly 20 hexes from center.
+			var spawn_dist = 20
 			# Generate a ring of hexes
 			for x in range(-spawn_dist, spawn_dist + 1):
 				for y in range(max(-spawn_dist, -x-spawn_dist), min(spawn_dist, -x+spawn_dist) + 1):
@@ -926,8 +926,8 @@ static func get_valid_deployment_hexes(side_id: int, ships: Array, planets: Arra
 						
 	elif scen_key == "the_last_stand" or scen_key == "battle_of_kenzah":
 		if side_id == 2:
-			# Attackers (Sathar): Must deploy exactly 34 hexes from center.
-			var spawn_dist = 34
+			# Attackers (Sathar): Must deploy exactly 20 hexes from center.
+			var spawn_dist = 20
 			var ring_hexes: Array[Vector3i] = []
 			# Generate a ring of hexes
 			for x in range(-spawn_dist, spawn_dist + 1):
@@ -982,11 +982,21 @@ static func get_valid_deployment_hexes(side_id: int, ships: Array, planets: Arra
 							else:
 								valid_hexes.append(Vector3i(x, y, z))
 
-	# If valid_hexes is empty, we default to the entire playable map (radius 25)
+	# If valid_hexes is empty, we set up fallback defaults
 	if valid_hexes.is_empty():
-		for x in range(-25, 26):
-			for y in range(max(-25, -x-25), min(25, -x+25) + 1):
-				var z = -x - y
-				valid_hexes.append(Vector3i(x, y, z))
+		if side_id == 2:
+			# General Rule: Attackers deploy at exactly 20 hexes from center unless otherwise noted
+			var spawn_dist = 20
+			for x in range(-spawn_dist, spawn_dist + 1):
+				for y in range(max(-spawn_dist, -x-spawn_dist), min(spawn_dist, -x+spawn_dist) + 1):
+					var z = -x - y
+					if HexGrid.hex_distance(Vector3i.ZERO, Vector3i(x, y, z)) == spawn_dist:
+						valid_hexes.append(Vector3i(x, y, z))
+		else:
+			# Defenders default to the entire playable map (radius 25)
+			for x in range(-25, 26):
+				for y in range(max(-25, -x-25), min(25, -x+25) + 1):
+					var z = -x - y
+					valid_hexes.append(Vector3i(x, y, z))
 
 	return valid_hexes
