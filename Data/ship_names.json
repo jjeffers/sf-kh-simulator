@@ -179,7 +179,12 @@
             "Invasion-Core",
             "Plague-Bringer",
             "Malice-Anchor",
-            "Dark-Harbor"
+            "Dark-Harbor",
+            "Maelstrom",
+        ],
+        "Light_Cruisers": [
+            "Faminewind",
+            "Deathstroke"
         ],
         "Heavy_Cruisers": [
             "Devastator",
@@ -196,7 +201,9 @@
             "Cataclysm",
             "World-Eater",
             "Void-Gazer",
-            "Death-Bringer"
+            "Death-Bringer",
+            "Perdition",
+            "Annihilation"
         ],
         "Minelayers": [
             "Venom-Drop",
