@@ -1090,7 +1090,7 @@ func log_message(msg: String):
 	print(final_msg)
 	_log_to_file(final_msg)
 
-@rpc("authority", "call_local", "reliable")
+@rpc("any_peer", "call_local", "reliable")
 func rpc_log_message(msg: String):
 	log_message(msg)
 	
