@@ -382,6 +382,20 @@ func _draw_systems():
 		
 		# Draw space station indicator if present
 		if sys_name in campaign.UPF_FORTRESSES or sys_name in campaign.UPF_ARMED_STATIONS:
+			if sys_name in campaign.UPF_FORTRESSES:
+				var fortress_bg = Panel.new()
+				var f_style = StyleBoxFlat.new()
+				f_style.bg_color = Color.WHITE
+				f_style.corner_radius_top_left = 16
+				f_style.corner_radius_top_right = 16
+				f_style.corner_radius_bottom_left = 16
+				f_style.corner_radius_bottom_right = 16
+				fortress_bg.add_theme_stylebox_override("panel", f_style)
+				fortress_bg.custom_minimum_size = Vector2(32, 32)
+				fortress_bg.size = Vector2(32, 32)
+				fortress_bg.position = pos + Vector2(-16, -34)
+				systems_container.add_child(fortress_bg)
+
 			var station_icon = TextureRect.new()
 			station_icon.texture = load("res://Assets/upf_space_station.png")
 			station_icon.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
