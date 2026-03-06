@@ -780,8 +780,9 @@ func _update_composition_panel():
 			
 		elif typeof(s) == TYPE_OBJECT and s.has_method("get_ship_name"):
 			s_name = s.get_ship_name()
+			var real_max = s.get("max_hull", max_hull_val)
 			if s.get("hull"):
-				health_pct = float(s.hull) / max_hull_val
+				health_pct = float(s.hull) / float(real_max)
 			
 		ship_list_ui.add_item(s_name)
 		
