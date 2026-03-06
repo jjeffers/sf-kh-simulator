@@ -15,11 +15,42 @@ func execute(ships: Array, valid_hexes: Array[Vector3i], game_manager: Node) -> 
     var enemy_center_mass = _calculate_enemy_center_mass(game_manager, ships[0].side_id)
     var roles = _categorize_ships(ships)
     
-    # Priority: Support (Must be protected), Front-line (Take the hits), Escort (Screening)
+    # Determine if this side is the Attacker.
+    # Attackers historically possess valid deployment hexes restricted entirely to the map's outer radius edge.
+    var is_attacker = true
+    for h in valid_hexes:
+        if HexGrid.hex_distance(Vector3i.ZERO, h) < game_manager.map_radius:
+            is_attacker = false
+            break
+
+    # Extract all Asset Carriers available for this deployment side to harbor Attack Fighters
+    var available_carriers = []
+    for s in ships:
+        if s.ship_class == "Assault Carrier" and not s.is_destroyed:
+            available_carriers.append(s)
+
     var deployment_queue = []
-    deployment_queue.append_array(roles[ROLE_SUPPORT])
-    deployment_queue.append_array(roles[ROLE_FRONT_LINE])
-    deployment_queue.append_array(roles[ROLE_ESCORT])
+    # If attacker, Fighters must dock with an Asset Carrier
+    if is_attacker:
+        var carrier_index = 0
+        for s in ships:
+            if s.ship_class == "Fighter":
+                if available_carriers.size() > 0:
+                    var carrier = available_carriers[carrier_index % available_carriers.size()]
+                    s.dock_with(carrier)
+                    carrier_index += 1
+                else:
+                    # Very strange edge case where attacker brings fighters without carriers.
+                    # Fallback to normal queue.
+                    pass
+            
+    # Priority: Support (Must be protected), Front-line (Take the hits), Escort (Screening)
+    for s in roles[ROLE_SUPPORT]:
+        if not s.is_docked: deployment_queue.append(s)
+    for s in roles[ROLE_FRONT_LINE]:
+        if not s.is_docked: deployment_queue.append(s)
+    for s in roles[ROLE_ESCORT]:
+        if not s.is_docked: deployment_queue.append(s)
     
     var placed_ships = []
     
@@ -29,7 +60,7 @@ func execute(ships: Array, valid_hexes: Array[Vector3i], game_manager: Node) -> 
         if scen_key == "close_escort" and s.name == "Megasaurus":
             ship_hexes = ship_hexes.filter(func(h): return h.y == 0)
             
-        var best_hex = _find_best_hex(s, ship_hexes, placed_ships, enemy_center_mass, game_manager, rng)
+        var best_hex = _find_best_hex(s, ship_hexes, placed_ships, enemy_center_mass, game_manager, rng, is_attacker)
         s.grid_position = best_hex
         s.position = HexGrid.hex_to_pixel(best_hex)
         s.is_deployed = true
@@ -207,7 +238,7 @@ func _calculate_enemy_center_mass(game_manager: Node, my_side_id: int) -> Vector
     # Integer division approximation
     return Vector3i(sum.x / enemy_ships.size(), sum.y / enemy_ships.size(), sum.z / enemy_ships.size())
 
-func _find_best_hex(ship: Node, valid_hexes: Array[Vector3i], placed_ships: Array, enemy_center_mass: Vector3i, game_manager: Node, rng: RandomNumberGenerator) -> Vector3i:
+func _find_best_hex(ship: Node, valid_hexes: Array[Vector3i], placed_ships: Array, enemy_center_mass: Vector3i, game_manager: Node, rng: RandomNumberGenerator, is_attacker: bool = false) -> Vector3i:
     var best_hex = valid_hexes[0]
     var best_score = -99999.0
     
@@ -218,6 +249,15 @@ func _find_best_hex(ship: Node, valid_hexes: Array[Vector3i], placed_ships: Arra
     elif roles[ROLE_SUPPORT].size() > 0: role = ROLE_SUPPORT
     
     for h in valid_hexes:
+        # Constraint: Attackers must deploy every ship within 2 hexes of another friendly ship
+        if is_attacker and placed_ships.size() > 0:
+            var is_within_range = false
+            for p in placed_ships:
+                if HexGrid.hex_distance(h, p.grid_position) <= 2:
+                    is_within_range = true
+                    break
+            if not is_within_range:
+                continue # Hard skip this hex, invalid per Attacker constraints
         # Introduce a baseline Gaussian noise (normal distribution) to slightly fuzz selections.
         # This prevents identical static layouts on every button press, but preserves mathematical preferences.
         var score = rng.randfn(0.0, 15.0)
