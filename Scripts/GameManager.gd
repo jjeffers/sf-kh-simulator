@@ -6995,7 +6995,7 @@ func _show_battle_summary(title_text: String, side_id: int):
 		else:
 			# Check crippled vs Damaged
 			var crippled = false
-			if s.speed_override_max_speed == 0 and s.get_effective_adf() <= 0:
+			if s.adf > 0 and s.get_effective_adf() <= 0:
 				crippled = true # Engines broken completely
 			else:
 				var unrepairable_count = 0
