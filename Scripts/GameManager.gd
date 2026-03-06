@@ -5575,10 +5575,9 @@ func _draw():
 	# UPDATE: Now handles ANY ship with orders (Selected or not)
 	if current_phase == Phase.MOVEMENT:
 		for s in ships:
-			# If ship has orders, we draw the "Committed" plan.
-			# We skip if it has moved.
-			# We do NOT skip if s == selected_ship (unless it has NO orders)
-			if is_instance_valid(s) and s.has_orders and not s.has_moved:
+			if not is_instance_valid(s) or s.has_moved or s.is_destroyed: continue
+			
+			if s.has_orders:
 				# Only show my side (or if spectator/host)
 				# UDPATE: User requests seeing ALL committed plans
 				if not _should_show_movement_plan(s): continue
@@ -5600,8 +5599,27 @@ func _draw():
 					
 					# Draw Ghost Ship Sprite at End
 					var end_pos = plan_points[plan_points.size() - 1]
-					# Use the new custom draw method on Ship
 					s.draw_sprite_custom(self, end_pos, s.planned_facing, 0.5)
+					
+			elif s.speed > 0 and s.ship_class not in ["Space Station", "Station", "Armed Station", "Fortified Station", "Space Station (Fortress)"]:
+				# User Request: If no new orders are issued, ship will move exactly its speed forward.
+				# Draw a translucent arrow projecting this default forward path.
+				# Suppress if this is the actively selected/plotting ship (since current_path logic takes over)
+				if is_instance_valid(selected_ship) and s == selected_ship and current_path.size() > 0:
+					continue
+					
+				var start_pos = HexGrid.hex_to_pixel(s.grid_position)
+				var forward_vec = HexGrid.get_direction_vec(s.facing)
+				var end_pos = HexGrid.hex_to_pixel(s.grid_position + forward_vec * s.speed)
+				
+				draw_line(start_pos, end_pos, Color(1, 1, 1, 0.3), 3.0, true) # Faint translucent white
+				
+				var angle = (end_pos - start_pos).angle()
+				var arrow_size = 12.0
+				var p1 = end_pos - Vector2(cos(angle - PI/6), sin(angle - PI/6)) * arrow_size
+				var p2 = end_pos - Vector2(cos(angle + PI/6), sin(angle + PI/6)) * arrow_size
+				var arrow_pts = PackedVector2Array([end_pos, p1, p2])
+				draw_polygon(arrow_pts, PackedColorArray([Color(1, 1, 1, 0.3)]))
 	
 	# Active Plotting Visualization
 	# Only draw if selected ship DOES NOT have orders (i.e. we are actively plotting)
