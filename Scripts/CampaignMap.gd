@@ -359,6 +359,7 @@ func _draw_systems():
 			
 			encounter_circle.add_theme_stylebox_override("panel", enc_style)
 			encounter_circle.custom_minimum_size = Vector2(105, 105)
+			encounter_circle.size = Vector2(105, 105)
 			encounter_circle.mouse_filter = Control.MOUSE_FILTER_STOP
 			encounter_circle.gui_input.connect(func(event): _on_system_gui_input(event, sys_name))
 			encounter_circle.position = pos - Vector2(52, 52) # Center it visually
