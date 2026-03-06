@@ -6806,9 +6806,11 @@ func _check_victory():
 	if s1_count == 0 and s2_count == 0:
 		show_game_over("Draw!")
 	elif s1_count == 0:
-		show_game_over("Winner: Side 2 (Defenders)!")
+		var winner_name = get_side_name(2)
+		show_game_over("Winner: " + winner_name + "!")
 	elif s2_count == 0:
-		show_game_over("Winner: Side 1 (Attackers)!")
+		var winner_name = get_side_name(1)
+		show_game_over("Winner: " + winner_name + "!")
 
 func show_game_over(msg: String):
 	current_phase = Phase.END
@@ -6823,6 +6825,26 @@ func show_game_over(msg: String):
 	panel_game_over.visible = true
 	_update_ui_state()
 	log_message(msg)
+
+func _get_faction_for_side(side_id: int) -> String:
+	# Side 1 is typically UPF in campaigns, Side 2 is Sathar.
+	# But we can check scenario data directly
+	var scen_key = "surprise_attack"
+	if NetworkManager.lobby_data != null:
+		scen_key = NetworkManager.lobby_data.get("scenario", "surprise_attack")
+	var scen = ScenarioManager.get_scenario(scen_key)
+	
+	if scen and scen.has("sides"):
+		var side_idx = side_id - 1
+		if scen["sides"].has(side_idx):
+			var faction_str = scen["sides"][side_idx].get("faction", "")
+			if faction_str != "":
+				return faction_str
+			var team_name = scen["sides"][side_idx].get("name", "")
+			if "UPF" in team_name or "Militia" in team_name: return "UPF"
+			if "Sathar" in team_name: return "Sathar"
+			
+	return "Sathar" if side_id == 2 else "UPF"
 
 func _sync_campaign_results():
 	log_message("[color=cyan]=== AFTERMATH: REPAIRS AND SYNC ===[/color]")
@@ -6851,8 +6873,29 @@ func _sync_campaign_results():
 			s.is_destroyed = true
 			s.hull = 0
 			
-	# Update CampaignManager
-	var sys_name = NetworkManager.lobby_data.get("encounter_system", "")
+	var sys_name = ""
+	if NetworkManager.lobby_data != null:
+		sys_name = NetworkManager.lobby_data.get("encounter_system", "")
+		
+	# Process Space Station / Fortress destruction
+	for s in ships:
+		if not is_instance_valid(s): continue
+		if s.is_destroyed or s.hull <= 0:
+			if "Station" in s.name or "Fortress" in s.name or "Space Station" in s.ship_class:
+				# It is a destroyed station
+				if sys_name in CampaignManager.UPF_FORTRESSES:
+					CampaignManager.UPF_FORTRESSES.erase(sys_name)
+					CampaignManager.destroyed_fortresses_count += 1
+					log_message("[color=red]Campaign updated: Fortress %s was destroyed![/color]" % sys_name)
+				elif sys_name in CampaignManager.UPF_ARMED_STATIONS:
+					# Dramune edge case where there are multiples, array.erase removes the first match
+					var idx = CampaignManager.UPF_ARMED_STATIONS.find(sys_name)
+					if idx != -1:
+						CampaignManager.UPF_ARMED_STATIONS.remove_at(idx)
+					CampaignManager.destroyed_stations_count += 1
+					log_message("[color=red]Campaign updated: Armed Station at %s was destroyed![/color]" % sys_name)
+			
+	# Update CampaignManager fleets
 	for f in CampaignManager.fleets:
 		if f.current_system_id == sys_name and not f.is_moving():
 			for i in range(f.ships.size() - 1, -1, -1):
@@ -6862,7 +6905,7 @@ func _sync_campaign_results():
 				
 				var tac_ship = null
 				for s in ships:
-					if is_instance_valid(s) and s.name == c_name and get_side_name(s.side_id) == c_faction:
+					if is_instance_valid(s) and s.name == c_name and _get_faction_for_side(s.side_id) == c_faction:
 						tac_ship = s
 						break
 						
