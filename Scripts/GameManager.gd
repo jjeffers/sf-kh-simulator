@@ -1190,21 +1190,57 @@ func _handle_combat_click(hex: Vector3i):
 			log_message("[color=red]Cannot fire %s in Passive Turn![/color]" % weapon["name"])
 			return
 
+		# Calculate valid target hexes based on movement phase
+		var target_hexes = [s.grid_position]
+		if combat_subphase == 1 and s.side_id != firing_side_id and current_side_id == s.side_id:
+			target_hexes.append_array(s.previous_path)
+			
 		var w_range = weapon["range"]
 		var w_arc = weapon["arc"]
-		var d = HexGrid.hex_distance(selected_ship.grid_position, s.grid_position)
 		
-		# Range Check
-		if d > w_range:
-			log_message("[color=red]Target out of range! (Max %d)[/color]" % w_range)
-			return
+		# Validation tracking
+		var is_in_range_anywhere = false
+		var is_in_arc_anywhere = false
+		var can_hit = false
+		
+		for check_hex in target_hexes:
+			var d = HexGrid.hex_distance(selected_ship.grid_position, check_hex)
+			if d <= w_range:
+				is_in_range_anywhere = true
+				
+				# Planet Masking Check
+				var line_hexes = HexGrid.get_line_coords(selected_ship.grid_position, check_hex)
+				var blocked = false
+				for h in line_hexes:
+					if h in planet_hexes:
+						if h == selected_ship.grid_position or h == check_hex: continue
+						blocked = true
+						break
+						
+				if blocked: continue
 
-		# Arc Check
-		if w_arc == "FF":
-			var valid_hexes = _get_ff_arc_hexes(selected_ship, w_range)
-			if not s.grid_position in valid_hexes:
+				# Arc Check
+				var in_arc_for_this_hex = false
+				if w_arc == "FF":
+					var valid_hexes = _get_ff_arc_hexes(selected_ship, w_range)
+					if check_hex in valid_hexes:
+						in_arc_for_this_hex = true
+				else:
+					in_arc_for_this_hex = true # Turret/360
+					
+				if in_arc_for_this_hex:
+					is_in_arc_anywhere = true
+					can_hit = true
+					break # Found a fully valid firing solution along the path
+		
+		if not can_hit:
+			if not is_in_range_anywhere:
+				log_message("[color=red]Target out of range! (Max %d)[/color]" % w_range)
+			elif not is_in_arc_anywhere:
 				log_message("[color=red]Target not in Forward Firing Arc![/color]")
-				return
+			else:
+				log_message("[color=red]Target line of sight blocked![/color]")
+			return
 
 		# Ammo Check (Account for already queued shots)
 		var queued_count = 0
