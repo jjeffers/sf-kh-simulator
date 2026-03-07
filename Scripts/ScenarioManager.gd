@@ -163,7 +163,7 @@ static func generate_scenario(key: String, rng_seed: int) -> Dictionary:
 		if sys_name in CampaignManager.UPF_FORTRESSES:
 			ships.append({
 				"name": "Fortress " + sys_name,
-				"class": "Space Station",
+				"class": "Fortified Station",
 				"faction": "UPF",
 				"side_index": 0,
 				"position": Vector3i.ZERO,
@@ -173,14 +173,14 @@ static func generate_scenario(key: String, rng_seed: int) -> Dictionary:
 					"weapons": [
 						{"name": "Laser Battery 1", "type": "Laser", "range": 9, "arc": "360", "ammo": 999, "max_ammo": 999, "damage_dice": "1d10", "damage_bonus": 0, "fired": false},
 						{"name": "Laser Battery 2", "type": "Laser", "range": 9, "arc": "360", "ammo": 999, "max_ammo": 999, "damage_dice": "1d10", "damage_bonus": 0, "fired": false},
-						{"name": "Rocket Battery Swarm", "type": "Rocket Battery", "range": 3, "arc": "360", "ammo": 12, "max_ammo": 12, "damage_dice": "2d10", "damage_bonus": 0, "fired": false}
+						{"name": "Rocket Battery Swarm", "type": "Rocket Battery", "range": 3, "arc": "360", "ammo": 8, "max_ammo": 8, "damage_dice": "2d10", "damage_bonus": 0, "fired": false}
 					]
 				}
 			})
 		elif sys_name in CampaignManager.UPF_ARMED_STATIONS:
 			ships.append({
 				"name": sys_name + " Station",
-				"class": "Space Station",
+				"class": "Armed Station",
 				"faction": "UPF",
 				"side_index": 0,
 				"position": Vector3i.ZERO,
@@ -188,7 +188,8 @@ static func generate_scenario(key: String, rng_seed: int) -> Dictionary:
 				"overrides": {
 					"hull": 50, "max_hull": 50, "icm_max": 4, "icm_current": 4, "ms_max": 0, "ms_current": 0,
 					"weapons": [
-						{"name": "Laser Battery", "type": "Laser", "range": 9, "arc": "360", "ammo": 999, "max_ammo": 999, "damage_dice": "1d10", "damage_bonus": 0, "fired": false}
+						{"name": "Laser Battery", "type": "Laser", "range": 9, "arc": "360", "ammo": 999, "max_ammo": 999, "damage_dice": "1d10", "damage_bonus": 0, "fired": false},
+						{"name": "Rocket Battery Swarm", "type": "Rocket Battery", "range": 3, "arc": "360", "ammo": 6, "max_ammo": 6, "damage_dice": "2d10", "damage_bonus": 0, "fired": false}
 					]
 				}
 			})

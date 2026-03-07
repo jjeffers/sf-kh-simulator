@@ -367,7 +367,7 @@ When both sides have completed deployment, the game should proceed to the first 
 **UPF (Defenders):**
 - **Fortress K'zdit** (Space Station - Custom)
   - Stats: 100 Hull, 8 ICM, 2 MS.
-  - Weapons: 3x Laser Battery, x12 Rocket Battery (12 shots).
+  - Weapons: 3x Laser Battery, Rocket Battery (12 ammo).
 - **Valiant** (Battleship)
 - **Allison May** (Destroyer)
 - **Daridia** (Frigate)
@@ -418,7 +418,7 @@ When both sides have completed deployment, the game should proceed to the first 
 **UPF (Defenders):**
 - **Ken'zah Station** (Space Station - Custom)
   - Stats: 140 Hull, DCR 100 
-  - Weapons: laser battery (x2), rocket battery (x8)
+  - Weapons: laser battery (x2), rocket battery (8 ammo)
   - Defenses: reflective hull, 10 ICM, 2 MS.
   **Fighters** (wings A, B, C, D, E, F)
 - **Z'Rak't Zoz** (Minelayer)

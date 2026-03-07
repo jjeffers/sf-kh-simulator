@@ -51,6 +51,11 @@ func test_ship_list_filtering_sathar_passive_fire():
 	assert_gt(items.size(), 0, "Should have items in ship list")
 	
 	for btn in items:
+		if btn is HSeparator:
+			continue
+		if btn.get("text") and btn.text == "Auto-Plan Attacks":
+			continue
+			
 		gut.p("Button Text: " + btn.text)
 		if btn.text.contains("Sathar_Ship"):
 			assert_true(true, "Found Sathar Ship")
@@ -87,6 +92,11 @@ func test_ship_list_filtering_upf_active_fire():
 	assert_gt(items.size(), 0, "Should have items in ship list")
 	
 	for btn in items:
+		if btn is HSeparator:
+			continue
+		if btn.get("text") and btn.text == "Auto-Plan Attacks":
+			continue
+			
 		gut.p("Button Text: " + btn.text)
 		if btn.text.contains("UPF_Ship"):
 			assert_true(true, "Found UPF Ship")

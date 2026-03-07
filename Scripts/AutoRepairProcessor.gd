@@ -122,10 +122,11 @@ static func _get_repairable_keys(s) -> Array:
 	if s.icm_max < s.base_icm_max and not s.unrepairable_icm: keys.append("icm")
 	if s.ms_max < s.base_ms_max and not s.unrepairable_ms: keys.append("ms")
 	
-	for i in range(s.weapons.size()):
-		if s.weapons[i].get("is_crippled", false) and not s.weapons[i].get("unrepairable", false):
-			keys.append("wpn_%d" % i)
-	
+	if "weapons" in s:
+		for i in range(s.weapons.size()):
+			if typeof(s.weapons[i]) == TYPE_DICTIONARY and s.weapons[i].get("is_crippled", false) and not s.weapons[i].get("unrepairable", false):
+				keys.append("wpn_%d" % i)
+				
 	return keys
 
 static func _sort_weapons_by_utility(s, key_a: String, key_b: String) -> bool:

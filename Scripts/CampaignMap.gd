@@ -351,6 +351,9 @@ func _create_system_node(node_id: String, display_name: String, pos: Vector2, is
 	return vbox
 
 func _draw_systems():
+	for child in systems_container.get_children():
+		child.queue_free()
+		
 	for sys_name in campaign.systems:
 		var pos = _get_system_pos(sys_name)
 		
@@ -411,18 +414,6 @@ func _draw_systems():
 		
 		var node = _create_system_node(circle_id, display_name, pos, true)
 		systems_container.add_child(node)
-		
-		var parent_sys_id = start_c.get("connected_system", "")
-		if campaign.systems.has(parent_sys_id):
-			var sys = campaign.systems[parent_sys_id]
-			var p1 = pos
-			var p2 = _coord_to_screen(sys["x"], sys["y"])
-			var line = Line2D.new()
-			line.add_point(p1)
-			line.add_point(p2)
-			line.width = 1.0
-			line.default_color = Color(1.0, 0.4, 0.4, 0.5)
-			routes_container.add_child(line)
 
 func _draw_fleets():
 	for child in fleets_container.get_children():
@@ -571,6 +562,9 @@ func _draw_fleets():
 		fleets_container.add_child(lbl)
 
 func _draw_routes():
+	for child in routes_container.get_children():
+		child.queue_free()
+		
 	for route in campaign.routes:
 		var origin = route["origin"]
 		var dest = route["destination"]
@@ -583,6 +577,21 @@ func _draw_routes():
 			line.add_point(p2)
 			line.width = 2.0
 			line.default_color = Color.DARK_GRAY
+			routes_container.add_child(line)
+			
+	for start_c in campaign.start_circles:
+		var circle_id = "Start Circle " + str(int(start_c.get("id", 0)))
+		var pos = _get_system_pos(circle_id)
+		var parent_sys_id = start_c.get("connected_system", "")
+		if campaign.systems.has(parent_sys_id):
+			var sys = campaign.systems[parent_sys_id]
+			var p1 = pos
+			var p2 = _coord_to_screen(sys["x"], sys["y"])
+			var line = Line2D.new()
+			line.add_point(p1)
+			line.add_point(p2)
+			line.width = 1.0
+			line.default_color = Color(1.0, 0.4, 0.4, 0.5)
 			routes_container.add_child(line)
 
 func _on_plot_jump_toggled(pressed: bool):
@@ -686,6 +695,45 @@ func _update_fleet_list():
 			
 			if selected_fleet == f:
 				fleet_list.set_item_custom_fg_color(fleet_list.item_count - 1, Color(1.0, 0.84, 0.0)) # Gold
+				
+	if my_faction == "UPF":
+		var station_fleets = []
+		
+		for s in campaign.UPF_FORTRESSES:
+			var sf = CampaignFleet.new("Fortress " + s, "UPF", s)
+			sf.ships.append({
+				"name": "Fortress " + s,
+				"class": "Fortified Station",
+				"faction": "UPF"
+			})
+			station_fleets.append(sf)
+			
+		for s in campaign.UPF_ARMED_STATIONS:
+			var sf = CampaignFleet.new("Armed Station " + s, "UPF", s)
+			sf.ships.append({
+				"name": s + " Station",
+				"class": "Armed Station",
+				"faction": "UPF"
+			})
+			station_fleets.append(sf)
+			
+		for sf in station_fleets:
+			var display_text = sf.fleet_name
+			# Check if selected_fleet points to one of our pseudo-fleets. Since we regenerate them, 
+			# we check equivalence by name and system.
+			var is_selected = selected_fleet and selected_fleet.fleet_name == sf.fleet_name and selected_fleet.current_system_id == sf.current_system_id
+			if is_selected:
+				display_text = "> " + display_text + " <"
+				selected_fleet = sf # Re-bind the reference to the newly generated pseudo-fleet
+				
+			fleet_list.add_item(display_text)
+			fleet_list.set_item_metadata(fleet_list.item_count - 1, sf)
+			
+			if is_selected:
+				fleet_list.set_item_custom_fg_color(fleet_list.item_count - 1, Color(1.0, 0.84, 0.0))
+			else:
+				fleet_list.set_item_custom_fg_color(fleet_list.item_count - 1, Color(0.4, 0.8, 1.0)) # Light blue for stations
+
 
 func _on_fleet_list_selected(idx: int):
 	# Refresh list first to reset highlighting, then reselect
@@ -806,6 +854,8 @@ func _on_campaign_state_updated():
 		if not rebind_success:
 			selected_fleet = null
 
+	_draw_routes()
+	_draw_systems()
 	_draw_fleets()
 	_update_fleet_list()
 	if selected_fleet:
@@ -815,6 +865,10 @@ func _on_fleet_list_activated(idx: int):
 	var fleet = fleet_list.get_item_metadata(idx)
 	if not fleet: return
 	if fleet.faction != _get_my_faction(): return
+	
+	# Prevent renaming stations
+	if not campaign.fleets.has(fleet):
+		return
 	
 	var user_input = LineEdit.new()
 	user_input.text = fleet.fleet_name
@@ -903,6 +957,10 @@ func _on_ship_selection_changed(index: int, selected: bool):
 func _on_ship_list_activated(idx: int):
 	if not selected_fleet: return
 	if selected_fleet.faction != _get_my_faction(): return
+	
+	# Prevent renaming ships inside pseudo-fleets (Stations)
+	if not campaign.fleets.has(selected_fleet):
+		return
 	
 	var ship = selected_fleet.ships[idx]
 	var current_name = ship.get("name", ship.get("ship_name", "Ship"))
@@ -1077,11 +1135,11 @@ func _handle_encounter_click(sys_name: String):
 	# Check for UPF Stations if we are UPF
 	if my_fac == "UPF":
 		if sys_name in campaign.UPF_FORTRESSES:
-			friendly_ships.append({"class": "Space Station (Fortress)", "name": "Fortress " + sys_name})
+			friendly_ships.append({"class": "Fortified Station", "name": "Fortress " + sys_name})
 			ship_list_label.text += "[color=green]Fortress %s - READY[/color]\n" % sys_name
 		elif sys_name in campaign.UPF_ARMED_STATIONS:
-			friendly_ships.append({"class": "Space Station", "name": sys_name + " Station"})
-			ship_list_label.text += "[color=green]Space Station %s - READY[/color]\n" % sys_name
+			friendly_ships.append({"class": "Armed Station", "name": sys_name + " Station"})
+			ship_list_label.text += "[color=green]Armed Station %s - READY[/color]\n" % sys_name
 			
 	# Append ships from fleets
 	var ShipScript = load("res://Scripts/Ship.gd")

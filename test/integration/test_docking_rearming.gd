@@ -22,6 +22,7 @@ func test_docking_rules():
 	fighter.ship_class = "Fighter"
 	fighter.adf = 5
 	fighter.speed = 0
+	fighter.is_deployed = true
 	gm.ships.append(fighter)
 	gm.add_child(fighter)
 
