@@ -291,6 +291,8 @@ func _setup_network_identity():
 				my_side_id = 2 # Client defaults to Side 2 (Defender usually)
 			log_message("Network: Default Assignment (Host=1, Client=2). My Side: %d" % my_side_id)
 		
+
+		
 	# Set Window Title for Easy Identification
 	var side_name = get_side_name(my_side_id)
 	var title = "Hex Space Combat - Player %d (%s)" % [my_side_id, side_name]
@@ -1708,7 +1710,7 @@ func _process_next_attack():
 	# Validate Source FIRST
 	if not is_instance_valid(source):
 		log_message("Source ship destroyed! Attack fizzles.")
-		await get_tree().create_timer(1.0).timeout
+		await get_tree().create_timer(0.5).timeout
 		_process_next_attack()
 		return
 
@@ -1716,7 +1718,7 @@ func _process_next_attack():
 	if source.hull <= 0:
 		log_message("%s destroyed before firing! Attack fizzles." % source.get_display_name())
 		source.weapons[weapon_idx]["ammo"] -= 1
-		await get_tree().create_timer(1.0).timeout
+		await get_tree().create_timer(0.5).timeout
 		_process_next_attack()
 		return
 		
@@ -1754,7 +1756,7 @@ func _process_next_attack():
 		else:
 			log_message(w_msg)
 		_spawn_attack_fx(start_pos, target_pos, weapon.get("type"))
-		await get_tree().create_timer(1.5).timeout
+		await get_tree().create_timer(0.75).timeout
 		_process_next_attack()
 
 
@@ -1768,7 +1770,7 @@ func _process_next_attack():
 		else:
 			log_message(d_msg)
 		source.weapons[weapon_idx]["ammo"] -= 1 # Wasted shot rule? Or refund? Let's burn ammo to be safe.
-		await get_tree().create_timer(1.0).timeout
+		await get_tree().create_timer(0.5).timeout
 		_process_next_attack()
 		return
 
@@ -1847,7 +1849,7 @@ func _process_next_attack():
 						
 		if icm_used > 0:
 			log_message("Shared Defense launches %d total ICMs!" % icm_used)
-			await get_tree().create_timer(1.0).timeout # Wait for counter-fire FX
+			await get_tree().create_timer(0.5).timeout # Wait for counter-fire FX
 	
 	
 	# Determine if hit (Pass ICM count)
@@ -1960,8 +1962,8 @@ func _process_next_attack():
 		log_message("[color=red]MISS![/color]")
 	
 	# Wait for animation (travel time + buffer)
-	var total_wait = travel_time + 1.0
-	if total_wait < 2.0: total_wait = 2.0
+	var total_wait = (travel_time + 1.0) * 0.5
+	if total_wait < 1.0: total_wait = 1.0
 	
 	await get_tree().create_timer(total_wait).timeout
 	call_deferred("_process_next_attack")
@@ -2645,11 +2647,22 @@ func _update_planning_ui_list():
 		)
 		
 		
+		
 		container_ships.add_child(btn)
 		
 	# FORCE Visibility purely based on content/logic
 	# We already checked my_ships.size() > 0 which effectively checks for valid ships to show
 	if my_ships.size() > 0:
+		# Add Auto-Plan Button
+		var sep = HSeparator.new()
+		container_ships.add_child(sep)
+		
+		var auto_plan_btn = Button.new()
+		auto_plan_btn.text = "Auto-Plan Attacks"
+		auto_plan_btn.modulate = Color(0.6, 0.8, 1.0)
+		auto_plan_btn.pressed.connect(_on_auto_plan_attacks_pressed)
+		container_ships.add_child(auto_plan_btn)
+		
 		panel_planning.visible = true
 		if panel_repair: panel_repair.visible = false
 	
@@ -2662,6 +2675,29 @@ func _update_planning_ui_list():
 		label_status.text += "\n\n(Waiting for Side %d to plan attacks...)" % firing_side_id
 		
 	_update_attack_queue_ui()
+
+func _on_auto_plan_attacks_pressed():
+	if current_phase != Phase.COMBAT or current_combat_state != CombatState.PLANNING:
+		return
+		
+	var temp_ai = ComputerOpponent.new()
+	temp_ai.game_manager = self
+	temp_ai.side_id = firing_side_id
+	temp_ai.setup_faction_details()
+	
+	var planned_attacks = temp_ai._plan_combat()
+	temp_ai.queue_free()
+	
+	# Clear existing so we don't accidentally double-queue
+	_clear_all_attacks()
+	
+	for atk in planned_attacks:
+		if _is_networked():
+			rpc_add_attack.rpc(atk["s"], atk["t"], atk["w"])
+		else:
+			rpc_add_attack(atk["s"], atk["t"], atk["w"])
+			
+	log_message("[color=cyan]Auto-planning complete for Phase %d.[/color]" % combat_subphase)
 
 func _clear_all_attacks():
 	var attacks_to_clear = queued_attacks.duplicate()
@@ -4692,7 +4728,8 @@ func _on_exec_move_pressed():
 		
 	# Auto-Commit pending plot if valid
 	if is_instance_valid(selected_ship) and not selected_ship.has_moved and not selected_ship.has_orders:
-		if is_instance_valid(btn_commit) and not btn_commit.disabled and btn_commit.visible:
+		var has_user_plot = current_path.size() > 0 or ghost_head_facing != selected_ship.facing or current_orbit_direction != selected_ship.orbit_direction
+		if has_user_plot and is_instance_valid(btn_commit) and not btn_commit.disabled and btn_commit.visible:
 			log_message("Auto-committing plotted movement for %s..." % selected_ship.name)
 			_on_commit_move()
 			
@@ -5282,7 +5319,7 @@ func _check_boundary(ship: Ship) -> bool:
 	if dist > map_radius:
 		log_message("%s drifted into deep space and was lost." % ship.name)
 		_on_ship_destroyed(ship) # Handles list removal and victory check
-		ship.queue_free()
+		ship.visible = false
 		return true
 	return false
 
@@ -7044,10 +7081,11 @@ func _show_battle_summary(title_text: String, side_id: int):
 				crippled = true # Engines broken completely
 			else:
 				var unrepairable_count = 0
-				for w in s.weapons:
-					if w.get("is_crippled", false): unrepairable_count += 1
-				if s.weapons.size() > 0 and unrepairable_count == s.weapons.size():
-					crippled = true # All weapons broken
+				if "weapons" in s:
+					for w in s.weapons:
+						if typeof(w) == TYPE_DICTIONARY and w.get("is_crippled", false): unrepairable_count += 1
+					if s.weapons.size() > 0 and unrepairable_count == s.weapons.size():
+						crippled = true # All weapons broken
 					
 			if crippled:
 				status_str = "Crippled"
@@ -7119,38 +7157,68 @@ func _sync_campaign_results():
 		sys_name = NetworkManager.lobby_data.get("encounter_system", "")
 		
 	# Process Space Station / Fortress destruction
-	for s in ships:
+	var all_ships = ships.duplicate()
+	all_ships.append_array(campaign_casualties)
+	for s in all_ships:
 		if not is_instance_valid(s): continue
 		if s.is_destroyed or s.hull <= 0:
-			if "Station" in s.name or "Fortress" in s.name or "Space Station" in s.ship_class:
-				# It is a destroyed station
-				if sys_name in CampaignManager.UPF_FORTRESSES:
-					CampaignManager.UPF_FORTRESSES.erase(sys_name)
-					CampaignManager.destroyed_fortresses_count += 1
-					log_message("[color=red]Campaign updated: Fortress %s was destroyed![/color]" % sys_name)
-				elif sys_name in CampaignManager.UPF_ARMED_STATIONS:
-					# Dramune edge case where there are multiples, array.erase removes the first match
-					var idx = CampaignManager.UPF_ARMED_STATIONS.find(sys_name)
-					if idx != -1:
-						CampaignManager.UPF_ARMED_STATIONS.remove_at(idx)
-					CampaignManager.destroyed_stations_count += 1
-					log_message("[color=red]Campaign updated: Armed Station at %s was destroyed![/color]" % sys_name)
+			log_message("DEBUG: Processing destroyed ship: %s, class: %s" % [s.name, s.ship_class])
+			
+			var is_station_node = false
+			if "Station" in s.name or "Fortress" in s.name:
+				is_station_node = true
+			if s.ship_class in ["Space Station", "Armed Station", "Fortified Station", "Space Station (Fortress)"]:
+				is_station_node = true
+				
+			if is_station_node:
+				log_message("DEBUG: Ship identified as Station/Fortress!")
+				
+				# Use substring matching just in case sys_name has trailing spaces or was modified
+				var removed = false
+				
+				# 1. Try Fortresses First
+				if not removed:
+					for f_name in CampaignManager.UPF_FORTRESSES:
+						if f_name in s.name or s.name in f_name or sys_name in f_name:
+							# Match found! It's a related fortress.
+							if s.ship_class in ["Fortified Station", "Space Station (Fortress)", "Space Station"]:
+								CampaignManager.UPF_FORTRESSES.erase(f_name)
+								CampaignManager.destroyed_fortresses_count += 1
+								log_message("[color=red]Campaign updated: Fortress %s was destroyed![/color]" % f_name)
+								removed = true
+								break
+				
+				# 2. Try Armed Stations
+				if not removed:
+					for i in range(CampaignManager.UPF_ARMED_STATIONS.size() - 1, -1, -1):
+						var a_name = CampaignManager.UPF_ARMED_STATIONS[i]
+						if a_name in s.name or s.name in a_name or sys_name in a_name:
+							# Match found! It's a related armed station.
+							if s.ship_class in ["Space Station", "Armed Station"]:
+								CampaignManager.UPF_ARMED_STATIONS.remove_at(i)
+								CampaignManager.destroyed_stations_count += 1
+								log_message("[color=red]Campaign updated: Armed Station at %s was destroyed![/color]" % a_name)
+								removed = true
+								break
 			
 	# Update CampaignManager fleets
+	log_message("DEBUG: Starting CampaignManager fleets update loop")
 	for f in CampaignManager.fleets:
 		if f.current_system_id == sys_name and not f.is_moving():
+			log_message("DEBUG: Processing fleet at %s: %s" % [sys_name, f.fleet_name])
 			for i in range(f.ships.size() - 1, -1, -1):
 				var c_ship = f.ships[i]
 				var c_name = c_ship.get("name", "")
 				var c_faction = f.faction
 				
 				var tac_ship = null
-				for s in ships:
+				for s in all_ships: # CHANGED from ships to all_ships so we can correctly update damage for dead ships before removing them (or we can just use tac_ship to verify death)
 					if is_instance_valid(s) and s.name == c_name and _get_faction_for_side(s.side_id) == c_faction:
 						tac_ship = s
 						break
 						
 				if tac_ship == null or tac_ship.is_destroyed or tac_ship.hull <= 0:
+					log_message("DEBUG: Removing destroyed ship from fleet: %s" % c_name)
 					f.ships.remove_at(i)
 					log_message("[color=red]Campaign updated: %s destroyed/removed from fleet.[/color]" % c_name)
 				else:
@@ -7178,9 +7246,12 @@ func _sync_campaign_results():
 							if w_idx < tac_ship.weapons.size():
 								var cw = c_ship["weapons"][w_idx]
 								var tw = tac_ship.weapons[w_idx]
-								cw["ammo"] = tw.get("ammo", 0)
-								cw["is_crippled"] = tw.get("is_crippled", false)
-								cw["unrepairable"] = tw.get("unrepairable", false)
+								if tw != null and typeof(tw) == TYPE_DICTIONARY:
+									cw["ammo"] = tw.get("ammo", 0)
+									cw["is_crippled"] = tw.get("is_crippled", false)
+									cw["unrepairable"] = tw.get("unrepairable", false)
+					
+	log_message("DEBUG: Finished fleet updates. Cleaning up empty fleets.")
 					
 	for i in range(CampaignManager.fleets.size() - 1, -1, -1):
 		if CampaignManager.fleets[i].ships.size() == 0:

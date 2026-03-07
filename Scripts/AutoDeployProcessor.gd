@@ -52,6 +52,10 @@ func execute(ships: Array, valid_hexes: Array[Vector3i], game_manager: Node) -> 
     for s in roles[ROLE_ESCORT]:
         if not s.is_docked: deployment_queue.append(s)
     
+    # NEW: Ensure attacker fighters are caught even if role fallback missed them!
+    # Because Fighter isn't explicitly in the Ship Class Roles match, they fallback to ROLE_ESCORT.
+    # The `not s.is_docked` check SHOULD prevent deployment queue insertion.
+    
     var placed_ships = []
     
     for s in deployment_queue:

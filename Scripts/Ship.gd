@@ -1225,35 +1225,8 @@ func configure_space_station(force_hull: int = -1):
 		
 	# Rocket Batteries: floor(H / 15), clamp 2-12
 	var rb_count = int(clamp(floor(hull / 15.0), 2, 12))
-	# Consolidate into one entry? Or separate? 
-	# "2 to 12 rocket batteries". If consolidated, max_ammo = count.
-	# "1 shot per phase" rule usually applies "per weapon TYPE" or "per mount"?
-	# If we have 12 mounts, can we fire 12 times? 
-	# User rules: "a ship may only fire 1 rocket battery per combat phase".
-	# If a station has 12, surely it can fire more than 1? 
-	# A Space Station is likely an exception or "multi-mount" means multiple attacks.
-	# However, to avoid complexity, let's group them or allow them as separate entries?
-	# If `_is_weapon_available_in_phase` checks TYPE, it blocks ALL.
-	# We might need to flag them as separate weapons to allow multi-fire if they are separate mounts.
-	# But `Rocket Battery` restriction was specific.
-	# Let's assume for a STATION (Orbiting Fortress), it can fire ALL of them.
-	# Logic update needed in GameManager if "Type" check blocks it.
-	# For now, let's add them as a single entry with AMMO = Count, 
-	# assuming the specific rule "1 per phase" applies to standard ships.
-	# If the user wants 12 shots per turn, we need 12 entries or code changes.
-	# Given "2 to 12", 12 line items is messy.
-	# Let's add ONE entry "Rocket Battery Array" with Ammo = Count.
-	# But `GameManager` enforces 1 firing per phase.
-	# Prompt says "They have from... 2 to 12 rocket batteries".
-	# Effect: Station should be scary. Limiting to 1 shot is weak.
-	# Let's treat them as separate entries if feasible, OR special rule for Stations.
-	# Let's stick to the user's explicit rule for now: "1 RB per phase".
-	# If the station is huge, maybe it has multiple FACINGS?
-	# Simpler: One entry "Rocket Battery Swarm" with Ammo = RB Count.
-	# But wait, user said "varying from 2 to 12".
-	# Let's just create ONE entry with `rb_count` Ammo.
 	weapons.append({
-		"name": "Rocket Batteries",
+		"name": "Rocket Battery Swarm",
 		"type": "Rocket Battery",
 		"range": 3,
 		"arc": "360",
@@ -1261,7 +1234,7 @@ func configure_space_station(force_hull: int = -1):
 		"max_ammo": rb_count,
 		"damage_dice": "2d10",
 		"damage_bonus": 0,
-		"dtm": - 10,
+		"dtm": -10,
 		"fired": false
 	})
 	
@@ -1284,8 +1257,7 @@ func configure_armed_station():
 	
 	weapons.clear()
 	weapons.append({"name": "Laser Battery", "type": "Laser", "range": 9, "arc": "360", "ammo": 999, "max_ammo": 999, "damage_dice": "1d10", "damage_bonus": 0, "dtm": 0, "fired": false})
-	for i in range(6):
-		weapons.append({"name": "Rocket Battery %d" % (i+1), "type": "Rocket Battery", "range": 3, "arc": "360", "ammo": 1, "max_ammo": 1, "damage_dice": "2d10", "damage_bonus": 0, "dtm": -10, "fired": false})
+	weapons.append({"name": "Rocket Battery Swarm", "type": "Rocket Battery", "range": 3, "arc": "360", "ammo": 6, "max_ammo": 6, "damage_dice": "2d10", "damage_bonus": 0, "dtm": -10, "fired": false})
 	current_weapon_index = 0
 
 func configure_fortified_station():
@@ -1306,8 +1278,7 @@ func configure_fortified_station():
 	weapons.clear()
 	for i in range(2):
 		weapons.append({"name": "Laser Battery %d" % (i+1), "type": "Laser", "range": 9, "arc": "360", "ammo": 999, "max_ammo": 999, "damage_dice": "1d10", "damage_bonus": 0, "dtm": 0, "fired": false})
-	for i in range(8):
-		weapons.append({"name": "Rocket Battery %d" % (i+1), "type": "Rocket Battery", "range": 3, "arc": "360", "ammo": 1, "max_ammo": 1, "damage_dice": "2d10", "damage_bonus": 0, "dtm": -10, "fired": false})
+	weapons.append({"name": "Rocket Battery Swarm", "type": "Rocket Battery", "range": 3, "arc": "360", "ammo": 8, "max_ammo": 8, "damage_dice": "2d10", "damage_bonus": 0, "dtm": -10, "fired": false})
 	current_weapon_index = 0
 
 func reset_weapons():
@@ -1820,9 +1791,9 @@ func trigger_explosion():
 	add_child(particles)
 	particles.emitting = true
 	
-	# Wait for particles to finish before freeing
+	# Wait for particles to finish before hiding (do not free, GameManager needs pointer for aftermath)
 	var timer = get_tree().create_timer(1.2)
-	timer.timeout.connect(queue_free)
+	timer.timeout.connect(func(): visible = false)
 
 func reset_turn_state():
 	has_moved = false
@@ -1873,7 +1844,8 @@ func can_dock_with(station: Ship) -> bool:
 		return false
 	if station.docked_guests.size() >= station.get_docking_capacity():
 		return false
-	if grid_position != station.grid_position:
+	# If not deployed yet (AutoDeploy phase), allow docking anywhere
+	if is_deployed and grid_position != station.grid_position:
 		return false
 	return speed == 0 or get_effective_adf() > speed
 

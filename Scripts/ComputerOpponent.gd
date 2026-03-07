@@ -332,23 +332,25 @@ func _plan_combat() -> Array:
 			if w.get("fired", false): continue
 			if not game_manager._is_weapon_available_in_phase(w, ship): continue
 			
+			var valid_targets = game_manager._get_valid_targets_for_weapon(ship, w)
+			
 			var best_target = null
 			var best_utility = -999.0
 			
-			for t in targets:
+			for t in valid_targets:
 				var dist = HexGrid.hex_distance(ship.grid_position, t.grid_position)
-				if dist <= w["range"]:
-					# Base Utility
-					var u_a = 10.0 - dist # Preference for closer targets
-					if is_sathar:
-						u_a += 0.5 # Sathar Aggression Bias
-					
-					# Fuzziness
-					u_a += rng.randfn(0.0, 1.5)
-					
-					if u_a > best_utility:
-						best_utility = u_a
-						best_target = t
+				
+				# Base Utility
+				var u_a = 10.0 - dist # Preference for closer targets
+				if is_sathar:
+					u_a += 0.5 # Sathar Aggression Bias
+				
+				# Fuzziness
+				u_a += rng.randfn(0.0, 1.5)
+				
+				if u_a > best_utility:
+					best_utility = u_a
+					best_target = t
 			
 			if best_target:
 				game_manager.log_message("AI Planning: %s -> %s with %s (Utility: %.2f)" % [ship.get_display_name(), best_target.get_display_name(), w["name"], best_utility])
