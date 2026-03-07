@@ -3664,13 +3664,9 @@ func _apply_repair(s: Ship, key: String):
 func _end_round_cycle():
 	# Trigger repair phase every 3 turns, before the turn increments.
 	if turn_count > 0 and turn_count % 3 == 0:
-		var scen_key = ""
-		if NetworkManager.lobby_data != null:
-			scen_key = NetworkManager.lobby_data.get("scenario", "")
-		if scen_key != "campaign_encounter":
-			if current_phase != Phase.REPAIR:
-				call_deferred("start_repair_phase")
-			return
+		if current_phase != Phase.REPAIR:
+			call_deferred("start_repair_phase")
+		return
 
 	turn_count += 1
 	log_message("Round Complete. Starting New Round.")
