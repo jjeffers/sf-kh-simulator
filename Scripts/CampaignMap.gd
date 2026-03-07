@@ -28,6 +28,8 @@ var is_plotting_jump: bool = false
 var pan_speed: float = 600.0
 var map_move_dir: Vector2 = Vector2.ZERO
 
+var audio_day_advance: AudioStreamPlayer
+var audio_jump_order: AudioStreamPlayer
 var current_zoom: float = 1.0
 var min_zoom: float = 0.5
 const BASE_MAP_SIZE := Vector2(2500, 2500)
@@ -98,6 +100,16 @@ func _ready():
 	
 	# Scroll to center initially
 	call_deferred("_center_map_initially")
+
+	audio_day_advance = AudioStreamPlayer.new()
+	audio_day_advance.stream = load("res://Assets/Audio/short-next-player-sound.mp3")
+	audio_day_advance.bus = "SFX"
+	add_child(audio_day_advance)
+	
+	audio_jump_order = AudioStreamPlayer.new()
+	audio_jump_order.stream = load("res://Assets/Audio/short-low-beep.mp3")
+	audio_jump_order.bus = "SFX"
+	add_child(audio_jump_order)
 
 func _center_map_initially():
 	# Scroll map to roughly center
@@ -1001,6 +1013,8 @@ func _execute_jump(target_id: String):
 		ConsoleManager.log_message("DEBUG Map Executing Jump: %s -> %s" % [selected_fleet.current_system_id, target_id])
 		if campaign.order_fleet_move(selected_fleet, target_id):
 			ConsoleManager.log_message("[color=green]DEBUG Map Success![/color]")
+			if audio_jump_order and audio_jump_order.stream:
+				audio_jump_order.play()
 			_log_event("%s has jumped for %s. ETA: Day %d." % [selected_fleet.fleet_name, target_id, campaign.TRANSIT_DAYS])
 			plot_jump_btn.button_pressed = false
 			plot_jump_btn.disabled = true
