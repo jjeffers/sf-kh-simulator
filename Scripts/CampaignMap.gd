@@ -30,6 +30,7 @@ var map_move_dir: Vector2 = Vector2.ZERO
 
 var audio_day_advance: AudioStreamPlayer
 var audio_jump_order: AudioStreamPlayer
+
 var current_zoom: float = 1.0
 var min_zoom: float = 0.5
 const BASE_MAP_SIZE := Vector2(2500, 2500)
@@ -40,6 +41,11 @@ var ship_status_panel: Node = null
 func _ready():
 	# CampaignManager is now a guaranteed Autoload
 	campaign = CampaignManager
+	
+	audio_day_advance = AudioStreamPlayer.new()
+	audio_day_advance.stream = load("res://Assets/Audio/short-computer.mp3")
+	audio_day_advance.bus = "SFX"
+	add_child(audio_day_advance)
 	
 	campaign.map_data_loaded.connect(_on_map_data_loaded)
 	campaign.campaign_day_advanced.connect(_on_day_advanced)
@@ -1079,6 +1085,10 @@ func _on_turn_ready_changed(upf_ready: bool, sathar_ready: bool):
 		turn_status_label.text = "" # Will reset normally with _on_day_advanced
 
 func _on_day_advanced(day: int):
+	# Play confirmation sound
+	if audio_day_advance and audio_day_advance.stream:
+		audio_day_advance.play()
+		
 	# Re-enable the button
 	end_turn_btn.disabled = false
 	turn_status_label.text = ""
