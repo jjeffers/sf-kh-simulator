@@ -45,6 +45,10 @@ At any time during the campaign, the player can open the campaign menu by pressi
 
 **Load Campaign** - Loads a saved campaign state.
     - The user is shown a file open interface to select the location and name of the save game data file.
+    - Once loaded, the game proceeds to the campaign lobby so that other players may join the game and select a side.
+    - If a saved campaign file was loaded, the lobby will show the current turn number, the current date, and the current factions. It will also show the current number of destroyed fortresses and armed stations.
+    - When the campaign host starts the game, the game proceeds to the strategic phase. The state of the game reflects the state in the loaded save file.
+    
 **Settings** - Opens the settings menu.
     - The settings menu has the following options:
         - **Audio** - Opens the audio settings menu. There are 2 audio settings:

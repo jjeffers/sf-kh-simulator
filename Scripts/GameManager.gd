@@ -2074,16 +2074,22 @@ func _get_phase_name(p: int) -> String:
 func _update_phase_indicator():
 	if not label_phase_indicator: return
 	
-	# Format: "Turn <turn> : <phase> : <side>"
-	var side_name = "None"
-	var active_id = current_side_id
+	var moving_side_name = "None"
+	if current_side_id != 0:
+		moving_side_name = _get_side_name(current_side_id)
+		
+	var phase_str = _get_phase_name(current_phase)
+	
 	if current_phase == Phase.COMBAT:
-		active_id = firing_side_id
-		
-	if active_id != 0:
-		side_name = _get_side_name(active_id)
-		
-	var text = "Turn %d, Active: %s, %s" % [turn_count, side_name, _get_phase_name(current_phase)]
+		if combat_subphase == 1:
+			var reactive_side = "None"
+			if firing_side_id != 0:
+				reactive_side = _get_side_name(firing_side_id)
+			phase_str = "Reactive Combat: (%s)" % reactive_side
+		else:
+			phase_str = "Active Combat"
+			
+	var text = "Turn %d, Active: %s, Phase: %s" % [turn_count, moving_side_name, phase_str]
 	
 	if current_phase == Phase.REPAIR:
 		var rep_side = "Executing"
