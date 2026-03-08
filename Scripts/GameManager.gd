@@ -2074,16 +2074,22 @@ func _get_phase_name(p: int) -> String:
 func _update_phase_indicator():
 	if not label_phase_indicator: return
 	
-	# Format: "Turn <turn> : <phase> : <side>"
-	var side_name = "None"
-	var active_id = current_side_id
+	var moving_side_name = "None"
+	if current_side_id != 0:
+		moving_side_name = _get_side_name(current_side_id)
+		
+	var phase_str = _get_phase_name(current_phase)
+	
 	if current_phase == Phase.COMBAT:
-		active_id = firing_side_id
-		
-	if active_id != 0:
-		side_name = _get_side_name(active_id)
-		
-	var text = "Turn %d, Active: %s, %s" % [turn_count, side_name, _get_phase_name(current_phase)]
+		if combat_subphase == 1:
+			var reactive_side = "None"
+			if firing_side_id != 0:
+				reactive_side = _get_side_name(firing_side_id)
+			phase_str = "Reactive Combat: (%s)" % reactive_side
+		else:
+			phase_str = "Active Combat"
+			
+	var text = "Turn %d, Active: %s, Phase: %s" % [turn_count, moving_side_name, phase_str]
 	
 	if current_phase == Phase.REPAIR:
 		var rep_side = "Executing"
@@ -6960,8 +6966,6 @@ func show_game_over(msg: String):
 	if NetworkManager.lobby_data != null and NetworkManager.lobby_data.get("scenario", "") == "campaign_encounter":
 		if is_instance_valid(btn_restart):
 			btn_restart.text = "Return to Campaign Map"
-		if _is_server_or_offline():
-			_sync_campaign_results()
 			
 	panel_game_over.visible = true
 	_update_ui_state()
@@ -6971,6 +6975,7 @@ var panel_summary: PanelContainer
 var lbl_summary_title: Label
 var vbox_summary_upf: VBoxContainer
 var vbox_summary_sathar: VBoxContainer
+var lbl_repairs: Label
 var btn_summary_return: Button
 
 func _build_summary_panel():
@@ -7023,6 +7028,12 @@ func _build_summary_panel():
 	vbox_summary_sathar.add_child(lbl_sathar_col)
 	hbox_cols.add_child(vbox_summary_sathar)
 	
+	lbl_repairs = Label.new()
+	lbl_repairs.text = "Post-Battle Repairs"
+	lbl_repairs.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	lbl_repairs.add_theme_color_override("font_color", Color.LIGHT_GRAY)
+	vbox_main.add_child(lbl_repairs)
+	
 	btn_summary_return = Button.new()
 	btn_summary_return.text = "Return to Campaign Map"
 	btn_summary_return.pressed.connect(func():
@@ -7038,6 +7049,17 @@ func _build_summary_panel():
 	ui_layer.add_child(panel_summary)
 
 func _show_battle_summary(title_text: String, side_id: int):
+	if _is_networked() and not multiplayer.is_server():
+		return # Only server generates and broadcasts DCR
+		
+	var dcr_results = _perform_post_battle_repairs()
+	if _is_networked():
+		rpc("receive_battle_summary", title_text, side_id, dcr_results)
+	else:
+		receive_battle_summary(title_text, side_id, dcr_results)
+
+@rpc("authority", "call_local", "reliable")
+func receive_battle_summary(title_text: String, side_id: int, dcr_dict: Dictionary):
 	current_phase = Phase.END
 	_update_ui_state() # Hide standard tactical UI frames
 	
@@ -7099,6 +7121,19 @@ func _show_battle_summary(title_text: String, side_id: int):
 			else:
 				vbox_summary_sathar.add_child(lbl)
 				
+	# Populate Repairs
+	var local_faction = "UPF" # Default
+	if _is_networked() and NetworkManager.lobby_data != null and NetworkManager.lobby_data.has("teams"):
+		var my_id = multiplayer.get_unique_id()
+		var team_idx = NetworkManager.lobby_data["teams"].get(my_id, 1) # Fallback team 1
+		local_faction = _get_faction_for_side(team_idx)
+	
+	var repair_strings = dcr_dict.get(local_faction, [])
+	if repair_strings.is_empty():
+		lbl_repairs.text = "Post-Battle Repairs: No post-battle repairs made."
+	else:
+		lbl_repairs.text = "Post-Battle Repairs:\n" + "\n".join(repair_strings)
+			
 	panel_summary.visible = true
 
 func _get_faction_for_side(side_id: int) -> String:
@@ -7121,12 +7156,17 @@ func _get_faction_for_side(side_id: int) -> String:
 			
 	return "Sathar" if side_id == 2 else "UPF"
 
-func _sync_campaign_results():
-	log_message("[color=cyan]=== AFTERMATH: REPAIRS AND SYNC ===[/color]")
+func _perform_post_battle_repairs() -> Dictionary:
+	var results = { "UPF": [], "Sathar": [] }
+	log_message("[color=cyan]=== AFTERMATH: REPAIRS ===[/color]")
 	
 	for s in ships:
 		if not is_instance_valid(s): continue
 		if s.is_destroyed or s.hull <= 0: continue
+			
+		var faction = _get_faction_for_side(s.side_id)
+		if not results.has(faction):
+			results[faction] = []
 			
 		var damage_keys = AutoRepairProcessor._get_repairable_keys(s)
 		for dk in damage_keys:
@@ -7134,14 +7174,29 @@ func _sync_campaign_results():
 			var chance = s.max_dcr
 			if roll <= chance:
 				_apply_repair(s, dk)
-				log_message("[color=green]%s repaired %s (Roll: %d <= %d)[/color]" % [s.name, dk, roll, chance])
+				var msg = "[color=green]%s repaired %s (Roll: %d <= %d)[/color]" % [s.name, dk, roll, chance]
+				log_message(msg)
+				results[faction].append("%s repaired %s." % [s.name, dk.capitalize()])
 			else:
 				if roll >= 99:
 					_mark_unrepairable(s, dk)
-					log_message("[color=red]%s permanently damaged %s (Roll: %d)[/color]" % [s.name, dk, roll])
+					var msg = "[color=red]%s permanently damaged %s (Roll: %d)[/color]" % [s.name, dk, roll]
+					log_message(msg)
+					results[faction].append("%s permanently damaged %s." % [s.name, dk.capitalize()])
 				else:
 					if dk == "hull": s.unrepairable_hull = true
-					log_message("[color=yellow]%s failed to repair %s (Roll: %d)[/color]" % [s.name, dk, roll])
+					var msg = "[color=yellow]%s failed to repair %s (Roll: %d)[/color]" % [s.name, dk, roll]
+					log_message(msg)
+					results[faction].append("%s failed to repair %s." % [s.name, dk.capitalize()])
+					
+	return results
+
+func _sync_campaign_results():
+	log_message("[color=cyan]=== AFTERMATH: SYNC ===[/color]")
+	
+	for s in ships:
+		if not is_instance_valid(s): continue
+		if s.is_destroyed or s.hull <= 0: continue
 					
 		if s.has_electrical_fire or s.has_disastrous_fire:
 			log_message("[color=red]%s was consumed by unresolved fires and destroyed![/color]" % s.name)

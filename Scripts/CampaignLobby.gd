@@ -74,6 +74,25 @@ func _refresh_ui():
 			start_btn.disabled = true
 			start_btn.text = "Waiting for Players..."
 
+	if lobby.get("is_saved_game", false):
+		var day = lobby.get("current_day", 1)
+		var f_destroyed = lobby.get("destroyed_fortresses", 0)
+		var s_destroyed = lobby.get("destroyed_stations", 0)
+		state_label.text = "Loaded Save: Day %d\nDestroyed Fortresses: %d\nDestroyed Stations: %d" % [day, f_destroyed, s_destroyed]
+	else:
+		state_label.text = "New Campaign\nDay 1"
+			
+	if not multiplayer.is_server():
+		start_btn.disabled = true
+		start_btn.text = "Waiting for Host..."
+	else:
+		if has_upf and has_sathar and unassigned_list.item_count == 0:
+			start_btn.disabled = false
+			start_btn.text = "Launch Campaign"
+		else:
+			start_btn.disabled = true
+			start_btn.text = "Waiting for Players..."
+
 	# Handle Auto-CLI actions
 	var args = OS.get_cmdline_args()
 	for i in range(args.size()):
@@ -103,19 +122,13 @@ func _on_start_pressed():
 	if multiplayer.is_server():
 		print("[CampaignLobby] Launch Campaign Pressed!")
 		
-		# INITIALIZE CAMPAIGN FOR SERVER
+		# INITIALIZE CAMPAIGN FOR SERVER (If not loading a save)
 		var cm = CampaignManager
-		cm.start_new_campaign()
+		if not NetworkManager.lobby_data.get("is_saved_game", false):
+			cm.start_new_campaign()
 		
-		# BUILD SYNC PAYLOAD
-		var state_payload = {
-			"current_day": cm.current_day,
-			"destroyed_stations": cm.destroyed_stations_count,
-			"destroyed_fortresses": cm.destroyed_fortresses_count,
-			"fleets": []
-		}
-		for f in cm.fleets:
-			state_payload["fleets"].append(f.serialize())
+		# BUILD FULL SYNC PAYLOAD
+		var state_payload = cm.serialize_state()
 			
 		NetworkManager.rpc("sync_campaign_state", state_payload)
 		NetworkManager.rpc("start_game_rpc")

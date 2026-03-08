@@ -73,6 +73,25 @@ func _ready():
 			call_deferred("_on_tactical_join")
 		elif args[i] == "--campaign-host":
 			print("[MainMenu] Auto-Hosting Campaign...")
+			
+			# Check if we should load a save first
+			var load_path = ""
+			for j in range(args.size()):
+				if args[j] == "--load-campaign" and j + 1 < args.size():
+					load_path = args[j+1]
+					break
+					
+			if not load_path.is_empty():
+				print("[MainMenu] Auto-loading campaign save from: ", load_path)
+				if CampaignManager.load_campaign(load_path):
+					NetworkManager.lobby_data["is_saved_game"] = true
+					NetworkManager.lobby_data["current_day"] = CampaignManager.current_day
+					NetworkManager.lobby_data["destroyed_fortresses"] = CampaignManager.destroyed_fortresses_count
+					NetworkManager.lobby_data["destroyed_stations"] = CampaignManager.destroyed_stations_count
+					NetworkManager.rpc("update_lobby_data", NetworkManager.lobby_data)
+				else:
+					print("[MainMenu] ERROR: Failed to load campaign save from: ", load_path)
+					
 			call_deferred("_on_campaign_host_start")
 		elif args[i] == "--campaign-join":
 			print("[MainMenu] Auto-Joining Campaign...")
@@ -109,18 +128,23 @@ func _on_btn_load_campaign():
 	fd.title = "Load Campaign"
 	fd.use_native_dialog = true
 	fd.file_selected.connect(func(path):
-		target_lobby_scene = "res://Scenes/CampaignMap.tscn"
+		target_lobby_scene = "res://Scenes/CampaignLobby.tscn"
 		NetworkManager.lobby_data["game_mode"] = "campaign"
 		
 		# Automatically host locally so we bypass the lobby and re-hydrate
 		var err = NetworkManager.host_game(7000)
-		if err != OK:
+		if err != null and err != OK:
 			status_label.text = "Error hosting restored game: %s" % err
 			fd.queue_free()
 			return
 		
 		if CampaignManager.load_campaign(path):
-			get_tree().change_scene_to_file("res://Scenes/CampaignMap.tscn")
+			NetworkManager.lobby_data["is_saved_game"] = true
+			NetworkManager.lobby_data["current_day"] = CampaignManager.current_day
+			NetworkManager.lobby_data["destroyed_fortresses"] = CampaignManager.destroyed_fortresses_count
+			NetworkManager.lobby_data["destroyed_stations"] = CampaignManager.destroyed_stations_count
+			NetworkManager.rpc("update_lobby_data", NetworkManager.lobby_data)
+			_transition_to_lobby()
 		else:
 			status_label.text = "Failed to load campaign from %s" % path.get_file()
 		fd.queue_free()
