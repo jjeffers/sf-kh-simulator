@@ -34,11 +34,11 @@ func test_phase_indicator_updates_on_turn_start():
 	game_manager._start_turn_for_side(1)
 	
 	var label = game_manager.label_phase_indicator
-	# Pattern: "Turn 1, Active: UPF, Movement"
+	# Pattern: "Turn 1, Active: UPF, Phase: Movement"
 	print("DEBUG LABEL (Turn Start): ", label.text)
 	assert_true(label.text.contains("Turn 1"), "Should show Turn 1")
 	assert_true(label.text.contains("Active: UPF"), "Should show Active: UPF")
-	assert_true(label.text.contains("Movement"), "Should show Movement phase")
+	assert_true(label.text.contains("Phase: Movement"), "Should show Movement phase")
 
 func test_phase_indicator_updates_on_combat_active():
 	game_manager.turn_count = 1
@@ -50,8 +50,8 @@ func test_phase_indicator_updates_on_combat_active():
 	
 	var label = game_manager.label_phase_indicator
 	print("DEBUG LABEL (Active): ", label.text)
-	assert_true(label.text.contains("Combat"), "Should show Combat phase")
-	assert_true(label.text.contains("UPF"), "Should show UPF (Active Firing Side)")
+	assert_true(label.text.contains("Active Combat"), "Should show Active Combat phase")
+	assert_true(label.text.contains("Active: UPF"), "Should show Active: UPF (Moving Side)")
 
 func test_phase_indicator_updates_on_combat_passive():
 	game_manager.turn_count = 1
@@ -63,9 +63,7 @@ func test_phase_indicator_updates_on_combat_passive():
 	
 	var label = game_manager.label_phase_indicator
 	print("DEBUG LABEL (Passive): ", label.text)
-	assert_true(label.text.contains("Combat"), "Should show Combat phase")
+	assert_true(label.text.contains("Reactive Combat:"), "Should show Reactive Combat phase")
+	assert_true(label.text.contains("Active: UPF"), "Should show Active: UPF (Moving Side)")
 	# Side 2 might be "Sathar" or generic "Side 2" if no ships.
-	# With only 1 ship (Side 1), side 2 is empty -> "Side 2" fallback or similar.
-	# Let's just check it DOESN'T say UPF.
-	assert_false(label.text.contains("UPF"), "Should NOT show UPF (Passive Firing Side is Opponent)")
-	assert_true(label.text.contains("Side 2") or label.text.contains("Sathar"), "Should show Side 2/Sathar")
+	assert_true(label.text.contains("(Side 2)") or label.text.contains("(Sathar)"), "Should show Reactive firing Side 2/Sathar")
