@@ -6165,7 +6165,11 @@ func _is_weapon_available_in_phase(weapon: Dictionary, ship: Ship = null) -> boo
 	if weapon.get("is_crippled", false):
 		return false
 		
-	var w_type = weapon.get("type")
+	var w_type = weapon.get("type", "")
+	
+	# Rule: Mines and Seekers are dropped/deployed, NOT fired.
+	if w_type in ["Mine", "Seeker"]:
+		return false
 	# Rule 1: Moving Player Only for Propelled weapons (Assault Rockets, Torpedoes)
 	# Rocket Batteries are EXEMPT from this (can be fired defensively)
 	var is_propelled_movement_restricted = w_type in ["Rocket", "Torpedo"]
