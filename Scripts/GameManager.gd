@@ -1617,8 +1617,8 @@ func _on_combat_commit():
 		if not is_instance_valid(s) or not is_instance_valid(t): continue
 		
 		attacks_data.append({
-			"s": s.name,
-			"t": t.name,
+			"s": str(s.name),
+			"t": str(t.name),
 			"w": atk["weapon_idx"],
 			"tp": atk["target_pos"]
 		})

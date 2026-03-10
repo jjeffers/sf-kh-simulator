@@ -441,8 +441,8 @@ func _plan_combat() -> Array:
 				
 				# Compile directly for resolution payload
 				attacks_data.append({
-					"s": ship.name,
-					"t": best_target.name,
+					"s": str(ship.name),
+					"t": str(best_target.name),
 					"w": i,
 					"tp": best_target.grid_position
 				})
