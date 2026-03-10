@@ -15,6 +15,7 @@ During the Movement phase, the AI evaluates a list of valid destination hexes co
 - **Threat Avoidance Layer:** Hexes positioned directly within the optimal firing ranges of a threatening enemy vessel receive significant negative weights (`-25`). 
 - **Planetary/Obstacle Avoidance:** Pathing directly through a planet or an asteroid field results in extreme penalties (`-1000` or discarded entirely) to prevent self-destruction.
 - **Vector Momentum:** A small positive modifier (`+5`) is given to hexes aligned with the ship's current vector, encouraging smooth, realistic engine movement rather than erratic zigzagging.
+- **Seeker Activation:** If seekers are available and not yet activted, the defender will evaluate enemy ships nearest the seeker. Enemy ships within 2 hexes are highly rated for attack by seeker activation. The value decreases with distance to the enemy ship, and also decreases if friendly ships are closer to the seeker. If the value crosses an aggression threshold the AI will activate that seeker.
 
 ## 3. Utility Scoring (Action Selection)
 

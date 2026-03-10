@@ -49,3 +49,12 @@ var test_ship = load("res://Scripts/Ship.gd").new()
 _game_manager.add_child(test_ship) # <--- CRITICAL FOR HEADLESS C++ ENGINE STABILITY
 _game_manager.ships.append(test_ship)
 ```
+
+## 4. Asynchronous Phase Transitions and RPC Re-entrancy
+**Context:** When a Godot client (`ComputerOpponent` or Player) issues an RPC to transition the game state (e.g., `request_execute_movement`), network interactions inherently run asynchronously. High-latency connections or internal `await` statements (like yielding for visual animations or mine detonations) on the server cause delays before the new phase state propagates back to clients.
+
+**Anti-Pattern:** Allowing clients to repeatedly evaluate the same phase state during `await` yielding, leading to multiple identical phase transition RPC spams. Simultaneously, allowing the Server's transition handler (`execute_all_movement`) to execute concurrently without re-entrancy protections lead to severe multi-threaded race conditions (e.g., arrays mutating out of bounds or global RNG seed sync loss) when those duplicate RPCs hit.
+
+**Required Fix (Boolean Guards & Re-entrancy Flags):**
+1. Implement a local waiting state flag (`_is_waiting_for_transition = true`) on the Client that bypasses redundant logic until the Server officially broadcasts the new phase.
+2. Implement a global execution lock (`_is_executing_movement = true`) at the top of the Server's transition handler to drop concurrent RPC execution threads and release the lock only when transitioning is fully resolved.

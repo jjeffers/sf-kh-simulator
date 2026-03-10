@@ -6,6 +6,7 @@ signal server_disconnected
 signal connection_failed
 signal lobby_updated
 signal game_started
+signal all_players_loaded
 
 const PORT = 7000
 const MAX_CLIENTS = 2
@@ -13,6 +14,7 @@ const MAX_CLIENTS = 2
 # Player Info: { name: "Name", id: 1 }
 var players = {}
 var player_info = {"name": "Player"}
+var loaded_players = {}
 
 var game_setup_data = {} # { "scenario": "key", "host_side": 0 }
 
@@ -173,8 +175,29 @@ func sync_campaign_state(state_data: Dictionary):
 @rpc("authority", "call_local", "reliable")
 func start_game_rpc():
 	print("[NetworkManager] Starting Game RPC received.")
+	loaded_players.clear()
 	game_started.emit()
 	if lobby_data.get("game_mode", "") == "campaign" and lobby_data.get("scenario", "") != "campaign_encounter":
 		get_tree().change_scene_to_file("res://Scenes/CampaignMap.tscn")
 	else:
 		get_tree().change_scene_to_file("res://Scenes/Main.tscn")
+
+@rpc("any_peer", "call_local", "reliable")
+func client_loaded_scene():
+	var sender_id = 1
+	if multiplayer.has_multiplayer_peer():
+		sender_id = multiplayer.get_remote_sender_id()
+		if sender_id == 0: sender_id = (multiplayer.get_unique_id() if multiplayer.has_multiplayer_peer() else 1)
+	
+	print("[NetworkManager] Player %d finished loading." % sender_id)
+	loaded_players[sender_id] = true
+	
+	if not multiplayer.has_multiplayer_peer() or multiplayer.is_server():
+		var all_ready = true
+		for pid in players:
+			if not loaded_players.has(pid):
+				all_ready = false
+				break
+		if all_ready:
+			print("[NetworkManager] All Players Ready!")
+			all_players_loaded.emit()

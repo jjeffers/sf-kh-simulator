@@ -35,4 +35,5 @@ Speed is dynamically curtailed in a `while` loop if it violates the following ph
 
 ## 6. Support Infrastructure: Mines
 Following ship deployment, the Auto Deploy script checks the active player's ships for payloads of `Mines`.
-If mines exist, the processor locates friendly defending Space Stations and expends the total mine capacity by scattering them randomly in a protective ring spanning `dist 7-9` hexes outwardly from the Station's defending planet.
+If mines exist, the processor locates friendly defending Space Stations and expends the total mine capacity by scattering them randomly in a protective ring spanning `dist 9-12` hexes outwardly from the Station's defending planet.
+If seekers exist,the processor locates friendly defending Space Stations and expends the total mine capacity by scattering them randomly in a protective ring spanning `dist 13-20` hexes outwardly from the Station's defending planet.

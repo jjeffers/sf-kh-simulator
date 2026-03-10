@@ -12,6 +12,7 @@ var firing_side_id: int = 0 # The side currently firing in Combat Phase
 var my_side_id: int = 0 # 0 = All/Debug, otherwise specific Side ID (1 or 2)
 var selected_ship: Ship = null
 var combat_target: Ship = null
+var _is_executing_movement: bool = false
 
 # Initiative / Turn Order
 var turn_order: Array[int] = [1, 2] # Side 1, Side 2
@@ -147,6 +148,8 @@ var current_scenario_rules: Array = []
 var turn_count: int = 1 # Track player turns
 var game_seed: int = 12345 # Synchronized RNG payload from Host
 
+var is_headless: bool = false # Global flag to skip visual/audio timers during tests
+
 
 # Planning UI
 var panel_planning: PanelContainer
@@ -176,6 +179,7 @@ var _icm_current_allocations: Dictionary = {}
 
 func _ready():
 	_init_log_file()
+	is_headless = OS.get_cmdline_args().has("--headless")
 	# Ensure RNG is randomized
 	randomize()
 	# Camera Setup
@@ -304,53 +308,34 @@ func _setup_network_identity():
 		
 	# Game Start Handshake
 	if _is_networked():
+		# Connect the Host locally so it listens for the all players ready signal
+		if _is_server_or_offline():
+			NetworkManager.all_players_loaded.connect(_check_all_players_ready)
 		# Notify Host that we are loaded
-		player_loaded.rpc_id(1)
+		NetworkManager.client_loaded_scene.rpc_id(1)
 	else:
 		# Offline / Testing
 		log_message("Offline Mode: Starting Game immediately.")
 		var seed_val = randi()
 		setup_game(seed_val, scen_key if scen_key else "")
 
-var loaded_players = {}
-
-@rpc("any_peer", "call_local", "reliable")
-func player_loaded():
-	var sender_id = 1
-	if _is_networked():
-		sender_id = multiplayer.get_remote_sender_id()
-		if sender_id == 0: sender_id = (multiplayer.get_unique_id() if _is_networked() else 1) # Local call
-	
-	log_message("Player %d finished loading." % sender_id)
-	loaded_players[sender_id] = true
-	
-	if _is_server_or_offline():
-		_check_all_players_ready()
-
 func _check_all_players_ready():
-	var all_ready = true
-	for pid in NetworkManager.players:
-		if not loaded_players.has(pid):
-			all_ready = false
-			break
+	log_message("All Players Ready. Starting Game...")
 	
-	if all_ready:
-		log_message("All Players Ready. Starting Game...")
+	# Generate Seed
+	var seed_val = randi()
+	print("GameManager: Generated Random Seed: %d" % seed_val)
 		
-		# Generate Seed
-		var seed_val = randi()
-		print("GameManager: Generated Random Seed: %d" % seed_val)
-		
-		# Determine Scenario Key
-		var lobby = NetworkManager.lobby_data
-		var setup = NetworkManager.game_setup_data
-		var scen_key = lobby.get("scenario", null)
-		if setup and not setup.is_empty():
-			scen_key = setup.get("scenario", null)
-		if _is_networked():
-			setup_game.rpc(seed_val, scen_key if scen_key else "")
-		else:
-			setup_game(seed_val, scen_key if scen_key else "")
+	# Determine Scenario Key
+	var lobby = NetworkManager.lobby_data
+	var setup = NetworkManager.game_setup_data
+	var scen_key = lobby.get("scenario", null)
+	if setup and not setup.is_empty():
+		scen_key = setup.get("scenario", null)
+	if _is_networked():
+		setup_game.rpc(seed_val, scen_key if scen_key else "")
+	else:
+		setup_game(seed_val, scen_key if scen_key else "")
 
 @rpc("authority", "call_local", "reliable")
 func setup_game(seed_val: int, scen_key: String):
@@ -1072,6 +1057,8 @@ var mini_map: MiniMap
 var combat_log: RichTextLabel
 var panel_log_container: PanelContainer
 
+var attack_metrics: Dictionary = { 1: {}, 2: {} }
+
 # Game Over UI
 var panel_game_over: PanelContainer
 var label_winner: Label
@@ -1084,25 +1071,35 @@ var ship_status_panel # Typed as ShipStatusPanel, but checking if weak typing he
 
 
 func log_message(msg: String):
-	# Add Turn Number
-	var final_msg = "[Turn %d] %s" % [turn_count, msg]
+	var peer_id = "Offline"
+	if multiplayer.has_multiplayer_peer() and multiplayer.multiplayer_peer != null and multiplayer.multiplayer_peer.get_connection_status() != MultiplayerPeer.CONNECTION_DISCONNECTED:
+		peer_id = str(multiplayer.get_unique_id())
+		
+	# Add Peer and Turn Number
+	var final_msg = "[Peer: %s] [Turn %d] %s" % [peer_id, turn_count, msg]
 	
 	if combat_log:
 		combat_log.append_text(final_msg + "\n")
-	print(final_msg)
+		
 	_log_to_file(final_msg)
 	
 	if has_node("/root/ConsoleManager"):
 		ConsoleManager.log_message(final_msg)
+	else:
+		print(final_msg)
 
 @rpc("any_peer", "call_local", "reliable")
 func rpc_log_message(msg: String):
 	log_message(msg)
 	
 func _init_log_file():
+	var peer_id = "Offline"
+	if multiplayer.has_multiplayer_peer() and multiplayer.multiplayer_peer.get_connection_status() != MultiplayerPeer.CONNECTION_DISCONNECTED:
+		peer_id = str(multiplayer.get_unique_id())
+		
 	var f = FileAccess.open(LOG_FILE, FileAccess.WRITE)
 	if f:
-		f.store_line("=== Game Session Started: %s ===" % Time.get_datetime_string_from_system())
+		f.store_line("=== Game Session Started: %s (Peer: %s) ===" % [Time.get_datetime_string_from_system(), peer_id])
 		f.close()
 		
 func _log_to_file(msg: String):
@@ -1341,7 +1338,7 @@ func _check_for_valid_combat_targets() -> bool:
 
 func _get_valid_targets_for_weapon(shooter: Ship, weapon: Dictionary) -> Array[Ship]:
 	var valid: Array[Ship] = []
-	var targets = ships.filter(func(s): return is_instance_valid(s) and s != shooter and not s.is_exploding and s.side_id != shooter.side_id) # Allow docked ships as targets (rules check later)
+	var targets = ships.filter(func(s): return is_instance_valid(s) and s != shooter and s.hull > 0 and not s.is_exploding and s.side_id != shooter.side_id)
 	
 	for t in targets:
 		var dist = HexGrid.hex_distance(shooter.grid_position, t.grid_position)
@@ -1472,7 +1469,7 @@ func _spawn_attack_fx(start: Vector2, end: Vector2, type: String) -> float:
 		t.chain().tween_callback(container.queue_free)
 		
 		if audio_hit and audio_hit.stream: audio_hit.play()
-		return 1.0 # Duration
+		return 0.01 if is_headless else 1.0 # Duration
 		
 	elif type == "Rocket" or type == "Rocket Battery":
 		# Rocket Visual
@@ -1516,11 +1513,14 @@ func _spawn_attack_fx(start: Vector2, end: Vector2, type: String) -> float:
 			missile.visible = false
 			smoke.emitting = false
 			# Cleanup after smoke fades
-			get_tree().create_timer(1.0).timeout.connect(container.queue_free)
+			if is_headless:
+				container.queue_free()
+			else:
+				get_tree().create_timer(1.0).timeout.connect(container.queue_free)
 		)
 
 		if audio_laser.stream: audio_laser.play()
-		return travel_time
+		return 0.01 if is_headless else travel_time
 		
 	elif type == "Torpedo":
 		if audio_laser.stream: audio_laser.play()
@@ -1562,9 +1562,12 @@ func _spawn_attack_fx(start: Vector2, end: Vector2, type: String) -> float:
 		tween.tween_callback(func():
 			proj.visible = false
 			glow.emitting = false
-			get_tree().create_timer(1.0).timeout.connect(container.queue_free)
+			if is_headless:
+				container.queue_free()
+			else:
+				get_tree().create_timer(1.0).timeout.connect(container.queue_free)
 		)
-		return travel_time
+		return 0.01 if is_headless else travel_time
 
 	else:
 		# Laser or Laser Canon or Disruptor Canon
@@ -1594,7 +1597,7 @@ func _spawn_attack_fx(start: Vector2, end: Vector2, type: String) -> float:
 		tween.tween_callback(line.queue_free)
 
 		if audio_laser.stream: audio_laser.play()
-		return 0.1 # Instant
+		return 0.01 if is_headless else 0.1 # Instant
 
 func _on_combat_commit():
 	# Authority Check
@@ -1614,8 +1617,8 @@ func _on_combat_commit():
 		if not is_instance_valid(s) or not is_instance_valid(t): continue
 		
 		attacks_data.append({
-			"s": s.name,
-			"t": t.name,
+			"s": str(s.name),
+			"t": str(t.name),
 			"w": atk["weapon_idx"],
 			"tp": atk["target_pos"]
 		})
@@ -1636,22 +1639,33 @@ func execute_commit_combat(attacks_data: Array, rng_seed: int):
 		sender_id = multiplayer.get_remote_sender_id()
 		if sender_id == 0: sender_id = (multiplayer.get_unique_id() if _is_networked() else 1) # Handle local call
 	
+	_handle_commit_combat_internal(attacks_data, rng_seed, sender_id)
+
+func _handle_commit_combat_internal(attacks_data: Array, rng_seed: int, sender_id: int):
 	if current_phase != Phase.COMBAT:
 		print("[Security] Combat rejected: Wrong Phase (%s)" % current_phase)
 		return
 
 	# Validate Sender owns the Firing Side
 	if not _validate_rpc_ownership(sender_id, firing_side_id):
+		# Headless clients may finish animation timers before the Server, causing them to 
+		# transition to their combat turn and emit attacks while the Server is still RESOLVING.
+		if current_combat_state == CombatState.RESOLVING and _is_server_or_offline():
+			print("[Security/Sync] Client sent attacks early. Re-queueing in 1.0s...")
+			var tree = get_tree()
+			if is_instance_valid(tree):
+				tree.create_timer(1.0).timeout.connect(func(): _handle_commit_combat_internal(attacks_data, rng_seed, sender_id))
 		return
 		
 
 	if _is_server_or_offline():
 		# Broadcast to all clients (Authority -> Clients)
-		# We use the SAME seed provided by the client to ensure fairness/sync
+		# Server dictates the seed to prevent Client Desync Injection
+		var final_seed = randi()
 		if _is_networked() and multiplayer.get_peers().size() > 0:
-			rpc("rpc_resolve_combat", attacks_data, rng_seed)
+			rpc("rpc_resolve_combat", attacks_data, final_seed)
 		else:
-			rpc_resolve_combat(attacks_data, rng_seed)
+			rpc_resolve_combat(attacks_data, final_seed)
 	else:
 		# If a client somehow received this (shouldn't happen if we only rpc_id(1)), ignore or log
 		pass
@@ -1664,7 +1678,7 @@ func _execute_resolution(attacks_data: Array, rng_seed: int):
 	current_combat_state = CombatState.RESOLVING
 	
 	# Sync RNG
-	seed(rng_seed)
+	Combat.combat_rng.seed = rng_seed
 	
 	# Deserialize
 	pending_resolutions.clear()
@@ -1710,7 +1724,7 @@ func _process_next_attack():
 	# Validate Source FIRST
 	if not is_instance_valid(source):
 		log_message("Source ship destroyed! Attack fizzles.")
-		await get_tree().create_timer(0.5).timeout
+		if not is_headless: await get_tree().create_timer(0.5).timeout
 		_process_next_attack()
 		return
 
@@ -1718,7 +1732,7 @@ func _process_next_attack():
 	if source.hull <= 0:
 		log_message("%s destroyed before firing! Attack fizzles." % source.get_display_name())
 		source.weapons[weapon_idx]["ammo"] -= 1
-		await get_tree().create_timer(0.5).timeout
+		if not is_headless: await get_tree().create_timer(0.5).timeout
 		_process_next_attack()
 		return
 		
@@ -1756,7 +1770,7 @@ func _process_next_attack():
 		else:
 			log_message(w_msg)
 		_spawn_attack_fx(start_pos, target_pos, weapon.get("type"))
-		await get_tree().create_timer(0.75).timeout
+		if not is_headless: await get_tree().create_timer(0.75).timeout
 		_process_next_attack()
 
 
@@ -1770,7 +1784,7 @@ func _process_next_attack():
 		else:
 			log_message(d_msg)
 		source.weapons[weapon_idx]["ammo"] -= 1 # Wasted shot rule? Or refund? Let's burn ammo to be safe.
-		await get_tree().create_timer(0.5).timeout
+		if not is_headless: await get_tree().create_timer(0.5).timeout
 		_process_next_attack()
 		return
 
@@ -1849,13 +1863,21 @@ func _process_next_attack():
 						
 		if icm_used > 0:
 			log_message("Shared Defense launches %d total ICMs!" % icm_used)
-			await get_tree().create_timer(0.5).timeout # Wait for counter-fire FX
+			if not is_headless: await get_tree().create_timer(0.5).timeout # Wait for counter-fire FX
 	
 	
 	# Determine if hit (Pass ICM count)
 	var result = Combat.get_hit_roll_details(d, weapon, target, is_head_on, icm_used, source)
 	var hit = result["success"]
 	
+	var base_chance = result["chance"]
+	var sid = source.side_id
+	if not attack_metrics[sid].has(base_chance):
+		attack_metrics[sid][base_chance] = {"attempts": 0, "hits": 0}
+	attack_metrics[sid][base_chance]["attempts"] += 1
+	if hit:
+		attack_metrics[sid][base_chance]["hits"] += 1
+		
 	var hit_str = "HIT" if hit else "MISS"
 	var hit_msg = "Firing Ship: %s, Weapon: %s, Odds: %d%%, Roll: %d, Result: %s" % [source.get_display_name(), weapon["name"], result["chance"], result["roll"], hit_str]
 	if _is_networked() and multiplayer.is_server():
@@ -1962,8 +1984,8 @@ func _process_next_attack():
 		log_message("[color=red]MISS![/color]")
 	
 	# Wait for animation (travel time + buffer)
-	var total_wait = (travel_time + 1.0) * 0.5
-	if total_wait < 1.0: total_wait = 1.0
+	var total_wait = (travel_time + 1.0) * 0.5 if not is_headless else 0.01
+	if total_wait < 1.0 and not is_headless: total_wait = 1.0
 	
 	await get_tree().create_timer(total_wait).timeout
 	call_deferred("_process_next_attack")
@@ -2492,6 +2514,7 @@ func _push_history_state():
 
 func start_combat_passive():
 	current_phase = Phase.COMBAT
+	_is_executing_movement = false
 	combat_subphase = 1 # Passive First
 	# Passive Fire: The NON-ACTIVE side fires
 	firing_side_id = 3 - current_side_id # Assuming 2 sides (1 vs 2)
@@ -2556,10 +2579,16 @@ func _start_combat_planning():
 		label_center_message.text = msg
 		label_center_message.visible = true
 		
+		# Capture the exact state right now. If it changes by the time the timer finishes, DO NOT AUTO SKIP.
+		# Fixes critical race condition where AI submits instantly, and the slow timer double-skips the NEXT subphase!
+		var capture_turn = turn_count
+		var capture_sub = combat_subphase
+		
 		# Delay slightly for readability
 		get_tree().create_timer(2.0).timeout.connect(func():
 			label_center_message.visible = false
-			_handle_auto_skip_combat()
+			if current_combat_state == CombatState.PLANNING and turn_count == capture_turn and combat_subphase == capture_sub:
+				_handle_auto_skip_combat()
 		)
 
 func _handle_auto_skip_combat():
@@ -3221,10 +3250,7 @@ func rpc_apply_deployment_data(side_id: int, deployment_data: Dictionary, deploy
 		# Next steps
 		if has_deployed_side_1 and has_deployed_side_2:
 			# All deployed, start the game
-			if _is_networked():
-				rpc_finalize_deployment.rpc()
-			else:
-				rpc_finalize_deployment()
+			call_deferred("_deferred_finalize_deployment")
 		else:
 			# Someone is missing
 			var next_side = 1 if side_id == 2 else 2
@@ -3243,6 +3269,12 @@ func rpc_sync_deployment_state(subphase: int):
 		
 	_update_ui_state()
 	_update_deployment_ui()
+
+func _deferred_finalize_deployment():
+	if _is_networked():
+		rpc_finalize_deployment.rpc()
+	else:
+		rpc_finalize_deployment()
 
 @rpc("authority", "call_local", "reliable")
 func rpc_finalize_deployment():
@@ -3510,7 +3542,14 @@ func rpc_sync_repair_state(subphase: int, allocs: Dictionary):
 	if current_phase != Phase.REPAIR:
 		current_phase = Phase.REPAIR
 		combat_subphase = 0
+		current_combat_state = CombatState.NONE
 		log_message("[color=cyan]=== REPAIR TURN Phase ===[/color]")
+		
+		# AI DEADLOCK FIX: Reset tracking flags for clients!
+		# Only the authority runs start_repair_phase(), so without these resets,
+		# clients retain true on Turn 6+ and prematurely conclude repairs!
+		has_submitted_final_repairs = false
+		active_repair_animations = 0
 		
 	repair_subphase = subphase
 	repair_allocations = allocs
@@ -4752,13 +4791,27 @@ func request_execute_movement():
 		return
 		
 	# Call Authority Method and Broadcast
+	call_deferred("_deferred_execute_all_movement")
+
+func _deferred_execute_all_movement():
+	var move_seed = randi()
 	if _is_networked():
-		execute_all_movement.rpc()
+		execute_all_movement.rpc(move_seed)
 	else:
-		execute_all_movement()
+		execute_all_movement(move_seed)
 
 @rpc("authority", "call_local", "reliable")
-func execute_all_movement():
+func rpc_advance_movement_side(new_side: int):
+	current_side_id = new_side
+	_update_ui_state()
+
+@rpc("authority", "call_local", "reliable")
+func execute_all_movement(move_seed: int = 0):
+	if _is_executing_movement:
+		log_message("[color=red]System Blocked concurrent attempt to execute_all_movement![/color]")
+		return
+	_is_executing_movement = true
+	Combat.combat_rng.seed = move_seed
 	var peer_id = (multiplayer.get_unique_id() if _is_networked() else 1) if _is_networked() else "Offline"
 	print(">>> DIAGNOSTIC: execute_all_movement running for side: ", current_side_id, " on peer: ", peer_id)
 	log_message("Executing Movement Phase for Side %s" % _get_side_name(current_side_id))
@@ -4935,7 +4988,7 @@ func _resolve_mine_detonations():
 				if hit:
 					raw_dmg = Combat.roll_damage("3d10+5")
 					s.take_hull_damage(raw_dmg)
-					var msg2 = "%s took %d damage from spatial mine!" % [s.get_display_name(), raw_dmg]
+					var msg2 = "%s took %d damage from spatial mine at location %d, %d!" % [s.get_display_name(), raw_dmg, m["pos"].x, m["pos"].y]
 					if _is_networked() and multiplayer.is_server():
 						rpc_log_message.rpc(msg2)
 					else:
@@ -5175,9 +5228,7 @@ func rpc_play_mine_fx(mine_pos_hex: Vector3i, target_name: String, hit: bool, da
 				
 	# If we are a client, we MUST apply the damage locally so the ship dies instantly visually!
 	# The Host already applied it in _resolve_mine_detonations.
-	if _is_networked() and not multiplayer.is_server():
-		if is_instance_valid(target) and hit:
-			target.take_hull_damage(damage)
+	# REMOVED double-damage logic: Clients already executed their own synced RNG damage earlier.
 
 func _calculate_mr_used_for_plan(start_pos: Vector3i, start_facing: int, path: Array[Vector3i], final_facing: int) -> int:
 	var mr = 0
@@ -5246,7 +5297,7 @@ func _apply_movement_plan(s: Ship):
 		if risk > 0:
 			# Use seeded RNG for multiplayer sync if available, or just randi
 			# execute_all_movement is called on Authority.
-			var roll = randi() % 100 + 1
+			var roll = Combat.combat_rng.randi() % 100 + 1
 			log_message("[color=yellow]Hull Integrity Check for %s: Roll %d vs %d%% Risk[/color]" % [s.name, roll, risk])
 			if roll <= risk:
 				log_message("[color=red]CRITICAL: %s broke apart due to structural failure during maneuvering![/color]" % s.name)
@@ -6120,7 +6171,11 @@ func _is_weapon_available_in_phase(weapon: Dictionary, ship: Ship = null) -> boo
 	if weapon.get("is_crippled", false):
 		return false
 		
-	var w_type = weapon.get("type")
+	var w_type = weapon.get("type", "")
+	
+	# Rule: Mines and Seekers are dropped/deployed, NOT fired.
+	if w_type in ["Mine", "Seeker"]:
+		return false
 	# Rule 1: Moving Player Only for Propelled weapons (Assault Rockets, Torpedoes)
 	# Rocket Batteries are EXEMPT from this (can be fired defensively)
 	var is_propelled_movement_restricted = w_type in ["Rocket", "Torpedo"]
@@ -6737,7 +6792,7 @@ func _trigger_icm_decision(attacker_name: String, weapon_name: String, weapon_ty
 	print(">>> TRIGGER ICM MID: is_networked=", _is_networked())
 	if _is_networked() and multiplayer.is_server():
 		rpc_trigger_icm_decision.rpc(attacker_name, weapon_name, weapon_type, current_chance, target.name, eligible_names)
-	else:
+	elif not _is_networked():
 		rpc_trigger_icm_decision(attacker_name, weapon_name, weapon_type, current_chance, target.name, eligible_names)
 		
 @rpc("authority", "call_local", "reliable")
@@ -6767,13 +6822,12 @@ func rpc_trigger_icm_decision(attacker_name: String, weapon_name: String, weapon
 			break
 			
 	print(">>> DEBUG RPC ICM: IS AI TARGET = ", is_ai_target)
-			
-	if is_ai_target and _is_server_or_offline():
+	if is_ai_target:
 		# The server automatically resolves AI ICM decisions without UI
 		var icm_script = load("res://Scripts/AutoIcmProcessor.gd")
 		var allocations = icm_script.calculate_allocations(weapon_type, current_chance, target, eligible_ships)
 		# Add a slight delay for better game feel/pacing so it doesn't instantly blink past
-		await get_tree().create_timer(1.0).timeout
+		if not is_headless: await get_tree().create_timer(1.0).timeout
 		_submit_icm_decision(allocations)
 		return
 		
@@ -6813,7 +6867,17 @@ func rpc_trigger_icm_decision(attacker_name: String, weapon_name: String, weapon
 	# Network Logic: Who decides?
 	var is_target_owner = (target.side_id == my_side_id) or (my_side_id == 0) # Debug/0 can also decide
 	
-	if is_target_owner and not is_ai_target:
+	# Fallback AI Check - If we are running a bot locally, do not show UI!
+	# The auto-resolve above handles SERVER bots, but what if they are spawned dynamically or locally?
+	var is_local_bot = false
+	for c in get_children():
+		if c is ComputerOpponent and c.side_id == target.side_id:
+			is_local_bot = true
+			break
+			
+	print(">>> DEBUG EVALUATION: target_owner=", is_target_owner, " ai_target=", is_ai_target, " local_bot=", is_local_bot)
+	
+	if is_target_owner and not is_ai_target and not is_local_bot:
 		var ship_spinboxes = {} # Dictionary of ship_name -> SpinBox node
 		
 		# Initial Text updater
@@ -6826,6 +6890,7 @@ func rpc_trigger_icm_decision(attacker_name: String, weapon_name: String, weapon
 			var final_chance = max(0, current_chance - reduction)
 			lbl.text = "INCOMING FIRE DETECTED!\nTarget: %s\n%s firing %s\nBase Chance: %d%% -> Adjusted: %d%%" % [target.name, attacker_name, weapon_name, current_chance, final_chance]
 		
+		print(">>> DEBUG GameManager: Starting UI for ICM! Eligible Ships = ", eligible_ships.size())
 		# Add a row for each eligible ship
 		for ship in eligible_ships:
 			var hbox = HBoxContainer.new()
@@ -6942,22 +7007,11 @@ func _check_victory():
 		elif s.side_id == 2: s2_count += 1
 	
 	if s1_count == 0 and s2_count == 0:
-		if NetworkManager.lobby_data != null and NetworkManager.lobby_data.get("scenario", "") == "campaign_encounter":
-			_show_battle_summary("Draw!", 0)
-		else:
-			show_game_over("Draw!")
+		_show_battle_summary("Draw!", 0)
 	elif s1_count == 0:
-		var winner_name = get_side_name(2)
-		if NetworkManager.lobby_data != null and NetworkManager.lobby_data.get("scenario", "") == "campaign_encounter":
-			_show_battle_summary("VICTORY", 2)
-		else:
-			show_game_over("Winner: " + winner_name + "!")
+		_show_battle_summary("VICTORY", 2)
 	elif s2_count == 0:
-		var winner_name = get_side_name(1)
-		if NetworkManager.lobby_data != null and NetworkManager.lobby_data.get("scenario", "") == "campaign_encounter":
-			_show_battle_summary("VICTORY", 1)
-		else:
-			show_game_over("Winner: " + winner_name + "!")
+		_show_battle_summary("VICTORY", 1)
 
 func show_game_over(msg: String):
 	current_phase = Phase.END
@@ -6975,6 +7029,8 @@ var panel_summary: PanelContainer
 var lbl_summary_title: Label
 var vbox_summary_upf: VBoxContainer
 var vbox_summary_sathar: VBoxContainer
+var vbox_metrics_upf: VBoxContainer
+var vbox_metrics_sathar: VBoxContainer
 var lbl_repairs: Label
 var btn_summary_return: Button
 
@@ -6992,15 +7048,25 @@ func _build_summary_panel():
 	panel_summary.set_anchors_preset(Control.PRESET_CENTER)
 	panel_summary.visible = false # Hidden initially
 	
+	var scroll = ScrollContainer.new()
+	scroll.set_anchors_preset(Control.PRESET_FULL_RECT)
+	scroll.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	scroll.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	# Set a default minimum size so it doesn't shrink to 0
+	scroll.custom_minimum_size = Vector2(800, 600)
+	
 	var vbox_main = VBoxContainer.new()
 	vbox_main.add_theme_constant_override("separation", 20)
+	vbox_main.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	var margin = MarginContainer.new()
 	margin.add_theme_constant_override("margin_top", 20)
 	margin.add_theme_constant_override("margin_bottom", 20)
 	margin.add_theme_constant_override("margin_left", 30)
 	margin.add_theme_constant_override("margin_right", 30)
+	margin.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	margin.add_child(vbox_main)
-	panel_summary.add_child(margin)
+	scroll.add_child(margin)
+	panel_summary.add_child(scroll)
 	
 	lbl_summary_title = Label.new()
 	lbl_summary_title.add_theme_font_size_override("font_size", 32)
@@ -7028,6 +7094,27 @@ func _build_summary_panel():
 	vbox_summary_sathar.add_child(lbl_sathar_col)
 	hbox_cols.add_child(vbox_summary_sathar)
 	
+	var hbox_metrics = HBoxContainer.new()
+	hbox_metrics.add_theme_constant_override("separation", 50)
+	hbox_metrics.alignment = BoxContainer.ALIGNMENT_CENTER
+	vbox_main.add_child(hbox_metrics)
+	
+	vbox_metrics_upf = VBoxContainer.new()
+	var lbl_upf_met = Label.new()
+	lbl_upf_met.text = "UPF Attack Metrics"
+	lbl_upf_met.add_theme_color_override("font_color", Color.CORNFLOWER_BLUE)
+	lbl_upf_met.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	vbox_metrics_upf.add_child(lbl_upf_met)
+	hbox_metrics.add_child(vbox_metrics_upf)
+	
+	vbox_metrics_sathar = VBoxContainer.new()
+	var lbl_sat_met = Label.new()
+	lbl_sat_met.text = "Sathar Attack Metrics"
+	lbl_sat_met.add_theme_color_override("font_color", Color.CRIMSON)
+	lbl_sat_met.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	vbox_metrics_sathar.add_child(lbl_sat_met)
+	hbox_metrics.add_child(vbox_metrics_sathar)
+	
 	lbl_repairs = Label.new()
 	lbl_repairs.text = "Post-Battle Repairs"
 	lbl_repairs.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
@@ -7054,15 +7141,20 @@ func _show_battle_summary(title_text: String, side_id: int):
 		
 	var dcr_results = _perform_post_battle_repairs()
 	if _is_networked():
-		rpc("receive_battle_summary", title_text, side_id, dcr_results)
+		rpc("receive_battle_summary", title_text, side_id, dcr_results, attack_metrics)
 	else:
-		receive_battle_summary(title_text, side_id, dcr_results)
+		receive_battle_summary(title_text, side_id, dcr_results, attack_metrics)
 
 @rpc("authority", "call_local", "reliable")
-func receive_battle_summary(title_text: String, side_id: int, dcr_dict: Dictionary):
+func receive_battle_summary(title_text: String, side_id: int, dcr_dict: Dictionary, metrics_dict: Dictionary = {}):
 	current_phase = Phase.END
 	_update_ui_state() # Hide standard tactical UI frames
 	
+	if NetworkManager.lobby_data != null and NetworkManager.lobby_data.get("scenario", "") == "campaign_encounter":
+		btn_summary_return.text = "Return to Campaign Map"
+	else:
+		btn_summary_return.text = "Restart Game"
+		
 	if side_id == 1:
 		lbl_summary_title.text = "UPF VICTORY"
 		lbl_summary_title.add_theme_color_override("font_color", Color.CORNFLOWER_BLUE)
@@ -7078,6 +7170,12 @@ func receive_battle_summary(title_text: String, side_id: int, dcr_dict: Dictiona
 		vbox_summary_upf.get_child(i).queue_free()
 	for i in range(1, vbox_summary_sathar.get_child_count()):
 		vbox_summary_sathar.get_child(i).queue_free()
+		
+	# Clear metrics lists
+	for i in range(1, vbox_metrics_upf.get_child_count()):
+		vbox_metrics_upf.get_child(i).queue_free()
+	for i in range(1, vbox_metrics_sathar.get_child_count()):
+		vbox_metrics_sathar.get_child(i).queue_free()
 		
 	var all_ships = []
 	all_ships.append_array(ships)
@@ -7120,6 +7218,29 @@ func receive_battle_summary(title_text: String, side_id: int, dcr_dict: Dictiona
 				vbox_summary_upf.add_child(lbl)
 			else:
 				vbox_summary_sathar.add_child(lbl)
+				
+	# Populate Attack Metrics
+	if metrics_dict.size() > 0:
+		for s_id in metrics_dict.keys():
+			var s_id_int = int(str(s_id))
+			var side_metrics = metrics_dict[s_id]
+			var vbox = vbox_metrics_upf if s_id_int == 1 else vbox_metrics_sathar
+			var chances = side_metrics.keys()
+			chances.sort()
+			for chance_k in chances:
+				var chance = int(str(chance_k))
+				var dat = side_metrics[chance_k]
+				var total = dat["attempts"]
+				var hits = dat["hits"]
+				var pct = 0
+				if total > 0: pct = int(float(hits) / float(total) * 100.0)
+				var m_lbl = Label.new()
+				m_lbl.text = "Base %d%%: Actual %d%% (%d/%d)" % [chance, pct, hits, total]
+				if s_id_int == 1:
+					m_lbl.add_theme_color_override("font_color", Color.CORNFLOWER_BLUE.lerp(Color.WHITE, 0.5))
+				else:
+					m_lbl.add_theme_color_override("font_color", Color.CRIMSON.lerp(Color.WHITE, 0.5))
+				vbox.add_child(m_lbl)
 				
 	# Populate Repairs
 	var local_faction = "UPF" # Default
@@ -7593,6 +7714,14 @@ func _check_scenario_debuffs(ship: Ship, action: String) -> bool:
 func _find_ship_by_name(n: String) -> Ship:
 	for s in ships:
 		if is_instance_valid(s) and s.name == n: return s
+		
+	# Fallback: Check children directly.
+	# This occurs if a ship was locally predicted as destroyed (removed from `ships` array)
+	# but an authoritative state update from the server needs to resurrect it.
+	for child in get_children():
+		if child is Ship and is_instance_valid(child) and child.name == n:
+			return child
+			
 	return null
 
 @rpc('any_peer', 'call_local', 'reliable')
@@ -7644,6 +7773,15 @@ func broadcast_game_state():
 
 @rpc("authority", "call_local", "reliable")
 func rpc_sync_ship_states(data: Dictionary):
+	# Track ships that exist locally but are missing from the server payload
+	var missing_ships = []
+	for s in ships:
+		if is_instance_valid(s) and not data.has(s.name) and not s.is_exploding:
+			# Unless it's a specific scenario exception (e.g. withdrawn, background, etc)
+			# But withdrawn ships still broadcast state from server for end-of-game checks.
+			# If the server stopped sending this ship entirely, it was almost certainly destroyed.
+			missing_ships.append(s)
+
 	# log_message("Syncing Ship States...")
 	for ship_name in data:
 		var s_data = data[ship_name]
@@ -7655,6 +7793,11 @@ func rpc_sync_ship_states(data: Dictionary):
 			# In full sync we might want to spawn it?
 			# For now, just ignore.
 			pass
+
+	# Cull ghost ships deleted by the server
+	for orphaned_ship in missing_ships:
+		print("[Network/Sync] Server omitted ship %s. Tearing down locally..." % orphaned_ship.name)
+		orphaned_ship.trigger_explosion()
 
 	
 	_update_ship_visuals()
@@ -8043,7 +8186,10 @@ func _handle_preview_extension(hex: Vector3i):
 var computer_opponents: Array = []
 
 func _spawn_computer_opponents():
-	if not _is_server_or_offline(): return
+	var wants_local_bot = OS.get_cmdline_args().has("--bot")
+	
+	# Only clients with --bot or the server can spawn bots
+	if not _is_server_or_offline() and not wants_local_bot: return
 	
 	var assigned_sides = []
 	if _is_networked():
@@ -8052,8 +8198,15 @@ func _spawn_computer_opponents():
 	else:
 		assigned_sides.append(my_side_id)
 		
-	for s_id in [1, 2]:
-		if not s_id in assigned_sides:
+	# If this local instance wants a bot, inject our side into the checks
+	var sides_to_check = [my_side_id] if (not _is_server_or_offline() and wants_local_bot) else [1, 2]
+		
+	for s_id in sides_to_check:
+		# Server spawns AI for unassigned sides. Local instances with --bot spawn AI for their OWN side.
+		var is_unassigned_on_server = _is_server_or_offline() and not (s_id in assigned_sides)
+		var is_local_bot_request = wants_local_bot and (s_id == my_side_id)
+		
+		if is_unassigned_on_server or is_local_bot_request:
 			# Check if already spawned
 			var already_spawned = false
 			for ai in computer_opponents:

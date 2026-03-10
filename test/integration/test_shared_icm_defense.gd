@@ -22,6 +22,10 @@ func before_each():
 		_gm.panel_icm = null
 		
 	_gm.computer_opponents.clear()
+	for c in _gm.get_children():
+		if c.get_class() == "Node" or c.name.begins_with("Bot_") or "ComputerOpponent" in str(c.get_script()):
+			_gm.remove_child(c)
+			c.queue_free()
 		
 	_gm.current_phase = _gm.Phase.COMBAT
 	_gm.my_side_id = 1

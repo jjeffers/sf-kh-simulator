@@ -37,5 +37,8 @@ func test_deployment_rpc_transitions_phase():
 	gm.rpc_submit_deployment(1, state_side_1)
 	assert_true(gm.has_deployed_side_1, "Side 1 should be marked deployed")
 	
+	# Deferral forces transition to next frame
+	await get_tree().process_frame
+	
 	# The game transitions to MOVEMENT
 	assert_eq(gm.current_phase, gm.Phase.MOVEMENT, "Phase should transition to MOVEMENT after both deploy")
