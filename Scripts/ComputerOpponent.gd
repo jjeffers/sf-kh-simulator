@@ -7,6 +7,7 @@ var is_sathar: bool = false
 var rng: RandomNumberGenerator
 
 var _process_timer: Timer
+var _is_waiting_for_transition: bool = false
 
 func _init():
 	rng = RandomNumberGenerator.new()
@@ -83,20 +84,28 @@ func _has_deployed() -> bool:
 
 func _has_unmoved_ships() -> bool:
 	for s in game_manager.ships:
-		if is_instance_valid(s) and s.side_id == side_id and not s.has_moved and not s.has_orders and not s.is_exploding and not s.is_docked:
+		if is_instance_valid(s) and s.side_id == side_id and not s.has_moved and not s.has_orders and not s.is_exploding:
 			return true
 	return false
 
 # Track if we've already done planning for the current subphase to avoid infinite loops
-var _combat_planned_subphase: int = 0
+var _last_planned_combat_turn: int = -1
+var _last_planned_combat_subphase: int = -1
 func _has_finished_combat_planning() -> bool:
-	return _combat_planned_subphase == game_manager.combat_subphase
+	return _last_planned_combat_turn == game_manager.turn_count and _last_planned_combat_subphase == game_manager.combat_subphase
 
 var _repairs_planned_turn: int = -1
 func _has_finished_repairs() -> bool:
 	return _repairs_planned_turn == game_manager.turn_count
 
 func _think(wait_time: float):
+	# Skip simulated wait times during automated headless benchmarks
+	if is_instance_valid(game_manager) and game_manager.is_headless:
+		wait_time = 0.01
+		
+	if game_manager.current_phase != GameManager.Phase.MOVEMENT:
+		_is_waiting_for_transition = false
+
 	# Start a timer to simulate "thinking" and allow UI to naturally update
 	_process_timer.start(wait_time)
 
@@ -107,25 +116,46 @@ func _on_think_timeout():
 		GameManager.Phase.DEPLOYMENT:
 			_execute_deployment()
 		GameManager.Phase.MOVEMENT:
+			if game_manager.current_side_id != side_id:
+				_think(1.0)
+				return # Wait for our turn
 			if _has_unmoved_ships():
+				_is_waiting_for_transition = false
 				_execute_movement()
 			else:
 				# Pass turn
+				if _is_waiting_for_transition:
+					_think(1.0)
+					return
+				_is_waiting_for_transition = true
 				if game_manager.multiplayer.has_multiplayer_peer():
 					game_manager.rpc_id(1, "request_execute_movement")
 				else:
 					game_manager.execute_all_movement()
 		GameManager.Phase.COMBAT:
-			if not _has_finished_combat_planning():
-				var attacks_data = _plan_combat()
-				var seed_val = randi()
-				if game_manager.multiplayer.has_multiplayer_peer():
-					game_manager.rpc_id(1, "execute_commit_combat", attacks_data, seed_val)
+			if game_manager.firing_side_id != side_id:
+				_think(1.0)
+				return # Wait for our turn
+				
+			if game_manager.current_combat_state == GameManager.CombatState.PLANNING:
+				if not _has_finished_combat_planning():
+					var attacks_data = _plan_combat()
+					var seed_val = randi()
+					if game_manager.multiplayer.has_multiplayer_peer():
+						game_manager.rpc_id(1, "execute_commit_combat", attacks_data, seed_val)
+					else:
+						game_manager.execute_commit_combat(attacks_data, seed_val)
 				else:
-					game_manager.execute_commit_combat(attacks_data, seed_val)
+					_think(1.0)
 		GameManager.Phase.REPAIR:
+			if game_manager.repair_subphase != side_id:
+				_think(1.0)
+				return # Wait for our turn
+				
 			if not _has_finished_repairs():
 				_execute_repairs()
+			else:
+				_think(1.0)
 
 # --- DEPLOYMENT ---
 func _execute_deployment():
@@ -162,7 +192,7 @@ func _execute_movement():
 	var ship_to_move = null
 	var unmoved_count = 0
 	for s in game_manager.ships:
-		if is_instance_valid(s) and s.side_id == side_id and not s.has_moved and not s.has_orders and not s.is_exploding and not s.is_docked:
+		if is_instance_valid(s) and s.side_id == side_id and not s.has_moved and not s.has_orders and not s.is_exploding:
 			unmoved_count += 1
 			if ship_to_move == null:
 				ship_to_move = s
@@ -171,7 +201,7 @@ func _execute_movement():
 		return
 		
 	# Quick indicator if this is the start of the sequence
-	var total_my_ships = game_manager.ships.filter(func(s): return is_instance_valid(s) and s.side_id == side_id and not s.is_exploding and not s.is_docked).size()
+	var total_my_ships = game_manager.ships.filter(func(s): return is_instance_valid(s) and s.side_id == side_id and not s.is_exploding).size()
 	if unmoved_count == total_my_ships:
 		game_manager.log_message("[color=yellow]AI Computer Opponent Planning Movement...[/color]")
 		
@@ -196,11 +226,17 @@ func _execute_movement():
 	
 	if best_move and best_move["path"].size() > 0:
 		# Submit to GameManager
-		game_manager.register_movement_plan(ship_to_move.name, best_move["path"], best_move["facing"], 0, false, [])
+		if game_manager._is_networked() and not game_manager._is_server_or_offline():
+			game_manager.rpc_id(1, "register_movement_plan", ship_to_move.name, best_move["path"], best_move["facing"], 0, false, [])
+		else:
+			game_manager.register_movement_plan(ship_to_move.name, best_move["path"], best_move["facing"], 0, false, [])
 		game_manager.log_message("AI plotted movement for %s (Speed %d -> %d, %d hexes)" % [ship_to_move.get_display_name(), ship_to_move.speed, best_move["path"].size(), best_move["path"].size()])
 	else:
 		# Fallback to hold position/speed 0 if possible
-		game_manager.register_movement_plan(ship_to_move.name, [], ship_to_move.facing, 0, false, [])
+		if game_manager._is_networked() and not game_manager._is_server_or_offline():
+			game_manager.rpc_id(1, "register_movement_plan", ship_to_move.name, [], ship_to_move.facing, 0, false, [])
+		else:
+			game_manager.register_movement_plan(ship_to_move.name, [], ship_to_move.facing, 0, false, [])
 		game_manager.log_message("AI held position for %s" % ship_to_move.get_display_name())
 	
 	# The AI is done with this ship, but wait for GameManager's register_movement_plan
@@ -235,6 +271,13 @@ func _find_best_legal_move(ship: Ship, target: Ship) -> Dictionary:
 		var end_hex = move["path"].back() if move["path"].size() > 0 else ship.grid_position
 		
 		var score = _score_hex(end_hex, target)
+		
+		# AI Constraint: Avoid self-destruction via DCR limits
+		var mr_used = max_mr - move.get("mr_left", max_mr)
+		var adf_used = abs(move["path"].size() - old_speed)
+		var risk = ship.get_hull_integrity_risk(adf_used, mr_used)
+		if risk > 0:
+			score -= risk * 100.0
 		
 		# Collision check vs planets (Extreme Penalty, rather than skipping, so we don't return null and get blocked by GameManager)
 		var is_safe = true
@@ -272,21 +315,24 @@ func _find_best_legal_move(ship: Ship, target: Ship) -> Dictionary:
 	return best_move
 
 func _dfs_paths(current_hex: Vector3i, current_facing: int, mr_left: int, max_depth: int, min_depth: int, current_path: Array, start_mr: int, all_paths: Array, old_speed: int):
+	# Cap the maximum number of explored paths to prevent Godot engine crashes on highly maneuverable ships
+	var MAX_EXPLORE = 2000
+	if all_paths.size() >= MAX_EXPLORE:
+		return
+		
 	if current_path.size() >= min_depth and current_path.size() <= max_depth:
 		all_paths.append({"path": current_path.duplicate(), "facing": current_facing, "mr_left": mr_left})
 		
 	if current_path.size() == max_depth:
 		return
 		
-	# Forward
-	var forward_vec = HexGrid.get_direction_vec(current_facing)
-	var next_hex = current_hex + forward_vec
+	# Prepare branches
+	var branches = []
 	
-	var p_forward = current_path.duplicate()
-	p_forward.append(next_hex)
-	_dfs_paths(next_hex, current_facing, mr_left, max_depth, min_depth, p_forward, start_mr, all_paths, old_speed)
+	# Branch 1: Forward
+	branches.append({"type": "forward"})
 	
-	# Turn Left/Right (Costs 1 MR, turns facing by 1, moves forward by 1)
+	# Branches 2 & 3: Turn Left/Right (Costs 1 MR, turns facing by 1, moves forward by 1)
 	if mr_left > 0:
 		# Rule: Cannot turn in the starting hex unless starting speed was 0
 		var can_turn = true
@@ -294,13 +340,34 @@ func _dfs_paths(current_hex: Vector3i, current_facing: int, mr_left: int, max_de
 			can_turn = false
 			
 		if can_turn:
-			for turn in [-1, 1]:
-				var new_facing = (current_facing + turn + 6) % 6
-				var turn_vec = HexGrid.get_direction_vec(new_facing)
-				var turn_hex = current_hex + turn_vec
-				var p_turn = current_path.duplicate()
-				p_turn.append(turn_hex)
-				_dfs_paths(turn_hex, new_facing, mr_left - 1, max_depth, min_depth, p_turn, start_mr, all_paths, old_speed)
+			branches.append({"type": "turn", "direction": -1})
+			branches.append({"type": "turn", "direction": 1})
+			
+	# Shuffle branches to ensure we get a diverse set of paths if we hit the MAX_EXPLORE cap
+	# Using Fisher-Yates shuffle
+	for i in range(branches.size() - 1, 0, -1):
+		var j = rng.randi() % (i + 1)
+		var temp = branches[i]
+		branches[i] = branches[j]
+		branches[j] = temp
+		
+	# Execute branches
+	for branch in branches:
+		if branch["type"] == "forward":
+			var forward_vec = HexGrid.get_direction_vec(current_facing)
+			var next_hex = current_hex + forward_vec
+			
+			var p_forward = current_path.duplicate()
+			p_forward.append(next_hex)
+			_dfs_paths(next_hex, current_facing, mr_left, max_depth, min_depth, p_forward, start_mr, all_paths, old_speed)
+		elif branch["type"] == "turn":
+			var turn = branch["direction"]
+			var new_facing = (current_facing + turn + 6) % 6
+			var turn_vec = HexGrid.get_direction_vec(new_facing)
+			var turn_hex = current_hex + turn_vec
+			var p_turn = current_path.duplicate()
+			p_turn.append(turn_hex)
+			_dfs_paths(turn_hex, new_facing, mr_left - 1, max_depth, min_depth, p_turn, start_mr, all_paths, old_speed)
 
 func _score_hex(hex: Vector3i, target: Ship) -> float:
 	var score = 0.0
@@ -363,5 +430,6 @@ func _plan_combat() -> Array:
 					"tp": best_target.grid_position
 				})
 
-	_combat_planned_subphase = game_manager.combat_subphase
+	_last_planned_combat_turn = game_manager.turn_count
+	_last_planned_combat_subphase = game_manager.combat_subphase
 	return attacks_data

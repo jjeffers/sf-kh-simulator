@@ -102,6 +102,8 @@ func _ready():
 			var scen_name = args[i + 1]
 			print("[MainMenu] Pre-loading scenario:", scen_name)
 			NetworkManager.lobby_data["scenario"] = scen_name
+		elif args[i] == "--bot":
+			DisplayServer.window_set_title("SFKH Simulator (BOT)")
 
 func _show_menu(menu_name: String):
 	StartupMenu.visible = false

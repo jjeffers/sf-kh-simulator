@@ -1,0 +1,6 @@
+Implement automated Aftermath repair rolls and campaign sync
+
+- Resolves catastrophic fires to destroy ships
+- Rolls d100 against ship max_dcr sequentially for damaged systems 
+- Maps finalized degraded states directly back to CampaignManager.fleets cleanly
+- Drops the manual combat UI DCR allocations to accelerate the strategy layer
