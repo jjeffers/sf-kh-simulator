@@ -1660,11 +1660,12 @@ func _handle_commit_combat_internal(attacks_data: Array, rng_seed: int, sender_i
 
 	if _is_server_or_offline():
 		# Broadcast to all clients (Authority -> Clients)
-		# We use the SAME seed provided by the client to ensure fairness/sync
+		# Server dictates the seed to prevent Client Desync Injection
+		var final_seed = randi()
 		if _is_networked() and multiplayer.get_peers().size() > 0:
-			rpc("rpc_resolve_combat", attacks_data, rng_seed)
+			rpc("rpc_resolve_combat", attacks_data, final_seed)
 		else:
-			rpc_resolve_combat(attacks_data, rng_seed)
+			rpc_resolve_combat(attacks_data, final_seed)
 	else:
 		# If a client somehow received this (shouldn't happen if we only rpc_id(1)), ignore or log
 		pass
@@ -1677,7 +1678,7 @@ func _execute_resolution(attacks_data: Array, rng_seed: int):
 	current_combat_state = CombatState.RESOLVING
 	
 	# Sync RNG
-	seed(rng_seed)
+	Combat.combat_rng.seed = rng_seed
 	
 	# Deserialize
 	pending_resolutions.clear()
@@ -4793,17 +4794,24 @@ func request_execute_movement():
 	call_deferred("_deferred_execute_all_movement")
 
 func _deferred_execute_all_movement():
+	var move_seed = randi()
 	if _is_networked():
-		execute_all_movement.rpc()
+		execute_all_movement.rpc(move_seed)
 	else:
-		execute_all_movement()
+		execute_all_movement(move_seed)
 
 @rpc("authority", "call_local", "reliable")
-func execute_all_movement():
+func rpc_advance_movement_side(new_side: int):
+	current_side_id = new_side
+	_update_ui_state()
+
+@rpc("authority", "call_local", "reliable")
+func execute_all_movement(move_seed: int = 0):
 	if _is_executing_movement:
 		log_message("[color=red]System Blocked concurrent attempt to execute_all_movement![/color]")
 		return
 	_is_executing_movement = true
+	Combat.combat_rng.seed = move_seed
 	var peer_id = (multiplayer.get_unique_id() if _is_networked() else 1) if _is_networked() else "Offline"
 	print(">>> DIAGNOSTIC: execute_all_movement running for side: ", current_side_id, " on peer: ", peer_id)
 	log_message("Executing Movement Phase for Side %s" % _get_side_name(current_side_id))
@@ -5220,9 +5228,7 @@ func rpc_play_mine_fx(mine_pos_hex: Vector3i, target_name: String, hit: bool, da
 				
 	# If we are a client, we MUST apply the damage locally so the ship dies instantly visually!
 	# The Host already applied it in _resolve_mine_detonations.
-	if _is_networked() and not multiplayer.is_server():
-		if is_instance_valid(target) and hit:
-			target.take_hull_damage(damage)
+	# REMOVED double-damage logic: Clients already executed their own synced RNG damage earlier.
 
 func _calculate_mr_used_for_plan(start_pos: Vector3i, start_facing: int, path: Array[Vector3i], final_facing: int) -> int:
 	var mr = 0
@@ -5291,7 +5297,7 @@ func _apply_movement_plan(s: Ship):
 		if risk > 0:
 			# Use seeded RNG for multiplayer sync if available, or just randi
 			# execute_all_movement is called on Authority.
-			var roll = randi() % 100 + 1
+			var roll = Combat.combat_rng.randi() % 100 + 1
 			log_message("[color=yellow]Hull Integrity Check for %s: Roll %d vs %d%% Risk[/color]" % [s.name, roll, risk])
 			if roll <= risk:
 				log_message("[color=red]CRITICAL: %s broke apart due to structural failure during maneuvering![/color]" % s.name)
@@ -6786,7 +6792,7 @@ func _trigger_icm_decision(attacker_name: String, weapon_name: String, weapon_ty
 	print(">>> TRIGGER ICM MID: is_networked=", _is_networked())
 	if _is_networked() and multiplayer.is_server():
 		rpc_trigger_icm_decision.rpc(attacker_name, weapon_name, weapon_type, current_chance, target.name, eligible_names)
-	else:
+	elif not _is_networked():
 		rpc_trigger_icm_decision(attacker_name, weapon_name, weapon_type, current_chance, target.name, eligible_names)
 		
 @rpc("authority", "call_local", "reliable")
@@ -7714,6 +7720,14 @@ func _check_scenario_debuffs(ship: Ship, action: String) -> bool:
 func _find_ship_by_name(n: String) -> Ship:
 	for s in ships:
 		if is_instance_valid(s) and s.name == n: return s
+		
+	# Fallback: Check children directly.
+	# This occurs if a ship was locally predicted as destroyed (removed from `ships` array)
+	# but an authoritative state update from the server needs to resurrect it.
+	for child in get_children():
+		if child is Ship and is_instance_valid(child) and child.name == n:
+			return child
+			
 	return null
 
 @rpc('any_peer', 'call_local', 'reliable')

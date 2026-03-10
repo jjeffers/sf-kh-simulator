@@ -203,6 +203,11 @@ func apply_net_state(data: Dictionary):
 		trigger_explosion()
 	elif net_is_destroyed:
 		is_destroyed = true
+	elif not net_is_destroyed and is_destroyed:
+		# Resurrect based on authoritative host state
+		is_destroyed = false
+		is_exploding = false
+		visible = true
 		
 	if is_destroyed and hull > 0: hull = 0 # Safety
 	

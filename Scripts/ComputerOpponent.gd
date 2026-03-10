@@ -147,6 +147,8 @@ func _on_think_timeout():
 						game_manager.execute_commit_combat(attacks_data, seed_val)
 				else:
 					_think(1.0)
+			else:
+				_think(1.0)
 		GameManager.Phase.REPAIR:
 			if game_manager.repair_subphase != side_id:
 				_think(1.0)
@@ -154,8 +156,8 @@ func _on_think_timeout():
 				
 			if not _has_finished_repairs():
 				_execute_repairs()
-			else:
-				_think(1.0)
+			
+			_think(1.0)
 
 # --- DEPLOYMENT ---
 func _execute_deployment():
@@ -200,8 +202,8 @@ func _execute_movement():
 		# If enemy is within 18 hexes, activate the seeker!
 		if min_d <= 18:
 			game_manager.log_message("AI activating Seeker at %v! Target detected at distance %d" % [s_pos, min_d])
-			if game_manager._is_networked() and not game_manager._is_server_or_offline():
-				game_manager.rpc_activate_seeker.rpc_id(1, s_pos)
+			if game_manager._is_networked():
+				game_manager.rpc_activate_seeker.rpc(s_pos)
 			else:
 				game_manager.rpc_activate_seeker(s_pos)
 

@@ -1,6 +1,8 @@
 class_name Combat
 extends Node
 
+static var combat_rng: RandomNumberGenerator = RandomNumberGenerator.new()
+
 const BASE_HIT_CHANCE = 80
 const RANGE_PENALTY = 5 # per hex
 const MAX_RANGE = 10
@@ -230,7 +232,7 @@ static func get_best_defensive_fire_hex(source: Ship, target: Ship, weapon: Dict
 # Returns result dict: {success: bool, chance: int, roll: int}
 static func get_hit_roll_details(dist: int, weapon: Dictionary = {}, target: Ship = null, is_head_on: bool = false, icm_count: int = 0, source: Ship = null) -> Dictionary:
 	var chance = calculate_hit_chance(dist, weapon, target, is_head_on, icm_count, source)
-	var roll = randi() % 100 + 1 # 1-100
+	var roll = combat_rng.randi() % 100 + 1 # 1-100
 	print("Combat Roll: Distance %d, Chance %d%%, Rolled %d" % [dist, chance, roll])
 	return {
 		"success": roll <= chance,
@@ -261,7 +263,7 @@ static func roll_damage(damage_str: Variant = "1d10") -> int:
 			var sides = int(dice_part[1])
 			var total = 0
 			for i in range(count):
-				total += randi() % sides + 1
+				total += combat_rng.randi() % sides + 1
 			print("Damage Roll: %s -> %d" % [damage_str, total + bonus])
 			return total + bonus
 			
@@ -270,7 +272,7 @@ static func roll_damage(damage_str: Variant = "1d10") -> int:
 # --- Damage System ---
 
 static func calculate_damage_roll(dtm: int) -> int:
-	var roll = (randi() % 100) + 1
+	var roll = (combat_rng.randi() % 100) + 1
 	var total = roll + dtm
 	print("Damage Roll: d100(%d) + DTM(%d) = %d" % [roll, dtm, total])
 	return total
