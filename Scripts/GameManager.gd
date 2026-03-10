@@ -7007,22 +7007,11 @@ func _check_victory():
 		elif s.side_id == 2: s2_count += 1
 	
 	if s1_count == 0 and s2_count == 0:
-		if NetworkManager.lobby_data != null and NetworkManager.lobby_data.get("scenario", "") == "campaign_encounter":
-			_show_battle_summary("Draw!", 0)
-		else:
-			show_game_over("Draw!")
+		_show_battle_summary("Draw!", 0)
 	elif s1_count == 0:
-		var winner_name = get_side_name(2)
-		if NetworkManager.lobby_data != null and NetworkManager.lobby_data.get("scenario", "") == "campaign_encounter":
-			_show_battle_summary("VICTORY", 2)
-		else:
-			show_game_over("Winner: " + winner_name + "!")
+		_show_battle_summary("VICTORY", 2)
 	elif s2_count == 0:
-		var winner_name = get_side_name(1)
-		if NetworkManager.lobby_data != null and NetworkManager.lobby_data.get("scenario", "") == "campaign_encounter":
-			_show_battle_summary("VICTORY", 1)
-		else:
-			show_game_over("Winner: " + winner_name + "!")
+		_show_battle_summary("VICTORY", 1)
 
 func show_game_over(msg: String):
 	current_phase = Phase.END
@@ -7161,6 +7150,11 @@ func receive_battle_summary(title_text: String, side_id: int, dcr_dict: Dictiona
 	current_phase = Phase.END
 	_update_ui_state() # Hide standard tactical UI frames
 	
+	if NetworkManager.lobby_data != null and NetworkManager.lobby_data.get("scenario", "") == "campaign_encounter":
+		btn_summary_return.text = "Return to Campaign Map"
+	else:
+		btn_summary_return.text = "Restart Game"
+		
 	if side_id == 1:
 		lbl_summary_title.text = "UPF VICTORY"
 		lbl_summary_title.add_theme_color_override("font_color", Color.CORNFLOWER_BLUE)
