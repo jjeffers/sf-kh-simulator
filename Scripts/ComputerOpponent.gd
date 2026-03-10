@@ -188,6 +188,23 @@ func _execute_deployment():
 
 # --- MOVEMENT ---
 func _execute_movement():
+	# --- Activate Strategic Seekers ---
+	var my_dormant_seekers = game_manager.active_seekers.filter(func(s): return s["side_id"] == side_id and s.get("speed", 0) == 0)
+	for seeker in my_dormant_seekers:
+		var s_pos = seeker["pos"]
+		var min_d = 999
+		for e in game_manager.ships:
+			if is_instance_valid(e) and e.side_id != side_id and not e.is_exploding:
+				var d = HexGrid.hex_distance(s_pos, e.grid_position)
+				if d < min_d: min_d = d
+		# If enemy is within 18 hexes, activate the seeker!
+		if min_d <= 18:
+			game_manager.log_message("AI activating Seeker at %v! Target detected at distance %d" % [s_pos, min_d])
+			if game_manager._is_networked() and not game_manager._is_server_or_offline():
+				game_manager.rpc_activate_seeker.rpc_id(1, s_pos)
+			else:
+				game_manager.rpc_activate_seeker(s_pos)
+
 	# Find a ship to move
 	var ship_to_move = null
 	var unmoved_count = 0

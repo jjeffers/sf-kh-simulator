@@ -122,7 +122,7 @@ func _deploy_seekers(active_side_id: int, game_manager: Node) -> void:
     
     for i in range(seekers_needed):
         var p = target_planets[rng.randi() % target_planets.size()]
-        var dist = rng.randi_range(7, 9)
+        var dist = rng.randi_range(10, 14) # Wide perimeter for Seekers
         
         var ring: Array[Vector3i] = []
         for dx in range(-dist, dist + 1):
@@ -177,7 +177,7 @@ func _deploy_mines(active_side_id: int, game_manager: Node) -> void:
     
     for i in range(mines_needed):
         var p = target_planets[rng.randi() % target_planets.size()]
-        var dist = rng.randi_range(7, 9)
+        var dist = rng.randi_range(4, 6) # Tight choke ring for Mines
         
         var ring: Array[Vector3i] = []
         for dx in range(-dist, dist + 1):

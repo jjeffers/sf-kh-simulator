@@ -289,7 +289,17 @@ Once the first side completes deployment, the other side should be notified and 
 
 When both sides have completed deployment, the game should proceed to the first turn.
 
-
+### Post-Battle Summary
+- When a battle ends, a post-battle summary should be displayed.
+- The summary should include the following information:
+  - The winning side, for example "SATHAR VICTORY!" or "UPF VICTORY!"
+  - The losing side, for example "UPF DEFEAT" or "SATHAR DEFEAT"
+  - A ship list of casualties for each side in columns.
+  - A breakdown of attacks success ratios - comparing each attack at every calculated base chance to the actual attack result. 
+    - Mulitple attacks at base chance X are aggregated together. If for example 10 attacks were made at 20% base chance, and 2 were successful, then the actual % is 20% (2/10).
+    - The attack results are shown in 2 columns by side.
+  - The summary can take up most of the display, but include a scroll bar in case the contents overspll the panel.
+  
 ### Surprise Attack!
 **Description:** Attackers ambush Station Alpha. The Defiant must evacuate the station and then escape.
 

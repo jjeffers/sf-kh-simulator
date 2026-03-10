@@ -1057,6 +1057,8 @@ var mini_map: MiniMap
 var combat_log: RichTextLabel
 var panel_log_container: PanelContainer
 
+var attack_metrics: Dictionary = { 1: {}, 2: {} }
+
 # Game Over UI
 var panel_game_over: PanelContainer
 var label_winner: Label
@@ -1867,6 +1869,14 @@ func _process_next_attack():
 	var result = Combat.get_hit_roll_details(d, weapon, target, is_head_on, icm_used, source)
 	var hit = result["success"]
 	
+	var base_chance = result["chance"]
+	var sid = source.side_id
+	if not attack_metrics[sid].has(base_chance):
+		attack_metrics[sid][base_chance] = {"attempts": 0, "hits": 0}
+	attack_metrics[sid][base_chance]["attempts"] += 1
+	if hit:
+		attack_metrics[sid][base_chance]["hits"] += 1
+		
 	var hit_str = "HIT" if hit else "MISS"
 	var hit_msg = "Firing Ship: %s, Weapon: %s, Odds: %d%%, Roll: %d, Result: %s" % [source.get_display_name(), weapon["name"], result["chance"], result["roll"], hit_str]
 	if _is_networked() and multiplayer.is_server():
@@ -7020,6 +7030,8 @@ var panel_summary: PanelContainer
 var lbl_summary_title: Label
 var vbox_summary_upf: VBoxContainer
 var vbox_summary_sathar: VBoxContainer
+var vbox_metrics_upf: VBoxContainer
+var vbox_metrics_sathar: VBoxContainer
 var lbl_repairs: Label
 var btn_summary_return: Button
 
@@ -7037,15 +7049,25 @@ func _build_summary_panel():
 	panel_summary.set_anchors_preset(Control.PRESET_CENTER)
 	panel_summary.visible = false # Hidden initially
 	
+	var scroll = ScrollContainer.new()
+	scroll.set_anchors_preset(Control.PRESET_FULL_RECT)
+	scroll.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	scroll.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	# Set a default minimum size so it doesn't shrink to 0
+	scroll.custom_minimum_size = Vector2(800, 600)
+	
 	var vbox_main = VBoxContainer.new()
 	vbox_main.add_theme_constant_override("separation", 20)
+	vbox_main.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	var margin = MarginContainer.new()
 	margin.add_theme_constant_override("margin_top", 20)
 	margin.add_theme_constant_override("margin_bottom", 20)
 	margin.add_theme_constant_override("margin_left", 30)
 	margin.add_theme_constant_override("margin_right", 30)
+	margin.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	margin.add_child(vbox_main)
-	panel_summary.add_child(margin)
+	scroll.add_child(margin)
+	panel_summary.add_child(scroll)
 	
 	lbl_summary_title = Label.new()
 	lbl_summary_title.add_theme_font_size_override("font_size", 32)
@@ -7073,6 +7095,27 @@ func _build_summary_panel():
 	vbox_summary_sathar.add_child(lbl_sathar_col)
 	hbox_cols.add_child(vbox_summary_sathar)
 	
+	var hbox_metrics = HBoxContainer.new()
+	hbox_metrics.add_theme_constant_override("separation", 50)
+	hbox_metrics.alignment = BoxContainer.ALIGNMENT_CENTER
+	vbox_main.add_child(hbox_metrics)
+	
+	vbox_metrics_upf = VBoxContainer.new()
+	var lbl_upf_met = Label.new()
+	lbl_upf_met.text = "UPF Attack Metrics"
+	lbl_upf_met.add_theme_color_override("font_color", Color.CORNFLOWER_BLUE)
+	lbl_upf_met.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	vbox_metrics_upf.add_child(lbl_upf_met)
+	hbox_metrics.add_child(vbox_metrics_upf)
+	
+	vbox_metrics_sathar = VBoxContainer.new()
+	var lbl_sat_met = Label.new()
+	lbl_sat_met.text = "Sathar Attack Metrics"
+	lbl_sat_met.add_theme_color_override("font_color", Color.CRIMSON)
+	lbl_sat_met.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	vbox_metrics_sathar.add_child(lbl_sat_met)
+	hbox_metrics.add_child(vbox_metrics_sathar)
+	
 	lbl_repairs = Label.new()
 	lbl_repairs.text = "Post-Battle Repairs"
 	lbl_repairs.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
@@ -7099,12 +7142,12 @@ func _show_battle_summary(title_text: String, side_id: int):
 		
 	var dcr_results = _perform_post_battle_repairs()
 	if _is_networked():
-		rpc("receive_battle_summary", title_text, side_id, dcr_results)
+		rpc("receive_battle_summary", title_text, side_id, dcr_results, attack_metrics)
 	else:
-		receive_battle_summary(title_text, side_id, dcr_results)
+		receive_battle_summary(title_text, side_id, dcr_results, attack_metrics)
 
 @rpc("authority", "call_local", "reliable")
-func receive_battle_summary(title_text: String, side_id: int, dcr_dict: Dictionary):
+func receive_battle_summary(title_text: String, side_id: int, dcr_dict: Dictionary, metrics_dict: Dictionary = {}):
 	current_phase = Phase.END
 	_update_ui_state() # Hide standard tactical UI frames
 	
@@ -7123,6 +7166,12 @@ func receive_battle_summary(title_text: String, side_id: int, dcr_dict: Dictiona
 		vbox_summary_upf.get_child(i).queue_free()
 	for i in range(1, vbox_summary_sathar.get_child_count()):
 		vbox_summary_sathar.get_child(i).queue_free()
+		
+	# Clear metrics lists
+	for i in range(1, vbox_metrics_upf.get_child_count()):
+		vbox_metrics_upf.get_child(i).queue_free()
+	for i in range(1, vbox_metrics_sathar.get_child_count()):
+		vbox_metrics_sathar.get_child(i).queue_free()
 		
 	var all_ships = []
 	all_ships.append_array(ships)
@@ -7165,6 +7214,29 @@ func receive_battle_summary(title_text: String, side_id: int, dcr_dict: Dictiona
 				vbox_summary_upf.add_child(lbl)
 			else:
 				vbox_summary_sathar.add_child(lbl)
+				
+	# Populate Attack Metrics
+	if metrics_dict.size() > 0:
+		for s_id in metrics_dict.keys():
+			var s_id_int = int(str(s_id))
+			var side_metrics = metrics_dict[s_id]
+			var vbox = vbox_metrics_upf if s_id_int == 1 else vbox_metrics_sathar
+			var chances = side_metrics.keys()
+			chances.sort()
+			for chance_k in chances:
+				var chance = int(str(chance_k))
+				var dat = side_metrics[chance_k]
+				var total = dat["attempts"]
+				var hits = dat["hits"]
+				var pct = 0
+				if total > 0: pct = int(float(hits) / float(total) * 100.0)
+				var m_lbl = Label.new()
+				m_lbl.text = "Base %d%%: Actual %d%% (%d/%d)" % [chance, pct, hits, total]
+				if s_id_int == 1:
+					m_lbl.add_theme_color_override("font_color", Color.CORNFLOWER_BLUE.lerp(Color.WHITE, 0.5))
+				else:
+					m_lbl.add_theme_color_override("font_color", Color.CRIMSON.lerp(Color.WHITE, 0.5))
+				vbox.add_child(m_lbl)
 				
 	# Populate Repairs
 	var local_faction = "UPF" # Default
