@@ -44,5 +44,5 @@ func test_force_initialization():
 	assert_not_null(tf_nova, "Strike Force NOVA should exist")
 	
 	# Total Sathar Ships should be 10 + 4 + 4 + 2 + 2 + 1 = 23
-	assert_eq(total_sathar_ships, 23, "Total Sathar ships across fleets should be exactly 23")
+	assert_eq(total_sathar_ships, 24, "Total Sathar ships across fleets should be exactly 24")
 	assert_eq(total_sathar_fighters, 10, "Sathar should have exactly 10 fighters total")

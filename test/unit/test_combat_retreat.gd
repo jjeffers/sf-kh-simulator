@@ -57,7 +57,7 @@ func test_militia_cannot_withdraw_without_firing():
 	
 	# Normal ship could withdraw here
 	var can_w = gm._can_withdraw(ship_upf)
-	assert_false(can_w, "Militia should NOT be able to withdraw if it hasn't fired yet, regardless of range.")
+	assert_false(can_w["allowed"], "Militia should NOT be able to withdraw if it hasn't fired yet, regardless of range.")
 
 func test_militia_can_withdraw_after_firing_out_of_range():
 	NetworkManager.lobby_data["scenario"] = "campaign_encounter"
@@ -67,7 +67,7 @@ func test_militia_can_withdraw_after_firing_out_of_range():
 	ship_upf.has_ever_fired = true
 	
 	var can_w = gm._can_withdraw(ship_upf)
-	assert_true(can_w, "Militia should be able to withdraw if it HAS fired and is out of enemy range.")
+	assert_true(can_w["allowed"], "Militia should be able to withdraw if it HAS fired and is out of enemy range.")
 
 func test_militia_cannot_withdraw_in_range_even_after_firing():
 	NetworkManager.lobby_data["scenario"] = "campaign_encounter"
@@ -77,7 +77,7 @@ func test_militia_cannot_withdraw_in_range_even_after_firing():
 	ship_upf.has_ever_fired = true
 	
 	var can_w = gm._can_withdraw(ship_upf)
-	assert_false(can_w, "Militia should NOT be able to withdraw if an enemy is in range, even if it has fired.")
+	assert_false(can_w["allowed"], "Militia should NOT be able to withdraw if an enemy is in range, even if it has fired.")
 
 func test_regular_ship_can_withdraw_without_firing_if_out_of_range():
 	NetworkManager.lobby_data["scenario"] = "campaign_encounter"
@@ -92,4 +92,4 @@ func test_regular_ship_can_withdraw_without_firing_if_out_of_range():
 	ship_upf.has_fired = true # Pretend it already fired this turn
 	
 	var can_w = gm._can_withdraw(ship_upf)
-	assert_true(can_w, "Normal ship should be able to withdraw out of range.")
+	assert_true(can_w["allowed"], "Normal ship should be able to withdraw out of range.")

@@ -483,9 +483,11 @@ func _draw_fleets():
 				
 				var total_ships = 0
 				var names_array = []
+				var requires_retreat = false
 				for f in faction_fleets:
 					total_ships += f.ships.size()
 					names_array.append(f.fleet_name)
+					if f.must_retreat: requires_retreat = true
 					
 				btn.tooltip_text = "%s forces: %d ships" % [faction, total_ships]
 				
@@ -493,6 +495,25 @@ func _draw_fleets():
 					btn.texture_normal = preload("res://Assets/UI/fleet_enemy_upf.svg") if is_enemy else preload("res://Assets/UI/fleet_friendly_upf.svg")
 				elif faction == "Sathar":
 					btn.texture_normal = preload("res://Assets/UI/fleet_enemy_sathar.svg") if is_enemy else preload("res://Assets/UI/fleet_friendly_sathar.svg")
+				
+				if requires_retreat:
+					var retreat_bg = Panel.new()
+					var style = StyleBoxFlat.new()
+					style.bg_color = Color(1.0, 0.0, 0.0, 0.5)
+					style.border_width_top = 2
+					style.border_width_bottom = 2
+					style.border_width_left = 2
+					style.border_width_right = 2
+					style.border_color = Color.WHITE
+					style.corner_radius_top_left = 25
+					style.corner_radius_top_right = 25
+					style.corner_radius_bottom_left = 25
+					style.corner_radius_bottom_right = 25
+					retreat_bg.add_theme_stylebox_override("panel", style)
+					retreat_bg.custom_minimum_size = Vector2(50, 50)
+					retreat_bg.mouse_filter = Control.MOUSE_FILTER_IGNORE
+					retreat_bg.position = (pos - Vector2(25, 25)) + offset
+					fleets_container.add_child(retreat_bg)
 				
 				btn.position = (pos - Vector2(20, 20)) + offset
 				btn.pressed.connect(func(): _on_fleet_map_icon_clicked(first_f))
