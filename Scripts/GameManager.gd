@@ -2461,6 +2461,8 @@ func start_movement_phase():
 	# FIX: Respect current selection if valid
 	# If we already have a selected ship that is VALID (available), don't change selection.
 	if selected_ship and selected_ship in available:
+		_spawn_ghost()
+		_reset_plotting_state()
 		_update_ui_state()
 		return
 		
@@ -3930,7 +3932,7 @@ func _update_ui_state():
 			
 			# Withdrawal Check
 			if btn_withdraw:
-				if is_stationary and not is_locked:
+				if current_path.size() == 0 and not is_locked:
 					var can_w = _can_withdraw(selected_ship)
 					btn_withdraw.visible = can_w
 			
@@ -4627,6 +4629,15 @@ func register_movement_plan(ship_name: String, path: Array, final_facing: int, o
 	# Logic from original commitment: Update local state if selected
 	if selected_ship == ship:
 		_reset_plotting_state()
+		
+		# Auto-select the next available unplotted ship (UX enhancement)
+		var unplotted = ships.filter(func(s): return is_instance_valid(s) and s.side_id == current_side_id and not s.is_exploding and not s.has_moved and not s.has_orders)
+		if unplotted.size() > 0:
+			selected_ship = unplotted[0]
+			_reset_plotting_state()
+			_load_plan_visualization(selected_ship)
+			_update_camera(selected_ship)
+			
 		_update_ui_state()
 		
 	# SERVER BROADCAST: Ensure all OTHER clients get this plan

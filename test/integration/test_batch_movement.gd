@@ -141,6 +141,11 @@ func test_undo_planning():
 	
 	assert_true(s1.has_orders, "Orders set")
 	
+	# Due to auto-select feature, gm.selected_ship may have cycled to another ship
+	# if the GameManager loaded extraneous ships from a default scenario. 
+	# Explicitly re-select s1 before attempting to undo its specific plot.
+	gm.selected_ship = s1
+	
 	# Undo
 	gm._on_undo()
 	
