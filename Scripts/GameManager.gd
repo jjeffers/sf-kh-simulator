@@ -4159,17 +4159,7 @@ func _update_ui_state():
 
 	# Update Player Info Label
 	if label_player_info:
-		var p_txt = "Side: %d (%s)" % [my_side_id, get_side_name(my_side_id)]
-		var pid = 1
-		if _is_networked():
-			pid = (multiplayer.get_unique_id() if _is_networked() else 1)
-			
-		label_player_info.text = "%s\nPID: %d" % [p_txt, pid]
-		
-		# Color
-		if my_side_id == 1: label_player_info.modulate = Color(1, 0.5, 0.5) # Red-ish
-		elif my_side_id == 2: label_player_info.modulate = Color(0.5, 0.5, 1) # Blue-ish
-		else: label_player_info.modulate = Color.GREEN
+		label_player_info.visible = false
 
 func _on_undo():
 	if not selected_ship: return
