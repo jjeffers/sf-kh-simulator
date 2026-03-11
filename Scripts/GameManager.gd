@@ -11,6 +11,7 @@ var current_side_id: int = 1 # The "Active" moving side
 var firing_side_id: int = 0 # The side currently firing in Combat Phase
 var my_side_id: int = 0 # 0 = All/Debug, otherwise specific Side ID (1 or 2)
 var selected_ship: Ship = null
+var selected_seeker_pos: Vector3i = Vector3i(-999, -999, -999) # For tracking TAB cycle on inactive seekers
 var combat_target: Ship = null
 var _is_executing_movement: bool = false
 
@@ -512,6 +513,7 @@ func _setup_ui():
 	var panel_script = load("res://Scripts/ShipStatusPanel.gd")
 	if panel_script is GDScript:
 		ship_status_panel = panel_script.new()
+		ship_status_panel.activate_seeker_requested.connect(_on_activate_seeker_pressed)
 		vbox.add_child(ship_status_panel)
 	else:
 		push_error("CRITICAL: Failed to load ShipStatusPanel.gd! UI will be incomplete.")
@@ -2139,21 +2141,45 @@ func _cycle_selection():
 
 		# Filter: Active Player, !has_moved
 		var available = ships.filter(func(s): return is_instance_valid(s) and s.side_id == current_side_id and not s.has_moved)
-		if available.size() <= 1: return
 		
-		var idx = available.find(selected_ship)
-		var next_idx = (idx + 1) % available.size()
-		selected_ship = available[next_idx]
+		# Collect all seekers for the active side
+		var my_seekers = active_seekers.filter(func(s): return s["side_id"] == current_side_id)
 		
-		# Reset plotting
-		_reset_plotting_state()
+		var total_available = available.size() + my_seekers.size()
+		if total_available <= 1: return
+		
+		var current_idx = -1
+		if is_instance_valid(selected_ship) and available.has(selected_ship):
+			current_idx = available.find(selected_ship)
+		elif selected_seeker_pos != Vector3i(-999, -999, -999):
+			for i in range(my_seekers.size()):
+				if my_seekers[i]["pos"] == selected_seeker_pos:
+					current_idx = available.size() + i
+					break
+		
+		var shift_held = Input.is_key_pressed(KEY_SHIFT)
+		if shift_held:
+			current_idx = (current_idx - 1 + total_available) % total_available
+		else:
+			current_idx = (current_idx + 1) % total_available
+			
+		if current_idx < available.size():
+			selected_ship = available[current_idx]
+			selected_seeker_pos = Vector3i(-999, -999, -999)
+			_reset_plotting_state()
+			_load_plan_visualization(selected_ship)
+			_update_camera(selected_ship)
+			_update_ship_visuals() # Re-sort stack
+		else:
+			selected_ship = null
+			var seeker_idx = current_idx - available.size()
+			selected_seeker_pos = my_seekers[seeker_idx]["pos"]
+			_reset_plotting_state()
+			_update_camera() # No focus override, let it center on the pos below
+			camera.position = HexGrid.hex_to_pixel(selected_seeker_pos)
 		
 		if audio_ship_select and audio_ship_select.stream: audio_ship_select.play()
 		
-		_load_plan_visualization(selected_ship)
-		
-		_update_camera(selected_ship)
-		_update_ship_visuals() # Re-sort stack
 		_update_ui_state()
 
 	elif current_phase == Phase.COMBAT:
@@ -3743,6 +3769,8 @@ func _update_camera(focus_target_override = null):
 		target_pos = combat_target.position
 	elif selected_ship:
 		target_pos = HexGrid.hex_to_pixel(selected_ship.grid_position)
+	elif selected_seeker_pos != Vector3i(-999, -999, -999):
+		target_pos = HexGrid.hex_to_pixel(selected_seeker_pos)
 	else:
 		return
 
@@ -3822,6 +3850,16 @@ func _update_ui_state():
 	if ship_status_panel:
 		if is_instance_valid(selected_ship):
 			ship_status_panel.update_from_ship(selected_ship)
+		elif selected_seeker_pos != Vector3i(-999, -999, -999):
+			var found_seeker = null
+			for s in active_seekers:
+				if s["pos"] == selected_seeker_pos:
+					found_seeker = s
+					break
+			if found_seeker:
+				ship_status_panel.update_from_seeker(found_seeker)
+			else:
+				ship_status_panel.visible = false
 		else:
 			ship_status_panel.visible = false
 
@@ -4414,16 +4452,28 @@ func _update_movement_ui_list():
 		
 		list_movement.add_child(btn)
 		
-	# Find unactivated Seekers for active side
+	# Find all Seekers for active side
 	var is_admin_or_owner = (my_side_id == 0) or (my_side_id == current_side_id)
 	if is_admin_or_owner:
-		var my_inactive_seekers = active_seekers.filter(func(s): return s["side_id"] == current_side_id and s.get("speed", 0) == 0)
-		for seeker in my_inactive_seekers:
+		var my_seekers = active_seekers.filter(func(s): return s["side_id"] == current_side_id)
+		for seeker in my_seekers:
 			var btn = Button.new()
-			btn.text = "Activate Seeker @ %v" % seeker["pos"]
-			btn.modulate = Color.ORANGE
+			var is_active = seeker.get("speed", 0) > 0
+			var c = Color.RED if is_active else Color.ORANGE
+			
+			if seeker["pos"] == selected_seeker_pos:
+				btn.text = "> Seeker @ <%d,%d> <" % [seeker["pos"].x, seeker["pos"].y]
+				btn.modulate = Color.YELLOW
+			else:
+				btn.text = "Seeker @ <%d,%d>" % [seeker["pos"].x, seeker["pos"].y]
+				btn.modulate = c
+				
 			btn.pressed.connect(func():
-				_on_activate_seeker_pressed(seeker)
+				selected_seeker_pos = seeker["pos"]
+				selected_ship = null
+				_update_ui_state()
+				_update_camera() # Refocus view on selected seeker
+				queue_redraw()
 			)
 			list_movement.add_child(btn)
 	
@@ -5096,6 +5146,7 @@ func _resolve_seeker_movement_and_detonations():
 					best_next = adj
 					
 			if best_next != current_pos:
+				seeker["facing"] = HexGrid.get_hex_direction(current_pos, best_next)
 				current_pos = best_next
 				steps_taken += 1
 				
@@ -5109,6 +5160,9 @@ func _resolve_seeker_movement_and_detonations():
 			else:
 				break
 				
+		if not seeker.has("history"):
+			seeker["history"] = []
+		seeker["history"].append(seeker["pos"])
 		seeker["pos"] = current_pos
 		
 		# Delay speed increment to apply to next turn phase
@@ -5997,10 +6051,52 @@ func _draw():
 	for s in active_seekers:
 		# Draw if active, or if we own it during deployment/inactivity
 		var is_owner = (my_side_id == 0 or my_side_id == s["side_id"])
-		if is_owner or s.get("speed", 0) > 0: # Speed > 0 means it's ALIVE and hunting, visible to all
+		var speed = s.get("speed", 0)
+		if is_owner or speed > 0: # Speed > 0 means it's ALIVE and hunting, visible to all
 			var s_pos = HexGrid.hex_to_pixel(s["pos"])
-			draw_circle(s_pos, 10.0, Color(1.0, 0.5, 0.0, 0.9)) # Orange Circle
-			draw_circle(s_pos, 4.0, Color(1.0, 1.0, 1.0, 0.9)) # White Center Eye
+			if speed > 0:
+				# Active seeker - Draw Icon facing direction
+				var tex = load("res://Assets/seeker.png")
+				if tex:
+					var angle = deg_to_rad(s.get("facing", 0) * 60 - 30)
+					draw_set_transform(s_pos, angle + PI/2.0, Vector2(1, 1)) # Offset graphic 90 degrees since drawn facing up
+					var draw_rect = Rect2(-10, -10, 20, 20)
+					draw_texture_rect(tex, draw_rect, false)
+					draw_set_transform(Vector2.ZERO, 0.0, Vector2(1,1))
+				else:
+					var size = HexGrid.TILE_SIZE * 0.5
+					var pts = PackedVector2Array()
+					var angle = deg_to_rad(s.get("facing", 0) * 60 - 30)
+					pts.append(s_pos + Vector2(cos(angle), sin(angle)) * size * 1.5)
+					pts.append(s_pos + Vector2(cos(angle + PI*0.8), sin(angle + PI*0.8)) * size)
+					pts.append(s_pos + Vector2(cos(angle - PI*0.8), sin(angle - PI*0.8)) * size)
+					draw_colored_polygon(pts, Color.RED)
+				
+				# Draw Movement Vector
+				var end_hex = s["pos"] + (HexGrid.get_direction_vec(s.get("facing", 0)) * speed)
+				var end_pos = HexGrid.hex_to_pixel(end_hex)
+				draw_line(s_pos, end_pos, Color(1, 1, 1, 0.6), 3.0, true)
+				
+				# Arrow head
+				var path_angle = s_pos.angle_to_point(end_pos)
+				var arrow_pts = PackedVector2Array()
+				arrow_pts.append(end_pos)
+				arrow_pts.append(end_pos + Vector2(cos(path_angle + PI*0.8), sin(path_angle + PI*0.8)) * 10)
+				arrow_pts.append(end_pos + Vector2(cos(path_angle - PI*0.8), sin(path_angle - PI*0.8)) * 10)
+				draw_polygon(arrow_pts, PackedColorArray([Color(1, 1, 1, 0.6)]))
+				
+				# Draw Movement Trail if history exists
+				if s.has("history") and s["history"].size() > 0:
+					var trail_points = PackedVector2Array()
+					for hp in s["history"]:
+						trail_points.append(HexGrid.hex_to_pixel(hp))
+					trail_points.append(s_pos)
+					draw_polyline(trail_points, Color(0.5, 0.5, 0.5, 0.4), 2.0)
+					
+			else:
+				# Inactive seeker - Draw default icon
+				draw_circle(s_pos, 10.0, Color(1.0, 0.5, 0.0, 0.9)) # Orange Circle
+				draw_circle(s_pos, 4.0, Color(1.0, 1.0, 1.0, 0.9)) # White Center Eye
 			
 	# Draw Planned Seekers
 	if current_phase == Phase.MOVEMENT and is_instance_valid(selected_ship) and selected_ship.planned_seekers_to_drop.size() > 0:
