@@ -1716,6 +1716,11 @@ func _process_next_attack():
 		_on_resolution_complete()
 		return
 		
+	if current_phase == Phase.END:
+		pending_resolutions.clear()
+		_on_resolution_complete()
+		return
+		
 	var atk = pending_resolutions.pop_front()
 	var source = atk["source"]
 	var target = atk["target"]
@@ -4024,6 +4029,7 @@ func _update_ui_state():
 		btn_commit.visible = false
 		btn_orbit_cw.visible = false
 		btn_orbit_ccw.visible = false
+		if btn_exec_move: btn_exec_move.visible = false
 		
 		var phase_name = "Passive" if combat_subphase == 1 else "Active"
 		var txt = "Combat (%s Fire)\n%s Firing" % [phase_name, get_side_name(firing_side_id)]
@@ -4095,6 +4101,7 @@ func _update_ui_state():
 		btn_commit.visible = false
 		btn_orbit_cw.visible = false
 		btn_orbit_ccw.visible = false
+		if btn_exec_move: btn_exec_move.visible = false
 		
 		var side_n = get_side_name(repair_subphase)
 		if repair_subphase == 3:
@@ -4114,6 +4121,7 @@ func _update_ui_state():
 		btn_undo.visible = false
 		btn_commit.visible = false
 		btn_orbit_cw.visible = false
+		if btn_exec_move: btn_exec_move.visible = false
 		label_status.text = "Game Over"
 
 	# Update Player Info Label
