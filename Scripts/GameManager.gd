@@ -3603,8 +3603,6 @@ func rpc_execute_repairs_for_side(side_id: int, allocs_for_side: Dictionary, rng
 			elif key.begins_with("wpn_"): display_name = "WPN"
 			
 			var pre_text = "%s (%d%%)\nRoll: %d\n" % [display_name, chance, roll]
-			if audio_repair_roll and audio_repair_roll.stream:
-				audio_repair_roll.play()
 			
 			if roll >= 90:
 				if roll >= 99:

@@ -416,7 +416,7 @@ func rpc_order_fleet_move(fleet_idx: int, destination_id: String):
 		if multiplayer.is_server() and has_node("/root/NetworkManager"):
 			var nm = get_node("/root/NetworkManager")
 			nm.sync_campaign_state.rpc(serialize_state())
-			emit_signal("campaign_day_advanced", current_day)
+			emit_signal("campaign_state_updated")
 
 func cancel_fleet_move(fleet: CampaignFleet):
 	var idx = fleets.find(fleet)
@@ -430,7 +430,7 @@ func rpc_cancel_fleet_move(fleet_idx: int):
 		if multiplayer.is_server() and has_node("/root/NetworkManager"):
 			var nm = get_node("/root/NetworkManager")
 			nm.sync_campaign_state.rpc(serialize_state())
-			emit_signal("campaign_day_advanced", current_day)
+			emit_signal("campaign_state_updated")
 
 @rpc("any_peer", "call_local", "reliable")
 func request_end_turn(faction: String):

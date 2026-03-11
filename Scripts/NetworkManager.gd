@@ -170,7 +170,7 @@ func sync_campaign_state(state_data: Dictionary):
 		cm.campaign_day_advanced.emit(cm.current_day)
 	else:
 		# Always emit an update trigger so the map redraws and auto-prompts fire
-		cm.campaign_day_advanced.emit(cm.current_day)
+		cm.campaign_state_updated.emit()
 
 @rpc("authority", "call_local", "reliable")
 func start_game_rpc():
