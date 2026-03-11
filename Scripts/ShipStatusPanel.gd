@@ -1,5 +1,6 @@
 extends PanelContainer
 
+signal activate_seeker_requested(seeker_data: Dictionary)
 
 var header_box: HBoxContainer
 var icon_rect: TextureRect
@@ -17,6 +18,7 @@ var lbl_adf: Label
 var lbl_mr: Label
 var lbl_effective_mr: Label
 
+var btn_activate_seeker: Button
 
 var systems_container: HBoxContainer
 var weapons_vbox: VBoxContainer
@@ -114,6 +116,11 @@ func _setup_ui():
 	_create_stat_row(stats_grid, "MR:", "lbl_mr")
 	_create_stat_row(stats_grid, "EFF. MR:", "lbl_effective_mr")
 
+	btn_activate_seeker = Button.new()
+	btn_activate_seeker.text = "ACTIVATE SEEKER"
+	btn_activate_seeker.modulate = Color.ORANGE
+	btn_activate_seeker.visible = false
+	stats_vbox.add_child(btn_activate_seeker)
 	
 	# Separator
 	main_vbox.add_child(HSeparator.new())
@@ -208,6 +215,8 @@ func update_from_ship(ship):
 		return
 		
 	visible = true
+	btn_activate_seeker.visible = false
+	systems_container.visible = true
 	
 	# Header
 	name_label.text = ship.name.to_upper()
@@ -396,3 +405,58 @@ func _add_alert(msg: String):
 	l.text = msg
 	l.add_theme_color_override("font_color", Color(1, 0.5, 0.5))
 	alerts_vbox.add_child(l)
+
+func update_from_seeker(seeker: Dictionary):
+	if seeker.is_empty():
+		visible = false
+		return
+		
+	visible = true
+
+	# Cleanup previous signal connections safely
+	if btn_activate_seeker.pressed.is_connected(_on_activate_pressed):
+		btn_activate_seeker.pressed.disconnect(_on_activate_pressed)
+	
+	var is_inactive = seeker.get("speed", 0) == 0
+	
+	# Show activate button if inactive
+	if is_inactive:
+		btn_activate_seeker.visible = true
+		btn_activate_seeker.pressed.connect(_on_activate_pressed.bind(seeker))
+	else:
+		btn_activate_seeker.visible = false
+		
+	# Header
+	name_label.text = "SEEKER"
+	class_label.text = "Guided Missile"
+	faction_label.text = seeker.get("owner_name", "Unknown")
+	var tex = load("res://Assets/seeker.png")
+	if tex:
+		icon_rect.texture = tex
+	else:
+		icon_rect.texture = null
+	
+	hull_bar.max_value = 1
+	hull_bar.value = 1
+	hull_label.text = "1/1"
+	var sb = StyleBoxFlat.new()
+	sb.bg_color = Color.GREEN
+	hull_bar.add_theme_stylebox_override("fill", sb)
+	
+	lbl_speed.text = "%d" % seeker.get("speed", 0)
+	lbl_adf.text = "2"
+	lbl_adf.remove_theme_color_override("font_color")
+	lbl_mr.text = "∞"
+	if lbl_effective_mr:
+		lbl_effective_mr.text = "∞"
+	
+	# Hide / Clear Weapons and Defenses
+	systems_container.visible = false
+	for c in weapons_vbox.get_children(): c.free()
+	for c in defenses_vbox.get_children(): c.free()
+	
+	alerts_panel.visible = false
+	damaged_systems_panel.visible = false
+
+func _on_activate_pressed(seeker: Dictionary):
+	activate_seeker_requested.emit(seeker)
