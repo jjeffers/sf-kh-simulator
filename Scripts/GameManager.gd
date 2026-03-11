@@ -104,7 +104,7 @@ var btn_dock: Button
 var btn_rearm: Button
 var btn_drop_mine: Button # NEW: Mine placement flag
 var btn_drop_seeker: Button # NEW: Seeker placement flag
-var btn_withdraw: Button # NEW: Strategic Retreat flag
+
 
 # Mines State
 var active_mines: Array[Dictionary] = [] # Format: {"pos": Vector3i, "side_id": int, "owner_name": String}
@@ -515,6 +515,7 @@ func _setup_ui():
 	if panel_script is GDScript:
 		ship_status_panel = panel_script.new()
 		ship_status_panel.activate_seeker_requested.connect(_on_activate_seeker_pressed)
+		ship_status_panel.withdraw_requested.connect(_on_withdraw_pressed)
 		vbox.add_child(ship_status_panel)
 	else:
 		push_error("CRITICAL: Failed to load ShipStatusPanel.gd! UI will be incomplete.")
@@ -584,13 +585,6 @@ func _setup_ui():
 	btn_rearm.pressed.connect(_on_rearm_pressed)
 	btn_rearm.visible = false
 	dock_box.add_child(btn_rearm)
-	
-	btn_withdraw = Button.new()
-	btn_withdraw.text = "Withdraw"
-	btn_withdraw.pressed.connect(_on_withdraw_pressed)
-	btn_withdraw.visible = false
-	btn_withdraw.modulate = Color(1, 0.5, 0.2)
-	vbox.add_child(btn_withdraw)
 	
 	# MS Toggle
 	btn_ms_toggle = CheckBox.new()
@@ -3885,7 +3879,6 @@ func _update_ui_state():
 		btn_ms_toggle.visible = false
 		if btn_dock: btn_dock.visible = false
 		if btn_rearm: btn_rearm.visible = false
-		if btn_withdraw: btn_withdraw.visible = false
 		if btn_drop_mine: btn_drop_mine.visible = false
 		if btn_drop_seeker: btn_drop_seeker.visible = false
 		if opt_active_screen: opt_active_screen.visible = false
@@ -3973,10 +3966,11 @@ func _update_ui_state():
 						btn_dock.text = "Dock"
 			
 			# Withdrawal Check
-			if btn_withdraw:
-				if current_path.size() == 0 and not is_locked:
-					var can_w = _can_withdraw(selected_ship)
-					btn_withdraw.visible = can_w
+			if current_path.size() == 0 and not is_locked:
+				var w_status = _can_withdraw(selected_ship)
+				ship_status_panel.set_withdraw_state(true, not w_status["allowed"], w_status["reason"])
+			else:
+				ship_status_panel.set_withdraw_state(false)
 			
 			# MS Toggle Check
 			# Visible if ship has Max MS > 0
@@ -4751,25 +4745,11 @@ func _load_plan_visualization(s: Ship):
 		_spawn_ghost()
 
 
-func _can_withdraw(ship: Ship) -> bool:
-	if not ship: return false
-	
-	# Only allow retreat in Campaign Encounters for now.
-	# Or globally if desired, but rules state Campaign specific.
-	# Actually, players might want to retreat from standard scenarios too if outside range?
-	# Let's check scenario. "campaign_encounter" is the primary one.
-	var scen_key = ""
-	if NetworkManager.lobby_data != null:
-		scen_key = NetworkManager.lobby_data.get("scenario", "")
-	if scen_key != "campaign_encounter": 
-		print("DEBUG _can_withdraw: rejected bad scen_key: ", scen_key)
-		return false
-	# Cannot withdraw if they have moved this turn yet (must be starting stationary? "movement planning")
-	# If they have plotted a path, the button is hidden above anyway since is_stationary = false.
+func _can_withdraw(ship: Ship) -> Dictionary:
+	if not ship: return {"allowed": false, "reason": "No ship selected."}
 	
 	if ship.is_militia and not ship.has_ever_fired:
-		print("DEBUG _can_withdraw: rejected militia that hasn't fired")
-		return false # Militia must attack at least once before fleeing
+		return {"allowed": false, "reason": "Militia must attack at least once before retreating."}
 
 	# Check range to all living enemies
 	for enemy in ships:
@@ -4779,11 +4759,9 @@ func _can_withdraw(ship: Ship) -> bool:
 				if w.get("ammo", 0) > 0 and not w.get("is_crippled", false):
 					var dist = HexGrid.hex_distance(ship.grid_position, enemy.grid_position)
 					if dist <= w.get("range", 0):
-						print("DEBUG _can_withdraw: rejected enemy in range. Dist: ", dist, " Range: ", w.get("range", 0))
-						return false # An enemy is in range
+						return {"allowed": false, "reason": "Cannot withdraw while in enemy weapon range."}
 
-	print("DEBUG _can_withdraw: Success!")
-	return true
+	return {"allowed": true, "reason": ""}
 
 func _on_withdraw_pressed():
 	if not is_instance_valid(selected_ship): return

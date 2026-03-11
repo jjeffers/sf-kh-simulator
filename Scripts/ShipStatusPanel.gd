@@ -1,6 +1,7 @@
 extends PanelContainer
 
 signal activate_seeker_requested(seeker_data: Dictionary)
+signal withdraw_requested()
 
 var header_box: HBoxContainer
 var icon_rect: TextureRect
@@ -19,6 +20,7 @@ var lbl_mr: Label
 var lbl_effective_mr: Label
 
 var btn_activate_seeker: Button
+var btn_withdraw: Button
 
 var systems_container: HBoxContainer
 var weapons_vbox: VBoxContainer
@@ -124,6 +126,13 @@ func _setup_ui():
 	btn_activate_seeker.visible = false
 	stats_vbox.add_child(btn_activate_seeker)
 	
+	btn_withdraw = Button.new()
+	btn_withdraw.text = "WITHDRAW"
+	btn_withdraw.modulate = Color(1, 0.5, 0.2)
+	btn_withdraw.visible = false
+	btn_withdraw.pressed.connect(func(): withdraw_requested.emit())
+	stats_vbox.add_child(btn_withdraw)
+	
 	# Separator
 	main_vbox.add_child(HSeparator.new())
 	
@@ -218,6 +227,7 @@ func update_from_ship(ship):
 		
 	visible = true
 	btn_activate_seeker.visible = false
+	btn_withdraw.visible = false
 	systems_container.visible = true
 	
 	# Header
@@ -428,6 +438,8 @@ func update_from_seeker(seeker: Dictionary):
 	else:
 		btn_activate_seeker.visible = false
 		
+	btn_withdraw.visible = false
+		
 	# Header
 	name_label.text = "SEEKER"
 	class_label.text = "Guided Missile"
@@ -461,3 +473,12 @@ func update_from_seeker(seeker: Dictionary):
 
 func _on_activate_pressed(seeker: Dictionary):
 	activate_seeker_requested.emit(seeker)
+
+func set_withdraw_state(is_visible: bool, is_disabled: bool = false, reason: String = ""):
+	if not btn_withdraw: return
+	btn_withdraw.visible = is_visible
+	btn_withdraw.disabled = is_disabled
+	if is_disabled and reason != "":
+		btn_withdraw.tooltip_text = reason
+	else:
+		btn_withdraw.tooltip_text = "Withdraw this ship from combat."
