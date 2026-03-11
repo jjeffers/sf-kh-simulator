@@ -19,6 +19,8 @@ var days_to_arrival: int = 0
 # List of Ship objects or ship state dictionaries
 var ships: Array = []
 
+var must_retreat: bool = false
+
 func _init(p_name: String, p_faction: String, p_system_id: String):
 	fleet_name = p_name
 	faction = p_faction
@@ -26,6 +28,7 @@ func _init(p_name: String, p_faction: String, p_system_id: String):
 	destination_system_id = ""
 	days_to_arrival = 0
 	ships = []
+	must_retreat = false
 
 func add_ship(ship_data):
 	ships.append(ship_data)
@@ -81,7 +84,8 @@ func serialize() -> Dictionary:
 		"current_system_id": current_system_id,
 		"destination_system_id": destination_system_id,
 		"days_to_arrival": days_to_arrival,
-		"ships": ship_data_list
+		"ships": ship_data_list,
+		"must_retreat": must_retreat
 	}
 
 func deserialize(data: Dictionary):
@@ -90,6 +94,7 @@ func deserialize(data: Dictionary):
 	current_system_id = data.get("current_system_id", "")
 	destination_system_id = data.get("destination_system_id", "")
 	days_to_arrival = data.get("days_to_arrival", 0)
+	must_retreat = data.get("must_retreat", false)
 	
 	ships.clear()
 	# Note: Deserializing ships back into full objects will likely happen 

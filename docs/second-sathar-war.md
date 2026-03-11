@@ -162,7 +162,7 @@ Once the campaign parameters are set, the game transitions to the Strategic Phas
 
     - **Sathar Fleets**: 
         - The Sathar starts with 2 fleets.
-        - The fleets are composed of: 10 Fighters, 4 Frigates, 4 Destroyers, 2 Light Cruisers, 2 Heavy Cruisers, 1 Assault Carriers
+        - The fleets are composed of: 10 Fighters, 4 Frigates, 4 Destroyers, 2 Light Cruisers, 2 Heavy Cruisers, 2 Assault Carriers
     - Ships will be randomly assigned to fleets with following constraints:
         - Each fleet must have at least 1 Assault Carrier
         - Each assault carrier wil have no more than 8 fighters
@@ -272,6 +272,7 @@ Once the campaign parameters are set, the game transitions to the Strategic Phas
 *  **Retreat**
     - Retreating forces must be outside of enemy weapon range and a button will appear during movement planning labbelled "Withdraw". Clicking this will remove the ship from the map and be counted as reteated.
     - Militia ships must make 1 attack before retreating from combat in their home system.
+    - Ships leaving the battle this way are removed from the battle, and are marked as "retreated" in the battle summary.
 
 *   **Battle Aftermath:**
     *   Destroyed ships are removed from the campaign.
@@ -282,12 +283,14 @@ Once the campaign parameters are set, the game transitions to the Strategic Phas
         - Any failed hull damage roll means no futher hull repairs may be made.
         - Log the repair attempts in the combat log.
     *   Damaged or crippled ships carry their status back to the strategic map.
-    *   Retreating forces must withdraw to an adjacent, safe system.
+    *   Retreating ships that are on the winnng side rejoin their original fleet.
+    *   Retreating ships that are on the losing side rejoin their original fleet but that fleet must retreat to a system that is not occupied by the enemy. These fleets are marked on the strategic map with a red circle with a white border.
+    *  A game turn cannot end until all retreating fleets have planned a movement to a system that is not occupied by the enemy.
 
 * **Battle Summary**
     - As soon as one side wins the battle, Show a battle summary in a panel that is centered on the display. 
     - The summary should show the winner at the top "UPF VICTORY" or "SATHAR VICTORY".
-    - Display a list of all ships destroyed, damaged, or crippled during the battle. The casualties should be listed in two columns, one for each side.
+    - Display a list of all ships destroyed, damaged, crippled, or retreated during the battle. The casualties should be listed in two columns, one for each side.
     - At the bottom include a button that returns the user back to the Campaign Map.
 
 

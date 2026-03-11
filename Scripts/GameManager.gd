@@ -7130,6 +7130,7 @@ var vbox_metrics_upf: VBoxContainer
 var vbox_metrics_sathar: VBoxContainer
 var lbl_repairs: Label
 var btn_summary_return: Button
+var _winning_side_id: int = 0
 
 func _build_summary_panel():
 	panel_summary = PanelContainer.new()
@@ -7246,6 +7247,7 @@ func _show_battle_summary(title_text: String, side_id: int):
 func receive_battle_summary(title_text: String, side_id: int, dcr_dict: Dictionary, metrics_dict: Dictionary = {}):
 	current_phase = Phase.END
 	_update_ui_state() # Hide standard tactical UI frames
+	_winning_side_id = side_id
 	
 	if NetworkManager.lobby_data != null and NetworkManager.lobby_data.get("scenario", "") == "campaign_encounter":
 		btn_summary_return.text = "Return to Campaign Map"
@@ -7284,7 +7286,10 @@ func receive_battle_summary(title_text: String, side_id: int, dcr_dict: Dictiona
 		# Define status
 		var status_str = ""
 		var col = Color.WHITE
-		if s.is_destroyed or s.hull <= 0:
+		if s.has_withdrawn:
+			status_str = "Retreated"
+			col = Color.LIGHT_SLATE_GRAY
+		elif s.is_destroyed or s.hull <= 0:
 			status_str = "Destroyed"
 			col = Color.RED
 		else:
@@ -7486,11 +7491,19 @@ func _sync_campaign_results():
 						tac_ship = s
 						break
 						
-				if tac_ship == null or tac_ship.is_destroyed or tac_ship.hull <= 0:
+				if tac_ship == null or (tac_ship.is_destroyed and not tac_ship.has_withdrawn) or tac_ship.hull <= 0:
 					log_message("DEBUG: Removing destroyed ship from fleet: %s" % c_name)
 					f.ships.remove_at(i)
 					log_message("[color=red]Campaign updated: %s destroyed/removed from fleet.[/color]" % c_name)
 				else:
+					var winning_faction = "None"
+					if _winning_side_id == 1: winning_faction = "UPF"
+					elif _winning_side_id == 2: winning_faction = "Sathar"
+					
+					if tac_ship.has_withdrawn and c_faction != winning_faction and winning_faction != "None":
+						f.must_retreat = true
+						log_message("[color=orange]Campaign updated: %s retreated. Fleet must retreat.[/color]" % c_name)
+					
 					c_ship["hull"] = tac_ship.hull
 					c_ship["max_hull"] = tac_ship.max_hull
 					c_ship["current_adf_modifier"] = tac_ship.current_adf_modifier

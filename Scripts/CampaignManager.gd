@@ -195,7 +195,7 @@ func _initialize_sathar_forces():
 		"Destroyer": 4,
 		"Light Cruiser": 2,
 		"Heavy Cruiser": 2,
-		"Assault Carrier": 1
+		"Assault Carrier": 2
 	}
 	
 	for type in sathar_composition.keys():
@@ -403,6 +403,15 @@ func order_fleet_move(fleet: CampaignFleet, destination_id: String) -> bool:
 	if fleet.current_system_id.begins_with("Start Circle") and fleet.faction != "Sathar":
 		return false
 		
+	if fleet.must_retreat:
+		var occupants = _get_systems_with_fleets()
+		var enemy_faction = "Sathar" if fleet.faction == "UPF" else "UPF"
+		var has_enemy_fleets = (occupants.has(destination_id) and occupants[destination_id].get(enemy_faction, []).size() > 0)
+		var has_enemy_station = (enemy_faction == "UPF" and (destination_id in UPF_FORTRESSES or destination_id in UPF_ARMED_STATIONS))
+		if has_enemy_fleets or has_enemy_station:
+			ConsoleManager.log_message("[color=red]Cannot retreat to a system occupied by enemy forces![/color]")
+			return false
+			
 	var idx = fleets.find(fleet)
 	if idx != -1:
 		rpc_order_fleet_move.rpc(idx, destination_id)
@@ -435,6 +444,13 @@ func rpc_cancel_fleet_move(fleet_idx: int):
 @rpc("any_peer", "call_local", "reliable")
 func request_end_turn(faction: String):
 	if multiplayer.is_server():
+		# Validate that no fleet is stuck needing to retreat
+		for f in fleets:
+			if f.faction == faction and f.must_retreat and not f.is_moving():
+				var msg = "[color=red]Cannot end turn. %s must plot a retreat to a safe system![/color]" % f.fleet_name
+				ConsoleManager.log_message.rpc(msg)
+				return
+				
 		if faction == "UPF": upf_ready = true
 		elif faction == "Sathar": sathar_ready = true
 		
