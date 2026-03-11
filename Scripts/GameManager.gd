@@ -6028,11 +6028,12 @@ func _draw():
 			var s_pos = HexGrid.hex_to_pixel(s["pos"])
 			if speed > 0:
 				# Active seeker - Draw Icon facing direction
-				if tex_seeker:
+				var tex = load("res://Assets/seeker.png")
+				if tex:
 					var angle = deg_to_rad(s.get("facing", 0) * 60 - 30)
 					draw_set_transform(s_pos, angle + PI/2.0, Vector2(1, 1)) # Offset graphic 90 degrees since drawn facing up
-					var draw_rect = Rect2(-3.87, -10, 7.75, 20)
-					draw_texture_rect(tex_seeker, draw_rect, false)
+					var draw_rect = Rect2(-10, -10, 20, 20)
+					draw_texture_rect(tex, draw_rect, false)
 					draw_set_transform(Vector2.ZERO, 0.0, Vector2(1,1))
 				else:
 					var size = HexGrid.TILE_SIZE * 0.5

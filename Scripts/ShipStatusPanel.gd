@@ -125,7 +125,6 @@ func _setup_ui():
 	btn_activate_seeker.modulate = Color.ORANGE
 	btn_activate_seeker.visible = false
 	stats_vbox.add_child(btn_activate_seeker)
-	
 	btn_withdraw = Button.new()
 	btn_withdraw.text = "WITHDRAW"
 	btn_withdraw.modulate = Color(1, 0.5, 0.2)
@@ -439,7 +438,6 @@ func update_from_seeker(seeker: Dictionary):
 		btn_activate_seeker.visible = false
 		
 	btn_withdraw.visible = false
-		
 	# Header
 	name_label.text = "SEEKER"
 	class_label.text = "Guided Missile"
