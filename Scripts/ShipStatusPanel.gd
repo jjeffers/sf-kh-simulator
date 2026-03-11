@@ -30,6 +30,8 @@ var alerts_vbox: VBoxContainer
 var damaged_systems_panel: PanelContainer
 var damaged_systems_vbox: VBoxContainer
 
+var tex_seeker: Texture2D = preload("res://Assets/seeker.png")
+
 func _init():
 	_setup_ui()
 
@@ -430,9 +432,8 @@ func update_from_seeker(seeker: Dictionary):
 	name_label.text = "SEEKER"
 	class_label.text = "Guided Missile"
 	faction_label.text = seeker.get("owner_name", "Unknown")
-	var tex = load("res://Assets/seeker.png")
-	if tex:
-		icon_rect.texture = tex
+	if tex_seeker:
+		icon_rect.texture = tex_seeker
 	else:
 		icon_rect.texture = null
 	
