@@ -5096,6 +5096,9 @@ func _resolve_seeker_movement_and_detonations():
 		if seeker.get("speed", 0) <= 0:
 			continue # Inactive or destroyed
 			
+		if seeker.get("side_id", -1) != current_side_id:
+			continue # Seekers only move on the turn of the side that owns them
+			
 		log_message("[color=orange]Seeker at %v activates at speed %d.[/color]" % [seeker["pos"], seeker["speed"]])
 		
 		# Check max threshold before moving
