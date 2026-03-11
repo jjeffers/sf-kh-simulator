@@ -4921,6 +4921,9 @@ func _resolve_mine_detonations():
 					
 		log_message("Mines check complete. Hit ships size: %d" % hit_ships.size())
 					
+		if hit_ships.size() == 0:
+			await get_tree().process_frame
+
 		if hit_ships.size() > 0:
 			log_message("MINE DETONATED at %v!" % m["pos"])
 			detonated_indices.append(i)
