@@ -138,6 +138,8 @@ Once the campaign parameters are set, the game transitions to the Strategic Phas
 *   **Strategic Turn**
     - Each turn represents a day.
     - Both sides issue orders and then "End Turn" - all actions are executed simultaneously.
+    - Fighters may not be moved independently of their assault carriers. If an assault carrier is moved, all fighters docked with that assault carrier will move with it.
+    - Fighters in a system without a friendly assault carrier (with capacity to carry that fighter)or space station are destroyed.
 
 *   **Map Overview:** The campaign takes place on a map of star systems interconnected by travel routes. The map data is driven by a data file that is loaded at the start of the campaign. The map is displayed in a 2D view with the star systems as nodes and the travel routes as edges.
     - Coordinate Grid: Labeled $X$ (0 to 45) and $Y$ (0 to 55) based on your corrected map coordinates.
@@ -246,6 +248,7 @@ Once the campaign parameters are set, the game transitions to the Strategic Phas
     - The dialog panel will also list all connected systems and the distance to each system.
     - If the defender elects to retreat the controlling side must decide on connected system to retreat to.
     - Militia ships may not retreat from combat in their home system.
+    - Fighters do not have the ability to retreat. Fighters must be docked with an assault carrier that is retreating to withdraw from combat.
     
 * **Supply**
 - UPF fleets are in supply if they can trace a route from their current location to a UPF fortified station. The route traced must be free of Sathar ships or fleets.

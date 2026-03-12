@@ -1118,7 +1118,7 @@ func _handle_combat_click(hex: Vector3i):
 	for s in ships:
 		if is_instance_valid(s) and s.grid_position == hex and s != selected_ship:
 			# Check validity as target
-			if s.side_id != my_side_id and not s.is_exploding:
+			if s.side_id != my_side_id and not s.is_exploding and not s.has_withdrawn:
 				candidates.append(s)
 	
 	# Sort candidates by Visual Order (Scene Tree Index)
@@ -1309,7 +1309,7 @@ func _handle_combat_click(hex: Vector3i):
 
 func _check_for_valid_combat_targets() -> bool:
 	# Iterate all ships owned by firing_side_id
-	var my_ships = ships.filter(func(s): return is_instance_valid(s) and s.side_id == firing_side_id and not s.is_exploding) # Docked check is per-weapon now
+	var my_ships = ships.filter(func(s): return is_instance_valid(s) and s.side_id == firing_side_id and not s.is_exploding and not s.has_withdrawn) # Docked check is per-weapon now
 	
 	print("[DEBUG] TARGET CHECK P%d. Ships: %d" % [firing_side_id, my_ships.size()])
 	
@@ -1335,7 +1335,7 @@ func _check_for_valid_combat_targets() -> bool:
 
 func _get_valid_targets_for_weapon(shooter: Ship, weapon: Dictionary) -> Array[Ship]:
 	var valid: Array[Ship] = []
-	var targets = ships.filter(func(s): return is_instance_valid(s) and s != shooter and s.hull > 0 and not s.is_exploding and s.side_id != shooter.side_id)
+	var targets = ships.filter(func(s): return is_instance_valid(s) and s != shooter and s.hull > 0 and not s.is_exploding and not s.has_withdrawn and s.side_id != shooter.side_id)
 	
 	for t in targets:
 		var dist = HexGrid.hex_distance(shooter.grid_position, t.grid_position)
@@ -2416,12 +2416,12 @@ func start_movement_phase():
 		if s.side_id == current_side_id and not s.has_moved:
 			s.has_orders = false
 			
-		if s.side_id == current_side_id and not s.is_exploding and not s.has_moved:
+		if s.side_id == current_side_id and not s.is_exploding and not s.has_withdrawn and not s.has_moved:
 			pass # Accepted
 		else:
 			print("DEBUG: Rejected ", s.name, " Side:", s.side_id, " CurSide:", current_side_id, " Moved:", s.has_moved)
 
-	var available = ships.filter(func(s): return is_instance_valid(s) and s.side_id == current_side_id and not s.is_exploding and not s.has_moved)
+	var available = ships.filter(func(s): return is_instance_valid(s) and s.side_id == current_side_id and not s.is_exploding and not s.has_withdrawn and not s.has_moved)
 	print("DEBUG: start_movement_phase. Side: ", current_side_id, " Available: ", available.size())
 	if available.size() > 0:
 		print("DEBUG: First available: ", available[0].name, " ID: ", available[0].side_id, " Moved: ", available[0].has_moved)
@@ -3968,7 +3968,8 @@ func _update_ui_state():
 			# Withdrawal Check
 			if current_path.size() == 0 and not is_locked:
 				var w_status = _can_withdraw(selected_ship)
-				ship_status_panel.set_withdraw_state(true, not w_status["allowed"], w_status["reason"])
+				var show_withdraw = (selected_ship.ship_class != "Fighter")
+				ship_status_panel.set_withdraw_state(show_withdraw, not w_status["allowed"], w_status["reason"])
 			else:
 				ship_status_panel.set_withdraw_state(false)
 			
@@ -4383,7 +4384,7 @@ func _update_movement_ui_list():
 	# Find ships for active side
 	var my_ships = []
 	if current_side_id > 0:
-		my_ships = ships.filter(func(s): return is_instance_valid(s) and s.side_id == current_side_id and not s.is_exploding)
+		my_ships = ships.filter(func(s): return is_instance_valid(s) and s.side_id == current_side_id and not s.is_exploding and not s.has_withdrawn)
 	
 	for s in my_ships:
 		var btn = Button.new()
@@ -4672,7 +4673,7 @@ func register_movement_plan(ship_name: String, path: Array, final_facing: int, o
 		_reset_plotting_state()
 		
 		# Auto-select the next available unplotted ship (UX enhancement)
-		var unplotted = ships.filter(func(s): return is_instance_valid(s) and s.side_id == current_side_id and not s.is_exploding and not s.has_moved and not s.has_orders)
+		var unplotted = ships.filter(func(s): return is_instance_valid(s) and s.side_id == current_side_id and not s.is_exploding and not s.has_withdrawn and not s.has_moved and not s.has_orders)
 		if unplotted.size() > 0:
 			selected_ship = unplotted[0]
 			_reset_plotting_state()
@@ -4738,6 +4739,9 @@ func _load_plan_visualization(s: Ship):
 func _can_withdraw(ship: Ship) -> Dictionary:
 	if not ship: return {"allowed": false, "reason": "No ship selected."}
 	
+	if ship.ship_class == "Fighter":
+		return {"allowed": false, "reason": "Fighters must be docked with a retreating carrier."}
+	
 	if ship.is_militia and not ship.has_ever_fired:
 		return {"allowed": false, "reason": "Militia must attack at least once before retreating."}
 
@@ -4793,7 +4797,12 @@ func rpc_sync_withdraw(ship_name: String):
 		ship.is_destroyed = true # To trigger logic skipping elsewhere
 		log_message("[color=orange]%s has withdrawn and left the tactical area.[/color]" % ship.name)
 		ship.visible = false
+		if selected_ship == ship:
+			selected_ship = null
+			_reset_plotting_state()
+			_update_ui_state()
 		_update_movement_ui_list()
+		queue_redraw()
 		# Needs to be sent back as an event to Campaign? 
 		# We'll handle this at battle-end by checking has_withdrawn or surviving ships.
 		_check_victory() # Maybe the last ship withdrew?
@@ -6383,7 +6392,7 @@ func _get_hexes_in_range(center: Vector3i, dist: int) -> Array:
 func _get_valid_targets(shooter: Ship) -> Array:
 	var valid = []
 	for s in ships:
-		if is_instance_valid(s) and s.side_id != shooter.side_id and not s.is_exploding:
+		if is_instance_valid(s) and s.side_id != shooter.side_id and not s.is_exploding and not s.has_withdrawn:
 			# Reactive Fire Tracking: Use previous path if Defensive Fire (Passive)
 			var target_hexes = [s.grid_position]
 			if combat_subphase == 1 and s.side_id == current_side_id:
@@ -7529,6 +7538,8 @@ func _sync_campaign_results():
 	for i in range(CampaignManager.fleets.size() - 1, -1, -1):
 		if CampaignManager.fleets[i].ships.size() == 0:
 			CampaignManager.fleets.remove_at(i)
+			
+	CampaignManager._enforce_fighter_survival()
 			
 	if CampaignManager.active_encounters.has(sys_name):
 		CampaignManager.active_encounters.erase(sys_name)
