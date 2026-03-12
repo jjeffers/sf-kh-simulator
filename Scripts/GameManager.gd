@@ -3968,7 +3968,8 @@ func _update_ui_state():
 			# Withdrawal Check
 			if current_path.size() == 0 and not is_locked:
 				var w_status = _can_withdraw(selected_ship)
-				ship_status_panel.set_withdraw_state(true, not w_status["allowed"], w_status["reason"])
+				var show_withdraw = (selected_ship.ship_class != "Fighter")
+				ship_status_panel.set_withdraw_state(show_withdraw, not w_status["allowed"], w_status["reason"])
 			else:
 				ship_status_panel.set_withdraw_state(false)
 			
@@ -4737,6 +4738,9 @@ func _load_plan_visualization(s: Ship):
 
 func _can_withdraw(ship: Ship) -> Dictionary:
 	if not ship: return {"allowed": false, "reason": "No ship selected."}
+	
+	if ship.ship_class == "Fighter":
+		return {"allowed": false, "reason": "Fighters must be docked with a retreating carrier."}
 	
 	if ship.is_militia and not ship.has_ever_fired:
 		return {"allowed": false, "reason": "Militia must attack at least once before retreating."}

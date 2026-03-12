@@ -246,6 +246,7 @@ Once the campaign parameters are set, the game transitions to the Strategic Phas
     - The dialog panel will also list all connected systems and the distance to each system.
     - If the defender elects to retreat the controlling side must decide on connected system to retreat to.
     - Militia ships may not retreat from combat in their home system.
+    - Fighters do not have the ability to retreat. Fighters must be docked with an assault carrier that is retreating to withdraw from combat.
     
 * **Supply**
 - UPF fleets are in supply if they can trace a route from their current location to a UPF fortified station. The route traced must be free of Sathar ships or fleets.
