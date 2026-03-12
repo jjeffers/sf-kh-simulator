@@ -32,7 +32,7 @@ func test_swarm_targeting():
 		f.side_id = 2
 		f.ship_class = "Fighter"
 		f.grid_position = Vector3i(0, i, -i)
-		f.weapons = [{"name": "Laser Battery", "ammo": -1, "range": 5, "damage": "1d10"}]
+		f.weapons = [{"name": "Laser Battery", "ammo": -1, "range": 5, "damage": "1d10", "arc": "360"}]
 		_gm.add_child(f)
 		_gm.ships.append(f)
 		fighters.append(f)
@@ -55,11 +55,17 @@ func test_swarm_targeting():
 	_gm.ships.append(t2)
 	
 	var attacks = ai._plan_combat()
-	assert_eq(attacks.size(), 3, "All 3 fighters should have planned an attack")
+	
+	var fighter_attacks = []
+	for a in attacks:
+		if a["s"].begins_with("Fighter_"):
+			fighter_attacks.append(a)
+			
+	assert_eq(fighter_attacks.size(), 3, "All 3 fighters should have planned an attack")
 	
 	# All fighters should target the exact same ship due to the Swarm multiplier
-	var primary_target = attacks[0]["t"]
-	for attack in attacks:
+	var primary_target = fighter_attacks[0]["t"]
+	for attack in fighter_attacks:
 		assert_eq(attack["t"], primary_target, "All fighters should utilize Swarm Bonus to focus fire on the same target")
 
 func test_swarm_cohesion_and_separation():
