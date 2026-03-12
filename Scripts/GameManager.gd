@@ -5093,7 +5093,7 @@ func _resolve_seeker_movement_and_detonations():
 		var nearest_ship = null
 		var min_dist = 9999
 		for s in ships:
-			if is_instance_valid(s) and not s.is_destroyed and not s.is_docked:
+			if is_instance_valid(s) and not s.is_destroyed and not s.is_docked and s.ship_class != "Space Station":
 				var dist = HexGrid.hex_distance(seeker["pos"], s.grid_position)
 				if dist < min_dist:
 					min_dist = dist
@@ -5133,7 +5133,7 @@ func _resolve_seeker_movement_and_detonations():
 				
 				# Check interception
 				for s in ships:
-					if is_instance_valid(s) and not s.is_destroyed and not s.is_docked and s.grid_position == current_pos:
+					if is_instance_valid(s) and not s.is_destroyed and not s.is_docked and s.grid_position == current_pos and s.ship_class != "Space Station":
 						hit_ship = s
 						break
 				if hit_ship:
@@ -5276,6 +5276,7 @@ func rpc_play_mine_fx(mine_pos_hex: Vector3i, target_name: String, hit: bool, da
 		_spawn_attack_fx(pixel_pos, pixel_pos, "Mine")
 		
 		if is_instance_valid(target):
+			_spawn_floating_text("MINES!", tgt_pixel + Vector2(0, -25), Color.ORANGE)
 			if hit:
 				_spawn_hit_text(tgt_pixel, damage)
 			else:
@@ -7143,7 +7144,6 @@ func _build_summary_panel():
 	style.border_color = Color(0.5, 0.5, 0.5, 1.0)
 	panel_summary.add_theme_stylebox_override("panel", style)
 	
-	panel_summary.set_anchors_preset(Control.PRESET_CENTER)
 	panel_summary.visible = false # Hidden initially
 	
 	var scroll = ScrollContainer.new()
@@ -7231,7 +7231,12 @@ func _build_summary_panel():
 	center_btn.add_child(btn_summary_return)
 	vbox_main.add_child(center_btn)
 	
-	ui_layer.add_child(panel_summary)
+	var main_center_wrapper = CenterContainer.new()
+	main_center_wrapper.set_anchors_preset(Control.PRESET_FULL_RECT)
+	main_center_wrapper.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	main_center_wrapper.add_child(panel_summary)
+	
+	ui_layer.add_child(main_center_wrapper)
 
 func _show_battle_summary(title_text: String, side_id: int):
 	if _is_networked() and not multiplayer.is_server():

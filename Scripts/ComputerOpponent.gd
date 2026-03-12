@@ -84,7 +84,7 @@ func _has_deployed() -> bool:
 
 func _has_unmoved_ships() -> bool:
 	for s in game_manager.ships:
-		if is_instance_valid(s) and s.side_id == side_id and not s.has_moved and not s.has_orders and not s.is_exploding:
+		if is_instance_valid(s) and s.side_id == side_id and not s.has_moved and not s.has_orders and not s.is_exploding and not s.has_withdrawn:
 			return true
 	return false
 
@@ -211,7 +211,7 @@ func _execute_movement():
 	var ship_to_move = null
 	var unmoved_count = 0
 	for s in game_manager.ships:
-		if is_instance_valid(s) and s.side_id == side_id and not s.has_moved and not s.has_orders and not s.is_exploding:
+		if is_instance_valid(s) and s.side_id == side_id and not s.has_moved and not s.has_orders and not s.is_exploding and not s.has_withdrawn:
 			unmoved_count += 1
 			if ship_to_move == null:
 				ship_to_move = s
@@ -241,7 +241,26 @@ func _execute_movement():
 		pass # The target_enemy evaluation is now done inside the _find_best_legal_move scoring step.
 		
 	game_manager.log_message("[color=gray]AI Thinking: Nearest target for %s is %s[/color]" % [ship_to_move.name, target_enemy.name if target_enemy else "None"])
-	var best_move = _find_best_legal_move(ship_to_move, target_enemy)
+	
+	var fleet_retreat_ordered = _evaluate_fleet_advantage()
+	var ship_retreat_utility = _calculate_retreat_utility(ship_to_move)
+	var is_retreating = fleet_retreat_ordered or ship_retreat_utility > 50.0
+	
+	if is_retreating:
+		var w_status = game_manager._can_withdraw(ship_to_move)
+		if w_status["allowed"]:
+			game_manager.log_message("[color=orange]AI Execution: %s is triggering WITHDRAW![/color]" % ship_to_move.name)
+			if game_manager._is_networked() and not game_manager._is_server_or_offline():
+				game_manager.rpc_id(1, "rpc_execute_withdraw", ship_to_move.name)
+				game_manager.rpc_id(1, "register_movement_plan", ship_to_move.name, [], ship_to_move.facing, 0, false, [])
+			else:
+				game_manager.rpc_execute_withdraw(ship_to_move.name)
+				game_manager.register_movement_plan(ship_to_move.name, [], ship_to_move.facing, 0, false, [])
+			return
+		else:
+			game_manager.log_message("[color=orange]AI Execution: %s wants to retreat but is blocked! Evading to edges...[/color]" % ship_to_move.name)
+	
+	var best_move = _find_best_legal_move(ship_to_move, target_enemy, is_retreating)
 	
 	if best_move and best_move["path"].size() > 0:
 		# Submit to GameManager
@@ -268,7 +287,7 @@ func _execute_repairs():
 	var repair_script = load("res://Scripts/AutoRepairProcessor.gd")
 	repair_script.execute_repairs(game_manager, side_id)
 
-func _find_best_legal_move(ship: Ship, target: Ship) -> Dictionary:
+func _find_best_legal_move(ship: Ship, target: Ship, is_retreating: bool = false) -> Dictionary:
 	var old_speed = ship.speed if not ship.is_docked else 0
 	var eff_adf = ship.get_effective_adf()
 	var max_mr = ship.get_effective_mr()
@@ -289,7 +308,7 @@ func _find_best_legal_move(ship: Ship, target: Ship) -> Dictionary:
 	for move in all_paths:
 		var end_hex = move["path"].back() if move["path"].size() > 0 else ship.grid_position
 		
-		var score = _score_hex(end_hex, target)
+		var score = _score_hex(end_hex, target, is_retreating, ship)
 		
 		# AI Constraint: Avoid self-destruction via DCR limits
 		var mr_used = max_mr - move.get("mr_left", max_mr)
@@ -388,29 +407,125 @@ func _dfs_paths(current_hex: Vector3i, current_facing: int, mr_left: int, max_de
 			p_turn.append(turn_hex)
 			_dfs_paths(turn_hex, new_facing, mr_left - 1, max_depth, min_depth, p_turn, start_mr, all_paths, old_speed)
 
-func _score_hex(hex: Vector3i, target: Ship) -> float:
+func _score_hex(hex: Vector3i, target: Ship, is_retreating: bool = false, evaluating_ship: Ship = null) -> float:
 	var score = 0.0
-	if not target: return rng.randfn(0.0, 2.0)
 	
-	var dist_to_target = HexGrid.hex_distance(hex, target.grid_position)
-	
-	# L1: Reach
-	if dist_to_target <= 10:
-		score += 2.0 * (10 - dist_to_target)
+	if is_retreating:
+		var dist_from_center = HexGrid.hex_distance(Vector3i.ZERO, hex)
+		score += dist_from_center * 5.0
+		if target:
+			var d_t = HexGrid.hex_distance(hex, target.grid_position)
+			score += d_t * 2.0
+	else:
+		if not target: return rng.randfn(0.0, 2.0)
 		
-	# L3: Threat Avoidance
-	if dist_to_target < 3:
-		score -= 2.5 * (3 - dist_to_target)
+		var dist_to_target = HexGrid.hex_distance(hex, target.grid_position)
 		
+		# L1: Reach
+		if dist_to_target <= 10:
+			score += 2.0 * (10 - dist_to_target)
+			
+		# L3: Threat Avoidance
+		if dist_to_target < 3:
+			score -= 2.5 * (3 - dist_to_target)
+			
+		# L6: Fighter Flocking Cohesion
+		if evaluating_ship and evaluating_ship.ship_class == "Fighter":
+			for ally in game_manager.ships:
+				if is_instance_valid(ally) and ally.side_id == evaluating_ship.side_id and ally.ship_class == "Fighter" and ally != evaluating_ship:
+					var dist_to_ally = HexGrid.hex_distance(hex, ally.grid_position)
+					if dist_to_ally == 0:
+						score -= 10.0 # FLOCK_SEPARATION_PENALTY (Don't stack)
+					elif dist_to_ally <= 2:
+						score += 5.0  # FLOCK_COHESION_BONUS
+			
 	# Gaussian Noise (Fuzziness)
-	score += rng.randfn(0.0, 2.0)
+	var noise_variance = 4.0 if (evaluating_ship and evaluating_ship.ship_class == "Fighter") else 2.0
+	score += rng.randfn(0.0, noise_variance)
 	return score
+
+# --- TACTICAL RETREAT EVALUATION ---
+func _evaluate_fleet_advantage() -> bool:
+	var my_combat_power = 0.0
+	var enemy_combat_power = 0.0
+	var defending_station = false
+	
+	for ship in game_manager.ships:
+		if not is_instance_valid(ship) or ship.is_exploding or ship.has_withdrawn or ship.is_destroyed:
+			continue
+			
+		var ship_power = float(ship.hull)
+		for w in ship.weapons:
+			if not w.get("is_crippled", false) and w.get("ammo", -1) != 0:
+				ship_power += 5.0 # Rough approx of active weapon output
+				
+		if ship.side_id == side_id:
+			my_combat_power += ship_power
+			if "Station" in ship.ship_class or "Fortress" in ship.ship_class:
+				defending_station = true
+		else:
+			enemy_combat_power += ship_power
+			
+	if enemy_combat_power == 0:
+		return false
+		
+	var car = my_combat_power / enemy_combat_power
+	var retreat_threshold = 0.3 # Base 3-to-1 disadvantage triggers retreat
+	
+	if is_sathar:
+		retreat_threshold -= 0.15 # Sathar fight longer unconditionally
+		
+	if defending_station:
+		retreat_threshold -= 0.1 # Will fight to a lower margin to protect stations
+		
+	game_manager.log_message("[color=gray]AI Thinking: Fleet CAR: %.3f (Threshold: %.2f) Powers: Me=%.1f, Enemy=%.1f[/color]" % [car, retreat_threshold, my_combat_power, enemy_combat_power])
+		
+	return car < retreat_threshold
+
+func _calculate_retreat_utility(ship: Ship) -> float:
+	if ship.ship_class == "Fighter":
+		return 0.0 # Fighters never decide to retreat themselves, they must stay with carrier
+		
+	var utility = 0.0
+	var hull_pct = float(ship.hull) / float(ship.max_hull) if ship.max_hull > 0 else 0.0
+	
+	# Factor 1: Critical Structural Damage
+	if hull_pct < 0.25:
+		utility += (0.25 - hull_pct) * 100.0
+		
+	# Factor 2: Defensive Collapse
+	var has_defenses = ship.icm_current > 0 or ship.ms_current > 0
+	if hull_pct < 0.5 and not has_defenses:
+		utility += 20.0
+		
+	# Factor 3: Combat Ineffectiveness (Disarmed)
+	var active_weapons = 0
+	for w in ship.weapons:
+		if not w.get("is_crippled", false) and w.get("ammo", -1) != 0:
+			active_weapons += 1
+			
+	if active_weapons == 0:
+		utility += 100.0 # High priority: unarmed ships provide no offensive value
+		
+	# Modify: Sathar Aggression
+	if is_sathar:
+		utility -= 20.0
+		
+	# Modify: Carrier Duty
+	if ship.ship_class == "Assault Carrier":
+		utility -= 30.0 # Will risk itself more if it means staying to retrieve fighters
+	
+	game_manager.log_message("[color=gray]AI Thinking: %s Individual Retreat Utility: %.1f (Hull: %.2f%%, Def: %s, Atk: %d)[/color]" % [ship.name, utility, hull_pct*100, str(has_defenses), active_weapons])
+	
+	return utility
 
 # --- COMBAT ---
 func _plan_combat() -> Array:
 	var my_ships = game_manager.ships.filter(func(s): return is_instance_valid(s) and s.side_id == side_id and not s.is_exploding)
 	var targets = game_manager.ships.filter(func(s): return is_instance_valid(s) and s.side_id != side_id and not s.is_exploding)
 	var attacks_data = []
+	
+	var fighter_swarm_target: Ship = null
 	
 	for ship in my_ships:
 		for i in range(ship.weapons.size()):
@@ -430,6 +545,10 @@ func _plan_combat() -> Array:
 				var u_a = 10.0 - dist # Preference for closer targets
 				if is_sathar:
 					u_a += 0.5 # Sathar Aggression Bias
+					
+				# Swarm Bonus
+				if ship.ship_class == "Fighter" and fighter_swarm_target == t:
+					u_a += 50.0
 				
 				# Fuzziness
 				u_a += rng.randfn(0.0, 1.5)
@@ -439,6 +558,9 @@ func _plan_combat() -> Array:
 					best_target = t
 			
 			if best_target:
+				if ship.ship_class == "Fighter" and fighter_swarm_target == null:
+					fighter_swarm_target = best_target
+					
 				game_manager.log_message("AI Planning: %s -> %s with %s (Utility: %.2f)" % [ship.get_display_name(), best_target.get_display_name(), w["name"], best_utility])
 				
 				# Compile directly for resolution payload
