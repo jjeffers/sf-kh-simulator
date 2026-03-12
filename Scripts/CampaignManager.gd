@@ -535,6 +535,7 @@ func end_turn():
 			emit_signal("fleet_arrived", fleet, fleet.current_system_id)
 			was_moving_flags[fleet] = true
 			
+	_enforce_fighter_survival()
 	_check_for_encounters()
 			
 	for fleet in fleets:
@@ -572,6 +573,50 @@ func serialize_state() -> Dictionary:
 	for f in fleets:
 		state["fleets"].append(f.serialize())
 	return state
+
+func _enforce_fighter_survival():
+	# Fighters in a system without a friendly assault carrier or space station are destroyed.
+	var systems_with_forces = {}
+	for f in fleets:
+		if f.is_moving(): continue # Fighters moving with a fleet are assumed to be with their carrier
+		var sys = f.current_system_id
+		if not systems_with_forces.has(sys):
+			systems_with_forces[sys] = {"UPF": [], "Sathar": []}
+		systems_with_forces[sys][f.faction].append(f)
+		
+	for sys in systems_with_forces:
+		for faction in ["UPF", "Sathar"]:
+			var my_fleets = systems_with_forces[sys][faction]
+			if my_fleets.is_empty(): continue
+			
+			var carrier_count = 0
+			var station_present = false
+			var fighters_list = []
+			
+			if faction == "UPF" and (sys in UPF_FORTRESSES or sys in UPF_ARMED_STATIONS):
+				station_present = true
+				
+			for f in my_fleets:
+				for ship in f.ships:
+					var s_class = ship.get("class", "") if typeof(ship) == TYPE_DICTIONARY else ship.ship_class
+					if s_class == "Assault Carrier":
+						carrier_count += 1
+					elif "Station" in s_class:
+						station_present = true
+					elif s_class == "Fighter":
+						fighters_list.append({"fleet": f, "ship": ship})
+						
+			if not station_present:
+				var supported_fighters = carrier_count * 8
+				var excess = fighters_list.size() - supported_fighters
+				if excess > 0:
+					for i in range(excess):
+						var to_destroy = fighters_list[i] # Just take the first 'excess' ones
+						var df = to_destroy["fleet"]
+						var ds = to_destroy["ship"]
+						var ds_name = ds.get("name", "Fighter") if typeof(ds) == TYPE_DICTIONARY else ds.name
+						ConsoleManager.log_message("[color=red]Unsupported Fighter Destroyed in %s: %s[/color]" % [sys, ds_name])
+						df.remove_ship(ds)
 
 func _check_for_encounters():
 	active_encounters.clear()

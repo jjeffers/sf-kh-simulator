@@ -7539,6 +7539,8 @@ func _sync_campaign_results():
 		if CampaignManager.fleets[i].ships.size() == 0:
 			CampaignManager.fleets.remove_at(i)
 			
+	CampaignManager._enforce_fighter_survival()
+			
 	if CampaignManager.active_encounters.has(sys_name):
 		CampaignManager.active_encounters.erase(sys_name)
 		
