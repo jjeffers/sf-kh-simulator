@@ -25,6 +25,8 @@ Upon initialization, the spawned AI detects which faction it has been assigned t
 Once spawned, the computer opponent does not require a monolithic state machine; instead, it relies entirely on the established implementation modules to fully operate all aspects of gameplay:
 - **Deployment:** Uses the heuristics defined in `docs/auto-deploy.md`.
 - **Movement & Attack:** Evaluates Heatmaps and Utility scores as defined in `docs/ai-movement-attack.md`.
+- **Retreat Strategy:** Assesses fleet advantage and individual ship viability as defined in `docs/ai-retreat-strategy.md`.
+- **Fighter Flocking:** Coordinates swarm-like behaviors for fighters as defined in `docs/ai-fighter-flocking.md`.
 
 ---
 
