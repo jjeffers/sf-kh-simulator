@@ -115,5 +115,5 @@ jobs:
           cp kh.x86_64 kh.pck itch_linux/ 2>/dev/null || true
           
           # Push to Itch.io using butler
-          ./butler push itch_windows jjeffers/sf-kh-simulator:windows
-          ./butler push itch_linux jjeffers/sf-kh-simulator:linux
+          ./butler push itch_windows jjeffers/sfkh-simulator:windows
+          ./butler push itch_linux jjeffers/sfkh-simulator:linux
