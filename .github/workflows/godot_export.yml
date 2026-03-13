@@ -51,19 +51,15 @@ jobs:
         run: |
           # fallback to 'dev' if not a tag
           TAG_NAME=${GITHUB_REF_NAME:-dev}
-          # If triggered by a branch instead of a tag, GITHUB_REF_NAME is the branch name.
-          # Replace forward slashes in branches (e.g. feature/name -> feature-name) to avoid breaking sed.
-          SAFE_BRANCH_NAME=${GITHUB_REF_NAME//\//-}
-          
-          # Let's try to get the latest tag for the branch instead:
+          # Let's try to get the latest tag instead:
           LATEST_TAG=$(git describe --tags --abbrev=0 2>/dev/null || echo "v0.0.0")
           SHORT_SHA=$(git rev-parse --short HEAD)
           
-          # If this is a tag build, use the tag. Otherwise use latest tag + branch + sha
+          # If this is a tag build, use the tag. Otherwise use latest tag + sha
           if [[ $GITHUB_REF == refs/tags/* ]]; then
             VERSION_STRING="${TAG_NAME}.${SHORT_SHA}"
           else
-            VERSION_STRING="${LATEST_TAG}-${SAFE_BRANCH_NAME}.${SHORT_SHA}"
+            VERSION_STRING="${LATEST_TAG}.${SHORT_SHA}"
           fi
           
           echo "Setting version to: ${VERSION_STRING}"
