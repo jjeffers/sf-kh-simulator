@@ -437,9 +437,12 @@ func update_from_seeker(seeker: Dictionary):
 	else:
 		btn_activate_seeker.visible = false
 		
-	btn_withdraw.visible = false
 	# Header
-	name_label.text = "SEEKER"
+	btn_withdraw.visible = false
+	if seeker.get("uid", -1) != -1:
+		name_label.text = "SEEKER %d" % seeker.get("uid", -1)
+	else:
+		name_label.text = "SEEKER"
 	class_label.text = "Guided Missile"
 	faction_label.text = seeker.get("owner_name", "Unknown")
 	if tex_seeker:

@@ -54,6 +54,10 @@ func test_swarm_targeting():
 	_gm.add_child(t2)
 	_gm.ships.append(t2)
 	
+	# Simulate movement phase intelligence gathering
+	var leader = ai._get_flight_leader(fighters[0])
+	ai._flight_leader_targets[leader.name] = ai._pick_strike_target(leader)
+	
 	var attacks = ai._plan_combat()
 	
 	var fighter_attacks = []
@@ -100,18 +104,18 @@ func test_swarm_cohesion_and_separation():
 	_gm.add_child(enemy)
 	_gm.ships.append(enemy)
 
-	# F1 evaluating distance hexes
-	# Distance 0 to F2 (Stacked) should be penalized heavily
-	var hex_stacked = Vector3i(0, 1, -1)
-	var score_stacked = ai._score_hex(hex_stacked, enemy, false, f1)
+	# F2 (Follower) evaluating distance hexes to F1 (Leader)
+	# Distance 0 to F1 (Stacked) should be penalized heavily
+	var hex_stacked = Vector3i(0, 0, 0)
+	var score_stacked = ai._score_hex(hex_stacked, enemy, false, f2)
 	
-	# Distance 1 to F2 (Cohesive) should be buffed
+	# Distance 1 to F1 (Cohesive) should be buffed
 	var hex_adjacent = Vector3i(1, 0, -1)
-	var score_adjacent = ai._score_hex(hex_adjacent, enemy, false, f1)
+	var score_adjacent = ai._score_hex(hex_adjacent, enemy, false, f2)
 	
-	# Distance 5 to F2 (Too far) receives no flock bonus
+	# Distance 5 to F1 (Too far) receives no flock bonus, plus distance penalty
 	var hex_far = Vector3i(0, 5, -5)
-	var score_far = ai._score_hex(hex_far, enemy, false, f1)
+	var score_far = ai._score_hex(hex_far, enemy, false, f2)
 	
 	# Note: there is gaussian noise evaluated (-4.0 to +4.0 roughly), but the structural delta is
 	# Stacked (-10 penalty + 5 cohesion = -5)

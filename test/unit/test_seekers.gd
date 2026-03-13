@@ -72,6 +72,8 @@ func test_seeker_autonomous_pursuit_and_detonation():
 	target.side_id = 2
 	target.grid_position = Vector3i(4, -4, 0) # Distance 4
 	target.facing = 3
+	target.max_hull = 100
+	target.hull = 100
 	game_manager.ships.append(target)
 	
 	# Turn 1 and beyond (while loop to mitigate 75% hit chance RNG flakiness)

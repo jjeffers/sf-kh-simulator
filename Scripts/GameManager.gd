@@ -111,8 +111,9 @@ var active_mines: Array[Dictionary] = [] # Format: {"pos": Vector3i, "side_id": 
 var state_mine_placement: bool = false # Tracks if UI is in "select hex to drop mine" mode
 
 # Seekers State
-var active_seekers: Array[Dictionary] = [] # Format: {"pos": Vector3i, "side_id": int, "owner_name": String, "speed": int}
+var active_seekers: Array[Dictionary] = [] # Format: {"pos": Vector3i, "side_id": int, "owner_name": String, "speed": int, "uid": int}
 var state_seeker_placement: bool = false # Tracks if UI is in "select hex to drop seeker" mode
+var _seeker_uid_counter: int = 1
 
 # Movement State
 var ghost_ship: Ship = null
@@ -3251,8 +3252,10 @@ func rpc_apply_deployment_data(side_id: int, deployment_data: Dictionary, deploy
 			"pos": Vector3i(s_pos),
 			"side_id": int(side_id),
 			"owner_name": "Deployment",
-			"speed": 0
+			"speed": 0,
+			"uid": _seeker_uid_counter
 		})
+		_seeker_uid_counter += 1
 		
 		# Deduct ammo dynamically from side's equipped ships
 		for s in ships:
@@ -4448,10 +4451,10 @@ func _update_movement_ui_list():
 			var c = Color.RED if is_active else Color.ORANGE
 			
 			if seeker["pos"] == selected_seeker_pos:
-				btn.text = "> Seeker @ <%d,%d> <" % [seeker["pos"].x, seeker["pos"].y]
+				btn.text = "> Seeker %d @ <%d,%d> <" % [seeker.get("uid", -1), seeker["pos"].x, seeker["pos"].y]
 				btn.modulate = Color.YELLOW
 			else:
-				btn.text = "Seeker @ <%d,%d>" % [seeker["pos"].x, seeker["pos"].y]
+				btn.text = "Seeker %d @ <%d,%d>" % [seeker.get("uid", -1), seeker["pos"].x, seeker["pos"].y]
 				btn.modulate = c
 				
 			btn.pressed.connect(func():
@@ -4485,7 +4488,7 @@ func rpc_activate_seeker(pos: Vector3i):
 	for s in active_seekers:
 		if s["pos"] == pos and s.get("speed", 0) == 0:
 			s["speed"] = 2
-			log_message("Seeker at %v ACTIVATED." % pos)
+			log_message("Seeker %d at %v ACTIVATED." % [s.get("uid", -1), pos])
 			break
 	_update_movement_ui_list()
 	queue_redraw()
@@ -4916,8 +4919,10 @@ func execute_all_movement(move_seed: int = 0):
 								"pos": Vector3i(hex),
 								"side_id": int(s.side_id),
 								"owner_name": s.name,
-								"speed": 0
+								"speed": 0,
+								"uid": _seeker_uid_counter
 							})
+							_seeker_uid_counter += 1
 							w_seeker["ammo"] -= 1
 							log_message("%s deployed a seeker at %v." % [s.name, hex])
 			
@@ -5064,25 +5069,29 @@ func _resolve_mine_detonations():
 		active_mines.remove_at(idx)
 
 func _resolve_seeker_movement_and_detonations():
-	var detonated_indices = []
 	var peer_id = (multiplayer.get_unique_id() if _is_networked() else 1) if _is_networked() else "Offline"
-	
+	var detonated_uids = []
 	log_message("[color=cyan]!!! DEBUG !!! Entering Seeker Movement. Active Seekers: %d[/color]" % active_seekers.size())
 	
 	for i in range(active_seekers.size()):
 		var seeker = active_seekers[i]
+		
+		# Skip if this seeker already detonated and is pending cleanup
+		if seeker.get("uid", -1) in detonated_uids:
+			continue
+		
 		if seeker.get("speed", 0) <= 0:
 			continue # Inactive or destroyed
 			
 		if seeker.get("side_id", -1) != current_side_id:
 			continue # Seekers only move on the turn of the side that owns them
 			
-		log_message("[color=orange]Seeker at %v activates at speed %d.[/color]" % [seeker["pos"], seeker["speed"]])
+		log_message("[color=orange]Seeker %d at %v activates at speed %d.[/color]" % [seeker.get("uid", -1), seeker["pos"], seeker["speed"]])
 		
 		# Check max threshold before moving
 		if seeker["speed"] > 12:
-			log_message("[color=orange]Seeker at %v ran out of fuel and self-destructed.[/color]" % seeker["pos"])
-			detonated_indices.append(i)
+			log_message("[color=orange]Seeker %d at %v ran out of fuel and self-destructed.[/color]" % [seeker.get("uid", -1), seeker["pos"]])
+			detonated_uids.append(seeker.get("uid", -1))
 			if _is_networked() and multiplayer.is_server():
 				rpc_play_mine_fx.rpc(seeker["pos"], "", false, 0)
 			else:
@@ -5107,6 +5116,9 @@ func _resolve_seeker_movement_and_detonations():
 		var current_pos = seeker["pos"]
 		var hit_ship = null
 		
+		var path_hexes = [current_pos]
+		var path_facings = [seeker.get("facing", 0)]
+		
 		while steps_taken < seeker["speed"]:
 			# Re-calculate nearest ship if circumstances changed? The rule says "closest ship no matter friend or foe". 
 			# We'll just stick to the initially evaluated nearest_ship to avoid oscillation loops unless it's destroyed.
@@ -5130,6 +5142,8 @@ func _resolve_seeker_movement_and_detonations():
 				seeker["facing"] = HexGrid.get_hex_direction(current_pos, best_next)
 				current_pos = best_next
 				steps_taken += 1
+				path_hexes.append(current_pos)
+				path_facings.append(seeker["facing"])
 				
 				# Check interception
 				for s in ships:
@@ -5146,6 +5160,57 @@ func _resolve_seeker_movement_and_detonations():
 		seeker["history"].append(seeker["pos"])
 		seeker["pos"] = current_pos
 		
+		if not is_headless and path_hexes.size() > 1:
+			seeker["is_animating"] = true
+			var anim_node = Node2D.new()
+			anim_node.z_index = 30
+			
+			var tex = tex_seeker
+			if tex:
+				var sprite = Sprite2D.new()
+				sprite.texture = tex
+				var scale_val = 20.0 / tex.get_width()
+				sprite.scale = Vector2(scale_val, scale_val)
+				anim_node.add_child(sprite)
+			else:
+				var poly = Polygon2D.new()
+				var size = HexGrid.TILE_SIZE * 0.5
+				poly.polygon = PackedVector2Array([
+					Vector2(0, -size * 1.5),
+					Vector2(size, size),
+					Vector2(-size, size)
+				])
+				poly.color = Color.RED
+				anim_node.add_child(poly)
+			
+			add_child(anim_node)
+			
+			var tween = create_tween()
+			var travel_time_per_hex = 0.2
+			var current_anim_angle = deg_to_rad(path_facings[0] * 60 - 30) + PI/2.0
+			for step_idx in range(path_hexes.size()):
+				var target_hex = path_hexes[step_idx]
+				var target_facing = path_facings[step_idx]
+				var target_pixel = HexGrid.hex_to_pixel(target_hex)
+				var real_target_angle = deg_to_rad(target_facing * 60 - 30) + PI/2.0
+				
+				if step_idx == 0:
+					anim_node.position = target_pixel
+					anim_node.rotation = current_anim_angle
+				else:
+					tween.tween_property(anim_node, "position", target_pixel, travel_time_per_hex)
+					if camera:
+						tween.parallel().tween_property(camera, "position", target_pixel, travel_time_per_hex)
+					var diff = fmod(real_target_angle - current_anim_angle + PI, PI * 2) - PI
+					current_anim_angle += diff
+					tween.parallel().tween_property(anim_node, "rotation", current_anim_angle, travel_time_per_hex)
+			
+			await tween.finished
+			if is_instance_valid(anim_node):
+				anim_node.queue_free()
+			seeker["is_animating"] = false
+			queue_redraw()
+		
 		# Delay speed increment to apply to next turn phase
 		seeker["speed"] += 2
 		
@@ -5156,8 +5221,8 @@ func _resolve_seeker_movement_and_detonations():
 					break
 					
 		if hit_ship:
-			detonated_indices.append(i)
-			log_message("[color=orange]SEEKER INTERCEPT at %v![/color]" % current_pos)
+			detonated_uids.append(seeker.get("uid", -1))
+			log_message("[color=orange]SEEKER %d INTERCEPT at %v![/color]" % [seeker.get("uid", -1), current_pos])
 			
 			# Identify largest ship in hex
 			var hex_ships = []
@@ -5165,9 +5230,16 @@ func _resolve_seeker_movement_and_detonations():
 				if is_instance_valid(s) and not s.is_destroyed and not s.is_docked and s.grid_position == current_pos:
 					hex_ships.append(s)
 			
-			var target = hex_ships[0]
-			for s in hex_ships:
-				if s.hull > target.hull: target = s
+			var target = null
+			if hex_ships.size() > 0:
+				target = hex_ships[0]
+				for s in hex_ships:
+					if s.hull > target.hull: target = s
+			elif is_instance_valid(hit_ship):
+				target = hit_ship
+			
+			if not is_instance_valid(target):
+				continue
 				
 			var seeker_weapon = {
 				"name": "Seeker",
@@ -5187,7 +5259,7 @@ func _resolve_seeker_movement_and_detonations():
 			var icm_used = 0
 			if eligible_defenders.size() > 0:
 				var raw_chance = Combat.calculate_hit_chance(0, seeker_weapon, target, false, 0, null)
-				_trigger_icm_decision("Autonomous Seeker", "Seeker Missile", "Seeker", raw_chance, target, eligible_defenders)
+				_trigger_icm_decision("Autonomous Seeker %d" % seeker.get("uid", -1), "Seeker Missile", "Seeker", raw_chance, target, eligible_defenders)
 				
 				while not _icm_decision_received:
 					await get_tree().process_frame
@@ -5207,7 +5279,7 @@ func _resolve_seeker_movement_and_detonations():
 								break
 								
 				if icm_used > 0:
-					var m_icm = "Point defense uses %d ICMs against incoming Seeker." % icm_used
+					var m_icm = "Point defense uses %d ICMs against incoming Seeker %d." % [icm_used, seeker.get("uid", -1)]
 					if _is_networked() and multiplayer.is_server(): rpc_log_message.rpc(m_icm)
 					else: log_message(m_icm)
 					if get_tree() and not get_tree().root.has_node("GutRunner"):
@@ -5217,7 +5289,7 @@ func _resolve_seeker_movement_and_detonations():
 			var hit = result["success"]
 			var hit_str = "HIT" if hit else "MISS"
 			
-			var msg1 = "Firing Ship: Autonomous Seeker, Weapon: Seeker Missile, Odds: %d%%, Roll: %d, Result: %s" % [result["chance"], result["roll"], hit_str]
+			var msg1 = "Firing Ship: Autonomous Seeker %d, Weapon: Seeker Missile, Odds: %d%%, Roll: %d, Result: %s" % [seeker.get("uid", -1), result["chance"], result["roll"], hit_str]
 			if _is_networked() and multiplayer.is_server(): rpc_log_message.rpc(msg1)
 			else: log_message(msg1)
 			
@@ -5227,7 +5299,7 @@ func _resolve_seeker_movement_and_detonations():
 				var dmg_roll = Combat.calculate_damage_roll(-20)
 				var effect = Combat.get_damage_effect(dmg_roll)
 				
-				var dmg_txt = "%s took %d base damage array and %s from Seeker!" % [target.get_display_name(), raw_dmg, effect["text"]]
+				var dmg_txt = "%s took %d base damage array and %s from Seeker %d!" % [target.get_display_name(), raw_dmg, effect["text"], seeker.get("uid", -1)]
 				
 				if _is_networked() and multiplayer.is_server():
 					rpc_play_mine_fx.rpc(current_pos, target.name, hit, raw_dmg)
@@ -5242,20 +5314,31 @@ func _resolve_seeker_movement_and_detonations():
 					target.take_hull_damage(raw_dmg)
 					
 			else:
-				var msg3 = "Seeker exploded harmlessly against %s defenses." % target.get_display_name()
+				var msg3 = "Seeker %d exploded harmlessly against %s defenses." % [seeker.get("uid", -1), target.get_display_name()]
 				if _is_networked() and multiplayer.is_server(): rpc_log_message.rpc(msg3)
 				else: log_message(msg3)
 				
 				if _is_networked() and multiplayer.is_server(): rpc_play_mine_fx.rpc(current_pos, target.name, hit, 0)
 				else: rpc_play_mine_fx(current_pos, target.name, hit, 0)
 				
+			continue
+				
 			if get_tree() and not get_tree().root.has_node("GutRunner"):
 				await get_tree().create_timer(1.5).timeout
 				
-	detonated_indices.sort()
-	detonated_indices.reverse()
-	for idx in detonated_indices:
+	# Remove detonated seekers by identifying their indices safely from UIDs
+	var indices_to_remove = []
+	for i in range(active_seekers.size()):
+		if active_seekers[i].get("uid", -1) in detonated_uids:
+			indices_to_remove.append(i)
+			
+	indices_to_remove.sort()
+	indices_to_remove.reverse()
+	for idx in indices_to_remove:
 		active_seekers.remove_at(idx)
+		
+	# Post-movement redraw
+	queue_redraw()
 
 @rpc("authority", "call_local", "reliable")
 func rpc_play_mine_fx(mine_pos_hex: Vector3i, target_name: String, hit: bool, damage: int):
@@ -6031,6 +6114,9 @@ func _draw():
 
 	# Draw Active Seekers
 	for s in active_seekers:
+		if s.get("is_animating", false):
+			continue
+			
 		# Draw if active, or if we own it during deployment/inactivity
 		var is_owner = (my_side_id == 0 or my_side_id == s["side_id"])
 		var speed = s.get("speed", 0)
