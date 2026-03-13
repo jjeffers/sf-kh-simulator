@@ -195,18 +195,51 @@ func _execute_movement():
 	var my_dormant_seekers = game_manager.active_seekers.filter(func(s): return s["side_id"] == side_id and s.get("speed", 0) == 0)
 	for seeker in my_dormant_seekers:
 		var s_pos = seeker["pos"]
+		
+		# Find the absolute nearest ship to the seeker (friendly or enemy)
+		var nearest_ship = null
 		var min_d = 999
-		for e in game_manager.ships:
-			if is_instance_valid(e) and e.side_id != side_id and not e.is_exploding:
-				var d = HexGrid.hex_distance(s_pos, e.grid_position)
-				if d < min_d: min_d = d
-		# If enemy is within 18 hexes, activate the seeker!
-		if min_d <= 18:
-			game_manager.log_message("AI activating Seeker at %v! Target detected at distance %d" % [s_pos, min_d])
-			if game_manager._is_networked():
-				game_manager.rpc_activate_seeker.rpc(s_pos)
+		for sh in game_manager.ships:
+			if is_instance_valid(sh) and not sh.is_exploding:
+				var d = HexGrid.hex_distance(s_pos, sh.grid_position)
+				if d < min_d:
+					min_d = d
+					nearest_ship = sh
+					
+		# Only activate if the absolute nearest ship is an ENEMY (Friendly Fire Prevention)
+		if nearest_ship and nearest_ship.side_id != side_id:
+			# Evaluate if the enemy is a worthy target based on distance and class
+			var activation_score = 0.0
+			
+			# Distance scaling (Range 2 is high reward, 12+ is low)
+			if min_d <= 2:
+				activation_score += 50.0
+			elif min_d <= 5:
+				activation_score += 30.0
+			elif min_d <= 8:
+				activation_score += 15.0
+			elif min_d <= 12:
+				activation_score += 5.0
 			else:
-				game_manager.rpc_activate_seeker(s_pos)
+				activation_score += 0.0
+				
+			# Ship Class Bias
+			if nearest_ship.ship_class in ["Battleship", "Assault Carrier", "Heavy Cruiser"]:
+				activation_score += 40.0
+			elif nearest_ship.ship_class in ["Light Cruiser", "Destroyer", "Frigate"]:
+				activation_score += 15.0
+			elif nearest_ship.ship_class in ["Fighter", "Assault Scout"]:
+				activation_score += 0.0 # Lowest priority
+			elif "Station" in nearest_ship.ship_class or "Fortress" in nearest_ship.ship_class:
+				activation_score += 25.0
+				
+			# If the score is high enough, activate the seeker
+			if activation_score >= 20.0 and min_d <= 18:
+				game_manager.log_message("AI activating Seeker at %v! Target: %s (Dist: %d, Score: %.1f)" % [s_pos, nearest_ship.name, min_d, activation_score])
+				if game_manager._is_networked():
+					game_manager.rpc_activate_seeker.rpc(s_pos)
+				else:
+					game_manager.rpc_activate_seeker(s_pos)
 
 	# Find a ship to move
 	var ship_to_move = null
@@ -429,6 +462,9 @@ func _score_hex(hex: Vector3i, target: Ship, is_retreating: bool = false, evalua
 		
 		var dist_to_target = HexGrid.hex_distance(hex, target.grid_position)
 		
+		# Base pull towards target (encourages closing the gap even outside weapon range)
+		score -= dist_to_target * 1.0
+		
 		# L1: Reach
 		if dist_to_target <= 10:
 			score += 2.0 * (10 - dist_to_target)
@@ -437,8 +473,11 @@ func _score_hex(hex: Vector3i, target: Ship, is_retreating: bool = false, evalua
 		if dist_to_target < 3:
 			score -= 2.5 * (3 - dist_to_target)
 			
-		# L6: Fighter Flocking Cohesion
+		# L6: Fighter Flocking Cohesion & Aggression
 		if evaluating_ship and evaluating_ship.ship_class == "Fighter":
+			# Dramatic bias towards closing with enemies for fighters
+			score -= dist_to_target * 5.0
+			
 			# Prevent stacking on any ally fighter
 			for ally in game_manager.ships:
 				if is_instance_valid(ally) and ally.side_id == evaluating_ship.side_id and ally.ship_class == "Fighter" and ally != evaluating_ship:
