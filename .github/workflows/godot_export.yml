@@ -99,7 +99,7 @@ jobs:
 
       - name: Itch.io deployment
         env:
-          BUTLER_API_KEY: mSyaBnLZvH44IQxM6cRYNylaA37CkEtBBQ7CWmXr
+          BUTLER_API_KEY: ${{ secrets.BUTLER_API_KEY }}
         run: |
           # Download butler
           curl -L -o butler.zip https://broth.itch.zone/butler/linux-amd64/LATEST/archive/default
