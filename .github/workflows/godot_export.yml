@@ -4,6 +4,8 @@ on:
     branches:
       - master
       - main
+    tags:
+      - 'v*'
   pull_request:
     branches:
       - master
@@ -42,6 +44,29 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v4
+        with:
+          fetch-depth: 0 # Required to fetch tags for git describe
+
+      - name: Inject Version String
+        run: |
+          # fallback to 'dev' if not a tag
+          TAG_NAME=${GITHUB_REF_NAME:-dev}
+          # If triggered by a branch instead of a tag, GITHUB_REF_NAME is the branch name.
+          # Let's try to get the latest tag for the branch instead:
+          LATEST_TAG=$(git describe --tags --abbrev=0 2>/dev/null || echo "v0.0.0")
+          SHORT_SHA=$(git rev-parse --short HEAD)
+          
+          # If this is a tag build, use the tag. Otherwise use latest tag + branch + sha
+          if [[ $GITHUB_REF == refs/tags/* ]]; then
+            VERSION_STRING="${TAG_NAME}.${SHORT_SHA}"
+          else
+            VERSION_STRING="${LATEST_TAG}-${GITHUB_REF_NAME}.${SHORT_SHA}"
+          fi
+          
+          echo "Setting version to: ${VERSION_STRING}"
+          sed -i 's/config\/version=".*"/config\/version="'"${VERSION_STRING}"'"/' project.godot
+          sed -i 's/application\/product_version=".*"/application\/product_version="'"${VERSION_STRING}"'"/' export_presets.cfg
+          sed -i 's/application\/file_version=".*"/application\/file_version="'"${VERSION_STRING}"'"/' export_presets.cfg
 
       - name: Export Game
         uses: firebelley/godot-export@v5.2.1

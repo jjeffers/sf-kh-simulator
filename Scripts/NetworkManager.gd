@@ -11,9 +11,12 @@ signal all_players_loaded
 const PORT = 7000
 const MAX_CLIENTS = 2
 
-# Player Info: { name: "Name", id: 1 }
+# Player Info: { name: "Name", id: 1, version: "0.29.1.dev" }
 var players = {}
-var player_info = {"name": "Player"}
+var player_info = {
+	"name": "Player",
+	"version": ProjectSettings.get_setting("application/config/version", "unknown")
+}
 var loaded_players = {}
 
 var game_setup_data = {} # { "scenario": "key", "host_side": 0 }
@@ -79,6 +82,19 @@ func _on_player_connected(id):
 @rpc("any_peer", "reliable")
 func _register_player(new_player_info):
 	var new_player_id = multiplayer.get_remote_sender_id()
+	
+	if multiplayer.is_server():
+		# Verify Version matches the Server's Version
+		var server_version = player_info.get("version", "unknown")
+		var client_version = new_player_info.get("version", "unknown")
+		
+		if server_version != client_version:
+			print("[NetworkManager] Rejecting Peer %d - Version Mismatch! Server: %s, Client: %s" % [new_player_id, server_version, client_version])
+			# Disconnect the peer; give it a tiny delay to ensure the RPC finishes first if needed,
+			# but disconnect_peer is usually fine to call immediately.
+			multiplayer.multiplayer_peer.disconnect_peer(new_player_id)
+			return
+
 	players[new_player_id] = new_player_info
 	player_connected.emit(new_player_id, new_player_info)
 
