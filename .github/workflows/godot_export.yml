@@ -85,10 +85,35 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: Windows 
-          path: ./Windows Desktop/kh.exe
+          path: |
+            ./kh.exe
+            ./kh.console.exe
 
       - name: Upload Linux
         uses: actions/upload-artifact@v4
         with:
           name: Linux Build
-          path: ./Linux/kh.x86_64
+          path: |
+            ./kh.x86_64
+            ./kh.pck
+
+      - name: Itch.io deployment
+        env:
+          BUTLER_API_KEY: mSyaBnLZvH44IQxM6cRYNylaA37CkEtBBQ7CWmXr
+        run: |
+          # Download butler
+          curl -L -o butler.zip https://broth.itch.ovh/butler/linux-amd64/LATEST/archive/default
+          unzip butler.zip
+          chmod +x butler
+          
+          # Prep Windows upload directory
+          mkdir itch_windows
+          cp kh.exe kh.console.exe itch_windows/ 2>/dev/null || true
+          
+          # Prep Linux upload directory (and the .pck file since embed_pck=false for Linux)
+          mkdir itch_linux
+          cp kh.x86_64 kh.pck itch_linux/ 2>/dev/null || true
+          
+          # Push to Itch.io using butler
+          ./butler push itch_windows jjeffers/sf-kh-simulator:windows
+          ./butler push itch_linux jjeffers/sf-kh-simulator:linux
