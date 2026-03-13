@@ -67,6 +67,7 @@ jobs:
           fi
           
           echo "Setting version to: ${VERSION_STRING}"
+          echo "VERSION_STRING=${VERSION_STRING}" >> $GITHUB_ENV
           sed -i 's/config\/version=".*"/config\/version="'"${VERSION_STRING}"'"/' project.godot
           sed -i 's/application\/product_version=".*"/application\/product_version="'"${VERSION_STRING}"'"/' export_presets.cfg
           sed -i 's/application\/file_version=".*"/application\/file_version="'"${VERSION_STRING}"'"/' export_presets.cfg
@@ -113,5 +114,5 @@ jobs:
           cp "./Linux/kh.x86_64" itch_linux/ 2>/dev/null || true
           
           # Push to Itch.io using butler
-          ./butler push itch_windows jjeffers/sfkh-simulator:windows
-          ./butler push itch_linux jjeffers/sfkh-simulator:linux
+          ./butler push itch_windows jjeffers/sfkh-simulator:windows --userversion ${VERSION_STRING}
+          ./butler push itch_linux jjeffers/sfkh-simulator:linux --userversion ${VERSION_STRING}
