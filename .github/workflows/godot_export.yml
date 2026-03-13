@@ -86,16 +86,14 @@ jobs:
         with:
           name: Windows 
           path: |
-            ./kh.exe
-            ./kh.console.exe
+            ./Windows Desktop/kh.exe
 
       - name: Upload Linux
         uses: actions/upload-artifact@v4
         with:
           name: Linux Build
           path: |
-            ./kh.x86_64
-            ./kh.pck
+            ./Linux/kh.x86_64
 
       - name: Itch.io deployment
         env:
@@ -108,11 +106,11 @@ jobs:
           
           # Prep Windows upload directory
           mkdir itch_windows
-          cp kh.exe kh.console.exe itch_windows/ 2>/dev/null || true
+          cp "./Windows Desktop/kh.exe" itch_windows/ 2>/dev/null || true
           
           # Prep Linux upload directory (and the .pck file since embed_pck=false for Linux)
           mkdir itch_linux
-          cp kh.x86_64 kh.pck itch_linux/ 2>/dev/null || true
+          cp "./Linux/kh.x86_64" itch_linux/ 2>/dev/null || true
           
           # Push to Itch.io using butler
           ./butler push itch_windows jjeffers/sfkh-simulator:windows
