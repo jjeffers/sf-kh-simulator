@@ -67,6 +67,7 @@ jobs:
           fi
           
           echo "Setting version to: ${VERSION_STRING}"
+          echo "VERSION_STRING=${VERSION_STRING}" >> $GITHUB_ENV
           sed -i 's/config\/version=".*"/config\/version="'"${VERSION_STRING}"'"/' project.godot
           sed -i 's/application\/product_version=".*"/application\/product_version="'"${VERSION_STRING}"'"/' export_presets.cfg
           sed -i 's/application\/file_version=".*"/application\/file_version="'"${VERSION_STRING}"'"/' export_presets.cfg
@@ -85,10 +86,34 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: Windows 
-          path: ./Windows Desktop/kh.exe
+          path: |
+            ./Windows Desktop/kh.exe
 
       - name: Upload Linux
         uses: actions/upload-artifact@v4
         with:
           name: Linux Build
-          path: ./Linux/kh.x86_64
+          path: |
+            ./Linux/kh.x86_64
+
+      - name: Itch.io deployment
+        if: github.ref == 'refs/heads/main'
+        env:
+          BUTLER_API_KEY: ${{ secrets.BUTLER_API_KEY }}
+        run: |
+          # Download butler
+          curl -L -o butler.zip https://broth.itch.zone/butler/linux-amd64/LATEST/archive/default
+          unzip butler.zip
+          chmod +x butler
+          
+          # Prep Windows upload directory
+          mkdir itch_windows
+          cp "./Windows Desktop/kh.exe" itch_windows/ 2>/dev/null || true
+          
+          # Prep Linux upload directory (and the .pck file since embed_pck=false for Linux)
+          mkdir itch_linux
+          cp "./Linux/kh.x86_64" itch_linux/ 2>/dev/null || true
+          
+          # Push to Itch.io using butler
+          ./butler push itch_windows jjeffers/sfkh-simulator:windows --userversion ${VERSION_STRING}
+          ./butler push itch_linux jjeffers/sfkh-simulator:linux --userversion ${VERSION_STRING}
