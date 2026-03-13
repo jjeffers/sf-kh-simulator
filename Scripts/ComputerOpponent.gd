@@ -8,6 +8,7 @@ var rng: RandomNumberGenerator
 
 var _process_timer: Timer
 var _is_waiting_for_transition: bool = false
+var _flight_leader_targets: Dictionary = {}
 
 func _init():
 	rng = RandomNumberGenerator.new()
@@ -194,18 +195,51 @@ func _execute_movement():
 	var my_dormant_seekers = game_manager.active_seekers.filter(func(s): return s["side_id"] == side_id and s.get("speed", 0) == 0)
 	for seeker in my_dormant_seekers:
 		var s_pos = seeker["pos"]
+		
+		# Find the absolute nearest ship to the seeker (friendly or enemy)
+		var nearest_ship = null
 		var min_d = 999
-		for e in game_manager.ships:
-			if is_instance_valid(e) and e.side_id != side_id and not e.is_exploding:
-				var d = HexGrid.hex_distance(s_pos, e.grid_position)
-				if d < min_d: min_d = d
-		# If enemy is within 18 hexes, activate the seeker!
-		if min_d <= 18:
-			game_manager.log_message("AI activating Seeker at %v! Target detected at distance %d" % [s_pos, min_d])
-			if game_manager._is_networked():
-				game_manager.rpc_activate_seeker.rpc(s_pos)
+		for sh in game_manager.ships:
+			if is_instance_valid(sh) and not sh.is_exploding:
+				var d = HexGrid.hex_distance(s_pos, sh.grid_position)
+				if d < min_d:
+					min_d = d
+					nearest_ship = sh
+					
+		# Only activate if the absolute nearest ship is an ENEMY (Friendly Fire Prevention)
+		if nearest_ship and nearest_ship.side_id != side_id:
+			# Evaluate if the enemy is a worthy target based on distance and class
+			var activation_score = 0.0
+			
+			# Distance scaling (Range 2 is high reward, 12+ is low)
+			if min_d <= 2:
+				activation_score += 50.0
+			elif min_d <= 5:
+				activation_score += 30.0
+			elif min_d <= 8:
+				activation_score += 15.0
+			elif min_d <= 12:
+				activation_score += 5.0
 			else:
-				game_manager.rpc_activate_seeker(s_pos)
+				activation_score += 0.0
+				
+			# Ship Class Bias
+			if nearest_ship.ship_class in ["Battleship", "Assault Carrier", "Heavy Cruiser"]:
+				activation_score += 40.0
+			elif nearest_ship.ship_class in ["Light Cruiser", "Destroyer", "Frigate"]:
+				activation_score += 15.0
+			elif nearest_ship.ship_class in ["Fighter", "Assault Scout"]:
+				activation_score += 0.0 # Lowest priority
+			elif "Station" in nearest_ship.ship_class or "Fortress" in nearest_ship.ship_class:
+				activation_score += 25.0
+				
+			# If the score is high enough, activate the seeker
+			if activation_score >= 20.0 and min_d <= 18:
+				game_manager.log_message("AI activating Seeker at %v! Target: %s (Dist: %d, Score: %.1f)" % [s_pos, nearest_ship.name, min_d, activation_score])
+				if game_manager._is_networked():
+					game_manager.rpc_activate_seeker.rpc(s_pos)
+				else:
+					game_manager.rpc_activate_seeker(s_pos)
 
 	# Find a ship to move
 	var ship_to_move = null
@@ -228,17 +262,24 @@ func _execute_movement():
 		
 	# Calculate valid hexes and pathing
 	var start_hex = ship_to_move.grid_position
-	# For AI movement, simple heuristic: move towards nearest enemy or stay put if defending
 	var target_enemy = null
-	var min_dist = 9999
-	for e in game_manager.ships:
-		if is_instance_valid(e) and e.side_id != side_id and not e.is_exploding:
-			var d = HexGrid.hex_distance(start_hex, e.grid_position)
-			if d < min_dist:
-				min_dist = d
-				target_enemy = e
-				
-		pass # The target_enemy evaluation is now done inside the _find_best_legal_move scoring step.
+	if ship_to_move.ship_class == "Fighter":
+		var leader = _get_flight_leader(ship_to_move)
+		if leader == ship_to_move:
+			target_enemy = _pick_strike_target(ship_to_move)
+			_flight_leader_targets[ship_to_move.name] = target_enemy
+		else:
+			target_enemy = _flight_leader_targets.get(leader.name, null)
+			if not is_instance_valid(target_enemy) or target_enemy.is_exploding:
+				target_enemy = _pick_strike_target(ship_to_move)
+	else:
+		var min_dist = 9999
+		for e in game_manager.ships:
+			if is_instance_valid(e) and e.side_id != side_id and not e.is_exploding:
+				var d = HexGrid.hex_distance(start_hex, e.grid_position)
+				if d < min_dist:
+					min_dist = d
+					target_enemy = e
 		
 	game_manager.log_message("[color=gray]AI Thinking: Nearest target for %s is %s[/color]" % [ship_to_move.name, target_enemy.name if target_enemy else "None"])
 	
@@ -421,6 +462,9 @@ func _score_hex(hex: Vector3i, target: Ship, is_retreating: bool = false, evalua
 		
 		var dist_to_target = HexGrid.hex_distance(hex, target.grid_position)
 		
+		# Base pull towards target (encourages closing the gap even outside weapon range)
+		score -= dist_to_target * 1.0
+		
 		# L1: Reach
 		if dist_to_target <= 10:
 			score += 2.0 * (10 - dist_to_target)
@@ -429,15 +473,26 @@ func _score_hex(hex: Vector3i, target: Ship, is_retreating: bool = false, evalua
 		if dist_to_target < 3:
 			score -= 2.5 * (3 - dist_to_target)
 			
-		# L6: Fighter Flocking Cohesion
+		# L6: Fighter Flocking Cohesion & Aggression
 		if evaluating_ship and evaluating_ship.ship_class == "Fighter":
+			# Dramatic bias towards closing with enemies for fighters
+			score -= dist_to_target * 5.0
+			
+			# Prevent stacking on any ally fighter
 			for ally in game_manager.ships:
 				if is_instance_valid(ally) and ally.side_id == evaluating_ship.side_id and ally.ship_class == "Fighter" and ally != evaluating_ship:
 					var dist_to_ally = HexGrid.hex_distance(hex, ally.grid_position)
 					if dist_to_ally == 0:
 						score -= 10.0 # FLOCK_SEPARATION_PENALTY (Don't stack)
-					elif dist_to_ally <= 2:
-						score += 5.0  # FLOCK_COHESION_BONUS
+			
+			# Follower clustering
+			var leader = _get_flight_leader(evaluating_ship)
+			if leader and leader != evaluating_ship:
+				var dist_to_leader = HexGrid.hex_distance(hex, leader.grid_position)
+				if dist_to_leader <= 2 and dist_to_leader > 0:
+					score += 10.0  # Strong FLOCK_COHESION_BONUS to stick with leader
+				elif dist_to_leader > 2:
+					score -= dist_to_leader * 1.5 # Penalize drifting from leader
 			
 	# Gaussian Noise (Fuzziness)
 	var noise_variance = 4.0 if (evaluating_ship and evaluating_ship.ship_class == "Fighter") else 2.0
@@ -525,8 +580,6 @@ func _plan_combat() -> Array:
 	var targets = game_manager.ships.filter(func(s): return is_instance_valid(s) and s.side_id != side_id and not s.is_exploding)
 	var attacks_data = []
 	
-	var fighter_swarm_target: Ship = null
-	
 	for ship in my_ships:
 		for i in range(ship.weapons.size()):
 			var w = ship.weapons[i]
@@ -547,8 +600,10 @@ func _plan_combat() -> Array:
 					u_a += 0.5 # Sathar Aggression Bias
 					
 				# Swarm Bonus
-				if ship.ship_class == "Fighter" and fighter_swarm_target == t:
-					u_a += 50.0
+				if ship.ship_class == "Fighter":
+					var leader = _get_flight_leader(ship)
+					if leader and _flight_leader_targets.get(leader.name) == t:
+						u_a += 50.0
 				
 				# Fuzziness
 				u_a += rng.randfn(0.0, 1.5)
@@ -558,9 +613,6 @@ func _plan_combat() -> Array:
 					best_target = t
 			
 			if best_target:
-				if ship.ship_class == "Fighter" and fighter_swarm_target == null:
-					fighter_swarm_target = best_target
-					
 				game_manager.log_message("AI Planning: %s -> %s with %s (Utility: %.2f)" % [ship.get_display_name(), best_target.get_display_name(), w["name"], best_utility])
 				
 				# Compile directly for resolution payload
@@ -574,3 +626,54 @@ func _plan_combat() -> Array:
 	_last_planned_combat_turn = game_manager.turn_count
 	_last_planned_combat_subphase = game_manager.combat_subphase
 	return attacks_data
+
+# --- FIGHTER FLIGHT LEADERS ---
+func _get_flight_leader(fighter: Ship) -> Ship:
+	if fighter.ship_class != "Fighter":
+		return null
+		
+	var potential_leaders = []
+	for ally in game_manager.ships:
+		if is_instance_valid(ally) and ally.side_id == fighter.side_id and ally.ship_class == "Fighter" and not ally.is_exploding:
+			if HexGrid.hex_distance(fighter.grid_position, ally.grid_position) <= 20:
+				potential_leaders.append(ally)
+				
+	if potential_leaders.size() == 0:
+		return fighter
+		
+	# Sort by name alphabetically so it's consistent across turns
+	potential_leaders.sort_custom(func(a, b): return a.name < b.name)
+	return potential_leaders[0]
+
+func _pick_strike_target(ship: Ship) -> Ship:
+	var best_target = null
+	var best_utility = -999.0
+	
+	for e in game_manager.ships:
+		if is_instance_valid(e) and e.side_id != ship.side_id and not e.is_exploding:
+			var dist = HexGrid.hex_distance(ship.grid_position, e.grid_position)
+			var u = 20.0 - (dist * 0.5) # Preference for closer targets, but heavily outweighed by ship class
+			
+			# Priority to Capital Ships
+			if e.ship_class == "Assault Carrier" or e.ship_class == "Battleship":
+				u += 50.0
+			elif e.ship_class == "Heavy Cruiser" or e.ship_class == "Light Cruiser":
+				u += 30.0
+			elif e.ship_class == "Destroyer":
+				u += 15.0
+			elif e.ship_class == "Frigate":
+				u += 5.0
+			elif e.ship_class == "Corvette":
+				u += 0.0
+			elif "Station" in e.ship_class or "Fortress" in e.ship_class:
+				u += 25.0
+				
+			# Randomness
+			u += rng.randfn(0.0, 5.0)
+			
+			if u > best_utility:
+				best_utility = u
+				best_target = e
+				
+	return best_target
+

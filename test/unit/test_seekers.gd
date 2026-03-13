@@ -60,7 +60,8 @@ func test_seeker_autonomous_pursuit_and_detonation():
 		"pos": Vector3i(0, 0, 0),
 		"side_id": 1,
 		"owner_name": "TestMinelayer",
-		"speed": 2
+		"speed": 2,
+		"tracking_pos": Vector3i(4, -4, 0) # Needs an initial tracking target
 	}
 	game_manager.active_seekers.append(seeker)
 	
@@ -72,11 +73,16 @@ func test_seeker_autonomous_pursuit_and_detonation():
 	target.side_id = 2
 	target.grid_position = Vector3i(4, -4, 0) # Distance 4
 	target.facing = 3
+	target.max_hull = 100
+	target.hull = 100
 	game_manager.ships.append(target)
 	
 	# Turn 1 and beyond (while loop to mitigate 75% hit chance RNG flakiness)
 	var max_attempts = 10
 	var attempts = 0
+	
+	# Force consistent RNG seed for deterministic hit (75% base chance)
+	Combat.combat_rng.seed = 12345
 	
 	while target.hull == target.max_hull and attempts < max_attempts:
 		# Reload Seeker if it missed and detonated
@@ -85,7 +91,8 @@ func test_seeker_autonomous_pursuit_and_detonation():
 				"pos": Vector3i(0, 0, 0),
 				"side_id": 1,
 				"owner_name": "TestMinelayer",
-				"speed": 2
+				"speed": 2,
+				"tracking_pos": target.grid_position
 			}
 			game_manager.active_seekers.append(new_seeker)
 			
