@@ -97,6 +97,7 @@ jobs:
             ./Linux/kh.x86_64
 
       - name: Itch.io deployment
+        if: github.ref == 'refs/heads/main'
         env:
           BUTLER_API_KEY: ${{ secrets.BUTLER_API_KEY }}
         run: |
