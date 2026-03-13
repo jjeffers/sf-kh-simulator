@@ -5310,7 +5310,7 @@ func _resolve_seeker_movement_and_detonations():
 					
 				var res_fx = target.apply_damage_effect(effect, raw_dmg)
 				log_message("%s: %s" % [target.name, res_fx.get("text")])
-				if res_fx.get("fallback", false):
+				if res_fx.get("fallback", false) or effect.get("type") == "Hull":
 					target.take_hull_damage(raw_dmg)
 					
 			else:

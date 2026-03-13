@@ -181,6 +181,8 @@ func apply_net_state(data: Dictionary):
 		undock() # Helper clears host and state
 	elif not is_docked and net_is_docked:
 		is_docked = true # Force state, though host ref might be missing (Client logic likely handles dock_at separately or assumes persistent setup)
+		if ship_class in ["Fighter", "Assault Scout"]:
+			visible = false
 	
 	# Position/Movement
 	_set_grid_position(data.get("grid_position", grid_position))
@@ -1861,6 +1863,9 @@ func dock_at(station: Ship) -> bool:
 		if not station.docked_guests.has(self):
 			station.docked_guests.append(self)
 		
+		if ship_class in ["Fighter", "Assault Scout"]:
+			visible = false
+			
 		# Align position purely for visuals/logic consistency
 		grid_position = station.grid_position
 		speed = 0 # FIX: Ensure speed is reset to 0 when docked
@@ -1875,6 +1880,9 @@ func undock():
 	is_docked = false
 	docked_host = null
 	turns_docked_since_action = 0
+	
+	if ship_class in ["Fighter", "Assault Scout"] and not is_destroyed:
+		visible = true
 
 func rearm_assault_rockets() -> bool:
 	if not is_docked or not is_instance_valid(docked_host) or turns_docked_since_action < 1:
