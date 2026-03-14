@@ -14,6 +14,8 @@ extends Control
 @onready var plot_jump_btn = $HBoxContainer/VBoxRight/Panel/VBox/ActionHBox/PlotJumpBtn
 @onready var end_turn_btn = $HBoxContainer/VBoxLeft/TopBar/HBox/EndTurnBtn
 @onready var turn_status_label = $HBoxContainer/VBoxLeft/TopBar/HBox/TurnStatusLabel
+@onready var transfer_btn = $HBoxContainer/VBoxRight/Panel/VBox/ActionHBox/TransferBtn
+@onready var new_fleet_btn = $HBoxContainer/VBoxRight/Panel/VBox/ActionHBox/NewFleetBtn
 
 const MAP_GRID_WIDTH = 45.0
 const MAP_GRID_HEIGHT = 55.0
@@ -58,6 +60,9 @@ func _ready():
 	end_turn_btn.pressed.connect(_on_end_turn_pressed)
 	cancel_jump_btn.pressed.connect(_on_cancel_jump_pressed)
 	plot_jump_btn.toggled.connect(_on_plot_jump_toggled)
+	transfer_btn.pressed.connect(_on_transfer_pressed)
+	
+	new_fleet_btn.hide() # Disabled/hidden as we use the transfer panel for new fleets too
 	
 	fleet_list.item_selected.connect(_on_fleet_list_selected)
 	fleet_list.item_activated.connect(_on_fleet_list_activated)
@@ -785,12 +790,14 @@ func _on_fleet_list_selected(idx: int):
 			fleet_list.select(i)
 			break
 			
-	if selected_fleet.is_moving():
-		cancel_jump_btn.disabled = false
+	if selected_fleet.is_moving() or selected_fleet.fleet_name in ["Fortress " + selected_fleet.current_system_id, "Armed Station " + selected_fleet.current_system_id]:
+		cancel_jump_btn.disabled = not selected_fleet.is_moving()
 		plot_jump_btn.disabled = true
+		transfer_btn.disabled = true
 	else:
 		cancel_jump_btn.disabled = true
 		plot_jump_btn.disabled = false
+		transfer_btn.disabled = false
 		
 	_update_composition_panel()
 	
@@ -1034,6 +1041,33 @@ func _on_ship_list_activated(idx: int):
 	dialog.canceled.connect(func(): dialog.queue_free())
 	
 	dialog.popup_centered()
+
+func _on_transfer_pressed():
+	if not is_instance_valid(selected_fleet): return
+	if selected_fleet.is_moving(): return
+	
+	# Prevent transferring FROM a station explicitly
+	if selected_fleet.fleet_name in ["Fortress " + selected_fleet.current_system_id, "Armed Station " + selected_fleet.current_system_id]:
+		return
+		
+	var transfer_scn = load("res://Scenes/FleetTransferPanel.tscn").instantiate()
+	add_child(transfer_scn)
+	transfer_scn.setup(selected_fleet)
+	
+	var selected_items = ship_list_ui.get_selected_items()
+	for idx in selected_items:
+		transfer_scn.source_list.select(idx, false)
+		
+	transfer_scn.transfer_confirmed.connect(func():
+		_update_fleet_list()
+		# Re-select the fleet to highlight it
+		for i in range(fleet_list.item_count):
+			if fleet_list.get_item_metadata(i) == selected_fleet:
+				fleet_list.select(i)
+				break
+		_update_composition_panel()
+		_draw_fleets()
+	)
 
 func _execute_jump(target_id: String):
 	if selected_fleet:
