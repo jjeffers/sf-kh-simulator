@@ -4,71 +4,88 @@ Vulkan 1.4.318 - Forward+ - Using Device #0: Intel - Intel(R) Graphics (RPL-P)
 [color=green]Console Initialized. Press ~ to collapse.[/color]
 [CampaignManager] Successfully loaded ship_names.json dictionary.
 [MainMenu] Auto-Hosting Campaign...
-Assigned Player 2 to Peer 745618969
+Assigned Player 2 to Peer 1412234263
 [CampaignLobby] Launch Campaign Pressed!
 [CampaignManager] Attached CampAI_Sathar to tree.
 [color=yellow]Campaign AI initialized for Sathar.[/color]
 [NetworkManager] Starting Game RPC received.
 [color=gray]Campaign AI (Sathar) evaluating turn...[/color]
-Connections for Start Circle 3 = ["K\'tsa-Kar"]
-Connections for Start Circle 5 = ["K\'aken-Kar"]
-Connections for Start Circle 2 = ["Kizk-Kar"]
-Connections for Start Circle 4 = ["Fromeltar"]
-Connections for Start Circle 6 = ["Prenglar"]
-Connections for Start Circle 3 = ["K\'tsa-Kar"]
-Connections for Start Circle 5 = ["K\'aken-Kar"]
-Connections for Start Circle 2 = ["Kizk-Kar"]
-Connections for Start Circle 3 = ["K\'tsa-Kar"]
-Connections for Start Circle 5 = ["K\'aken-Kar"]
-Connections for Start Circle 2 = ["Kizk-Kar"]
-Connections for Start Circle 4 = ["Fromeltar"]
-Connections for Start Circle 6 = ["Prenglar"]
-Connections for Start Circle 3 = ["K\'tsa-Kar"]
-Connections for Start Circle 5 = ["K\'aken-Kar"]
-Connections for Start Circle 3 = ["K\'tsa-Kar"]
-Connections for Start Circle 3 = ["K\'tsa-Kar"]
-Connections for Start Circle 5 = ["K\'aken-Kar"]
-Connections for Start Circle 2 = ["Kizk-Kar"]
-Connections for Start Circle 3 = ["K\'tsa-Kar"]
-Connections for Start Circle 5 = ["K\'aken-Kar"]
-Connections for Start Circle 3 = ["K\'tsa-Kar"]
-Connections for Start Circle 5 = ["K\'aken-Kar"]
-Connections for Start Circle 2 = ["Kizk-Kar"]
-Connections for Start Circle 4 = ["Fromeltar"]
-Connections for Start Circle 6 = ["Prenglar"]
-Connections for Start Circle 3 = ["K\'tsa-Kar"]
-Sathar AI target_id evaluated to: K'aken-Kar for fleet Fleet 1 at Start Circle 3
-Connections for Start Circle 3 = ["K\'tsa-Kar"]
-Sathar AI path result: ["Start Circle 3", "K\'tsa-Kar", "K\'aken-Kar"]
+DEBUG are_systems_connected: Checking A=Start Circle 1 B=Zebulon
+DEBUG are_systems_connected: Found START CIRCLE route match!
+AI ordered fleet Fleet 1 to move toward Truane's Star (next stop Zebulon).
 DEBUG are_systems_connected: Checking A=Start Circle 3 B=K'tsa-Kar
 DEBUG are_systems_connected: Found START CIRCLE route match!
-AI ordered fleet Fleet 1 to move toward K'aken-Kar (next stop K'tsa-Kar).
-Connections for Start Circle 4 = ["Fromeltar"]
-Connections for Start Circle 2 = ["Kizk-Kar"]
-Connections for Start Circle 6 = ["Prenglar"]
-Connections for Start Circle 5 = ["K\'aken-Kar"]
-Connections for Start Circle 4 = ["Fromeltar"]
-Connections for Start Circle 4 = ["Fromeltar"]
-Connections for Start Circle 4 = ["Fromeltar"]
-Connections for Start Circle 4 = ["Fromeltar"]
-Connections for Start Circle 4 = ["Fromeltar"]
-Connections for Start Circle 4 = ["Fromeltar"]
-Connections for Start Circle 2 = ["Kizk-Kar"]
-Connections for Start Circle 6 = ["Prenglar"]
-Connections for Start Circle 5 = ["K\'aken-Kar"]
-Connections for Start Circle 4 = ["Fromeltar"]
-Connections for Start Circle 2 = ["Kizk-Kar"]
-Connections for Start Circle 4 = ["Fromeltar"]
-Connections for Start Circle 2 = ["Kizk-Kar"]
-Connections for Start Circle 6 = ["Prenglar"]
-Connections for Start Circle 5 = ["K\'aken-Kar"]
-Sathar AI target_id evaluated to: Fromeltar for fleet Fleet 2 at Start Circle 4
-Connections for Start Circle 4 = ["Fromeltar"]
-Sathar AI path result: ["Start Circle 4", "Fromeltar"]
-DEBUG are_systems_connected: Checking A=Start Circle 4 B=Fromeltar
-DEBUG are_systems_connected: Found START CIRCLE route match!
-AI ordered fleet Fleet 2 to move toward Fromeltar (next stop Fromeltar).
+AI ordered fleet Fleet 2 to move toward K'aken-Kar (next stop K'tsa-Kar).
 [color=yellow]End Turn Requested: UPF. Status - UPF:true, Sathar:false[/color]
 [color=yellow]Campaign AI (Sathar) is ending its turn.[/color]
 [color=yellow]End Turn Requested: Sathar. Status - UPF:true, Sathar:true[/color]
 [color=green]Both factions ready. Advancing from Day 1 to Day 2[/color]
+[color=gray]Campaign AI (Sathar) evaluating turn...[/color]
+[color=yellow]End Turn Requested: UPF. Status - UPF:true, Sathar:false[/color]
+[color=yellow]Campaign AI (Sathar) is ending its turn.[/color]
+[color=yellow]End Turn Requested: Sathar. Status - UPF:true, Sathar:true[/color]
+[color=green]Both factions ready. Advancing from Day 2 to Day 3[/color]
+[color=gray]Campaign AI (Sathar) evaluating turn...[/color]
+[color=yellow]End Turn Requested: UPF. Status - UPF:true, Sathar:false[/color]
+[color=yellow]Campaign AI (Sathar) is ending its turn.[/color]
+[color=yellow]End Turn Requested: Sathar. Status - UPF:true, Sathar:true[/color]
+[color=green]Both factions ready. Advancing from Day 3 to Day 4[/color]
+[color=gray]Campaign AI (Sathar) evaluating turn...[/color]
+[color=yellow]End Turn Requested: UPF. Status - UPF:true, Sathar:false[/color]
+[color=yellow]Campaign AI (Sathar) is ending its turn.[/color]
+[color=yellow]End Turn Requested: Sathar. Status - UPF:true, Sathar:true[/color]
+[color=green]Both factions ready. Advancing from Day 4 to Day 5[/color]
+[color=gray]Campaign AI (Sathar) evaluating turn...[/color]
+[color=yellow]End Turn Requested: UPF. Status - UPF:true, Sathar:false[/color]
+[color=yellow]Campaign AI (Sathar) is ending its turn.[/color]
+[color=yellow]End Turn Requested: Sathar. Status - UPF:true, Sathar:true[/color]
+[color=green]Both factions ready. Advancing from Day 5 to Day 6[/color]
+Task Force Cassidine arrived at Dixon's Star.
+Task Force Prenglar arrived at Dixon's Star.
+Militia White Light arrived at K'tsa-Kar.
+Militia Araks arrived at Athor.
+Militia K'aken-Kar arrived at K'tsa-Kar.
+Militia Dramune arrived at Cassidine.
+Militia Fromeltar arrived at Kizk-Kar.
+Militia Gruna Garu arrived at Athor.
+Militia Dramune2 arrived at Cassidine.
+Militia Theseus arrived at White Light.
+Militia Truane's Star arrived at Zebulon.
+Militia Kizk-Kar arrived at K'aken-Kar.
+Fleet 1 arrived at Zebulon.
+Fleet 2 arrived at K'tsa-Kar.
+COMBAT TRIGGERED AT K'tsa-Kar!
+COMBAT TRIGGERED AT Zebulon!
+Network requested open encounter dialog for: K'tsa-Kar
+COMBAT TRIGGERED AT K'tsa-Kar!
+DEBUG: _handle_encounter_click called for K'tsa-Kar
+DEBUG: _handle_encounter_click proceeding for faction Sathar
+DEBUG: _handle_encounter_click successfully added EncounterDialog to UI tree.
+[color=yellow]Encounter K'tsa-Kar: UPF is Ready[/color]
+Network requested open encounter dialog for: Zebulon
+COMBAT TRIGGERED AT Zebulon!
+DEBUG: _handle_encounter_click called for Zebulon
+DEBUG: _handle_encounter_click proceeding for faction Sathar
+DEBUG: _handle_encounter_click successfully added EncounterDialog to UI tree.
+[color=yellow]Encounter Zebulon: UPF is Ready[/color]
+[color=gray]Campaign AI (Sathar) evaluating turn...[/color]
+DEBUG are_systems_connected: Checking A=Zebulon B=Truane's Star
+DEBUG are_systems_connected: Found normal route match!
+AI ordered fleet Fleet 1 to move toward Truane's Star (next stop Truane's Star).
+DEBUG are_systems_connected: Checking A=K'tsa-Kar B=K'aken-Kar
+DEBUG are_systems_connected: Found normal route match!
+AI ordered fleet Fleet 2 to move toward K'aken-Kar (next stop K'aken-Kar).
+[color=yellow]End Turn Requested: UPF. Status - UPF:true, Sathar:false[/color]
+[color=yellow]Campaign AI (Sathar) is ending its turn.[/color]
+[color=yellow]End Turn Requested: Sathar. Status - UPF:true, Sathar:true[/color]
+[color=green]Both factions ready. Advancing from Day 6 to Day 7[/color]
+[color=gray]Campaign AI (Sathar) evaluating turn...[/color]
+[color=yellow]End Turn Requested: UPF. Status - UPF:true, Sathar:false[/color]
+[color=yellow]Campaign AI (Sathar) is ending its turn.[/color]
+[color=yellow]End Turn Requested: Sathar. Status - UPF:true, Sathar:true[/color]
+[color=green]Both factions ready. Advancing from Day 7 to Day 8[/color]
+[color=gray]Campaign AI (Sathar) evaluating turn...[/color]
+[color=yellow]End Turn Requested: UPF. Status - UPF:true, Sathar:false[/color]
+[color=yellow]Campaign AI (Sathar) is ending its turn.[/color]
+[color=yellow]End Turn Requested: Sathar. Status - UPF:true, Sathar:true[/color]
+[color=green]Both factions ready. Advancing from Day 8 to Day 9[/color]

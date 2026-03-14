@@ -1234,14 +1234,14 @@ func _handle_encounter_click(sys_name: String):
 		
 	var my_fac = _get_my_faction()
 	ConsoleManager.log_message("DEBUG: _handle_encounter_click proceeding for faction " + my_fac)
+	var attacker = CampaignManager.encounter_attackers.get(sys_name, "Both")
+	var is_attacker = (my_fac == attacker) or (attacker == "Both")
 	var is_defender = false
 	
-	# Determine if we are defending (UPF has stations, or we check who has militia)
-	if sys_name in campaign.UPF_FORTRESSES or sys_name in campaign.UPF_ARMED_STATIONS:
-		is_defender = (my_fac == "UPF")
+	if attacker == "Both":
+		is_defender = (my_fac == "UPF") # If both meet in space, UPF defensively acts
 	else:
-		# Simple fallback: if Sathar is present, they are usually attacking deeply into UPF space.
-		is_defender = (my_fac == "UPF")
+		is_defender = (my_fac != attacker)
 		
 	var layer = CanvasLayer.new()
 	layer.name = "EncounterDialog"
@@ -1249,9 +1249,6 @@ func _handle_encounter_click(sys_name: String):
 	layer.set_meta("sys_name", sys_name)
 		
 	active_encounter_dialog = layer
-	
-	var attacker = CampaignManager.encounter_attackers.get(sys_name, "Both")
-	var is_attacker = (my_fac == attacker) or (attacker == "Both")
 		
 	# Build the popup UI panel
 	var panel = PanelContainer.new()

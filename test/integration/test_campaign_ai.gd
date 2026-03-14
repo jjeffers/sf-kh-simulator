@@ -56,9 +56,8 @@ func test_sathar_ai_queues_repairs():
 			
 	assert_not_null(ai, "Sathar AI missing.")
 	
-	var f = campaign_manager.create_new_fleet("Sathar", "Dixon's Star", "Test Fleet")
-	campaign_manager.systems["Dixon's Star"]["is_scc"] = true
-	campaign_manager.systems["Dixon's Star"]["occupying_faction"] = "Sathar"
+	var f = campaign_manager.create_new_fleet("Sathar", "Cassidine", "Test Fleet")
+	campaign_manager.systems["Cassidine"]["occupying_faction"] = "Sathar"
 	
 	var s = load("res://Scripts/Ship.gd").new()
 	s.configure_heavy_cruiser()

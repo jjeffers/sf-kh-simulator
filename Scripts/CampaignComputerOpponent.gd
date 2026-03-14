@@ -270,36 +270,61 @@ func _find_path(start: String, end: String) -> Array:
 
 # --- PHASE 3: ENCOUNTERS ---
 func _evaluate_encounters():
-	var attacking_sys = ""
-	for sys_id in campaign.active_encounters:
-		var attacker = campaign.encounter_attackers.get(sys_id, "")
-		if attacker == faction:
-			attacking_sys = sys_id
-			break
+	for attacking_sys in campaign.active_encounters:
+		# Can only evaluate if this faction is actually present
+		var am_present = false
+		for f in campaign.fleets:
+			if f.faction == faction and f.current_system_id == attacking_sys and not f.is_moving():
+				am_present = true
+				break
+				
+		var has_station = false
+		if faction == "UPF" and (campaign.UPF_FORTRESSES.has(attacking_sys) or campaign.UPF_ARMED_STATIONS.has(attacking_sys)):
+			am_present = true
+			has_station = true
 			
-	if attacking_sys != "":
-		# Assess advantage
-		var car = _evaluate_campaign_advantage(attacking_sys)
-		if faction == "UPF" and car < 0.3:
-			# Retreat!
-			var my_fleets = []
-			for f in campaign.fleets:
-				if f.faction == faction and f.current_system_id == attacking_sys and not f.is_moving():
-					my_fleets.append(f)
-					
-			if my_fleets.size() > 0:
-				var retreat_sys = _find_safe_retreat_location(attacking_sys)
-				if retreat_sys != "":
-					for f in my_fleets:
-						campaign.order_fleet_move(f, retreat_sys)
-					ConsoleManager.log_message("[color=orange]UPF AI tactical retreat from %s ordered to %s![/color]" % [attacking_sys, retreat_sys])
-					return
-					
-		# Trigger Encounter
-		if campaign.multiplayer.has_multiplayer_peer() and not campaign.multiplayer.is_server():
-			campaign.rpc_id(1, "rpc_open_encounter_dialog", attacking_sys)
+		if not am_present:
+			continue
+			
+		var attacker = campaign.encounter_attackers.get(attacking_sys, "Both")
+		var is_attacker = (attacker == faction or attacker == "Both")
+		
+		# Assess advantage if UPF is fighting
+		if faction == "UPF":
+			var car = _evaluate_campaign_advantage(attacking_sys)
+			if car < 0.3 and not has_station:  # Can't retreat stations
+				# Try to retreat
+				var my_fleets = []
+				for f in campaign.fleets:
+					if f.faction == faction and f.current_system_id == attacking_sys and not f.is_moving():
+						my_fleets.append(f)
+						
+				if my_fleets.size() > 0:
+					var retreat_sys = _find_safe_retreat_location(attacking_sys)
+					if retreat_sys != "":
+						for f in my_fleets:
+							campaign.order_fleet_move(f, retreat_sys)
+						ConsoleManager.log_message("[color=orange]UPF AI tactical retreat from %s ordered to %s![/color]" % [attacking_sys, retreat_sys])
+						continue # We retreated, don't confirm readiness
+						
+		# If we didn't retreat, we must engage
+		if is_attacker:
+			if campaign.multiplayer.has_multiplayer_peer():
+				if not campaign.multiplayer.is_server():
+					campaign.rpc_open_encounter_dialog.rpc_id(1, attacking_sys)
+				else:
+					campaign.rpc_open_encounter_dialog.rpc(attacking_sys)
+			else:
+				campaign.rpc_open_encounter_dialog(attacking_sys)
+				
+		# Automatically confirm readiness for bots
+		if campaign.multiplayer.has_multiplayer_peer():
+			if campaign.multiplayer.is_server():
+				campaign.set_encounter_ready(attacking_sys, faction, true)
+			else:
+				campaign.set_encounter_ready.rpc_id(1, attacking_sys, faction, true)
 		else:
-			campaign.rpc_open_encounter_dialog(attacking_sys)
+			campaign.set_encounter_ready(attacking_sys, faction, true)
 
 func _evaluate_campaign_advantage(sys_id: String) -> float:
 	var my_power = 0.0
