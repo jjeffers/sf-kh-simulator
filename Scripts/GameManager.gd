@@ -7452,6 +7452,11 @@ func receive_battle_summary(title_text: String, side_id: int, dcr_dict: Dictiona
 		lbl_repairs.text = "Post-Battle Repairs:\n" + "\n".join(repair_strings)
 			
 	panel_summary.visible = true
+	
+	if OS.get_cmdline_args().has("--bot"):
+		await get_tree().create_timer(3.0).timeout
+		if is_instance_valid(btn_summary_return):
+			btn_summary_return.pressed.emit()
 
 func _get_faction_for_side(side_id: int) -> String:
 	# Side 1 is typically UPF in campaigns, Side 2 is Sathar.

@@ -4,18 +4,18 @@ Vulkan 1.4.318 - Forward+ - Using Device #0: Intel - Intel(R) Graphics (RPL-P)
 [color=green]Console Initialized. Press ~ to collapse.[/color]
 [CampaignManager] Successfully loaded ship_names.json dictionary.
 [MainMenu] Auto-Hosting Campaign...
-Assigned Player 2 to Peer 542477561
+Assigned Player 2 to Peer 151346980
 [CampaignLobby] Launch Campaign Pressed!
 [CampaignManager] Attached CampAI_Sathar to tree.
 [color=yellow]Campaign AI initialized for Sathar.[/color]
 [NetworkManager] Starting Game RPC received.
 [color=gray]Campaign AI (Sathar) evaluating turn...[/color]
-DEBUG are_systems_connected: Checking A=Start Circle 5 B=K'aken-Kar
+DEBUG are_systems_connected: Checking A=Start Circle 4 B=Fromeltar
 DEBUG are_systems_connected: Found START CIRCLE route match!
-AI ordered fleet Fleet 1 to move toward K'aken-Kar (next stop K'aken-Kar).
-DEBUG are_systems_connected: Checking A=Start Circle 3 B=K'tsa-Kar
+AI ordered fleet Fleet 1 to move toward Fromeltar (next stop Fromeltar).
+DEBUG are_systems_connected: Checking A=Start Circle 1 B=Zebulon
 DEBUG are_systems_connected: Found START CIRCLE route match!
-AI ordered fleet Fleet 2 to move toward K'aken-Kar (next stop K'tsa-Kar).
+AI ordered fleet Fleet 2 to move toward Truane's Star (next stop Zebulon).
 [color=yellow]Campaign AI (Sathar) is ending its turn.[/color]
 [color=yellow]End Turn Requested: Sathar. Status - UPF:false, Sathar:true[/color]
 [color=yellow]End Turn Requested: UPF. Status - UPF:true, Sathar:true[/color]
@@ -42,298 +42,463 @@ AI ordered fleet Fleet 2 to move toward K'aken-Kar (next stop K'tsa-Kar).
 [color=green]Both factions ready. Advancing from Day 5 to Day 6[/color]
 Strike Force NOVA arrived at Cassidine.
 Task Force Cassidine arrived at Fromeltar.
-Task Force Prenglar arrived at Timeon.
+Task Force Prenglar arrived at Cassidine.
 Militia White Light arrived at K'tsa-Kar.
-Militia Araks arrived at Gruna Garu.
+Militia Araks arrived at Athor.
+Militia K'aken-Kar arrived at Kizk-Kar.
 Militia Dramune arrived at Cassidine.
-Militia Fromeltar arrived at Kizk-Kar.
 Militia Gruna Garu arrived at Prenglar.
 Militia Dramune2 arrived at Cassidine.
-Militia Theseus arrived at White Light.
-Militia Truane's Star arrived at Dixon's Star.
-Militia Kizk-Kar arrived at K'aken-Kar.
-Fleet 1 arrived at K'aken-Kar.
-Fleet 2 arrived at K'tsa-Kar.
-COMBAT TRIGGERED AT K'tsa-Kar!
-COMBAT TRIGGERED AT K'aken-Kar!
+Militia Theseus arrived at Timeon.
+Militia Truane's Star arrived at Zebulon.
+Militia Kizk-Kar arrived at Fromeltar.
+Fleet 1 arrived at Fromeltar.
+Fleet 2 arrived at Zebulon.
+COMBAT TRIGGERED AT Fromeltar!
+COMBAT TRIGGERED AT Zebulon!
 [color=gray]Campaign AI (Sathar) evaluating turn...[/color]
-DEBUG are_systems_connected: Checking A=K'tsa-Kar B=K'aken-Kar
+DEBUG are_systems_connected: Checking A=Zebulon B=Truane's Star
 DEBUG are_systems_connected: Found normal route match!
-AI ordered fleet Fleet 2 to move toward K'aken-Kar (next stop K'aken-Kar).
-Network requested open encounter dialog for: K'aken-Kar
-COMBAT TRIGGERED AT K'aken-Kar!
-DEBUG: _handle_encounter_click called for K'aken-Kar
+AI ordered fleet Fleet 2 to move toward Truane's Star (next stop Truane's Star).
+Network requested open encounter dialog for: Fromeltar
+COMBAT TRIGGERED AT Fromeltar!
+DEBUG: _handle_encounter_click called for Fromeltar
 DEBUG: _handle_encounter_click proceeding for faction Sathar
 DEBUG: _handle_encounter_click successfully added EncounterDialog to UI tree.
-[color=yellow]Encounter K'aken-Kar: Sathar is Ready[/color]
-Network requested open encounter dialog for: K'tsa-Kar
-COMBAT TRIGGERED AT K'tsa-Kar!
-DEBUG: _handle_encounter_click called for K'tsa-Kar
-DEBUG: _handle_encounter_click proceeding for faction Sathar
-DEBUG: _handle_encounter_click successfully added EncounterDialog to UI tree.
-[color=yellow]Encounter K'tsa-Kar: UPF is Ready[/color]
-Network requested open encounter dialog for: K'aken-Kar
-COMBAT TRIGGERED AT K'aken-Kar!
-DEBUG: _handle_encounter_click called for K'aken-Kar
-DEBUG: _handle_encounter_click proceeding for faction Sathar
-DEBUG: _handle_encounter_click successfully added EncounterDialog to UI tree.
-[color=yellow]Encounter K'aken-Kar: UPF is Ready[/color]
+[color=yellow]Encounter Fromeltar: Sathar is Ready[/color]
+Network requested open encounter dialog for: Fromeltar
+COMBAT TRIGGERED AT Fromeltar!
+DEBUG: _handle_encounter_click called for Fromeltar
+DEBUG: _handle_encounter_click aborted (EncounterDialog for this system already exists!)
+[color=yellow]Encounter Fromeltar: UPF is Ready[/color]
 [NetworkManager] Starting Game RPC received.
 WARNING: res://Scenes/Main.tscn:3 - ext_resource, invalid UID: uid://cvru4lxy5bnj1 - using text path instead: res://Scripts/GameManager.gd
      at: load (scene/resources/resource_format_text.cpp:500)
      GDScript backtrace (most recent call first):
          [0] start_game_rpc (res://Scripts/NetworkManager.gd:199)
          [1] set_encounter_ready (res://Scripts/CampaignManager.gd:599)
+Network requested open encounter dialog for: Zebulon
+COMBAT TRIGGERED AT Zebulon!
+DEBUG: _handle_encounter_click called for Zebulon
+SCRIPT ERROR: Cannot call method 'get_unique_id' on a null value.
+          at: _get_my_faction (res://Scripts/CampaignMap.gd:771)
+          GDScript backtrace (most recent call first):
+              [0] _get_my_faction (res://Scripts/CampaignMap.gd:771)
+              [1] _handle_encounter_click (res://Scripts/CampaignMap.gd:1235)
+              [2] rpc_open_encounter_dialog (res://Scripts/CampaignManager.gd:568)
+DEBUG: _handle_encounter_click proceeding for faction
+DEBUG: _handle_encounter_click successfully added EncounterDialog to UI tree.
+[color=yellow]Encounter Zebulon: UPF is Ready[/color]
 [DEBUG] _build_repair_panel called
 [Peer: 1] [Turn 1] [DEBUG] Initializing repair_panel
 [NetworkManager] Player 1 finished loading.
-[NetworkManager] Player 542477561 finished loading.
+[NetworkManager] Player 151346980 finished loading.
 [NetworkManager] All Players Ready!
 [Peer: 1] [Turn 1] All Players Ready. Starting Game...
-GameManager: Generated Random Seed: 1909854300
-[Peer: 1] [Turn 1] Game Setup Received: Seed 1909854300
+GameManager: Generated Random Seed: 4082827539
+[Peer: 1] [Turn 1] Game Setup Received: Seed 4082827539
 [Peer: 1] [Turn 1] Loading Scenario: Campaign Encounter
-[DEBUG] Ship Fortress K'aken-Kar loaded with Orbit Dir 1
+[DEBUG] Ship Fromeltar Station loaded with Orbit Dir 1
 [Peer: 1] [Turn 1] [color=cyan]=== DEPLOYMENT Phase ===[/color]
 [Peer: 1] [Turn 1] [color=yellow]AI Spawning for Side 2 (Sathar: false)[/color]
 [DEBUG] _update_deployment_ui called - Subphase: 1, my_side_id: 2
-[color=gray]Campaign AI (Sathar) evaluating turn...[/color]
-Network requested open encounter dialog for: K'aken-Kar
-[color=yellow]Encounter K'aken-Kar: Sathar is Ready[/color]
+Network requested open encounter dialog for: Fromeltar
+[color=yellow]Encounter Fromeltar: UPF is Ready[/color]
 [NetworkManager] Starting Game RPC received.
 WARNING: res://Scenes/Main.tscn:3 - ext_resource, invalid UID: uid://cvru4lxy5bnj1 - using text path instead: res://Scripts/GameManager.gd
      at: load (scene/resources/resource_format_text.cpp:500)
      GDScript backtrace (most recent call first):
          [0] start_game_rpc (res://Scripts/NetworkManager.gd:199)
          [1] set_encounter_ready (res://Scripts/CampaignManager.gd:599)
-         [2] _evaluate_encounters (res://Scripts/CampaignComputerOpponent.gd:330)
-         [3] _on_think_timeout (res://Scripts/CampaignComputerOpponent.gd:63)
 [DEBUG] _build_repair_panel called
 [Peer: 1] [Turn 1] [DEBUG] Initializing repair_panel
 [NetworkManager] Player 1 finished loading.
-Network requested open encounter dialog for: K'tsa-Kar
-[color=yellow]Encounter K'tsa-Kar: UPF is Ready[/color]
-Network requested open encounter dialog for: K'aken-Kar
-[color=yellow]Encounter K'aken-Kar: UPF is Ready[/color]
-[NetworkManager] Starting Game RPC received.
-WARNING: res://Scenes/Main.tscn:3 - ext_resource, invalid UID: uid://cvru4lxy5bnj1 - using text path instead: res://Scripts/GameManager.gd
-     at: load (scene/resources/resource_format_text.cpp:500)
-     GDScript backtrace (most recent call first):
-         [0] start_game_rpc (res://Scripts/NetworkManager.gd:199)
-         [1] set_encounter_ready (res://Scripts/CampaignManager.gd:599)
-[NetworkManager] Player 542477561 finished loading.
-[DEBUG] _build_repair_panel called
-[Peer: 1] [Turn 1] [DEBUG] Initializing repair_panel
-[NetworkManager] Player 1 finished loading.
+[NetworkManager] Player 151346980 finished loading.
 [NetworkManager] All Players Ready!
 [Peer: 1] [Turn 1] All Players Ready. Starting Game...
-GameManager: Generated Random Seed: 1740885952
-[Peer: 1] [Turn 1] Game Setup Received: Seed 1740885952
+GameManager: Generated Random Seed: 4219336786
+[Peer: 1] [Turn 1] Game Setup Received: Seed 4219336786
 [Peer: 1] [Turn 1] Loading Scenario: Campaign Encounter
-[DEBUG] Ship Fortress K'aken-Kar loaded with Orbit Dir 1
+[DEBUG] Ship Fromeltar Station loaded with Orbit Dir 1
 [Peer: 1] [Turn 1] [color=cyan]=== DEPLOYMENT Phase ===[/color]
 [Peer: 1] [Turn 1] [color=yellow]AI Spawning for Side 2 (Sathar: false)[/color]
-[DEBUG] _update_deployment_ui called - Subphase: 1, my_side_id: 2
-[NetworkManager] Player 542477561 finished loading.
-[NetworkManager] All Players Ready!
-[Peer: 1] [Turn 1] All Players Ready. Starting Game...
-GameManager: Generated Random Seed: 1168140227
-[Peer: 1] [Turn 1] Game Setup Received: Seed 1168140227
-[Peer: 1] [Turn 1] Loading Scenario: Campaign Encounter
-[DEBUG] Ship Fortress K'aken-Kar2 loaded with Orbit Dir 1
-[Peer: 1] [Turn 1] [color=cyan]=== DEPLOYMENT Phase ===[/color]
 [DEBUG] _update_deployment_ui called - Subphase: 1, my_side_id: 2
 [Peer: 1] [Turn 1] Side 2 is now Deploying.
 [DEBUG] _update_deployment_ui called - Subphase: 2, my_side_id: 2
 [Peer: 1] [Turn 1] AI Auto-Deploying Ships...
 [Peer: 1] [Turn 1] Deployment Complete. Starting Turn 1.
 [Peer: 1] [Turn 1] === Turn Start: Side UPF ===
-DEBUG: Rejected SAV Death-Spawn2 Side:2 CurSide:1 Moved:false
-DEBUG: Rejected SAV Havoc2 Side:2 CurSide:1 Moved:false
-DEBUG: Rejected SAV Death-Bringer2 Side:2 CurSide:1 Moved:false
-DEBUG: Rejected SAV Fighter 4 Side:2 CurSide:1 Moved:false
-DEBUG: Rejected SAV Oppressor2 Side:2 CurSide:1 Moved:false
-DEBUG: Rejected SAV Stinger2 Side:2 CurSide:1 Moved:false
+ERROR: Condition "outbound_buffer_size > 0 && (wslay_event_get_queued_msg_length(wsl_ctx) + p_buffer_size > (uint32_t)outbound_buffer_size)" is true. Returning: ERR_OUT_OF_MEMORY
+   at: _send (modules/websocket/wsl_peer.cpp:784)
+   GDScript backtrace (most recent call first):
+       [0] broadcast_game_state (res://Scripts/GameManager.gd:7980)
+       [1] start_movement_phase (res://Scripts/GameManager.gd:2411)
+       [2] _start_turn_for_side (res://Scripts/GameManager.gd:2359)
+       [3] start_turn_cycle (res://Scripts/GameManager.gd:2323)
+       [4] rpc_finalize_deployment (res://Scripts/GameManager.gd:3314)
+       [5] _deferred_finalize_deployment (res://Scripts/GameManager.gd:3306)
+DEBUG: Rejected SAV Death-Spawn Side:2 CurSide:1 Moved:false
+DEBUG: Rejected SAV Centipede Side:2 CurSide:1 Moved:false
+DEBUG: Rejected SAV Fighter 1 Side:2 CurSide:1 Moved:false
+DEBUG: Rejected SAV Locust Side:2 CurSide:1 Moved:false
+DEBUG: Rejected SAV Cicada Side:2 CurSide:1 Moved:false
+DEBUG: Rejected SAV Nemesis Side:2 CurSide:1 Moved:false
+DEBUG: Rejected SAV Fighter 3 Side:2 CurSide:1 Moved:false
 DEBUG: Rejected SAV Fighter 5 Side:2 CurSide:1 Moved:false
-DEBUG: Rejected SAV Executioner2 Side:2 CurSide:1 Moved:false
-DEBUG: Rejected SAV Asp2 Side:2 CurSide:1 Moved:false
-DEBUG: Rejected SAV Cruelty2 Side:2 CurSide:1 Moved:false
-DEBUG: Rejected SAV Fighter 8 Side:2 CurSide:1 Moved:false
+DEBUG: Rejected SAV Fighter 6 Side:2 CurSide:1 Moved:false
+DEBUG: Rejected SAV Despair Side:2 CurSide:1 Moved:false
+DEBUG: Rejected SAV Discord Side:2 CurSide:1 Moved:false
 DEBUG: Rejected SAV Fighter 10 Side:2 CurSide:1 Moved:false
-DEBUG: start_movement_phase. Side: 1 Available: 5
-DEBUG: First available: Fortress K'aken-Kar2 ID: 1 Moved: false
-DEBUG: Auto-Orbit Candidate Found: Fortress K'aken-Kar2 (Class: Fortified Station, Orbit: 1)
+DEBUG: start_movement_phase. Side: 1 Available: 21
+DEBUG: First available: Fromeltar Station ID: 1 Moved: false
+DEBUG: Auto-Orbit Candidate Found: Fromeltar Station (Class: Armed Station, Orbit: 1)
 [DEBUG] _on_orbit: Failed to spawn ghost ship. Aborting orbit plot.
 [DEBUG] Auto-Orbit Failed (No planet?). Defaulting to Hold Position.
 [Peer: 1] [Turn 1] Not your turn! (Active: 1, You: 2)
-[DEBUG] Standard move start for UPFS Bolt2
-[Peer: 1] [Turn 1] Orders Received for Fortress K'aken-Kar2
-[Peer: 1] [Turn 1] Orders Received for UPFS Bolt2
-[Peer: 1] [Turn 1] Orders Received for UPFS Eagle2
-[Peer: 1] [Turn 1] Orders Received for UPFS Assault Scout 6
-[Peer: 1] [Turn 1] Orders Received for UPFS Assault Scout 7
+[DEBUG] Standard move start for UPFS Lexington
+[Peer: 1] [Turn 1] Orders Received for Fromeltar Station
+[Peer: 1] [Turn 1] Deployment Complete. Starting Turn 1.
+[Peer: 1] [Turn 1] === Turn Start: Side UPF ===
+ERROR: Condition "outbound_buffer_size > 0 && (wslay_event_get_queued_msg_length(wsl_ctx) + p_buffer_size > (uint32_t)outbound_buffer_size)" is true. Returning: ERR_OUT_OF_MEMORY
+   at: _send (modules/websocket/wsl_peer.cpp:784)
+   GDScript backtrace (most recent call first):
+       [0] broadcast_game_state (res://Scripts/GameManager.gd:7980)
+       [1] start_movement_phase (res://Scripts/GameManager.gd:2411)
+       [2] _start_turn_for_side (res://Scripts/GameManager.gd:2359)
+       [3] start_turn_cycle (res://Scripts/GameManager.gd:2323)
+       [4] rpc_finalize_deployment (res://Scripts/GameManager.gd:3314)
+       [5] _deferred_finalize_deployment (res://Scripts/GameManager.gd:3306)
+DEBUG: Rejected SAV Death-Spawn Side:2 CurSide:1 Moved:false
+DEBUG: Rejected SAV Centipede Side:2 CurSide:1 Moved:false
+DEBUG: Rejected SAV Fighter 1 Side:2 CurSide:1 Moved:false
+DEBUG: Rejected SAV Locust Side:2 CurSide:1 Moved:false
+DEBUG: Rejected SAV Cicada Side:2 CurSide:1 Moved:false
+DEBUG: Rejected SAV Nemesis Side:2 CurSide:1 Moved:false
+DEBUG: Rejected SAV Fighter 3 Side:2 CurSide:1 Moved:false
+DEBUG: Rejected SAV Fighter 5 Side:2 CurSide:1 Moved:false
+DEBUG: Rejected SAV Fighter 6 Side:2 CurSide:1 Moved:false
+DEBUG: Rejected SAV Despair Side:2 CurSide:1 Moved:false
+DEBUG: Rejected SAV Discord Side:2 CurSide:1 Moved:false
+DEBUG: Rejected SAV Fighter 10 Side:2 CurSide:1 Moved:false
+DEBUG: start_movement_phase. Side: 1 Available: 21
+DEBUG: First available: Fromeltar Station ID: 1 Moved: false
+DEBUG: Auto-Orbit Candidate Found: Fromeltar Station (Class: Armed Station, Orbit: 1)
+[DEBUG] _on_orbit: Failed to spawn ghost ship. Aborting orbit plot.
+[DEBUG] Auto-Orbit Failed (No planet?). Defaulting to Hold Position.
+[Peer: 1] [Turn 1] Not your turn! (Active: 1, You: 2)
+[DEBUG] Standard move start for UPFS Lexington
+[Security] Teleport attempt! (-1, 0, 1) -> (-1, 0, 1) (Dist 0)
+[Peer: 1] [Turn 1] [Security] Move rejected: Invalid Path/Speed for Fromeltar Station
+[Peer: 1] [Turn 1] Orders Received for UPFS Lexington
+[Peer: 1] [Turn 1] Orders Received for UPFS Pulsar
+[Peer: 1] [Turn 1] Orders Received for UPFS Cygnus
+[Peer: 1] [Turn 1] Orders Received for UPFS Laco
+[Peer: 1] [Turn 1] Orders Received for UPFS Minadied
+[Peer: 1] [Turn 1] Orders Received for UPFS Jackal
+[Peer: 1] [Turn 1] Orders Received for UPFS Dart
+[Peer: 1] [Turn 1] Orders Received for UPFS Panther
+[Peer: 1] [Turn 1] Orders Received for UPFS Fighter 1
+[Peer: 1] [Turn 1] Orders Received for UPFS Fighter 2
+[Peer: 1] [Turn 1] Orders Received for UPFS Fighter 3
+[Peer: 1] [Turn 1] Orders Received for UPFS Fighter 4
+[Peer: 1] [Turn 1] Orders Received for UPFS Fighter 5
+[Peer: 1] [Turn 1] Orders Received for UPFS Fighter 6
+[Peer: 1] [Turn 1] Orders Received for UPFS Impala
+[Peer: 1] [Turn 1] Orders Received for UPFS Merlin
+[Peer: 1] [Turn 1] Orders Received for UPFS Windrunner
+[Peer: 1] [Turn 1] Orders Received for UPFS Kapteyn
+[Peer: 1] [Turn 1] Orders Received for UPFS Assault Scout 4
+[Peer: 1] [Turn 1] Orders Received for UPFS Assault Scout 5
 >>> DIAGNOSTIC: execute_all_movement running for side: 1 on peer: 1
 [Peer: 1] [Turn 1] Executing Movement Phase for Side UPF
-[Peer: 1] [Turn 1] [color=yellow]EXECUTE LOOP: Checking Ship Fortress K'aken-Kar2 (Class: Fortified Station, Mines: 0)[/color]
-[Peer: 1] [Turn 1] [color=yellow]EXECUTE LOOP: Checking Ship UPFS Bolt2 (Class: Assault Scout, Mines: 0)[/color]
-[Peer: 1] [Turn 1] [color=yellow]EXECUTE LOOP: Checking Ship UPFS Eagle2 (Class: Assault Scout, Mines: 0)[/color]
-[Peer: 1] [Turn 1] [color=red]UPFS Eagle2 crashed into a planet![/color]
-[Peer: 1] [Turn 1] Ship destroyed: UPFS Eagle2
-[Peer: 1] [Turn 1] [color=yellow]EXECUTE LOOP: Checking Ship UPFS Assault Scout 7 (Class: Assault Scout, Mines: 0)[/color]
+[Peer: 1] [Turn 1] [color=yellow]EXECUTE LOOP: Checking Ship Fromeltar Station (Class: Armed Station, Mines: 0)[/color]
+[Peer: 1] [Turn 1] [color=yellow]EXECUTE LOOP: Checking Ship UPFS Lexington (Class: Assault Carrier, Mines: 0)[/color]
+[Peer: 1] [Turn 1] [color=yellow]EXECUTE LOOP: Checking Ship UPFS Pulsar (Class: Heavy Cruiser, Mines: 0)[/color]
+[Peer: 1] [Turn 1] [color=yellow]EXECUTE LOOP: Checking Ship UPFS Cygnus (Class: Light Cruiser, Mines: 0)[/color]
+[Peer: 1] [Turn 1] [color=yellow]EXECUTE LOOP: Checking Ship UPFS Laco (Class: Frigate, Mines: 0)[/color]
+[Peer: 1] [Turn 1] [color=yellow]EXECUTE LOOP: Checking Ship UPFS Minadied (Class: Frigate, Mines: 0)[/color]
+[Peer: 1] [Turn 1] [color=yellow]EXECUTE LOOP: Checking Ship UPFS Jackal (Class: Assault Scout, Mines: 0)[/color]
+[Peer: 1] [Turn 1] [color=yellow]EXECUTE LOOP: Checking Ship UPFS Dart (Class: Assault Scout, Mines: 0)[/color]
+[Peer: 1] [Turn 1] [color=yellow]EXECUTE LOOP: Checking Ship UPFS Panther (Class: Assault Scout, Mines: 0)[/color]
+[Peer: 1] [Turn 1] [color=yellow]EXECUTE LOOP: Checking Ship UPFS Fighter 1 (Class: Fighter, Mines: 0)[/color]
+[Peer: 1] [Turn 1] [color=yellow]EXECUTE LOOP: Checking Ship UPFS Fighter 2 (Class: Fighter, Mines: 0)[/color]
+[Peer: 1] [Turn 1] [color=yellow]EXECUTE LOOP: Checking Ship UPFS Fighter 3 (Class: Fighter, Mines: 0)[/color]
+[Peer: 1] [Turn 1] [color=yellow]EXECUTE LOOP: Checking Ship UPFS Fighter 4 (Class: Fighter, Mines: 0)[/color]
+[Peer: 1] [Turn 1] [color=yellow]EXECUTE LOOP: Checking Ship UPFS Fighter 5 (Class: Fighter, Mines: 0)[/color]
+[Peer: 1] [Turn 1] [color=yellow]EXECUTE LOOP: Checking Ship UPFS Fighter 6 (Class: Fighter, Mines: 0)[/color]
+[Peer: 1] [Turn 1] [color=yellow]EXECUTE LOOP: Checking Ship UPFS Impala (Class: Assault Scout, Mines: 0)[/color]
+[Peer: 1] [Turn 1] [color=red]UPFS Impala crashed into a planet![/color]
+[Peer: 1] [Turn 1] Ship destroyed: UPFS Impala
+[Peer: 1] [Turn 1] [color=yellow]EXECUTE LOOP: Checking Ship UPFS Windrunner (Class: Assault Scout, Mines: 0)[/color]
+[Peer: 1] [Turn 1] [color=yellow]EXECUTE LOOP: Checking Ship UPFS Kapteyn (Class: Frigate, Mines: 0)[/color]
+[Peer: 1] [Turn 1] [color=yellow]EXECUTE LOOP: Checking Ship UPFS Assault Scout 4 (Class: Assault Scout, Mines: 0)[/color]
+[Peer: 1] [Turn 1] [color=yellow]EXECUTE LOOP: Checking Ship UPFS Assault Scout 5 (Class: Assault Scout, Mines: 0)[/color]
 >>> DIAGNOSTIC: Entering Mine Detonations. Active Mines: 0 on peer: 1
 [Peer: 1] [Turn 1] [color=cyan]!!! DEBUG !!! Entering Mine Detonations. Active Mines: 0[/color]
 [Peer: 1] [Turn 1] [color=cyan]!!! DEBUG !!! Entering Seeker Movement. Active Seekers: 0[/color]
 [Peer: 1] [Turn 1] Movement Phase Complete for Side 1. Starting Combat.
 [DEBUG] start_combat_passive: Side 2 firing (Opponent of Moving Side 1)
+ERROR: Condition "outbound_buffer_size > 0 && (wslay_event_get_queued_msg_length(wsl_ctx) + p_buffer_size > (uint32_t)outbound_buffer_size)" is true. Returning: ERR_OUT_OF_MEMORY
+   at: _send (modules/websocket/wsl_peer.cpp:784)
+   GDScript backtrace (most recent call first):
+       [0] broadcast_game_state (res://Scripts/GameManager.gd:7980)
+       [1] _start_combat_planning (res://Scripts/GameManager.gd:2582)
+       [2] start_combat_passive (res://Scripts/GameManager.gd:2558)
+       [3] execute_all_movement (res://Scripts/GameManager.gd:4942)
+       [4] _deferred_execute_all_movement (res://Scripts/GameManager.gd:4847)
 [Peer: 1] [Turn 1] Combat Planning: Side 2
 [DEBUG] TARGET CHECK P2. Ships: 12
-[DEBUG] Weapon Torpedoes N/A for SAV Havoc2 (Phase 3, Fired false)
-[DEBUG] Weapon Torpedoes N/A for SAV Death-Bringer2 (Phase 3, Fired false)
-[DEBUG] Weapon Assault Rockets N/A for SAV Fighter 4 (Phase 3, Fired false)
-[DEBUG] Weapon Torpedoes N/A for SAV Oppressor2 (Phase 3, Fired false)
-[DEBUG] Weapon Torpedoes N/A for SAV Stinger2 (Phase 3, Fired false)
-[DEBUG] Weapon Assault Rockets N/A for SAV Fighter 5 (Phase 3, Fired false)
-[DEBUG] Weapon Torpedoes N/A for SAV Executioner2 (Phase 3, Fired false)
-[DEBUG] Weapon Torpedoes N/A for SAV Asp2 (Phase 3, Fired false)
-[DEBUG] Weapon Torpedoes N/A for SAV Cruelty2 (Phase 3, Fired false)
-[DEBUG] Weapon Assault Rockets N/A for SAV Fighter 8 (Phase 3, Fired false)
-[DEBUG] Weapon Assault Rockets N/A for SAV Fighter 10 (Phase 3, Fired false)
-[DEBUG] NO TARGETS FOUND for P2
-[Peer: 1] [Turn 1] No valid targets for Side 2. Skipping...
-[Peer: 1] [Turn 1] Resolving 0 attacks...
+[DEBUG] VALID: SAV Death-Spawn found target with Laser Battery
+[Peer: 1] [Turn 1] AI Planning: AC SAV Death-Spawn -> F UPFS Fighter 5 with Laser Battery (Utility: 4.56)
+[Peer: 1] [Turn 1] AI Planning: FG SAV Centipede -> F UPFS Fighter 4 with Laser Battery (Utility: 0.08)
+[Peer: 1] [Turn 1] AI Planning: FG SAV Locust -> AS UPFS Dart with Laser Battery (Utility: 3.60)
+[Peer: 1] [Turn 1] AI Planning: FG SAV Locust -> AS UPFS Jackal with Laser Canon (Utility: -0.01)
+[Peer: 1] [Turn 1] AI Planning: FG SAV Cicada -> AS UPFS Jackal with Laser Battery (Utility: 4.71)
+[Peer: 1] [Turn 1] AI Planning: FG SAV Cicada -> AS UPFS Jackal with Laser Canon (Utility: 2.05)
+[Peer: 1] [Turn 1] AI Planning: DD SAV Nemesis -> AS UPFS Jackal with Laser Battery (Utility: 0.99)
+[Peer: 1] [Turn 1] AI Planning: DD SAV Nemesis -> AS UPFS Jackal with Electron Battery (Utility: -1.48)
+[Peer: 1] [Turn 1] AI Planning: CA SAV Despair -> F UPFS Fighter 4 with Laser Battery 1 (Utility: 4.17)
+[Peer: 1] [Turn 1] AI Planning: CA SAV Despair -> AS UPFS Dart with Laser Battery 2 (Utility: 2.23)
+[Peer: 1] [Turn 1] AI Planning: CA SAV Despair -> F UPFS Fighter 4 with Proton Battery (Utility: 3.23)
+[Peer: 1] [Turn 1] AI Planning: CA SAV Despair -> F UPFS Fighter 4 with Electron Battery (Utility: 3.57)
+[Peer: 1] [Turn 1] AI Planning: DD SAV Discord -> AS UPFS Jackal with Laser Battery (Utility: 1.91)
+[Peer: 1] [Turn 1] AI Planning: DD SAV Discord -> AS UPFS Jackal with Electron Battery (Utility: -2.85)
+[Peer: 1] [Turn 1] Resolving 14 attacks...
+[Peer: 1] [Turn 1] AC SAV Death-Spawn firing Laser Battery at F UPFS Fighter 5
+Combat Roll: Distance 8, Chance 10%, Rolled 7
+[Peer: 1] [Turn 1] Firing Ship: AC SAV Death-Spawn, Weapon: Laser Battery, Odds: 10%, Roll: 7, Result: HIT
+Damage Roll: 1d10+0 -> 1
+Damage Roll: d100(49) + DTM(0) = 49
+[Peer: 1] [Turn 1] [color=green]HIT![/color] Rolling Damage Table (d100+0 = 49)
+[Peer: 1] [Turn 1] UPFS Fighter 5: Drive Hit (-1 ADF)
+[Peer: 1] [Turn 1] FG SAV Centipede firing Laser Battery at F UPFS Fighter 4
+Combat Roll: Distance 9, Chance 5%, Rolled 95
+[Peer: 1] [Turn 1] Firing Ship: FG SAV Centipede, Weapon: Laser Battery, Odds: 5%, Roll: 95, Result: MISS
+[Peer: 1] [Turn 1] [color=red]MISS![/color]
+[Peer: 1] [Turn 1] FG SAV Locust firing Laser Battery at AS UPFS Dart
+Combat Roll: Distance 9, Chance 5%, Rolled 7
+[Peer: 1] [Turn 1] Firing Ship: FG SAV Locust, Weapon: Laser Battery, Odds: 5%, Roll: 7, Result: MISS
+[Peer: 1] [Turn 1] [color=red]MISS![/color]
+[Peer: 1] [Turn 1] FG SAV Locust firing Laser Canon at AS UPFS Jackal
+Combat Roll: Distance 10, Chance 10%, Rolled 57
+[Peer: 1] [Turn 1] Firing Ship: FG SAV Locust, Weapon: Laser Canon, Odds: 10%, Roll: 57, Result: MISS
+[Peer: 1] [Turn 1] [color=red]MISS![/color]
+[Peer: 1] [Turn 1] FG SAV Cicada firing Laser Battery at AS UPFS Jackal
+Combat Roll: Distance 9, Chance 5%, Rolled 20
+[Peer: 1] [Turn 1] Firing Ship: FG SAV Cicada, Weapon: Laser Battery, Odds: 5%, Roll: 20, Result: MISS
+[Peer: 1] [Turn 1] [color=red]MISS![/color]
+[Peer: 1] [Turn 1] FG SAV Cicada firing Laser Canon at AS UPFS Jackal
+Combat Roll: Distance 9, Chance 15%, Rolled 4
+[Peer: 1] [Turn 1] Firing Ship: FG SAV Cicada, Weapon: Laser Canon, Odds: 15%, Roll: 4, Result: HIT
+Damage Roll: 2d10+0 -> 17
+Damage Roll: d100(64) + DTM(0) = 64
+[Peer: 1] [Turn 1] [color=green]HIT![/color] Rolling Damage Table (d100+0 = 64)
+[Peer: 1] [Turn 1] UPFS Jackal: Weapon Hit: Laser Battery Crippled!
+[Peer: 1] [Turn 1] DD SAV Nemesis firing Laser Battery at AS UPFS Jackal
+Combat Roll: Distance 9, Chance 5%, Rolled 64
+[Peer: 1] [Turn 1] Firing Ship: DD SAV Nemesis, Weapon: Laser Battery, Odds: 5%, Roll: 64, Result: MISS
+[Peer: 1] [Turn 1] [color=red]MISS![/color]
+[Peer: 1] [Turn 1] DD SAV Nemesis firing Electron Battery at AS UPFS Jackal
+Combat Roll: Distance 9, Chance 15%, Rolled 3
+[Peer: 1] [Turn 1] Firing Ship: DD SAV Nemesis, Weapon: Electron Battery, Odds: 15%, Roll: 3, Result: HIT
+Damage Roll: 1d10+0 -> 8
+Damage Roll: d100(34) + DTM(10) = 44
+[Peer: 1] [Turn 1] [color=green]HIT![/color] Rolling Damage Table (d100+10 = 44)
+[Peer: 1] [Turn 1] UPFS Jackal: Hull Hit (8 Damage)
+[Peer: 1] [Turn 1] CA SAV Despair firing Laser Battery 1 at F UPFS Fighter 4
+Combat Roll: Distance 8, Chance 10%, Rolled 97
+[Peer: 1] [Turn 1] Firing Ship: CA SAV Despair, Weapon: Laser Battery 1, Odds: 10%, Roll: 97, Result: MISS
+[Peer: 1] [Turn 1] [color=red]MISS![/color]
+[Peer: 1] [Turn 1] CA SAV Despair firing Laser Battery 2 at AS UPFS Dart
+Combat Roll: Distance 8, Chance 10%, Rolled 38
+[Peer: 1] [Turn 1] Firing Ship: CA SAV Despair, Weapon: Laser Battery 2, Odds: 10%, Roll: 38, Result: MISS
+[Peer: 1] [Turn 1] [color=red]MISS![/color]
+[Peer: 1] [Turn 1] CA SAV Despair firing Proton Battery at F UPFS Fighter 4
+Combat Roll: Distance 8, Chance 20%, Rolled 99
+[Peer: 1] [Turn 1] Firing Ship: CA SAV Despair, Weapon: Proton Battery, Odds: 20%, Roll: 99, Result: MISS
+[Peer: 1] [Turn 1] [color=red]MISS![/color]
+[Peer: 1] [Turn 1] CA SAV Despair firing Electron Battery at F UPFS Fighter 4
+Combat Roll: Distance 8, Chance 20%, Rolled 73
+[Peer: 1] [Turn 1] Firing Ship: CA SAV Despair, Weapon: Electron Battery, Odds: 20%, Roll: 73, Result: MISS
+[Peer: 1] [Turn 1] [color=red]MISS![/color]
+[Peer: 1] [Turn 1] DD SAV Discord firing Laser Battery at AS UPFS Jackal
+Combat Roll: Distance 9, Chance 5%, Rolled 1
+[Peer: 1] [Turn 1] Firing Ship: DD SAV Discord, Weapon: Laser Battery, Odds: 5%, Roll: 1, Result: HIT
+Damage Roll: 1d10+0 -> 4
+Damage Roll: d100(23) + DTM(0) = 23
+[Peer: 1] [Turn 1] [color=green]HIT![/color] Rolling Damage Table (d100+0 = 23)
+[Peer: 1] [Turn 1] UPFS Jackal: Hull Hit (4 Damage)
+[Peer: 1] [Turn 1] DD SAV Discord firing Electron Battery at AS UPFS Jackal
+Combat Roll: Distance 9, Chance 15%, Rolled 80
+[Peer: 1] [Turn 1] Firing Ship: DD SAV Discord, Weapon: Electron Battery, Odds: 15%, Roll: 80, Result: MISS
+[Peer: 1] [Turn 1] [color=red]MISS![/color]
 [Peer: 1] [Turn 1] Resolution Phase Complete.
 [Peer: 1] [Turn 1] Turn Segment Complete.
 [DEBUG] start_combat_active: Side 1 firing (Active Side)
+ERROR: Condition "outbound_buffer_size > 0 && (wslay_event_get_queued_msg_length(wsl_ctx) + p_buffer_size > (uint32_t)outbound_buffer_size)" is true. Returning: ERR_OUT_OF_MEMORY
+   at: _send (modules/websocket/wsl_peer.cpp:784)
+   GDScript backtrace (most recent call first):
+       [0] broadcast_game_state (res://Scripts/GameManager.gd:7980)
+       [1] _start_combat_planning (res://Scripts/GameManager.gd:2582)
+       [2] start_combat_active (res://Scripts/GameManager.gd:2573)
+       [3] end_turn_cycle (res://Scripts/GameManager.gd:2876)
 [Peer: 1] [Turn 1] Combat Planning: Side 1
-[DEBUG] TARGET CHECK P1. Ships: 4
-[DEBUG] NO TARGETS FOUND for P1
-[Peer: 1] [Turn 1] No valid targets for Side 1. Skipping...
-[Peer: 1] [Turn 1] Resolving 0 attacks...
+[DEBUG] TARGET CHECK P1. Ships: 20
+[DEBUG] Weapon Laser Battery N/A for UPFS Jackal (Phase 3, Fired false)
+[DEBUG] VALID: UPFS Dart found target with Laser Battery
+[Peer: 1] [Turn 1] Resolving 4 attacks...
+[Peer: 1] [Turn 1] AS UPFS Dart target is docked and invalid! Attack fizzles.
+[Peer: 1] [Turn 1] AS UPFS Windrunner target is docked and invalid! Attack fizzles.
+[Peer: 1] [Turn 1] FG UPFS Kapteyn target is docked and invalid! Attack fizzles.
+[Peer: 1] [Turn 1] FG UPFS Kapteyn target is docked and invalid! Attack fizzles.
 [Peer: 1] [Turn 1] Resolution Phase Complete.
 [Peer: 1] [Turn 1] Turn Segment Complete.
 [Peer: 1] [Turn 1] === Turn Start: Side Sathar ===
-DEBUG: Rejected Fortress K'aken-Kar2 Side:1 CurSide:2 Moved:false
-DEBUG: Rejected UPFS Bolt2 Side:1 CurSide:2 Moved:false
-DEBUG: Rejected UPFS Assault Scout 6 Side:1 CurSide:2 Moved:false
-DEBUG: Rejected UPFS Assault Scout 7 Side:1 CurSide:2 Moved:false
+ERROR: Condition "outbound_buffer_size > 0 && (wslay_event_get_queued_msg_length(wsl_ctx) + p_buffer_size > (uint32_t)outbound_buffer_size)" is true. Returning: ERR_OUT_OF_MEMORY
+   at: _send (modules/websocket/wsl_peer.cpp:784)
+   GDScript backtrace (most recent call first):
+       [0] broadcast_game_state (res://Scripts/GameManager.gd:7980)
+       [1] start_movement_phase (res://Scripts/GameManager.gd:2411)
+       [2] _start_turn_for_side (res://Scripts/GameManager.gd:2359)
+       [3] end_turn_cycle (res://Scripts/GameManager.gd:2882)
+DEBUG: Rejected Fromeltar Station Side:1 CurSide:2 Moved:false
+DEBUG: Rejected UPFS Lexington Side:1 CurSide:2 Moved:false
+DEBUG: Rejected UPFS Pulsar Side:1 CurSide:2 Moved:false
+DEBUG: Rejected UPFS Cygnus Side:1 CurSide:2 Moved:false
+DEBUG: Rejected UPFS Laco Side:1 CurSide:2 Moved:false
+DEBUG: Rejected UPFS Minadied Side:1 CurSide:2 Moved:false
+DEBUG: Rejected UPFS Jackal Side:1 CurSide:2 Moved:false
+DEBUG: Rejected UPFS Dart Side:1 CurSide:2 Moved:false
+DEBUG: Rejected UPFS Panther Side:1 CurSide:2 Moved:false
+DEBUG: Rejected UPFS Fighter 1 Side:1 CurSide:2 Moved:false
+DEBUG: Rejected UPFS Fighter 2 Side:1 CurSide:2 Moved:false
+DEBUG: Rejected UPFS Fighter 3 Side:1 CurSide:2 Moved:false
+DEBUG: Rejected UPFS Fighter 4 Side:1 CurSide:2 Moved:false
+DEBUG: Rejected UPFS Fighter 5 Side:1 CurSide:2 Moved:false
+DEBUG: Rejected UPFS Fighter 6 Side:1 CurSide:2 Moved:false
+DEBUG: Rejected UPFS Merlin Side:1 CurSide:2 Moved:false
+DEBUG: Rejected UPFS Windrunner Side:1 CurSide:2 Moved:false
+DEBUG: Rejected UPFS Kapteyn Side:1 CurSide:2 Moved:false
+DEBUG: Rejected UPFS Assault Scout 4 Side:1 CurSide:2 Moved:false
+DEBUG: Rejected UPFS Assault Scout 5 Side:1 CurSide:2 Moved:false
 DEBUG: start_movement_phase. Side: 2 Available: 12
-DEBUG: First available: SAV Death-Spawn2 ID: 2 Moved: false
-DEBUG: Skip Auto-Orbit Check: SAV Death-Spawn2 (Class: Assault Carrier, Orbit: 0)
-DEBUG: Skip Auto-Orbit Check: SAV Havoc2 (Class: Destroyer, Orbit: 0)
-DEBUG: Skip Auto-Orbit Check: SAV Death-Bringer2 (Class: Heavy Cruiser, Orbit: 0)
-DEBUG: Skip Auto-Orbit Check: SAV Fighter 4 (Class: Fighter, Orbit: 0)
-DEBUG: Skip Auto-Orbit Check: SAV Oppressor2 (Class: Destroyer, Orbit: 0)
-DEBUG: Skip Auto-Orbit Check: SAV Stinger2 (Class: Frigate, Orbit: 0)
+DEBUG: First available: SAV Death-Spawn ID: 2 Moved: false
+DEBUG: Skip Auto-Orbit Check: SAV Death-Spawn (Class: Assault Carrier, Orbit: 0)
+DEBUG: Skip Auto-Orbit Check: SAV Centipede (Class: Frigate, Orbit: 0)
+DEBUG: Skip Auto-Orbit Check: SAV Fighter 1 (Class: Fighter, Orbit: 0)
+DEBUG: Skip Auto-Orbit Check: SAV Locust (Class: Frigate, Orbit: 0)
+DEBUG: Skip Auto-Orbit Check: SAV Cicada (Class: Frigate, Orbit: 0)
+DEBUG: Skip Auto-Orbit Check: SAV Nemesis (Class: Destroyer, Orbit: 0)
+DEBUG: Skip Auto-Orbit Check: SAV Fighter 3 (Class: Fighter, Orbit: 0)
 DEBUG: Skip Auto-Orbit Check: SAV Fighter 5 (Class: Fighter, Orbit: 0)
-DEBUG: Skip Auto-Orbit Check: SAV Executioner2 (Class: Destroyer, Orbit: 0)
-DEBUG: Skip Auto-Orbit Check: SAV Asp2 (Class: Frigate, Orbit: 0)
-DEBUG: Skip Auto-Orbit Check: SAV Cruelty2 (Class: Destroyer, Orbit: 0)
-DEBUG: Skip Auto-Orbit Check: SAV Fighter 8 (Class: Fighter, Orbit: 0)
+DEBUG: Skip Auto-Orbit Check: SAV Fighter 6 (Class: Fighter, Orbit: 0)
+DEBUG: Skip Auto-Orbit Check: SAV Despair (Class: Heavy Cruiser, Orbit: 0)
+DEBUG: Skip Auto-Orbit Check: SAV Discord (Class: Destroyer, Orbit: 0)
 DEBUG: Skip Auto-Orbit Check: SAV Fighter 10 (Class: Fighter, Orbit: 0)
-[DEBUG] Standard move start for SAV Death-Spawn2
+[DEBUG] Standard move start for SAV Death-Spawn
 [Peer: 1] [Turn 1] [color=yellow]AI Computer Opponent Planning Movement...[/color]
-[Peer: 1] [Turn 1] [color=gray]AI Thinking: Evaluating SAV Death-Spawn2 (Unmoved left: 12)[/color]
-[Peer: 1] [Turn 1] [color=gray]AI Thinking: Nearest target for SAV Death-Spawn2 is UPFS Bolt2[/color]
-[Peer: 1] [Turn 1] [color=gray]AI Thinking: Fleet CAR: 3.537 (Threshold: 0.30) Powers: Me=672.0, Enemy=190.0[/color]
-[Peer: 1] [Turn 1] [color=gray]AI Thinking: SAV Death-Spawn2 Individual Retreat Utility: -30.0 (Hull: 100.00%, Def: true, Atk: 2)[/color]
-[Peer: 1] [Turn 1] [color=gray]AI Thinking: SAV Death-Spawn2 constraints -> Speed [0, 4], MR 1[/color]
+[Peer: 1] [Turn 1] [color=gray]AI Thinking: Evaluating SAV Death-Spawn (Unmoved left: 12)[/color]
+[Peer: 1] [Turn 1] [color=gray]AI Thinking: Nearest target for SAV Death-Spawn is UPFS Dart[/color]
+[Peer: 1] [Turn 1] [color=gray]AI Thinking: Fleet CAR: 0.767 (Threshold: 0.30) Powers: Me=595.0, Enemy=776.0[/color]
+[Peer: 1] [Turn 1] [color=gray]AI Thinking: SAV Death-Spawn Individual Retreat Utility: -30.0 (Hull: 100.00%, Def: true, Atk: 2)[/color]
+[Peer: 1] [Turn 1] [color=gray]AI Thinking: SAV Death-Spawn constraints -> Speed [0, 4], MR 1[/color]
 [Peer: 1] [Turn 1] [color=gray]AI Thinking: Explored 17 possible paths matching speed bounds.[/color]
-[Peer: 1] [Turn 1] [color=gray]AI Move Eval -> Ship: AC SAV Death-Spawn2 | Start Speed: 2 | Final Speed: 4 (ADF: 2) | MR Used: 0/1[/color]
-[Peer: 1] [Turn 1] Orders Received for SAV Death-Spawn2
-[Peer: 1] [Turn 1] AI plotted movement for AC SAV Death-Spawn2 (Speed 2 -> 4, 4 hexes)
-[Peer: 1] [Turn 1] [color=gray]AI Thinking: Evaluating SAV Havoc2 (Unmoved left: 11)[/color]
-[Peer: 1] [Turn 1] [color=gray]AI Thinking: Nearest target for SAV Havoc2 is UPFS Bolt2[/color]
-[Peer: 1] [Turn 1] [color=gray]AI Thinking: Fleet CAR: 3.537 (Threshold: 0.30) Powers: Me=672.0, Enemy=190.0[/color]
-[Peer: 1] [Turn 1] [color=gray]AI Thinking: SAV Havoc2 Individual Retreat Utility: 0.0 (Hull: 100.00%, Def: true, Atk: 5)[/color]
-[Peer: 1] [Turn 1] [color=gray]AI Thinking: SAV Havoc2 constraints -> Speed [2, 8], MR 2[/color]
-[Peer: 1] [Turn 1] [color=gray]AI Thinking: Explored 287 possible paths matching speed bounds.[/color]
-[Peer: 1] [Turn 1] [color=gray]AI Move Eval -> Ship: DD SAV Havoc2 | Start Speed: 5 | Final Speed: 8 (ADF: 3) | MR Used: 2/2[/color]
-[Peer: 1] [Turn 1] Orders Received for SAV Havoc2
-[Peer: 1] [Turn 1] AI plotted movement for DD SAV Havoc2 (Speed 5 -> 8, 8 hexes)
-[Peer: 1] [Turn 1] [color=gray]AI Thinking: Evaluating SAV Death-Bringer2 (Unmoved left: 10)[/color]
-[Peer: 1] [Turn 1] [color=gray]AI Thinking: Nearest target for SAV Death-Bringer2 is UPFS Bolt2[/color]
-[Peer: 1] [Turn 1] [color=gray]AI Thinking: Fleet CAR: 3.537 (Threshold: 0.30) Powers: Me=672.0, Enemy=190.0[/color]
-[Peer: 1] [Turn 1] [color=gray]AI Thinking: SAV Death-Bringer2 Individual Retreat Utility: 0.0 (Hull: 100.00%, Def: true, Atk: 7)[/color]
-[Peer: 1] [Turn 1] [color=gray]AI Thinking: SAV Death-Bringer2 constraints -> Speed [1, 3], MR 1[/color]
-[Peer: 1] [Turn 1] [color=gray]AI Thinking: Explored 9 possible paths matching speed bounds.[/color]
-[Peer: 1] [Turn 1] [color=gray]AI Move Eval -> Ship: CA SAV Death-Bringer2 | Start Speed: 2 | Final Speed: 3 (ADF: 1) | MR Used: 1/1[/color]
-[Peer: 1] [Turn 1] Orders Received for SAV Death-Bringer2
-[Peer: 1] [Turn 1] AI plotted movement for CA SAV Death-Bringer2 (Speed 2 -> 3, 3 hexes)
-[Peer: 1] [Turn 1] [color=gray]AI Thinking: Evaluating SAV Fighter 4 (Unmoved left: 9)[/color]
-[Peer: 1] [Turn 1] [color=gray]AI Thinking: Nearest target for SAV Fighter 4 is Fortress K'aken-Kar2[/color]
-[Peer: 1] [Turn 1] [color=gray]AI Thinking: Fleet CAR: 3.537 (Threshold: 0.30) Powers: Me=672.0, Enemy=190.0[/color]
-[Peer: 1] [Turn 1] [color=gray]AI Thinking: SAV Fighter 4 constraints -> Speed [0, 5], MR 5[/color]
-[Peer: 1] [Turn 1] [color=gray]AI Thinking: Explored 364 possible paths matching speed bounds.[/color]
-[Peer: 1] [Turn 1] [color=gray]AI Move Eval -> Ship: F SAV Fighter 4 | Start Speed: 0 | Final Speed: 5 (ADF: 5) | MR Used: 4/5[/color]
-[Peer: 1] [Turn 1] Orders Received for SAV Fighter 4
-[Peer: 1] [Turn 1] F SAV Fighter 4 auto-undocked for maneuver.
-[Peer: 1] [Turn 1] AI plotted movement for F SAV Fighter 4 (Speed 0 -> 5, 5 hexes)
-[Peer: 1] [Turn 1] [color=gray]AI Thinking: Evaluating SAV Oppressor2 (Unmoved left: 8)[/color]
-[Peer: 1] [Turn 1] [color=gray]AI Thinking: Nearest target for SAV Oppressor2 is UPFS Bolt2[/color]
-[Peer: 1] [Turn 1] [color=gray]AI Thinking: Fleet CAR: 3.537 (Threshold: 0.30) Powers: Me=672.0, Enemy=190.0[/color]
-[Peer: 1] [Turn 1] [color=gray]AI Thinking: SAV Oppressor2 Individual Retreat Utility: 0.0 (Hull: 100.00%, Def: true, Atk: 5)[/color]
-[Peer: 1] [Turn 1] [color=gray]AI Thinking: SAV Oppressor2 constraints -> Speed [2, 8], MR 2[/color]
-[Peer: 1] [Turn 1] [color=gray]AI Thinking: Explored 287 possible paths matching speed bounds.[/color]
-[Peer: 1] [Turn 1] [color=gray]AI Move Eval -> Ship: DD SAV Oppressor2 | Start Speed: 5 | Final Speed: 8 (ADF: 3) | MR Used: 2/2[/color]
-[Peer: 1] [Turn 1] Orders Received for SAV Oppressor2
-[Peer: 1] [Turn 1] AI plotted movement for DD SAV Oppressor2 (Speed 5 -> 8, 8 hexes)
-[Peer: 1] [Turn 1] [color=gray]AI Thinking: Evaluating SAV Stinger2 (Unmoved left: 7)[/color]
-[Peer: 1] [Turn 1] [color=gray]AI Thinking: Nearest target for SAV Stinger2 is UPFS Bolt2[/color]
-[Peer: 1] [Turn 1] [color=gray]AI Thinking: Fleet CAR: 3.537 (Threshold: 0.30) Powers: Me=672.0, Enemy=190.0[/color]
-[Peer: 1] [Turn 1] [color=gray]AI Thinking: SAV Stinger2 Individual Retreat Utility: 0.0 (Hull: 100.00%, Def: true, Atk: 4)[/color]
-[Peer: 1] [Turn 1] [color=gray]AI Thinking: SAV Stinger2 constraints -> Speed [2, 8], MR 3[/color]
+[Peer: 1] [Turn 1] [color=gray]AI Move Eval -> Ship: AC SAV Death-Spawn | Start Speed: 2 | Final Speed: 4 (ADF: 2) | MR Used: 1/1[/color]
+[Peer: 1] [Turn 1] Orders Received for SAV Death-Spawn
+[Peer: 1] [Turn 1] AI plotted movement for AC SAV Death-Spawn (Speed 2 -> 4, 4 hexes)
+[Peer: 1] [Turn 1] [color=gray]AI Thinking: Evaluating SAV Centipede (Unmoved left: 11)[/color]
+[Peer: 1] [Turn 1] [color=gray]AI Thinking: Nearest target for SAV Centipede is UPFS Dart[/color]
+[Peer: 1] [Turn 1] [color=gray]AI Thinking: Fleet CAR: 0.767 (Threshold: 0.30) Powers: Me=595.0, Enemy=776.0[/color]
+[Peer: 1] [Turn 1] [color=gray]AI Thinking: SAV Centipede Individual Retreat Utility: 0.0 (Hull: 100.00%, Def: true, Atk: 4)[/color]
+[Peer: 1] [Turn 1] [color=gray]AI Thinking: SAV Centipede constraints -> Speed [2, 8], MR 3[/color]
 [Peer: 1] [Turn 1] [color=gray]AI Thinking: Explored 847 possible paths matching speed bounds.[/color]
-[Peer: 1] [Turn 1] [color=gray]AI Move Eval -> Ship: FG SAV Stinger2 | Start Speed: 5 | Final Speed: 8 (ADF: 3) | MR Used: 3/3[/color]
-[Peer: 1] [Turn 1] Orders Received for SAV Stinger2
-[Peer: 1] [Turn 1] AI plotted movement for FG SAV Stinger2 (Speed 5 -> 8, 8 hexes)
-[Peer: 1] [Turn 1] [color=gray]AI Thinking: Evaluating SAV Fighter 5 (Unmoved left: 6)[/color]
-[Peer: 1] [Turn 1] [color=gray]AI Thinking: Nearest target for SAV Fighter 5 is Fortress K'aken-Kar2[/color]
-[Peer: 1] [Turn 1] [color=gray]AI Thinking: Fleet CAR: 3.537 (Threshold: 0.30) Powers: Me=672.0, Enemy=190.0[/color]
+[Peer: 1] [Turn 1] [color=gray]AI Move Eval -> Ship: FG SAV Centipede | Start Speed: 5 | Final Speed: 8 (ADF: 3) | MR Used: 3/3[/color]
+[Peer: 1] [Turn 1] Orders Received for SAV Centipede
+[Peer: 1] [Turn 1] AI plotted movement for FG SAV Centipede (Speed 5 -> 8, 8 hexes)
+[Peer: 1] [Turn 1] [color=gray]AI Thinking: Evaluating SAV Fighter 1 (Unmoved left: 10)[/color]
+[Peer: 1] [Turn 1] [color=gray]AI Thinking: Nearest target for SAV Fighter 1 is UPFS Lexington[/color]
+[Peer: 1] [Turn 1] [color=gray]AI Thinking: Fleet CAR: 0.767 (Threshold: 0.30) Powers: Me=595.0, Enemy=776.0[/color]
+[Peer: 1] [Turn 1] [color=gray]AI Thinking: SAV Fighter 1 constraints -> Speed [0, 5], MR 5[/color]
+[Peer: 1] [Turn 1] [color=gray]AI Thinking: Explored 364 possible paths matching speed bounds.[/color]
+[Peer: 1] [Turn 1] [color=gray]AI Move Eval -> Ship: F SAV Fighter 1 | Start Speed: 0 | Final Speed: 5 (ADF: 5) | MR Used: 4/5[/color]
+[Peer: 1] [Turn 1] Orders Received for SAV Fighter 1
+[Peer: 1] [Turn 1] F SAV Fighter 1 auto-undocked for maneuver.
+[Peer: 1] [Turn 1] AI plotted movement for F SAV Fighter 1 (Speed 0 -> 5, 5 hexes)
+[Peer: 1] [Turn 1] [color=gray]AI Thinking: Evaluating SAV Locust (Unmoved left: 9)[/color]
+[Peer: 1] [Turn 1] [color=gray]AI Thinking: Nearest target for SAV Locust is UPFS Dart[/color]
+[Peer: 1] [Turn 1] [color=gray]AI Thinking: Fleet CAR: 0.767 (Threshold: 0.30) Powers: Me=595.0, Enemy=776.0[/color]
+[Peer: 1] [Turn 1] [color=gray]AI Thinking: SAV Locust Individual Retreat Utility: 0.0 (Hull: 100.00%, Def: true, Atk: 4)[/color]
+[Peer: 1] [Turn 1] [color=gray]AI Thinking: SAV Locust constraints -> Speed [2, 8], MR 3[/color]
+[Peer: 1] [Turn 1] [color=gray]AI Thinking: Explored 847 possible paths matching speed bounds.[/color]
+[Peer: 1] [Turn 1] [color=gray]AI Move Eval -> Ship: FG SAV Locust | Start Speed: 5 | Final Speed: 8 (ADF: 3) | MR Used: 3/3[/color]
+[Peer: 1] [Turn 1] Orders Received for SAV Locust
+[Peer: 1] [Turn 1] AI plotted movement for FG SAV Locust (Speed 5 -> 8, 8 hexes)
+[Peer: 1] [Turn 1] [color=gray]AI Thinking: Evaluating SAV Cicada (Unmoved left: 8)[/color]
+[Peer: 1] [Turn 1] [color=gray]AI Thinking: Nearest target for SAV Cicada is UPFS Jackal[/color]
+[Peer: 1] [Turn 1] [color=gray]AI Thinking: Fleet CAR: 0.767 (Threshold: 0.30) Powers: Me=595.0, Enemy=776.0[/color]
+[Peer: 1] [Turn 1] [color=gray]AI Thinking: SAV Cicada Individual Retreat Utility: 0.0 (Hull: 100.00%, Def: true, Atk: 4)[/color]
+[Peer: 1] [Turn 1] [color=gray]AI Thinking: SAV Cicada constraints -> Speed [2, 8], MR 3[/color]
+[Peer: 1] [Turn 1] [color=gray]AI Thinking: Explored 847 possible paths matching speed bounds.[/color]
+[Peer: 1] [Turn 1] [color=gray]AI Move Eval -> Ship: FG SAV Cicada | Start Speed: 5 | Final Speed: 7 (ADF: 3) | MR Used: 3/3[/color]
+[Peer: 1] [Turn 1] Orders Received for SAV Cicada
+[Peer: 1] [Turn 1] AI plotted movement for FG SAV Cicada (Speed 5 -> 7, 7 hexes)
+[Peer: 1] [Turn 1] [color=gray]AI Thinking: Evaluating SAV Nemesis (Unmoved left: 7)[/color]
+[Peer: 1] [Turn 1] [color=gray]AI Thinking: Nearest target for SAV Nemesis is UPFS Jackal[/color]
+[Peer: 1] [Turn 1] [color=gray]AI Thinking: Fleet CAR: 0.767 (Threshold: 0.30) Powers: Me=595.0, Enemy=776.0[/color]
+[Peer: 1] [Turn 1] [color=gray]AI Thinking: SAV Nemesis Individual Retreat Utility: 0.0 (Hull: 100.00%, Def: true, Atk: 5)[/color]
+[Peer: 1] [Turn 1] [color=gray]AI Thinking: SAV Nemesis constraints -> Speed [2, 8], MR 2[/color]
+[Peer: 1] [Turn 1] [color=gray]AI Thinking: Explored 287 possible paths matching speed bounds.[/color]
+[Peer: 1] [Turn 1] [color=gray]AI Move Eval -> Ship: DD SAV Nemesis | Start Speed: 5 | Final Speed: 8 (ADF: 3) | MR Used: 2/2[/color]
+[Peer: 1] [Turn 1] Orders Received for SAV Nemesis
+[Peer: 1] [Turn 1] AI plotted movement for DD SAV Nemesis (Speed 5 -> 8, 8 hexes)
+[Peer: 1] [Turn 1] [color=gray]AI Thinking: Evaluating SAV Fighter 3 (Unmoved left: 6)[/color]
+[Peer: 1] [Turn 1] [color=gray]AI Thinking: Nearest target for SAV Fighter 3 is UPFS Lexington[/color]
+[Peer: 1] [Turn 1] [color=gray]AI Thinking: Fleet CAR: 0.767 (Threshold: 0.30) Powers: Me=595.0, Enemy=776.0[/color]
+[Peer: 1] [Turn 1] [color=gray]AI Thinking: SAV Fighter 3 constraints -> Speed [0, 5], MR 5[/color]
+[Peer: 1] [Turn 1] [color=gray]AI Thinking: Explored 364 possible paths matching speed bounds.[/color]
+[Peer: 1] [Turn 1] [color=gray]AI Move Eval -> Ship: F SAV Fighter 3 | Start Speed: 0 | Final Speed: 5 (ADF: 5) | MR Used: 3/5[/color]
+[Peer: 1] [Turn 1] Orders Received for SAV Fighter 3
+[Peer: 1] [Turn 1] F SAV Fighter 3 auto-undocked for maneuver.
+[Peer: 1] [Turn 1] AI plotted movement for F SAV Fighter 3 (Speed 0 -> 5, 5 hexes)
+[Peer: 1] [Turn 1] [color=gray]AI Thinking: Evaluating SAV Fighter 5 (Unmoved left: 5)[/color]
+[Peer: 1] [Turn 1] [color=gray]AI Thinking: Nearest target for SAV Fighter 5 is UPFS Lexington[/color]
+[Peer: 1] [Turn 1] [color=gray]AI Thinking: Fleet CAR: 0.767 (Threshold: 0.30) Powers: Me=595.0, Enemy=776.0[/color]
 [Peer: 1] [Turn 1] [color=gray]AI Thinking: SAV Fighter 5 constraints -> Speed [0, 5], MR 5[/color]
 [Peer: 1] [Turn 1] [color=gray]AI Thinking: Explored 364 possible paths matching speed bounds.[/color]
-[Peer: 1] [Turn 1] [color=gray]AI Move Eval -> Ship: F SAV Fighter 5 | Start Speed: 0 | Final Speed: 5 (ADF: 5) | MR Used: 1/5[/color]
+[Peer: 1] [Turn 1] [color=gray]AI Move Eval -> Ship: F SAV Fighter 5 | Start Speed: 0 | Final Speed: 5 (ADF: 5) | MR Used: 4/5[/color]
 [Peer: 1] [Turn 1] Orders Received for SAV Fighter 5
 [Peer: 1] [Turn 1] F SAV Fighter 5 auto-undocked for maneuver.
 [Peer: 1] [Turn 1] AI plotted movement for F SAV Fighter 5 (Speed 0 -> 5, 5 hexes)
-[Peer: 1] [Turn 1] [color=gray]AI Thinking: Evaluating SAV Executioner2 (Unmoved left: 5)[/color]
-[Peer: 1] [Turn 1] [color=gray]AI Thinking: Nearest target for SAV Executioner2 is UPFS Bolt2[/color]
-[Peer: 1] [Turn 1] [color=gray]AI Thinking: Fleet CAR: 3.537 (Threshold: 0.30) Powers: Me=672.0, Enemy=190.0[/color]
-[Peer: 1] [Turn 1] [color=gray]AI Thinking: SAV Executioner2 Individual Retreat Utility: 0.0 (Hull: 100.00%, Def: true, Atk: 5)[/color]
-[Peer: 1] [Turn 1] [color=gray]AI Thinking: SAV Executioner2 constraints -> Speed [2, 8], MR 2[/color]
-[Peer: 1] [Turn 1] [color=gray]AI Thinking: Explored 287 possible paths matching speed bounds.[/color]
-[Peer: 1] [Turn 1] [color=gray]AI Move Eval -> Ship: DD SAV Executioner2 | Start Speed: 5 | Final Speed: 8 (ADF: 3) | MR Used: 2/2[/color]
-[Peer: 1] [Turn 1] Orders Received for SAV Executioner2
-[Peer: 1] [Turn 1] AI plotted movement for DD SAV Executioner2 (Speed 5 -> 8, 8 hexes)
-[Peer: 1] [Turn 1] [color=gray]AI Thinking: Evaluating SAV Asp2 (Unmoved left: 4)[/color]
-[Peer: 1] [Turn 1] [color=gray]AI Thinking: Nearest target for SAV Asp2 is UPFS Bolt2[/color]
-[Peer: 1] [Turn 1] [color=gray]AI Thinking: Fleet CAR: 3.537 (Threshold: 0.30) Powers: Me=672.0, Enemy=190.0[/color]
-[Peer: 1] [Turn 1] [color=gray]AI Thinking: SAV Asp2 Individual Retreat Utility: 0.0 (Hull: 100.00%, Def: true, Atk: 4)[/color]
-[Peer: 1] [Turn 1] [color=gray]AI Thinking: SAV Asp2 constraints -> Speed [2, 8], MR 3[/color]
-[Peer: 1] [Turn 1] [color=gray]AI Thinking: Explored 847 possible paths matching speed bounds.[/color]
-[Peer: 1] [Turn 1] [color=gray]AI Move Eval -> Ship: FG SAV Asp2 | Start Speed: 5 | Final Speed: 8 (ADF: 3) | MR Used: 2/3[/color]
-[Peer: 1] [Turn 1] Orders Received for SAV Asp2
-[Peer: 1] [Turn 1] AI plotted movement for FG SAV Asp2 (Speed 5 -> 8, 8 hexes)
-[Peer: 1] [Turn 1] [color=gray]AI Thinking: Evaluating SAV Cruelty2 (Unmoved left: 3)[/color]
-[Peer: 1] [Turn 1] [color=gray]AI Thinking: Nearest target for SAV Cruelty2 is UPFS Bolt2[/color]
-[Peer: 1] [Turn 1] [color=gray]AI Thinking: Fleet CAR: 3.537 (Threshold: 0.30) Powers: Me=672.0, Enemy=190.0[/color]
-[Peer: 1] [Turn 1] [color=gray]AI Thinking: SAV Cruelty2 Individual Retreat Utility: 0.0 (Hull: 100.00%, Def: true, Atk: 5)[/color]
-[Peer: 1] [Turn 1] [color=gray]AI Thinking: SAV Cruelty2 constraints -> Speed [2, 8], MR 2[/color]
-[Peer: 1] [Turn 1] [color=gray]AI Thinking: Explored 287 possible paths matching speed bounds.[/color]
-[Peer: 1] [Turn 1] [color=gray]AI Move Eval -> Ship: DD SAV Cruelty2 | Start Speed: 5 | Final Speed: 8 (ADF: 3) | MR Used: 1/2[/color]
-[Peer: 1] [Turn 1] Orders Received for SAV Cruelty2
-[Peer: 1] [Turn 1] AI plotted movement for DD SAV Cruelty2 (Speed 5 -> 8, 8 hexes)
-[Peer: 1] [Turn 1] [color=gray]AI Thinking: Evaluating SAV Fighter 8 (Unmoved left: 2)[/color]
-[Peer: 1] [Turn 1] [color=gray]AI Thinking: Nearest target for SAV Fighter 8 is Fortress K'aken-Kar2[/color]
-[Peer: 1] [Turn 1] [color=gray]AI Thinking: Fleet CAR: 3.537 (Threshold: 0.30) Powers: Me=672.0, Enemy=190.0[/color]
-[Peer: 1] [Turn 1] [color=gray]AI Thinking: SAV Fighter 8 constraints -> Speed [0, 5], MR 5[/color]
+[Peer: 1] [Turn 1] [color=gray]AI Thinking: Evaluating SAV Fighter 6 (Unmoved left: 4)[/color]
+[Peer: 1] [Turn 1] [color=gray]AI Thinking: Nearest target for SAV Fighter 6 is UPFS Lexington[/color]
+[Peer: 1] [Turn 1] [color=gray]AI Thinking: Fleet CAR: 0.767 (Threshold: 0.30) Powers: Me=595.0, Enemy=776.0[/color]
+[Peer: 1] [Turn 1] [color=gray]AI Thinking: SAV Fighter 6 constraints -> Speed [0, 5], MR 5[/color]
 [Peer: 1] [Turn 1] [color=gray]AI Thinking: Explored 364 possible paths matching speed bounds.[/color]
-[Peer: 1] [Turn 1] [color=gray]AI Move Eval -> Ship: F SAV Fighter 8 | Start Speed: 0 | Final Speed: 5 (ADF: 5) | MR Used: 3/5[/color]
-[Peer: 1] [Turn 1] Orders Received for SAV Fighter 8
-[Peer: 1] [Turn 1] F SAV Fighter 8 auto-undocked for maneuver.
-[Peer: 1] [Turn 1] AI plotted movement for F SAV Fighter 8 (Speed 0 -> 5, 5 hexes)
+[Peer: 1] [Turn 1] [color=gray]AI Move Eval -> Ship: F SAV Fighter 6 | Start Speed: 0 | Final Speed: 3 (ADF: 5) | MR Used: 3/5[/color]
+[Peer: 1] [Turn 1] Orders Received for SAV Fighter 6
+[Peer: 1] [Turn 1] F SAV Fighter 6 auto-undocked for maneuver.
+[Peer: 1] [Turn 1] AI plotted movement for F SAV Fighter 6 (Speed 0 -> 3, 3 hexes)
+[Peer: 1] [Turn 1] [color=gray]AI Thinking: Evaluating SAV Despair (Unmoved left: 3)[/color]
+[Peer: 1] [Turn 1] [color=gray]AI Thinking: Nearest target for SAV Despair is UPFS Dart[/color]
+[Peer: 1] [Turn 1] [color=gray]AI Thinking: Fleet CAR: 0.767 (Threshold: 0.30) Powers: Me=595.0, Enemy=776.0[/color]
+[Peer: 1] [Turn 1] [color=gray]AI Thinking: SAV Despair Individual Retreat Utility: 0.0 (Hull: 100.00%, Def: true, Atk: 7)[/color]
+[Peer: 1] [Turn 1] [color=gray]AI Thinking: SAV Despair constraints -> Speed [1, 3], MR 1[/color]
+[Peer: 1] [Turn 1] [color=gray]AI Thinking: Explored 9 possible paths matching speed bounds.[/color]
+[Peer: 1] [Turn 1] [color=gray]AI Move Eval -> Ship: CA SAV Despair | Start Speed: 2 | Final Speed: 3 (ADF: 1) | MR Used: 1/1[/color]
+[Peer: 1] [Turn 1] Orders Received for SAV Despair
+[Peer: 1] [Turn 1] AI plotted movement for CA SAV Despair (Speed 2 -> 3, 3 hexes)
+[Peer: 1] [Turn 1] [color=gray]AI Thinking: Evaluating SAV Discord (Unmoved left: 2)[/color]
+[Peer: 1] [Turn 1] [color=gray]AI Thinking: Nearest target for SAV Discord is UPFS Jackal[/color]
+[Peer: 1] [Turn 1] [color=gray]AI Thinking: Fleet CAR: 0.767 (Threshold: 0.30) Powers: Me=595.0, Enemy=776.0[/color]
+[Peer: 1] [Turn 1] [color=gray]AI Thinking: SAV Discord Individual Retreat Utility: 0.0 (Hull: 100.00%, Def: true, Atk: 5)[/color]
+[Peer: 1] [Turn 1] [color=gray]AI Thinking: SAV Discord constraints -> Speed [2, 8], MR 2[/color]
+[Peer: 1] [Turn 1] [color=gray]AI Thinking: Explored 287 possible paths matching speed bounds.[/color]
+[Peer: 1] [Turn 1] [color=gray]AI Move Eval -> Ship: DD SAV Discord | Start Speed: 5 | Final Speed: 8 (ADF: 3) | MR Used: 2/2[/color]
+[Peer: 1] [Turn 1] Orders Received for SAV Discord
+[Peer: 1] [Turn 1] AI plotted movement for DD SAV Discord (Speed 5 -> 8, 8 hexes)
 [Peer: 1] [Turn 1] [color=gray]AI Thinking: Evaluating SAV Fighter 10 (Unmoved left: 1)[/color]
-[Peer: 1] [Turn 1] [color=gray]AI Thinking: Nearest target for SAV Fighter 10 is Fortress K'aken-Kar2[/color]
-[Peer: 1] [Turn 1] [color=gray]AI Thinking: Fleet CAR: 3.537 (Threshold: 0.30) Powers: Me=672.0, Enemy=190.0[/color]
+[Peer: 1] [Turn 1] [color=gray]AI Thinking: Nearest target for SAV Fighter 10 is UPFS Lexington[/color]
+[Peer: 1] [Turn 1] [color=gray]AI Thinking: Fleet CAR: 0.767 (Threshold: 0.30) Powers: Me=595.0, Enemy=776.0[/color]
 [Peer: 1] [Turn 1] [color=gray]AI Thinking: SAV Fighter 10 constraints -> Speed [0, 5], MR 5[/color]
 [Peer: 1] [Turn 1] [color=gray]AI Thinking: Explored 364 possible paths matching speed bounds.[/color]
 [Peer: 1] [Turn 1] [color=gray]AI Move Eval -> Ship: F SAV Fighter 10 | Start Speed: 0 | Final Speed: 5 (ADF: 5) | MR Used: 4/5[/color]
@@ -343,118 +508,112 @@ DEBUG: Skip Auto-Orbit Check: SAV Fighter 10 (Class: Fighter, Orbit: 0)
 [Peer: 1] [Turn 1] [color=gray]AI Poll: Movement Phase active but no unmoved ships left.[/color]
 >>> DIAGNOSTIC: execute_all_movement running for side: 2 on peer: 1
 [Peer: 1] [Turn 1] Executing Movement Phase for Side Sathar
-[Peer: 1] [Turn 1] [color=yellow]EXECUTE LOOP: Checking Ship SAV Death-Spawn2 (Class: Assault Carrier, Mines: 0)[/color]
-[Peer: 1] [Turn 1] [color=yellow]EXECUTE LOOP: Checking Ship SAV Havoc2 (Class: Destroyer, Mines: 0)[/color]
-[Peer: 1] [Turn 1] [color=yellow]EXECUTE LOOP: Checking Ship SAV Death-Bringer2 (Class: Heavy Cruiser, Mines: 0)[/color]
-[Peer: 1] [Turn 1] [color=yellow]EXECUTE LOOP: Checking Ship SAV Fighter 4 (Class: Fighter, Mines: 0)[/color]
-[Peer: 1] [Turn 1] [color=yellow]EXECUTE LOOP: Checking Ship SAV Oppressor2 (Class: Destroyer, Mines: 0)[/color]
-[Peer: 1] [Turn 1] [color=yellow]EXECUTE LOOP: Checking Ship SAV Stinger2 (Class: Frigate, Mines: 0)[/color]
+[Peer: 1] [Turn 1] [color=yellow]EXECUTE LOOP: Checking Ship SAV Death-Spawn (Class: Assault Carrier, Mines: 0)[/color]
+[Peer: 1] [Turn 1] [color=yellow]EXECUTE LOOP: Checking Ship SAV Centipede (Class: Frigate, Mines: 0)[/color]
+[Peer: 1] [Turn 1] [color=yellow]EXECUTE LOOP: Checking Ship SAV Fighter 1 (Class: Fighter, Mines: 0)[/color]
+[Peer: 1] [Turn 1] [color=yellow]EXECUTE LOOP: Checking Ship SAV Locust (Class: Frigate, Mines: 0)[/color]
+[Peer: 1] [Turn 1] [color=yellow]EXECUTE LOOP: Checking Ship SAV Cicada (Class: Frigate, Mines: 0)[/color]
+[Peer: 1] [Turn 1] [color=yellow]EXECUTE LOOP: Checking Ship SAV Nemesis (Class: Destroyer, Mines: 0)[/color]
+[Peer: 1] [Turn 1] [color=yellow]EXECUTE LOOP: Checking Ship SAV Fighter 3 (Class: Fighter, Mines: 0)[/color]
 [Peer: 1] [Turn 1] [color=yellow]EXECUTE LOOP: Checking Ship SAV Fighter 5 (Class: Fighter, Mines: 0)[/color]
-[Peer: 1] [Turn 1] [color=yellow]EXECUTE LOOP: Checking Ship SAV Executioner2 (Class: Destroyer, Mines: 0)[/color]
-[Peer: 1] [Turn 1] [color=yellow]EXECUTE LOOP: Checking Ship SAV Asp2 (Class: Frigate, Mines: 0)[/color]
-[Peer: 1] [Turn 1] [color=yellow]EXECUTE LOOP: Checking Ship SAV Cruelty2 (Class: Destroyer, Mines: 0)[/color]
-[Peer: 1] [Turn 1] [color=yellow]EXECUTE LOOP: Checking Ship SAV Fighter 8 (Class: Fighter, Mines: 0)[/color]
+[Peer: 1] [Turn 1] [color=yellow]EXECUTE LOOP: Checking Ship SAV Fighter 6 (Class: Fighter, Mines: 0)[/color]
+[Peer: 1] [Turn 1] [color=yellow]EXECUTE LOOP: Checking Ship SAV Despair (Class: Heavy Cruiser, Mines: 0)[/color]
+[Peer: 1] [Turn 1] [color=yellow]EXECUTE LOOP: Checking Ship SAV Discord (Class: Destroyer, Mines: 0)[/color]
 [Peer: 1] [Turn 1] [color=yellow]EXECUTE LOOP: Checking Ship SAV Fighter 10 (Class: Fighter, Mines: 0)[/color]
 >>> DIAGNOSTIC: Entering Mine Detonations. Active Mines: 0 on peer: 1
 [Peer: 1] [Turn 1] [color=cyan]!!! DEBUG !!! Entering Mine Detonations. Active Mines: 0[/color]
 [Peer: 1] [Turn 1] [color=cyan]!!! DEBUG !!! Entering Seeker Movement. Active Seekers: 0[/color]
 [Peer: 1] [Turn 1] Movement Phase Complete for Side 2. Starting Combat.
 [DEBUG] start_combat_passive: Side 1 firing (Opponent of Moving Side 2)
+ERROR: Condition "outbound_buffer_size > 0 && (wslay_event_get_queued_msg_length(wsl_ctx) + p_buffer_size > (uint32_t)outbound_buffer_size)" is true. Returning: ERR_OUT_OF_MEMORY
+   at: _send (modules/websocket/wsl_peer.cpp:784)
+   GDScript backtrace (most recent call first):
+       [0] broadcast_game_state (res://Scripts/GameManager.gd:7980)
+       [1] _start_combat_planning (res://Scripts/GameManager.gd:2582)
+       [2] start_combat_passive (res://Scripts/GameManager.gd:2558)
+       [3] execute_all_movement (res://Scripts/GameManager.gd:4942)
+       [4] _deferred_execute_all_movement (res://Scripts/GameManager.gd:4847)
 [Peer: 1] [Turn 1] Combat Planning: Side 1
-[DEBUG] TARGET CHECK P1. Ships: 4
-[DEBUG] VALID: UPFS Bolt2 found target with Laser Battery
-[Peer: 1] [Turn 1] Resolving 2 attacks...
-[Peer: 1] [Turn 1] AS UPFS Bolt2 firing Laser Battery at FG SAV Stinger2
-Combat Roll: Distance 5, Chance 25%, Rolled 36
-[Peer: 1] [Turn 1] Firing Ship: AS UPFS Bolt2, Weapon: Laser Battery, Odds: 25%, Roll: 36, Result: MISS
+[DEBUG] TARGET CHECK P1. Ships: 20
+[DEBUG] VALID: UPFS Lexington found target with Laser Battery
+[Peer: 1] [Turn 1] Resolving 16 attacks...
+[Peer: 1] [Turn 1] AC UPFS Lexington firing Laser Battery at FG SAV Locust
+Combat Roll: Distance 8, Chance 10%, Rolled 41
+[Peer: 1] [Turn 1] Firing Ship: AC UPFS Lexington, Weapon: Laser Battery, Odds: 10%, Roll: 41, Result: MISS
 [Peer: 1] [Turn 1] [color=red]MISS![/color]
-[Peer: 1] [Turn 1] AS UPFS Assault Scout 7 firing Laser Battery at DD SAV Havoc2
-Combat Roll: Distance 6, Chance 20%, Rolled 45
-[Peer: 1] [Turn 1] Firing Ship: AS UPFS Assault Scout 7, Weapon: Laser Battery, Odds: 20%, Roll: 45, Result: MISS
+[Peer: 1] [Turn 1] CA UPFS Pulsar firing Proton Battery at DD SAV Nemesis
+Combat Roll: Distance 11, Chance 5%, Rolled 93
+[Peer: 1] [Turn 1] Firing Ship: CA UPFS Pulsar, Weapon: Proton Battery, Odds: 5%, Roll: 93, Result: MISS
 [Peer: 1] [Turn 1] [color=red]MISS![/color]
-[Peer: 1] [Turn 1] Resolution Phase Complete.
-[Peer: 1] [Turn 1] Turn Segment Complete.
-[DEBUG] start_combat_active: Side 2 firing (Active Side)
-[Peer: 1] [Turn 1] Combat Planning: Side 2
-[DEBUG] TARGET CHECK P2. Ships: 12
-[DEBUG] VALID: SAV Death-Spawn2 found target with Laser Battery
-[Peer: 1] [Turn 1] AI Planning: AC SAV Death-Spawn2 -> AS UPFS Bolt2 with Laser Battery (Utility: 0.83)
-[Peer: 1] [Turn 1] AI Planning: DD SAV Havoc2 -> AS UPFS Bolt2 with Laser Battery (Utility: 7.13)
-[Peer: 1] [Turn 1] AI Planning: DD SAV Havoc2 -> AS UPFS Bolt2 with Electron Battery (Utility: 5.63)
-[Peer: 1] [Turn 1] AI Planning: CA SAV Death-Bringer2 -> AS UPFS Bolt2 with Proton Battery (Utility: -0.15)
-[Peer: 1] [Turn 1] AI Planning: DD SAV Oppressor2 -> AS UPFS Bolt2 with Laser Battery (Utility: 5.20)
-[Peer: 1] [Turn 1] AI Planning: DD SAV Oppressor2 -> AS UPFS Assault Scout 7 with Laser Canon (Utility: 2.70)
-[Peer: 1] [Turn 1] AI Planning: DD SAV Oppressor2 -> AS UPFS Assault Scout 7 with Electron Battery (Utility: 5.91)
-[Peer: 1] [Turn 1] AI Planning: FG SAV Stinger2 -> AS UPFS Bolt2 with Laser Battery (Utility: 7.28)
-[Peer: 1] [Turn 1] AI Planning: DD SAV Executioner2 -> AS UPFS Bolt2 with Laser Battery (Utility: 7.59)
-[Peer: 1] [Turn 1] AI Planning: DD SAV Executioner2 -> AS UPFS Bolt2 with Laser Canon (Utility: 4.79)
-[Peer: 1] [Turn 1] AI Planning: DD SAV Executioner2 -> AS UPFS Bolt2 with Electron Battery (Utility: 4.80)
-[Peer: 1] [Turn 1] AI Planning: FG SAV Asp2 -> AS UPFS Bolt2 with Laser Battery (Utility: 7.37)
-[Peer: 1] [Turn 1] AI Planning: FG SAV Asp2 -> AS UPFS Bolt2 with Laser Canon (Utility: 3.23)
-[Peer: 1] [Turn 1] AI Planning: DD SAV Cruelty2 -> AS UPFS Bolt2 with Laser Battery (Utility: 4.71)
-[Peer: 1] [Turn 1] AI Planning: DD SAV Cruelty2 -> AS UPFS Bolt2 with Electron Battery (Utility: 3.75)
-[Peer: 1] [Turn 1] Resolving 15 attacks...
-[Peer: 1] [Turn 1] AC SAV Death-Spawn2 firing Laser Battery at AS UPFS Bolt2
-Combat Roll: Distance 9, Chance 5%, Rolled 79
-[Peer: 1] [Turn 1] Firing Ship: AC SAV Death-Spawn2, Weapon: Laser Battery, Odds: 5%, Roll: 79, Result: MISS
+[Peer: 1] [Turn 1] CL UPFS Cygnus firing Disruptor Canon at FG SAV Centipede
+Combat Roll: Distance 9, Chance 15%, Rolled 44
+[Peer: 1] [Turn 1] Firing Ship: CL UPFS Cygnus, Weapon: Disruptor Canon, Odds: 15%, Roll: 44, Result: MISS
 [Peer: 1] [Turn 1] [color=red]MISS![/color]
-[Peer: 1] [Turn 1] DD SAV Havoc2 firing Laser Battery at AS UPFS Bolt2
-Combat Roll: Distance 5, Chance 25%, Rolled 66
-[Peer: 1] [Turn 1] Firing Ship: DD SAV Havoc2, Weapon: Laser Battery, Odds: 25%, Roll: 66, Result: MISS
-[Peer: 1] [Turn 1] [color=red]MISS![/color]
-[Peer: 1] [Turn 1] DD SAV Havoc2 firing Electron Battery at AS UPFS Bolt2
-Combat Roll: Distance 5, Chance 35%, Rolled 100
-[Peer: 1] [Turn 1] Firing Ship: DD SAV Havoc2, Weapon: Electron Battery, Odds: 35%, Roll: 100, Result: MISS
-[Peer: 1] [Turn 1] [color=red]MISS![/color]
-[Peer: 1] [Turn 1] CA SAV Death-Bringer2 firing Proton Battery at AS UPFS Bolt2
-Combat Roll: Distance 11, Chance 5%, Rolled 15
-[Peer: 1] [Turn 1] Firing Ship: CA SAV Death-Bringer2, Weapon: Proton Battery, Odds: 5%, Roll: 15, Result: MISS
-[Peer: 1] [Turn 1] [color=red]MISS![/color]
-[Peer: 1] [Turn 1] DD SAV Oppressor2 firing Laser Battery at AS UPFS Bolt2
-Combat Roll: Distance 5, Chance 25%, Rolled 76
-[Peer: 1] [Turn 1] Firing Ship: DD SAV Oppressor2, Weapon: Laser Battery, Odds: 25%, Roll: 76, Result: MISS
-[Peer: 1] [Turn 1] [color=red]MISS![/color]
-[Peer: 1] [Turn 1] DD SAV Oppressor2 firing Laser Canon at AS UPFS Assault Scout 7
-Combat Roll: Distance 6, Chance 30%, Rolled 4
-[Peer: 1] [Turn 1] Firing Ship: DD SAV Oppressor2, Weapon: Laser Canon, Odds: 30%, Roll: 4, Result: HIT
-Damage Roll: 2d10+0 -> 18
-Damage Roll: d100(75) + DTM(0) = 75
-[Peer: 1] [Turn 1] [color=green]HIT![/color] Rolling Damage Table (d100+0 = 75)
-[Peer: 1] [Turn 1] UPFS Assault Scout 7: Defense Hit (PS, ES, SS, MS, ICM)
-[Peer: 1] [Turn 1] [color=red]System missing/destroyed -> FALLBACK HULL HIT[/color]
-[Peer: 1] [Turn 1] Ship destroyed: UPFS Assault Scout 7
-[Peer: 1] [Turn 1] UPFS Assault Scout 7 takes 18 Fallback Damage (Converted Effect)
-[Peer: 1] [Turn 1] DD SAV Oppressor2 firing at WRECK of AS UPFS Assault Scout 7! (Wasted)
-[Peer: 1] [Turn 1] FG SAV Stinger2 firing Laser Battery at AS UPFS Bolt2
-Combat Roll: Distance 5, Chance 25%, Rolled 65
-[Peer: 1] [Turn 1] Firing Ship: FG SAV Stinger2, Weapon: Laser Battery, Odds: 25%, Roll: 65, Result: MISS
-[Peer: 1] [Turn 1] [color=red]MISS![/color]
-[Peer: 1] [Turn 1] DD SAV Executioner2 firing Laser Battery at AS UPFS Bolt2
-Combat Roll: Distance 5, Chance 25%, Rolled 64
-[Peer: 1] [Turn 1] Firing Ship: DD SAV Executioner2, Weapon: Laser Battery, Odds: 25%, Roll: 64, Result: MISS
-[Peer: 1] [Turn 1] [color=red]MISS![/color]
-[Peer: 1] [Turn 1] DD SAV Executioner2 firing Laser Canon at AS UPFS Bolt2
-Combat Roll: Distance 5, Chance 45%, Rolled 74
-[Peer: 1] [Turn 1] Firing Ship: DD SAV Executioner2, Weapon: Laser Canon, Odds: 45%, Roll: 74, Result: MISS
-[Peer: 1] [Turn 1] [color=red]MISS![/color]
-[Peer: 1] [Turn 1] DD SAV Executioner2 firing Electron Battery at AS UPFS Bolt2
-Combat Roll: Distance 5, Chance 35%, Rolled 27
-[Peer: 1] [Turn 1] Firing Ship: DD SAV Executioner2, Weapon: Electron Battery, Odds: 35%, Roll: 27, Result: HIT
+[Peer: 1] [Turn 1] CL UPFS Cygnus firing Laser Battery at DD SAV Nemesis
+Combat Roll: Distance 5, Chance 25%, Rolled 10
+[Peer: 1] [Turn 1] Firing Ship: CL UPFS Cygnus, Weapon: Laser Battery, Odds: 25%, Roll: 10, Result: HIT
+Damage Roll: 1d10+0 -> 8
+Damage Roll: d100(49) + DTM(0) = 49
+[Peer: 1] [Turn 1] [color=green]HIT![/color] Rolling Damage Table (d100+0 = 49)
+[Peer: 1] [Turn 1] SAV Nemesis: Drive Hit (-1 ADF)
+[Peer: 1] [Turn 1] CL UPFS Cygnus firing Electron Battery at DD SAV Discord
+Combat Roll: Distance 5, Chance 35%, Rolled 16
+[Peer: 1] [Turn 1] Firing Ship: CL UPFS Cygnus, Weapon: Electron Battery, Odds: 35%, Roll: 16, Result: HIT
 Damage Roll: 1d10+0 -> 1
-Damage Roll: d100(83) + DTM(10) = 93
-[Peer: 1] [Turn 1] [color=green]HIT![/color] Rolling Damage Table (d100+10 = 93)
-[Peer: 1] [Turn 1] UPFS Bolt2: Navigation Hit (ADF=0, MR=0)
-[Peer: 1] [Turn 1] FG SAV Asp2 firing Laser Battery at AS UPFS Bolt2
-Combat Roll: Distance 5, Chance 25%, Rolled 90
-[Peer: 1] [Turn 1] Firing Ship: FG SAV Asp2, Weapon: Laser Battery, Odds: 25%, Roll: 90, Result: MISS
+Damage Roll: d100(98) + DTM(10) = 108
+[Peer: 1] [Turn 1] [color=green]HIT![/color] Rolling Damage Table (d100+10 = 108)
+[Peer: 1] [Turn 1] SAV Discord: ELECTRICAL FIRE! (+20 Dmg/Turn)
+[Peer: 1] [Turn 1] CL UPFS Cygnus firing Proton Battery at DD SAV Nemesis
+Combat Roll: Distance 5, Chance 35%, Rolled 76
+[Peer: 1] [Turn 1] Firing Ship: CL UPFS Cygnus, Weapon: Proton Battery, Odds: 35%, Roll: 76, Result: MISS
 [Peer: 1] [Turn 1] [color=red]MISS![/color]
-[Peer: 1] [Turn 1] FG SAV Asp2 firing Laser Canon at AS UPFS Bolt2
-Combat Roll: Distance 5, Chance 45%, Rolled 42
-[Peer: 1] [Turn 1] Firing Ship: FG SAV Asp2, Weapon: Laser Canon, Odds: 45%, Roll: 42, Result: HIT
-Damage Roll: 2d10+0 -> 16
-Damage Roll: d100(92) + DTM(0) = 92
-[Peer: 1] [Turn 1] [color=green]HIT![/color] Rolling Damage Table (d100+0 = 92)
-[Peer: 1] [Turn 1] UPFS Bolt2: Navigation Hit (ADF=0, MR=0)
-[Peer: 1] [Turn 1] [color=red]System missing/destroyed -> FALLBACK HULL HIT[/color]
-[Peer: 1] [Turn 1] Ship destroyed: UPFS Bolt2
-[Peer: 1] [Turn 1] UPFS Bolt2 takes 16 Fallback Damage (Converted Effect)
+[Peer: 1] [Turn 1] FG UPFS Laco firing Laser Battery at FG SAV Locust
+Combat Roll: Distance 8, Chance 10%, Rolled 56
+[Peer: 1] [Turn 1] Firing Ship: FG UPFS Laco, Weapon: Laser Battery, Odds: 10%, Roll: 56, Result: MISS
+[Peer: 1] [Turn 1] [color=red]MISS![/color]
+[Peer: 1] [Turn 1] FG UPFS Laco firing Laser Canon at FG SAV Locust
+Combat Roll: Distance 8, Chance 30%, Rolled 7
+[Peer: 1] [Turn 1] Firing Ship: FG UPFS Laco, Weapon: Laser Canon, Odds: 30%, Roll: 7, Result: HIT
+Damage Roll: 2d10+0 -> 5
+Damage Roll: d100(80) + DTM(0) = 80
+[Peer: 1] [Turn 1] [color=green]HIT![/color] Rolling Damage Table (d100+0 = 80)
+[Peer: 1] [Turn 1] SAV Locust: Defense Hit (MS, ICM, SS, PS, ES)
+[Peer: 1] [Turn 1] FG UPFS Minadied firing Laser Battery at FG SAV Locust
+Combat Roll: Distance 6, Chance 20%, Rolled 25
+[Peer: 1] [Turn 1] Firing Ship: FG UPFS Minadied, Weapon: Laser Battery, Odds: 20%, Roll: 25, Result: MISS
+[Peer: 1] [Turn 1] [color=red]MISS![/color]
+[Peer: 1] [Turn 1] AS UPFS Dart firing Laser Battery at F SAV Fighter 10
+Combat Roll: Distance 1, Chance 45%, Rolled 71
+[Peer: 1] [Turn 1] Firing Ship: AS UPFS Dart, Weapon: Laser Battery, Odds: 45%, Roll: 71, Result: MISS
+[Peer: 1] [Turn 1] [color=red]MISS![/color]
+[Peer: 1] [Turn 1] AS UPFS Windrunner firing Laser Battery at FG SAV Locust
+Combat Roll: Distance 3, Chance 35%, Rolled 3
+[Peer: 1] [Turn 1] Firing Ship: AS UPFS Windrunner, Weapon: Laser Battery, Odds: 35%, Roll: 3, Result: HIT
+Damage Roll: 1d10+0 -> 4
+Damage Roll: d100(97) + DTM(0) = 97
+[Peer: 1] [Turn 1] [color=green]HIT![/color] Rolling Damage Table (d100+0 = 97)
+[Peer: 1] [Turn 1] SAV Locust: Navigation Hit (ADF=0, MR=0)
+[Peer: 1] [Turn 1] FG UPFS Kapteyn firing Laser Battery at F SAV Fighter 3
+Combat Roll: Distance 3, Chance 35%, Rolled 95
+[Peer: 1] [Turn 1] Firing Ship: FG UPFS Kapteyn, Weapon: Laser Battery, Odds: 35%, Roll: 95, Result: MISS
+[Peer: 1] [Turn 1] [color=red]MISS![/color]
+[Peer: 1] [Turn 1] FG UPFS Kapteyn firing Laser Canon at F SAV Fighter 3
+Combat Roll: Distance 3, Chance 45%, Rolled 63
+[Peer: 1] [Turn 1] Firing Ship: FG UPFS Kapteyn, Weapon: Laser Canon, Odds: 45%, Roll: 63, Result: MISS
+[Peer: 1] [Turn 1] [color=red]MISS![/color]
+[Peer: 1] [Turn 1] FG UPFS Kapteyn firing Rocket Batteries at F SAV Fighter 3
+Combat Roll: Distance 3, Chance 40%, Rolled 7
+[Peer: 1] [Turn 1] Firing Ship: FG UPFS Kapteyn, Weapon: Rocket Batteries, Odds: 40%, Roll: 7, Result: HIT
+Damage Roll: 2d10+0 -> 7
+Damage Roll: d100(13) + DTM(-10) = 3
+[Peer: 1] [Turn 1] [color=green]HIT![/color] Rolling Damage Table (d100+-10 = 3)
+[Peer: 1] [Turn 1] Ship destroyed: SAV Fighter 3
+[Peer: 1] [Turn 1] SAV Fighter 3: CRITICAL HULL HIT (x2) (14 Damage)
+[Peer: 1] [Turn 1] AS UPFS Assault Scout 4 firing Laser Battery at DD SAV Discord
+Combat Roll: Distance 3, Chance 35%, Rolled 46
+[Peer: 1] [Turn 1] Firing Ship: AS UPFS Assault Scout 4, Weapon: Laser Battery, Odds: 35%, Roll: 46, Result: MISS
+[Peer: 1] [Turn 1] [color=red]MISS![/color]
+[Peer: 1] [Turn 1] AS UPFS Assault Scout 5 firing Laser Battery at DD SAV Nemesis
+Combat Roll: Distance 5, Chance 25%, Rolled 36
+[Peer: 1] [Turn 1] Firing Ship: AS UPFS Assault Scout 5, Weapon: Laser Battery, Odds: 25%, Roll: 36, Result: MISS
+[Peer: 1] [Turn 1] [color=red]MISS![/color]
