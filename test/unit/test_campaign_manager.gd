@@ -58,7 +58,7 @@ func test_rpc_transfer_ships():
 			source_idx = i
 			break
 			
-	assert_neq(source_idx, -1, "Should find a source fleet")
+	assert_ne(source_idx, -1, "Should find a source fleet")
 	
 	var source_fleet = campaign_manager.fleets[source_idx]
 	var initial_source_count = source_fleet.ships.size()
@@ -87,7 +87,7 @@ func test_rpc_create_fleet_from_transfer():
 			source_idx = i
 			break
 			
-	assert_neq(source_idx, -1, "Should find a source fleet")
+	assert_ne(source_idx, -1, "Should find a source fleet")
 	
 	var source_fleet = campaign_manager.fleets[source_idx]
 	var initial_source_count = source_fleet.ships.size()
