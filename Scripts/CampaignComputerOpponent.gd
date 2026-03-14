@@ -61,9 +61,9 @@ func _on_think_timeout():
 	# Pass turn
 	ConsoleManager.log_message("[color=yellow]Campaign AI (%s) is ending its turn.[/color]" % faction)
 	if campaign.multiplayer.has_multiplayer_peer() and not campaign.multiplayer.is_server():
-		campaign.rpc_id(1, "submit_turn_ready", faction)
+		campaign.rpc_id(1, "request_end_turn", faction)
 	else:
-		campaign.submit_turn_ready(faction)
+		campaign.request_end_turn(faction)
 
 # --- PHASE 1: REPAIRS ---
 func _execute_repairs():
