@@ -145,6 +145,7 @@ func start_new_campaign():
 	
 	_initialize_upf_forces()
 	_initialize_sathar_forces()
+	_initialize_ai_opponents()
 
 func _initialize_upf_forces():
 	# 1. Strike Force NOVA
@@ -202,6 +203,35 @@ func _initialize_upf_forces():
 		if upf_fleets.size() > 0:
 			var target = upf_fleets[randi() % upf_fleets.size()]
 			_add_ships_to_fleet(target, {ship_type: 1})
+
+func _initialize_ai_opponents():
+	# Clean up any existing AIs
+	for child in get_children():
+		if child.name.begins_with("CampAI_"):
+			child.queue_free()
+			remove_child(child)
+			
+	var has_upf_player = false
+	var has_sathar_player = false
+	
+	if has_node("/root/NetworkManager"):
+		var nm = get_node("/root/NetworkManager")
+		var teams = nm.lobby_data.get("teams", {})
+		for pid in teams.keys():
+			if teams[pid] == 1: has_upf_player = true
+			if teams[pid] == 2: has_sathar_player = true
+			
+	if not has_upf_player:
+		var ai = load("res://Scripts/CampaignComputerOpponent.gd").new("UPF")
+		ai.name = "CampAI_UPF"
+		add_child(ai)
+		ConsoleManager.log_message("[color=yellow]Campaign AI initialized for UPF.[/color]")
+		
+	if not has_sathar_player:
+		var ai = load("res://Scripts/CampaignComputerOpponent.gd").new("Sathar")
+		ai.name = "CampAI_Sathar"
+		add_child(ai)
+		ConsoleManager.log_message("[color=yellow]Campaign AI initialized for Sathar.[/color]")
 
 func _initialize_sathar_forces():
 	var sathar_pool = []
@@ -430,7 +460,10 @@ func order_fleet_move(fleet: CampaignFleet, destination_id: String) -> bool:
 			
 	var idx = fleets.find(fleet)
 	if idx != -1:
-		rpc_order_fleet_move.rpc(idx, destination_id)
+		if multiplayer.has_multiplayer_peer():
+			rpc_order_fleet_move.rpc(idx, destination_id)
+		else:
+			rpc_order_fleet_move(idx, destination_id)
 		return true
 	return false
 
@@ -438,40 +471,51 @@ func order_fleet_move(fleet: CampaignFleet, destination_id: String) -> bool:
 func rpc_order_fleet_move(fleet_idx: int, destination_id: String):
 	if fleet_idx >= 0 and fleet_idx < fleets.size():
 		fleets[fleet_idx].start_move(destination_id, TRANSIT_DAYS)
-		if multiplayer.is_server() and has_node("/root/NetworkManager"):
+		if (not multiplayer.has_multiplayer_peer() or multiplayer.is_server()) and has_node("/root/NetworkManager"):
 			var nm = get_node("/root/NetworkManager")
-			nm.sync_campaign_state.rpc(serialize_state())
+			if multiplayer.has_multiplayer_peer():
+				nm.sync_campaign_state.rpc(serialize_state())
 			emit_signal("campaign_state_updated")
 
 func cancel_fleet_move(fleet: CampaignFleet):
 	var idx = fleets.find(fleet)
 	if idx != -1:
-		rpc_cancel_fleet_move.rpc(idx)
+		if multiplayer.has_multiplayer_peer():
+			rpc_cancel_fleet_move.rpc(idx)
+		else:
+			rpc_cancel_fleet_move(idx)
 
 @rpc("any_peer", "call_local", "reliable")
 func rpc_cancel_fleet_move(fleet_idx: int):
 	if fleet_idx >= 0 and fleet_idx < fleets.size():
 		fleets[fleet_idx].cancel_move()
-		if multiplayer.is_server() and has_node("/root/NetworkManager"):
+		if (not multiplayer.has_multiplayer_peer() or multiplayer.is_server()) and has_node("/root/NetworkManager"):
 			var nm = get_node("/root/NetworkManager")
-			nm.sync_campaign_state.rpc(serialize_state())
+			if multiplayer.has_multiplayer_peer():
+				nm.sync_campaign_state.rpc(serialize_state())
 			emit_signal("campaign_state_updated")
 
 @rpc("any_peer", "call_local", "reliable")
 func request_end_turn(faction: String):
-	if multiplayer.is_server():
+	if not multiplayer.has_multiplayer_peer() or multiplayer.is_server():
 		# Validate that no fleet is stuck needing to retreat
 		for f in fleets:
 			if f.faction == faction and f.must_retreat and not f.is_moving():
 				var msg = "[color=red]Cannot end turn. %s must plot a retreat to a safe system![/color]" % f.fleet_name
-				ConsoleManager.log_message.rpc(msg)
+				if multiplayer.has_multiplayer_peer():
+					ConsoleManager.log_message.rpc(msg)
+				else:
+					ConsoleManager.log_message(msg)
 				return
 				
 		if faction == "UPF": upf_ready = true
 		elif faction == "Sathar": sathar_ready = true
 		
 		# Broadcast updated readiness to all clients
-		update_turn_ready.rpc(upf_ready, sathar_ready)
+		if multiplayer.has_multiplayer_peer():
+			update_turn_ready.rpc(upf_ready, sathar_ready)
+		else:
+			update_turn_ready(upf_ready, sathar_ready)
 		
 		ConsoleManager.log_message("[color=yellow]End Turn Requested: %s. Status - UPF:%s, Sathar:%s[/color]" % [faction, str(upf_ready), str(sathar_ready)])
 		
@@ -501,7 +545,7 @@ func set_encounter_ready(sys_name: String, faction: String, is_ready: bool):
 	
 	ConsoleManager.log_message("[color=yellow]Encounter %s: %s is Ready[/color]" % [sys_name, faction])
 	
-	if multiplayer.is_server():
+	if not multiplayer.has_multiplayer_peer() or multiplayer.is_server():
 		var attacker = encounter_attackers.get(sys_name, "Both")
 		var should_start = false
 		
@@ -514,11 +558,13 @@ func set_encounter_ready(sys_name: String, faction: String, is_ready: bool):
 			should_start = encounter_ready_state[sys_name][attacker]
 			
 		if should_start:
-			var nm = get_node("/root/NetworkManager")
-			nm.lobby_data["scenario"] = "campaign_encounter"
-			nm.lobby_data["encounter_system"] = sys_name
-			nm.update_lobby_data.rpc(nm.lobby_data)
-			nm.start_game_rpc.rpc()
+			if has_node("/root/NetworkManager"):
+				var nm = get_node("/root/NetworkManager")
+				nm.lobby_data["scenario"] = "campaign_encounter"
+				nm.lobby_data["encounter_system"] = sys_name
+				if multiplayer.has_multiplayer_peer():
+					nm.update_lobby_data.rpc(nm.lobby_data)
+					nm.start_game_rpc.rpc()
 
 func _resupply_fleet(fleet: CampaignFleet):
 	# "Ships resupplied restock items such as torpedoes, rocket battery ammunition, assault rockets, mines, seekers. 
@@ -655,10 +701,13 @@ func end_turn():
 	emit_signal("campaign_day_advanced", current_day)
 	
 	# After processing the turn, broadcast the new state and readiness
-	if multiplayer.is_server() and has_node("/root/NetworkManager"):
+	if (not multiplayer.has_multiplayer_peer() or multiplayer.is_server()) and has_node("/root/NetworkManager"):
 		var nm = get_node("/root/NetworkManager")
-		nm.sync_campaign_state.rpc(serialize_state())
-		update_turn_ready.rpc(upf_ready, sathar_ready)
+		if multiplayer.has_multiplayer_peer():
+			nm.sync_campaign_state.rpc(serialize_state())
+			update_turn_ready.rpc(upf_ready, sathar_ready)
+		else:
+			update_turn_ready(upf_ready, sathar_ready)
 
 func serialize_state() -> Dictionary:
 	var state = {
@@ -882,9 +931,10 @@ func load_campaign(file_path: String = "user://campaign_save.json") -> bool:
 			deserialize_state(json.data)
 			file.close()
 			
-			if multiplayer.is_server() and has_node("/root/NetworkManager"):
+			if (not multiplayer.has_multiplayer_peer() or multiplayer.is_server()) and has_node("/root/NetworkManager"):
 				var nm = get_node("/root/NetworkManager")
-				nm.sync_campaign_state.rpc(json.data)
+				if multiplayer.has_multiplayer_peer():
+					nm.sync_campaign_state.rpc(json.data)
 			return true
 	return false
 
@@ -932,3 +982,5 @@ func deserialize_state(state_data: Dictionary):
 		var fleet = CampaignFleet.new("", "", "")
 		fleet.deserialize(f_data)
 		fleets.append(fleet)
+		
+	_initialize_ai_opponents()
