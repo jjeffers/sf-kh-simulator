@@ -481,7 +481,7 @@ func _draw_systems():
 			line.width = 1.0
 			line.default_color = Color(1.0, 0.4, 0.4, 0.5)
 			routes_container.add_child(line)
->>>>>>> origin/feature/scc-import-fix
+
 
 func _draw_fleets():
 	for child in fleets_container.get_children():
