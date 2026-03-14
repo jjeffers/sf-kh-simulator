@@ -9,48 +9,45 @@ Connecting to ws://127.0.0.1:7000
 [CampaignManager] Attached CampAI_UPF to tree.
 [color=yellow]Campaign AI initialized for UPF.[/color]
 [NetworkManager] Starting Game RPC received.
+[NetworkManager] Received Campaign State Sync
+[NetworkManager] Received Campaign State Sync
 [color=gray]Campaign AI (UPF) evaluating turn...[/color]
-DEBUG are_systems_connected: Checking A=K'tsa-Kar B=Start Circle 3
-DEBUG are_systems_connected: Found START CIRCLE route match!
-AI ordered fleet Strike Force NOVA to move toward Start Circle 3 (next stop Start Circle 3).
-DEBUG are_systems_connected: Checking A=Cassidine B=Dixon's Star
-DEBUG are_systems_connected: Found normal route match!
-AI ordered fleet Task Force Cassidine to move toward Start Circle 1 (next stop Dixon's Star).
-DEBUG are_systems_connected: Checking A=Prenglar B=Dixon's Star
-DEBUG are_systems_connected: Found normal route match!
-AI ordered fleet Task Force Prenglar to move toward Start Circle 1 (next stop Dixon's Star).
-DEBUG are_systems_connected: Checking A=White Light B=K'tsa-Kar
-DEBUG are_systems_connected: Found normal route match!
-AI ordered fleet Militia White Light to move toward Start Circle 3 (next stop K'tsa-Kar).
-DEBUG are_systems_connected: Checking A=Araks B=Athor
-DEBUG are_systems_connected: Found normal route match!
-AI ordered fleet Militia Araks to move toward Start Circle 1 (next stop Athor).
-DEBUG are_systems_connected: Checking A=K'aken-Kar B=K'tsa-Kar
-DEBUG are_systems_connected: Found normal route match!
-AI ordered fleet Militia K'aken-Kar to move toward Start Circle 3 (next stop K'tsa-Kar).
 DEBUG are_systems_connected: Checking A=Dramune B=Cassidine
 DEBUG are_systems_connected: Found normal route match!
-AI ordered fleet Militia Dramune to move toward Start Circle 1 (next stop Cassidine).
+AI ordered fleet Strike Force NOVA to move toward K'aken-Kar (next stop Cassidine).
+DEBUG are_systems_connected: Checking A=Cassidine B=Fromeltar
+DEBUG are_systems_connected: Found normal route match!
+AI ordered fleet Task Force Cassidine to move toward K'aken-Kar (next stop Fromeltar).
+DEBUG are_systems_connected: Checking A=Prenglar B=Timeon
+DEBUG are_systems_connected: Found normal route match!
+AI ordered fleet Task Force Prenglar to move toward K'tsa-Kar (next stop Timeon).
+DEBUG are_systems_connected: Checking A=White Light B=K'tsa-Kar
+DEBUG are_systems_connected: Found normal route match!
+AI ordered fleet Militia White Light to move toward K'tsa-Kar (next stop K'tsa-Kar).
+DEBUG are_systems_connected: Checking A=Araks B=Gruna Garu
+DEBUG are_systems_connected: Found normal route match!
+AI ordered fleet Militia Araks to move toward K'tsa-Kar (next stop Gruna Garu).
+DEBUG are_systems_connected: Checking A=Dramune B=Cassidine
+DEBUG are_systems_connected: Found normal route match!
+AI ordered fleet Militia Dramune to move toward K'aken-Kar (next stop Cassidine).
 DEBUG are_systems_connected: Checking A=Fromeltar B=Kizk-Kar
 DEBUG are_systems_connected: Found normal route match!
-AI ordered fleet Militia Fromeltar to move toward Start Circle 3 (next stop Kizk-Kar).
-DEBUG are_systems_connected: Checking A=Gruna Garu B=Athor
+AI ordered fleet Militia Fromeltar to move toward K'aken-Kar (next stop Kizk-Kar).
+DEBUG are_systems_connected: Checking A=Gruna Garu B=Prenglar
 DEBUG are_systems_connected: Found normal route match!
-AI ordered fleet Militia Gruna Garu to move toward Start Circle 1 (next stop Athor).
+AI ordered fleet Militia Gruna Garu to move toward K'tsa-Kar (next stop Prenglar).
 DEBUG are_systems_connected: Checking A=Dramune B=Cassidine
 DEBUG are_systems_connected: Found normal route match!
-AI ordered fleet Militia Dramune2 to move toward Start Circle 1 (next stop Cassidine).
+AI ordered fleet Militia Dramune2 to move toward K'aken-Kar (next stop Cassidine).
 DEBUG are_systems_connected: Checking A=Theseus B=White Light
 DEBUG are_systems_connected: Found normal route match!
-AI ordered fleet Militia Theseus to move toward Start Circle 3 (next stop White Light).
-DEBUG are_systems_connected: Checking A=Truane's Star B=Zebulon
+AI ordered fleet Militia Theseus to move toward K'tsa-Kar (next stop White Light).
+DEBUG are_systems_connected: Checking A=Truane's Star B=Dixon's Star
 DEBUG are_systems_connected: Found normal route match!
-AI ordered fleet Militia Truane's Star to move toward Start Circle 1 (next stop Zebulon).
+AI ordered fleet Militia Truane's Star to move toward K'aken-Kar (next stop Dixon's Star).
 DEBUG are_systems_connected: Checking A=Kizk-Kar B=K'aken-Kar
 DEBUG are_systems_connected: Found normal route match!
-AI ordered fleet Militia Kizk-Kar to move toward Start Circle 3 (next stop K'aken-Kar).
-[NetworkManager] Received Campaign State Sync
-[NetworkManager] Received Campaign State Sync
+AI ordered fleet Militia Kizk-Kar to move toward K'aken-Kar (next stop K'aken-Kar).
 [NetworkManager] Received Campaign State Sync
 [NetworkManager] Received Campaign State Sync
 [NetworkManager] Received Campaign State Sync
@@ -66,156 +63,423 @@ AI ordered fleet Militia Kizk-Kar to move toward Start Circle 3 (next stop K'ake
 [color=yellow]Campaign AI (UPF) is ending its turn.[/color]
 [NetworkManager] Received Campaign State Sync
 [color=gray]Campaign AI (UPF) evaluating turn...[/color]
-SCRIPT ERROR: Invalid access to property or key 'destination_id' on a base object of type 'RefCounted (CampaignFleet)'.
-          at: CampaignComputerOpponent._find_strategic_target (res://Scripts/CampaignComputerOpponent.gd:225)
-          GDScript backtrace (most recent call first):
-              [0] _find_strategic_target (res://Scripts/CampaignComputerOpponent.gd:225)
-              [1] _execute_movement (res://Scripts/CampaignComputerOpponent.gd:195)
-              [2] _on_think_timeout (res://Scripts/CampaignComputerOpponent.gd:58)
 [color=yellow]Campaign AI (UPF) is ending its turn.[/color]
 [NetworkManager] Received Campaign State Sync
 [color=gray]Campaign AI (UPF) evaluating turn...[/color]
-SCRIPT ERROR: Invalid access to property or key 'destination_id' on a base object of type 'RefCounted (CampaignFleet)'.
-          at: CampaignComputerOpponent._find_strategic_target (res://Scripts/CampaignComputerOpponent.gd:225)
-          GDScript backtrace (most recent call first):
-              [0] _find_strategic_target (res://Scripts/CampaignComputerOpponent.gd:225)
-              [1] _execute_movement (res://Scripts/CampaignComputerOpponent.gd:195)
-              [2] _on_think_timeout (res://Scripts/CampaignComputerOpponent.gd:58)
 [color=yellow]Campaign AI (UPF) is ending its turn.[/color]
 [NetworkManager] Received Campaign State Sync
 [color=gray]Campaign AI (UPF) evaluating turn...[/color]
-SCRIPT ERROR: Invalid access to property or key 'destination_id' on a base object of type 'RefCounted (CampaignFleet)'.
-          at: CampaignComputerOpponent._find_strategic_target (res://Scripts/CampaignComputerOpponent.gd:225)
-          GDScript backtrace (most recent call first):
-              [0] _find_strategic_target (res://Scripts/CampaignComputerOpponent.gd:225)
-              [1] _execute_movement (res://Scripts/CampaignComputerOpponent.gd:195)
-              [2] _on_think_timeout (res://Scripts/CampaignComputerOpponent.gd:58)
 [color=yellow]Campaign AI (UPF) is ending its turn.[/color]
 [NetworkManager] Received Campaign State Sync
 [color=gray]Campaign AI (UPF) evaluating turn...[/color]
-SCRIPT ERROR: Invalid access to property or key 'destination_id' on a base object of type 'RefCounted (CampaignFleet)'.
-          at: CampaignComputerOpponent._find_strategic_target (res://Scripts/CampaignComputerOpponent.gd:225)
-          GDScript backtrace (most recent call first):
-              [0] _find_strategic_target (res://Scripts/CampaignComputerOpponent.gd:225)
-              [1] _execute_movement (res://Scripts/CampaignComputerOpponent.gd:195)
-              [2] _on_think_timeout (res://Scripts/CampaignComputerOpponent.gd:58)
 [color=yellow]Campaign AI (UPF) is ending its turn.[/color]
 [NetworkManager] Received Campaign State Sync
 COMBAT TRIGGERED AT K'tsa-Kar!
-COMBAT TRIGGERED AT Zebulon!
+COMBAT TRIGGERED AT K'aken-Kar!
+[NetworkManager] Received Campaign State Sync
+COMBAT TRIGGERED AT K'tsa-Kar!
+COMBAT TRIGGERED AT K'aken-Kar!
+Network requested open encounter dialog for: K'aken-Kar
+COMBAT TRIGGERED AT K'aken-Kar!
+DEBUG: _handle_encounter_click called for K'aken-Kar
+DEBUG: _handle_encounter_click proceeding for faction UPF
+DEBUG: _handle_encounter_click successfully added EncounterDialog to UI tree.
 [color=gray]Campaign AI (UPF) evaluating turn...[/color]
-DEBUG are_systems_connected: Checking A=Dixon's Star B=Truane's Star
+DEBUG are_systems_connected: Checking A=Cassidine B=Fromeltar
 DEBUG are_systems_connected: Found normal route match!
-AI ordered fleet Task Force Cassidine to move toward Zebulon (next stop Truane's Star).
-DEBUG are_systems_connected: Checking A=Dixon's Star B=Truane's Star
+AI ordered fleet Strike Force NOVA to move toward K'aken-Kar (next stop Fromeltar).
+DEBUG are_systems_connected: Checking A=Fromeltar B=Kizk-Kar
 DEBUG are_systems_connected: Found normal route match!
-AI ordered fleet Task Force Prenglar to move toward Zebulon (next stop Truane's Star).
-DEBUG are_systems_connected: Checking A=Athor B=Dixon's Star
+AI ordered fleet Task Force Cassidine to move toward K'aken-Kar (next stop Kizk-Kar).
+DEBUG are_systems_connected: Checking A=Timeon B=White Light
 DEBUG are_systems_connected: Found normal route match!
-AI ordered fleet Militia Araks to move toward Zebulon (next stop Dixon's Star).
-DEBUG are_systems_connected: Checking A=Cassidine B=Dixon's Star
+AI ordered fleet Task Force Prenglar to move toward K'aken-Kar (next stop White Light).
+DEBUG are_systems_connected: Checking A=K'tsa-Kar B=K'aken-Kar
 DEBUG are_systems_connected: Found normal route match!
-AI ordered fleet Militia Dramune to move toward Zebulon (next stop Dixon's Star).
+AI ordered fleet Militia White Light to move toward K'aken-Kar (next stop K'aken-Kar).
+DEBUG are_systems_connected: Checking A=Gruna Garu B=Prenglar
+DEBUG are_systems_connected: Found normal route match!
+AI ordered fleet Militia Araks to move toward K'aken-Kar (next stop Prenglar).
+DEBUG are_systems_connected: Checking A=Cassidine B=Fromeltar
+DEBUG are_systems_connected: Found normal route match!
+AI ordered fleet Militia Dramune to move toward K'aken-Kar (next stop Fromeltar).
 DEBUG are_systems_connected: Checking A=Kizk-Kar B=K'aken-Kar
 DEBUG are_systems_connected: Found normal route match!
-AI ordered fleet Militia Fromeltar to move toward K'tsa-Kar (next stop K'aken-Kar).
-DEBUG are_systems_connected: Checking A=Athor B=Dixon's Star
+AI ordered fleet Militia Fromeltar to move toward K'aken-Kar (next stop K'aken-Kar).
+DEBUG are_systems_connected: Checking A=Prenglar B=Cassidine
 DEBUG are_systems_connected: Found normal route match!
-AI ordered fleet Militia Gruna Garu to move toward Zebulon (next stop Dixon's Star).
-DEBUG are_systems_connected: Checking A=Cassidine B=Dixon's Star
+AI ordered fleet Militia Gruna Garu to move toward K'aken-Kar (next stop Cassidine).
+DEBUG are_systems_connected: Checking A=Cassidine B=Fromeltar
 DEBUG are_systems_connected: Found normal route match!
-AI ordered fleet Militia Dramune2 to move toward Zebulon (next stop Dixon's Star).
+AI ordered fleet Militia Dramune2 to move toward K'aken-Kar (next stop Fromeltar).
 DEBUG are_systems_connected: Checking A=White Light B=K'tsa-Kar
 DEBUG are_systems_connected: Found normal route match!
-AI ordered fleet Militia Theseus to move toward K'tsa-Kar (next stop K'tsa-Kar).
-DEBUG are_systems_connected: Checking A=K'aken-Kar B=K'tsa-Kar
+AI ordered fleet Militia Theseus to move toward K'aken-Kar (next stop K'tsa-Kar).
+DEBUG are_systems_connected: Checking A=Dixon's Star B=Cassidine
 DEBUG are_systems_connected: Found normal route match!
-AI ordered fleet Militia Kizk-Kar to move toward K'tsa-Kar (next stop K'tsa-Kar).
+AI ordered fleet Militia Truane's Star to move toward K'aken-Kar (next stop Cassidine).
 [NetworkManager] Received Campaign State Sync
 COMBAT TRIGGERED AT K'tsa-Kar!
-COMBAT TRIGGERED AT Zebulon!
+COMBAT TRIGGERED AT K'aken-Kar!
 [NetworkManager] Received Campaign State Sync
 COMBAT TRIGGERED AT K'tsa-Kar!
-COMBAT TRIGGERED AT Zebulon!
+COMBAT TRIGGERED AT K'aken-Kar!
 [NetworkManager] Received Campaign State Sync
 COMBAT TRIGGERED AT K'tsa-Kar!
-COMBAT TRIGGERED AT Zebulon!
+COMBAT TRIGGERED AT K'aken-Kar!
 [NetworkManager] Received Campaign State Sync
 COMBAT TRIGGERED AT K'tsa-Kar!
-COMBAT TRIGGERED AT Zebulon!
+COMBAT TRIGGERED AT K'aken-Kar!
 [NetworkManager] Received Campaign State Sync
 COMBAT TRIGGERED AT K'tsa-Kar!
-COMBAT TRIGGERED AT Zebulon!
+COMBAT TRIGGERED AT K'aken-Kar!
 [NetworkManager] Received Campaign State Sync
 COMBAT TRIGGERED AT K'tsa-Kar!
-COMBAT TRIGGERED AT Zebulon!
+COMBAT TRIGGERED AT K'aken-Kar!
 [NetworkManager] Received Campaign State Sync
 COMBAT TRIGGERED AT K'tsa-Kar!
-COMBAT TRIGGERED AT Zebulon!
+COMBAT TRIGGERED AT K'aken-Kar!
 [NetworkManager] Received Campaign State Sync
 COMBAT TRIGGERED AT K'tsa-Kar!
-COMBAT TRIGGERED AT Zebulon!
+COMBAT TRIGGERED AT K'aken-Kar!
 [NetworkManager] Received Campaign State Sync
 COMBAT TRIGGERED AT K'tsa-Kar!
-COMBAT TRIGGERED AT Zebulon!
+COMBAT TRIGGERED AT K'aken-Kar!
 [NetworkManager] Received Campaign State Sync
 COMBAT TRIGGERED AT K'tsa-Kar!
-COMBAT TRIGGERED AT Zebulon!
+COMBAT TRIGGERED AT K'aken-Kar!
 [NetworkManager] Received Campaign State Sync
 COMBAT TRIGGERED AT K'tsa-Kar!
-COMBAT TRIGGERED AT Zebulon!
-[color=yellow]Campaign AI (UPF) is ending its turn.[/color]
-[NetworkManager] Received Campaign State Sync
+COMBAT TRIGGERED AT K'aken-Kar!
+[NetworkManager] Starting Game RPC received.
+WARNING: res://Scenes/Main.tscn:3 - ext_resource, invalid UID: uid://cvru4lxy5bnj1 - using text path instead: res://Scripts/GameManager.gd
+     at: load (scene/resources/resource_format_text.cpp:500)
+     GDScript backtrace (most recent call first):
+         [0] start_game_rpc (res://Scripts/NetworkManager.gd:199)
+[DEBUG] _build_repair_panel called
+[Peer: 542477561] [Turn 1] [DEBUG] Initializing repair_panel
+[Peer: 542477561] [Turn 1] Game Setup Received: Seed 1909854300
+[Peer: 542477561] [Turn 1] Loading Scenario: Campaign Encounter
+[DEBUG] Ship Fortress K'aken-Kar loaded with Orbit Dir 1
+[Peer: 542477561] [Turn 1] [color=cyan]=== DEPLOYMENT Phase ===[/color]
+[Peer: 542477561] [Turn 1] [color=yellow]AI Spawning for Side 1 (Sathar: false)[/color]
+[DEBUG] _update_deployment_ui called - Subphase: 1, my_side_id: 1
 [color=gray]Campaign AI (UPF) evaluating turn...[/color]
-SCRIPT ERROR: Invalid access to property or key 'destination_id' on a base object of type 'RefCounted (CampaignFleet)'.
-          at: CampaignComputerOpponent._find_strategic_target (res://Scripts/CampaignComputerOpponent.gd:225)
+Network requested open encounter dialog for: K'aken-Kar
+[NetworkManager] Starting Game RPC received.
+WARNING: res://Scenes/Main.tscn:3 - ext_resource, invalid UID: uid://cvru4lxy5bnj1 - using text path instead: res://Scripts/GameManager.gd
+     at: load (scene/resources/resource_format_text.cpp:500)
+     GDScript backtrace (most recent call first):
+         [0] start_game_rpc (res://Scripts/NetworkManager.gd:199)
+[DEBUG] _build_repair_panel called
+[Peer: 542477561] [Turn 1] [DEBUG] Initializing repair_panel
+[NetworkManager] Starting Game RPC received.
+WARNING: res://Scenes/Main.tscn:3 - ext_resource, invalid UID: uid://cvru4lxy5bnj1 - using text path instead: res://Scripts/GameManager.gd
+     at: load (scene/resources/resource_format_text.cpp:500)
+     GDScript backtrace (most recent call first):
+         [0] start_game_rpc (res://Scripts/NetworkManager.gd:199)
+[DEBUG] _build_repair_panel called
+[Peer: 542477561] [Turn 1] [DEBUG] Initializing repair_panel
+[Peer: 542477561] [Turn 1] Game Setup Received: Seed 1740885952
+[Peer: 542477561] [Turn 1] Loading Scenario: Campaign Encounter
+[DEBUG] Ship Fortress K'aken-Kar loaded with Orbit Dir 1
+[Peer: 542477561] [Turn 1] [color=cyan]=== DEPLOYMENT Phase ===[/color]
+[Peer: 542477561] [Turn 1] [color=yellow]AI Spawning for Side 1 (Sathar: false)[/color]
+[DEBUG] _update_deployment_ui called - Subphase: 1, my_side_id: 1
+[Peer: 542477561] [Turn 1] Game Setup Received: Seed 1168140227
+[Peer: 542477561] [Turn 1] Loading Scenario: Campaign Encounter
+[DEBUG] Ship Fortress K'aken-Kar2 loaded with Orbit Dir 1
+[Peer: 542477561] [Turn 1] [color=cyan]=== DEPLOYMENT Phase ===[/color]
+[DEBUG] _update_deployment_ui called - Subphase: 1, my_side_id: 1
+[Peer: 542477561] [Turn 1] AI Auto-Deploying Ships...
+[Peer: 542477561] [Turn 1] Side 2 is now Deploying.
+[DEBUG] _update_deployment_ui called - Subphase: 2, my_side_id: 1
+[Peer: 542477561] [Turn 1] Deployment Complete. Starting Turn 1.
+[Peer: 542477561] [Turn 1] === Turn Start: Side UPF ===
+DEBUG: Rejected SAV Death-Spawn2 Side:2 CurSide:1 Moved:false
+DEBUG: Rejected SAV Havoc2 Side:2 CurSide:1 Moved:false
+DEBUG: Rejected SAV Death-Bringer2 Side:2 CurSide:1 Moved:false
+DEBUG: Rejected SAV Fighter 4 Side:2 CurSide:1 Moved:false
+DEBUG: Rejected SAV Oppressor2 Side:2 CurSide:1 Moved:false
+DEBUG: Rejected SAV Stinger2 Side:2 CurSide:1 Moved:false
+DEBUG: Rejected SAV Fighter 5 Side:2 CurSide:1 Moved:false
+DEBUG: Rejected SAV Executioner2 Side:2 CurSide:1 Moved:false
+DEBUG: Rejected SAV Asp2 Side:2 CurSide:1 Moved:false
+DEBUG: Rejected SAV Cruelty2 Side:2 CurSide:1 Moved:false
+DEBUG: Rejected SAV Fighter 8 Side:2 CurSide:1 Moved:false
+DEBUG: Rejected SAV Fighter 10 Side:2 CurSide:1 Moved:false
+DEBUG: start_movement_phase. Side: 1 Available: 5
+DEBUG: First available: Fortress K'aken-Kar2 ID: 1 Moved: false
+DEBUG: Auto-Orbit Candidate Found: Fortress K'aken-Kar2 (Class: Fortified Station, Orbit: 1)
+DEBUG: _on_commit_move for Fortress K'aken-Kar2
+DEBUG: Path size: 1
+[Peer: 542477561] [Turn 1] Orders Received for Fortress K'aken-Kar2
+[DEBUG] Standard move start for UPFS Bolt2
+[Peer: 542477561] [Turn 1] Synced Orders for Fortress K'aken-Kar2
+[Peer: 542477561] [Turn 1] [color=gray]AI Thinking: Evaluating UPFS Bolt2 (Unmoved left: 4)[/color]
+[Peer: 542477561] [Turn 1] [color=gray]AI Thinking: Nearest target for UPFS Bolt2 is SAV Death-Spawn2[/color]
+[Peer: 542477561] [Turn 1] [color=gray]AI Thinking: Fleet CAR: 0.320 (Threshold: 0.20) Powers: Me=215.0, Enemy=672.0[/color]
+[Peer: 542477561] [Turn 1] [color=gray]AI Thinking: UPFS Bolt2 Individual Retreat Utility: 0.0 (Hull: 100.00%, Def: false, Atk: 2)[/color]
+[Peer: 542477561] [Turn 1] [color=gray]AI Thinking: UPFS Bolt2 constraints -> Speed [5, 15], MR 4[/color]
+[Peer: 542477561] [Turn 1] [color=gray]AI Thinking: Explored 2000 possible paths matching speed bounds.[/color]
+[Peer: 542477561] [Turn 1] [color=gray]AI Move Eval -> Ship: AS UPFS Bolt2 | Start Speed: 10 | Final Speed: 15 (ADF: 5) | MR Used: 4/4[/color]
+[Peer: 542477561] [Turn 1] AI plotted movement for AS UPFS Bolt2 (Speed 10 -> 15, 15 hexes)
+[Peer: 542477561] [Turn 1] Synced Orders for UPFS Bolt2
+[Peer: 542477561] [Turn 1] [color=gray]AI Thinking: Evaluating UPFS Eagle2 (Unmoved left: 3)[/color]
+[Peer: 542477561] [Turn 1] [color=gray]AI Thinking: Nearest target for UPFS Eagle2 is SAV Death-Spawn2[/color]
+[Peer: 542477561] [Turn 1] [color=gray]AI Thinking: Fleet CAR: 0.320 (Threshold: 0.20) Powers: Me=215.0, Enemy=672.0[/color]
+[Peer: 542477561] [Turn 1] [color=gray]AI Thinking: UPFS Eagle2 Individual Retreat Utility: 0.0 (Hull: 100.00%, Def: false, Atk: 2)[/color]
+[Peer: 542477561] [Turn 1] [color=gray]AI Thinking: UPFS Eagle2 constraints -> Speed [5, 15], MR 4[/color]
+[Peer: 542477561] [Turn 1] [color=gray]AI Thinking: Explored 2000 possible paths matching speed bounds.[/color]
+[Peer: 542477561] [Turn 1] [color=gray]AI Move Eval -> Ship: AS UPFS Eagle2 | Start Speed: 10 | Final Speed: 15 (ADF: 5) | MR Used: 3/4[/color]
+[Peer: 542477561] [Turn 1] AI plotted movement for AS UPFS Eagle2 (Speed 10 -> 15, 15 hexes)
+[Peer: 542477561] [Turn 1] Synced Orders for UPFS Eagle2
+[Peer: 542477561] [Turn 1] [color=gray]AI Thinking: Evaluating UPFS Assault Scout 6 (Unmoved left: 2)[/color]
+[Peer: 542477561] [Turn 1] [color=gray]AI Thinking: Nearest target for UPFS Assault Scout 6 is SAV Death-Spawn2[/color]
+[Peer: 542477561] [Turn 1] [color=gray]AI Thinking: Fleet CAR: 0.320 (Threshold: 0.20) Powers: Me=215.0, Enemy=672.0[/color]
+[Peer: 542477561] [Turn 1] [color=gray]AI Thinking: UPFS Assault Scout 6 Individual Retreat Utility: 0.0 (Hull: 100.00%, Def: false, Atk: 2)[/color]
+[Peer: 542477561] [Turn 1] [color=gray]AI Thinking: UPFS Assault Scout 6 constraints -> Speed [5, 15], MR 4[/color]
+[Peer: 542477561] [Turn 1] [color=gray]AI Thinking: Explored 2000 possible paths matching speed bounds.[/color]
+[Peer: 542477561] [Turn 1] [color=gray]AI Move Eval -> Ship: AS UPFS Assault Scout 6 | Start Speed: 10 | Final Speed: 15 (ADF: 5) | MR Used: 4/4[/color]
+[Peer: 542477561] [Turn 1] AI plotted movement for AS UPFS Assault Scout 6 (Speed 10 -> 15, 15 hexes)
+[Peer: 542477561] [Turn 1] Synced Orders for UPFS Assault Scout 6
+[Peer: 542477561] [Turn 1] [color=gray]AI Thinking: Evaluating UPFS Assault Scout 7 (Unmoved left: 1)[/color]
+[Peer: 542477561] [Turn 1] [color=gray]AI Thinking: Nearest target for UPFS Assault Scout 7 is SAV Death-Spawn2[/color]
+[Peer: 542477561] [Turn 1] [color=gray]AI Thinking: Fleet CAR: 0.320 (Threshold: 0.20) Powers: Me=215.0, Enemy=672.0[/color]
+[Peer: 542477561] [Turn 1] [color=gray]AI Thinking: UPFS Assault Scout 7 Individual Retreat Utility: 0.0 (Hull: 100.00%, Def: false, Atk: 2)[/color]
+[Peer: 542477561] [Turn 1] [color=gray]AI Thinking: UPFS Assault Scout 7 constraints -> Speed [0, 5], MR 4[/color]
+[Peer: 542477561] [Turn 1] [color=gray]AI Thinking: Explored 332 possible paths matching speed bounds.[/color]
+[Peer: 542477561] [Turn 1] [color=gray]AI Move Eval -> Ship: AS UPFS Assault Scout 7 | Start Speed: 0 | Final Speed: 5 (ADF: 5) | MR Used: 4/4[/color]
+[Peer: 542477561] [Turn 1] AI plotted movement for AS UPFS Assault Scout 7 (Speed 0 -> 5, 5 hexes)
+[Peer: 542477561] [Turn 1] Synced Orders for UPFS Assault Scout 7
+>>> DIAGNOSTIC: execute_all_movement running for side: 1 on peer: 542477561
+[Peer: 542477561] [Turn 1] Executing Movement Phase for Side UPF
+[Peer: 542477561] [Turn 1] [color=yellow]EXECUTE LOOP: Checking Ship Fortress K'aken-Kar2 (Class: Fortified Station, Mines: 0)[/color]
+[Peer: 542477561] [Turn 1] [color=yellow]EXECUTE LOOP: Checking Ship UPFS Bolt2 (Class: Assault Scout, Mines: 0)[/color]
+[Peer: 542477561] [Turn 1] [color=yellow]EXECUTE LOOP: Checking Ship UPFS Eagle2 (Class: Assault Scout, Mines: 0)[/color]
+[Peer: 542477561] [Turn 1] [color=red]UPFS Eagle2 crashed into a planet![/color]
+[Peer: 542477561] [Turn 1] Ship destroyed: UPFS Eagle2
+[Peer: 542477561] [Turn 1] [color=yellow]EXECUTE LOOP: Checking Ship UPFS Assault Scout 7 (Class: Assault Scout, Mines: 0)[/color]
+>>> DIAGNOSTIC: Entering Mine Detonations. Active Mines: 0 on peer: 542477561
+[Peer: 542477561] [Turn 1] [color=cyan]!!! DEBUG !!! Entering Mine Detonations. Active Mines: 0[/color]
+[Peer: 542477561] [Turn 1] [color=cyan]!!! DEBUG !!! Entering Seeker Movement. Active Seekers: 0[/color]
+[Peer: 542477561] [Turn 1] Movement Phase Complete for Side 1. Starting Combat.
+[DEBUG] start_combat_passive: Side 2 firing (Opponent of Moving Side 1)
+[Peer: 542477561] [Turn 1] Combat Planning: Side 2
+[DEBUG] TARGET CHECK P2. Ships: 12
+[DEBUG] Weapon Torpedoes N/A for SAV Havoc2 (Phase 3, Fired false)
+[DEBUG] Weapon Torpedoes N/A for SAV Death-Bringer2 (Phase 3, Fired false)
+[DEBUG] Weapon Assault Rockets N/A for SAV Fighter 4 (Phase 3, Fired false)
+[DEBUG] Weapon Torpedoes N/A for SAV Oppressor2 (Phase 3, Fired false)
+[DEBUG] Weapon Torpedoes N/A for SAV Stinger2 (Phase 3, Fired false)
+[DEBUG] Weapon Assault Rockets N/A for SAV Fighter 5 (Phase 3, Fired false)
+[DEBUG] Weapon Torpedoes N/A for SAV Executioner2 (Phase 3, Fired false)
+[DEBUG] Weapon Torpedoes N/A for SAV Asp2 (Phase 3, Fired false)
+[DEBUG] Weapon Torpedoes N/A for SAV Cruelty2 (Phase 3, Fired false)
+[DEBUG] Weapon Assault Rockets N/A for SAV Fighter 8 (Phase 3, Fired false)
+[DEBUG] Weapon Assault Rockets N/A for SAV Fighter 10 (Phase 3, Fired false)
+[DEBUG] NO TARGETS FOUND for P2
+[Peer: 542477561] [Turn 1] No valid targets for Side 2. Skipping...
+[Peer: 542477561] [Turn 1] Resolving 0 attacks...
+[Peer: 542477561] [Turn 1] Resolution Phase Complete.
+[Peer: 542477561] [Turn 1] Turn Segment Complete.
+[DEBUG] start_combat_active: Side 1 firing (Active Side)
+[Peer: 542477561] [Turn 1] Combat Planning: Side 1
+[DEBUG] TARGET CHECK P1. Ships: 4
+[DEBUG] NO TARGETS FOUND for P1
+[Peer: 542477561] [Turn 1] No valid targets for Side 1. Skipping...
+[Peer: 542477561] [Turn 1] Resolving 0 attacks...
+[Peer: 542477561] [Turn 1] Resolution Phase Complete.
+[Peer: 542477561] [Turn 1] Turn Segment Complete.
+[Peer: 542477561] [Turn 1] === Turn Start: Side Sathar ===
+DEBUG: Rejected Fortress K'aken-Kar2 Side:1 CurSide:2 Moved:false
+DEBUG: Rejected UPFS Bolt2 Side:1 CurSide:2 Moved:false
+DEBUG: Rejected UPFS Assault Scout 6 Side:1 CurSide:2 Moved:false
+DEBUG: Rejected UPFS Assault Scout 7 Side:1 CurSide:2 Moved:false
+DEBUG: start_movement_phase. Side: 2 Available: 12
+DEBUG: First available: SAV Death-Spawn2 ID: 2 Moved: false
+DEBUG: Skip Auto-Orbit Check: SAV Death-Spawn2 (Class: Assault Carrier, Orbit: 0)
+DEBUG: Skip Auto-Orbit Check: SAV Havoc2 (Class: Destroyer, Orbit: 0)
+DEBUG: Skip Auto-Orbit Check: SAV Death-Bringer2 (Class: Heavy Cruiser, Orbit: 0)
+DEBUG: Skip Auto-Orbit Check: SAV Fighter 4 (Class: Fighter, Orbit: 0)
+DEBUG: Skip Auto-Orbit Check: SAV Oppressor2 (Class: Destroyer, Orbit: 0)
+DEBUG: Skip Auto-Orbit Check: SAV Stinger2 (Class: Frigate, Orbit: 0)
+DEBUG: Skip Auto-Orbit Check: SAV Fighter 5 (Class: Fighter, Orbit: 0)
+DEBUG: Skip Auto-Orbit Check: SAV Executioner2 (Class: Destroyer, Orbit: 0)
+DEBUG: Skip Auto-Orbit Check: SAV Asp2 (Class: Frigate, Orbit: 0)
+DEBUG: Skip Auto-Orbit Check: SAV Cruelty2 (Class: Destroyer, Orbit: 0)
+DEBUG: Skip Auto-Orbit Check: SAV Fighter 8 (Class: Fighter, Orbit: 0)
+DEBUG: Skip Auto-Orbit Check: SAV Fighter 10 (Class: Fighter, Orbit: 0)
+[DEBUG] Standard move start for SAV Death-Spawn2
+[Peer: 542477561] [Turn 1] Synced Orders for SAV Death-Spawn2
+[Peer: 542477561] [Turn 1] Synced Orders for SAV Havoc2
+[Peer: 542477561] [Turn 1] Synced Orders for SAV Death-Bringer2
+[Peer: 542477561] [Turn 1] Synced Orders for SAV Fighter 4
+[Peer: 542477561] [Turn 1] Synced Orders for SAV Oppressor2
+[Peer: 542477561] [Turn 1] Synced Orders for SAV Stinger2
+[Peer: 542477561] [Turn 1] Synced Orders for SAV Fighter 5
+[Peer: 542477561] [Turn 1] Synced Orders for SAV Executioner2
+[Peer: 542477561] [Turn 1] Synced Orders for SAV Asp2
+[Peer: 542477561] [Turn 1] Synced Orders for SAV Cruelty2
+[Peer: 542477561] [Turn 1] Synced Orders for SAV Fighter 8
+[Peer: 542477561] [Turn 1] Synced Orders for SAV Fighter 10
+>>> DIAGNOSTIC: execute_all_movement running for side: 2 on peer: 542477561
+[Peer: 542477561] [Turn 1] Executing Movement Phase for Side Sathar
+[Peer: 542477561] [Turn 1] [color=yellow]EXECUTE LOOP: Checking Ship SAV Death-Spawn2 (Class: Assault Carrier, Mines: 0)[/color]
+[Peer: 542477561] [Turn 1] [color=yellow]EXECUTE LOOP: Checking Ship SAV Havoc2 (Class: Destroyer, Mines: 0)[/color]
+[Peer: 542477561] [Turn 1] [color=yellow]EXECUTE LOOP: Checking Ship SAV Death-Bringer2 (Class: Heavy Cruiser, Mines: 0)[/color]
+[Peer: 542477561] [Turn 1] [color=yellow]EXECUTE LOOP: Checking Ship SAV Fighter 4 (Class: Fighter, Mines: 0)[/color]
+SCRIPT ERROR: Invalid access to property or key 'grid_position' on a base object of type 'Nil'.
+          at: GameManager._handle_docking_states (res://Scripts/GameManager.gd:5499)
           GDScript backtrace (most recent call first):
-              [0] _find_strategic_target (res://Scripts/CampaignComputerOpponent.gd:225)
-              [1] _execute_movement (res://Scripts/CampaignComputerOpponent.gd:195)
-              [2] _on_think_timeout (res://Scripts/CampaignComputerOpponent.gd:58)
-SCRIPT ERROR: Invalid access to property or key 'destination_id' on a base object of type 'RefCounted (CampaignFleet)'.
-          at: CampaignComputerOpponent._find_strategic_target (res://Scripts/CampaignComputerOpponent.gd:225)
+              [0] _handle_docking_states (res://Scripts/GameManager.gd:5499)
+              [1] _apply_movement_plan (res://Scripts/GameManager.gd:5475)
+              [2] execute_all_movement (res://Scripts/GameManager.gd:4888)
+[Peer: 542477561] [Turn 1] [color=yellow]EXECUTE LOOP: Checking Ship SAV Oppressor2 (Class: Destroyer, Mines: 0)[/color]
+[Peer: 542477561] [Turn 1] [color=yellow]EXECUTE LOOP: Checking Ship SAV Stinger2 (Class: Frigate, Mines: 0)[/color]
+[Peer: 542477561] [Turn 1] [color=yellow]EXECUTE LOOP: Checking Ship SAV Fighter 5 (Class: Fighter, Mines: 0)[/color]
+SCRIPT ERROR: Invalid access to property or key 'grid_position' on a base object of type 'Nil'.
+          at: GameManager._handle_docking_states (res://Scripts/GameManager.gd:5499)
           GDScript backtrace (most recent call first):
-              [0] _find_strategic_target (res://Scripts/CampaignComputerOpponent.gd:225)
-              [1] _execute_movement (res://Scripts/CampaignComputerOpponent.gd:195)
-              [2] _on_think_timeout (res://Scripts/CampaignComputerOpponent.gd:58)
-SCRIPT ERROR: Invalid access to property or key 'destination_id' on a base object of type 'RefCounted (CampaignFleet)'.
-          at: CampaignComputerOpponent._find_strategic_target (res://Scripts/CampaignComputerOpponent.gd:225)
+              [0] _handle_docking_states (res://Scripts/GameManager.gd:5499)
+              [1] _apply_movement_plan (res://Scripts/GameManager.gd:5475)
+              [2] execute_all_movement (res://Scripts/GameManager.gd:4888)
+[Peer: 542477561] [Turn 1] [color=yellow]EXECUTE LOOP: Checking Ship SAV Executioner2 (Class: Destroyer, Mines: 0)[/color]
+[Peer: 542477561] [Turn 1] [color=yellow]EXECUTE LOOP: Checking Ship SAV Asp2 (Class: Frigate, Mines: 0)[/color]
+[Peer: 542477561] [Turn 1] [color=yellow]EXECUTE LOOP: Checking Ship SAV Cruelty2 (Class: Destroyer, Mines: 0)[/color]
+[Peer: 542477561] [Turn 1] [color=yellow]EXECUTE LOOP: Checking Ship SAV Fighter 8 (Class: Fighter, Mines: 0)[/color]
+SCRIPT ERROR: Invalid access to property or key 'grid_position' on a base object of type 'Nil'.
+          at: GameManager._handle_docking_states (res://Scripts/GameManager.gd:5499)
           GDScript backtrace (most recent call first):
-              [0] _find_strategic_target (res://Scripts/CampaignComputerOpponent.gd:225)
-              [1] _execute_movement (res://Scripts/CampaignComputerOpponent.gd:195)
-              [2] _on_think_timeout (res://Scripts/CampaignComputerOpponent.gd:58)
-SCRIPT ERROR: Invalid access to property or key 'destination_id' on a base object of type 'RefCounted (CampaignFleet)'.
-          at: CampaignComputerOpponent._find_strategic_target (res://Scripts/CampaignComputerOpponent.gd:225)
+              [0] _handle_docking_states (res://Scripts/GameManager.gd:5499)
+              [1] _apply_movement_plan (res://Scripts/GameManager.gd:5475)
+              [2] execute_all_movement (res://Scripts/GameManager.gd:4888)
+[Peer: 542477561] [Turn 1] [color=yellow]EXECUTE LOOP: Checking Ship SAV Fighter 10 (Class: Fighter, Mines: 0)[/color]
+SCRIPT ERROR: Invalid access to property or key 'grid_position' on a base object of type 'Nil'.
+          at: GameManager._handle_docking_states (res://Scripts/GameManager.gd:5499)
           GDScript backtrace (most recent call first):
-              [0] _find_strategic_target (res://Scripts/CampaignComputerOpponent.gd:225)
-              [1] _execute_movement (res://Scripts/CampaignComputerOpponent.gd:195)
-              [2] _on_think_timeout (res://Scripts/CampaignComputerOpponent.gd:58)
-[color=yellow]Campaign AI (UPF) is ending its turn.[/color]
-[NetworkManager] Received Campaign State Sync
-[color=gray]Campaign AI (UPF) evaluating turn...[/color]
-SCRIPT ERROR: Invalid access to property or key 'destination_id' on a base object of type 'RefCounted (CampaignFleet)'.
-          at: CampaignComputerOpponent._find_strategic_target (res://Scripts/CampaignComputerOpponent.gd:225)
-          GDScript backtrace (most recent call first):
-              [0] _find_strategic_target (res://Scripts/CampaignComputerOpponent.gd:225)
-              [1] _execute_movement (res://Scripts/CampaignComputerOpponent.gd:195)
-              [2] _on_think_timeout (res://Scripts/CampaignComputerOpponent.gd:58)
-SCRIPT ERROR: Invalid access to property or key 'destination_id' on a base object of type 'RefCounted (CampaignFleet)'.
-          at: CampaignComputerOpponent._find_strategic_target (res://Scripts/CampaignComputerOpponent.gd:225)
-          GDScript backtrace (most recent call first):
-              [0] _find_strategic_target (res://Scripts/CampaignComputerOpponent.gd:225)
-              [1] _execute_movement (res://Scripts/CampaignComputerOpponent.gd:195)
-              [2] _on_think_timeout (res://Scripts/CampaignComputerOpponent.gd:58)
-SCRIPT ERROR: Invalid access to property or key 'destination_id' on a base object of type 'RefCounted (CampaignFleet)'.
-          at: CampaignComputerOpponent._find_strategic_target (res://Scripts/CampaignComputerOpponent.gd:225)
-          GDScript backtrace (most recent call first):
-              [0] _find_strategic_target (res://Scripts/CampaignComputerOpponent.gd:225)
-              [1] _execute_movement (res://Scripts/CampaignComputerOpponent.gd:195)
-              [2] _on_think_timeout (res://Scripts/CampaignComputerOpponent.gd:58)
-SCRIPT ERROR: Invalid access to property or key 'destination_id' on a base object of type 'RefCounted (CampaignFleet)'.
-          at: CampaignComputerOpponent._find_strategic_target (res://Scripts/CampaignComputerOpponent.gd:225)
-          GDScript backtrace (most recent call first):
-              [0] _find_strategic_target (res://Scripts/CampaignComputerOpponent.gd:225)
-              [1] _execute_movement (res://Scripts/CampaignComputerOpponent.gd:195)
-              [2] _on_think_timeout (res://Scripts/CampaignComputerOpponent.gd:58)
-[color=yellow]Campaign AI (UPF) is ending its turn.[/color]
+              [0] _handle_docking_states (res://Scripts/GameManager.gd:5499)
+              [1] _apply_movement_plan (res://Scripts/GameManager.gd:5475)
+              [2] execute_all_movement (res://Scripts/GameManager.gd:4888)
+>>> DIAGNOSTIC: Entering Mine Detonations. Active Mines: 0 on peer: 542477561
+[Peer: 542477561] [Turn 1] [color=cyan]!!! DEBUG !!! Entering Mine Detonations. Active Mines: 0[/color]
+[Peer: 542477561] [Turn 1] [color=cyan]!!! DEBUG !!! Entering Seeker Movement. Active Seekers: 0[/color]
+[Peer: 542477561] [Turn 1] Movement Phase Complete for Side 2. Starting Combat.
+[DEBUG] start_combat_passive: Side 1 firing (Opponent of Moving Side 2)
+[Peer: 542477561] [Turn 1] Combat Planning: Side 1
+[DEBUG] TARGET CHECK P1. Ships: 4
+[DEBUG] VALID: UPFS Bolt2 found target with Laser Battery
+[Peer: 542477561] [Turn 1] AI Planning: AS UPFS Bolt2 -> FG SAV Stinger2 with Laser Battery (Utility: 5.79)
+[Peer: 542477561] [Turn 1] AI Planning: AS UPFS Assault Scout 7 -> DD SAV Havoc2 with Laser Battery (Utility: 3.38)
+[Peer: 542477561] [Turn 1] Resolving 2 attacks...
+[Peer: 542477561] [Turn 1] AS UPFS Bolt2 firing Laser Battery at FG SAV Stinger2
+Combat Roll: Distance 5, Chance 25%, Rolled 36
+[Peer: 542477561] [Turn 1] Firing Ship: AS UPFS Bolt2, Weapon: Laser Battery, Odds: 25%, Roll: 36, Result: MISS
+[Peer: 542477561] [Turn 1] [color=red]MISS![/color]
+[Peer: 542477561] [Turn 1] AS UPFS Bolt2 firing Laser Battery at FG SAV Stinger2
+[Peer: 542477561] [Turn 1] Firing Ship: AS UPFS Bolt2, Weapon: Laser Battery, Odds: 25%, Roll: 36, Result: MISS
+[Peer: 542477561] [Turn 1] AS UPFS Assault Scout 7 firing Laser Battery at DD SAV Havoc2
+Combat Roll: Distance 6, Chance 20%, Rolled 45
+[Peer: 542477561] [Turn 1] Firing Ship: AS UPFS Assault Scout 7, Weapon: Laser Battery, Odds: 20%, Roll: 45, Result: MISS
+[Peer: 542477561] [Turn 1] [color=red]MISS![/color]
+[Peer: 542477561] [Turn 1] AS UPFS Assault Scout 7 firing Laser Battery at DD SAV Havoc2
+[Peer: 542477561] [Turn 1] Firing Ship: AS UPFS Assault Scout 7, Weapon: Laser Battery, Odds: 20%, Roll: 45, Result: MISS
+[Peer: 542477561] [Turn 1] Resolution Phase Complete.
+[Peer: 542477561] [Turn 1] Turn Segment Complete.
+[DEBUG] start_combat_active: Side 2 firing (Active Side)
+[Peer: 542477561] [Turn 1] Combat Planning: Side 2
+[DEBUG] TARGET CHECK P2. Ships: 12
+[DEBUG] VALID: SAV Death-Spawn2 found target with Laser Battery
+[Peer: 542477561] [Turn 1] Resolving 15 attacks...
+[Peer: 542477561] [Turn 1] AC SAV Death-Spawn2 firing Laser Battery at AS UPFS Bolt2
+Combat Roll: Distance 9, Chance 5%, Rolled 79
+[Peer: 542477561] [Turn 1] Firing Ship: AC SAV Death-Spawn2, Weapon: Laser Battery, Odds: 5%, Roll: 79, Result: MISS
+[Peer: 542477561] [Turn 1] [color=red]MISS![/color]
+[Peer: 542477561] [Turn 1] AC SAV Death-Spawn2 firing Laser Battery at AS UPFS Bolt2
+[Peer: 542477561] [Turn 1] Firing Ship: AC SAV Death-Spawn2, Weapon: Laser Battery, Odds: 5%, Roll: 79, Result: MISS
+[Peer: 542477561] [Turn 1] DD SAV Havoc2 firing Laser Battery at AS UPFS Bolt2
+[Peer: 542477561] [Turn 1] Firing Ship: DD SAV Havoc2, Weapon: Laser Battery, Odds: 25%, Roll: 66, Result: MISS
+[Peer: 542477561] [Turn 1] DD SAV Havoc2 firing Laser Battery at AS UPFS Bolt2
+Combat Roll: Distance 5, Chance 25%, Rolled 66
+[Peer: 542477561] [Turn 1] Firing Ship: DD SAV Havoc2, Weapon: Laser Battery, Odds: 25%, Roll: 66, Result: MISS
+[Peer: 542477561] [Turn 1] [color=red]MISS![/color]
+[Peer: 542477561] [Turn 1] DD SAV Havoc2 firing Electron Battery at AS UPFS Bolt2
+[Peer: 542477561] [Turn 1] Firing Ship: DD SAV Havoc2, Weapon: Electron Battery, Odds: 35%, Roll: 100, Result: MISS
+[Peer: 542477561] [Turn 1] DD SAV Havoc2 firing Electron Battery at AS UPFS Bolt2
+Combat Roll: Distance 5, Chance 35%, Rolled 100
+[Peer: 542477561] [Turn 1] Firing Ship: DD SAV Havoc2, Weapon: Electron Battery, Odds: 35%, Roll: 100, Result: MISS
+[Peer: 542477561] [Turn 1] [color=red]MISS![/color]
+[Peer: 542477561] [Turn 1] CA SAV Death-Bringer2 firing Proton Battery at AS UPFS Bolt2
+[Peer: 542477561] [Turn 1] Firing Ship: CA SAV Death-Bringer2, Weapon: Proton Battery, Odds: 5%, Roll: 15, Result: MISS
+[Peer: 542477561] [Turn 1] CA SAV Death-Bringer2 firing Proton Battery at AS UPFS Bolt2
+Combat Roll: Distance 11, Chance 5%, Rolled 15
+[Peer: 542477561] [Turn 1] Firing Ship: CA SAV Death-Bringer2, Weapon: Proton Battery, Odds: 5%, Roll: 15, Result: MISS
+[Peer: 542477561] [Turn 1] [color=red]MISS![/color]
+[Peer: 542477561] [Turn 1] DD SAV Oppressor2 firing Laser Battery at AS UPFS Bolt2
+[Peer: 542477561] [Turn 1] Firing Ship: DD SAV Oppressor2, Weapon: Laser Battery, Odds: 25%, Roll: 76, Result: MISS
+[Peer: 542477561] [Turn 1] DD SAV Oppressor2 firing Laser Battery at AS UPFS Bolt2
+Combat Roll: Distance 5, Chance 25%, Rolled 76
+[Peer: 542477561] [Turn 1] Firing Ship: DD SAV Oppressor2, Weapon: Laser Battery, Odds: 25%, Roll: 76, Result: MISS
+[Peer: 542477561] [Turn 1] [color=red]MISS![/color]
+[Peer: 542477561] [Turn 1] DD SAV Oppressor2 firing Laser Canon at AS UPFS Assault Scout 7
+[Peer: 542477561] [Turn 1] Firing Ship: DD SAV Oppressor2, Weapon: Laser Canon, Odds: 30%, Roll: 4, Result: HIT
+[Peer: 542477561] [Turn 1] [color=green]HIT![/color] Rolling Damage Table (d100+0 = 75)
+[Peer: 542477561] [Turn 1] DD SAV Oppressor2 firing Laser Canon at AS UPFS Assault Scout 7
+Combat Roll: Distance 6, Chance 30%, Rolled 4
+[Peer: 542477561] [Turn 1] Firing Ship: DD SAV Oppressor2, Weapon: Laser Canon, Odds: 30%, Roll: 4, Result: HIT
+Damage Roll: 2d10+0 -> 18
+Damage Roll: d100(75) + DTM(0) = 75
+[Peer: 542477561] [Turn 1] [color=green]HIT![/color] Rolling Damage Table (d100+0 = 75)
+[Peer: 542477561] [Turn 1] UPFS Assault Scout 7: Defense Hit (PS, ES, SS, MS, ICM)
+[Peer: 542477561] [Turn 1] [color=red]System missing/destroyed -> FALLBACK HULL HIT[/color]
+[Peer: 542477561] [Turn 1] Ship destroyed: UPFS Assault Scout 7
+[Peer: 542477561] [Turn 1] UPFS Assault Scout 7 takes 18 Fallback Damage (Converted Effect)
+[Peer: 542477561] [Turn 1] DD SAV Oppressor2 firing at WRECK of AS UPFS Assault Scout 7! (Wasted)
+[Peer: 542477561] [Turn 1] DD SAV Oppressor2 firing at WRECK of AS UPFS Assault Scout 7! (Wasted)
+[Peer: 542477561] [Turn 1] FG SAV Stinger2 firing Laser Battery at AS UPFS Bolt2
+[Peer: 542477561] [Turn 1] Firing Ship: FG SAV Stinger2, Weapon: Laser Battery, Odds: 25%, Roll: 65, Result: MISS
+[Peer: 542477561] [Turn 1] FG SAV Stinger2 firing Laser Battery at AS UPFS Bolt2
+Combat Roll: Distance 5, Chance 25%, Rolled 65
+[Peer: 542477561] [Turn 1] Firing Ship: FG SAV Stinger2, Weapon: Laser Battery, Odds: 25%, Roll: 65, Result: MISS
+[Peer: 542477561] [Turn 1] [color=red]MISS![/color]
+[Peer: 542477561] [Turn 1] DD SAV Executioner2 firing Laser Battery at AS UPFS Bolt2
+[Peer: 542477561] [Turn 1] Firing Ship: DD SAV Executioner2, Weapon: Laser Battery, Odds: 25%, Roll: 64, Result: MISS
+[Peer: 542477561] [Turn 1] DD SAV Executioner2 firing Laser Battery at AS UPFS Bolt2
+Combat Roll: Distance 5, Chance 25%, Rolled 64
+[Peer: 542477561] [Turn 1] Firing Ship: DD SAV Executioner2, Weapon: Laser Battery, Odds: 25%, Roll: 64, Result: MISS
+[Peer: 542477561] [Turn 1] [color=red]MISS![/color]
+[Peer: 542477561] [Turn 1] DD SAV Executioner2 firing Laser Canon at AS UPFS Bolt2
+[Peer: 542477561] [Turn 1] Firing Ship: DD SAV Executioner2, Weapon: Laser Canon, Odds: 45%, Roll: 74, Result: MISS
+[Peer: 542477561] [Turn 1] DD SAV Executioner2 firing Laser Canon at AS UPFS Bolt2
+Combat Roll: Distance 5, Chance 45%, Rolled 74
+[Peer: 542477561] [Turn 1] Firing Ship: DD SAV Executioner2, Weapon: Laser Canon, Odds: 45%, Roll: 74, Result: MISS
+[Peer: 542477561] [Turn 1] [color=red]MISS![/color]
+[Peer: 542477561] [Turn 1] DD SAV Executioner2 firing Electron Battery at AS UPFS Bolt2
+[Peer: 542477561] [Turn 1] Firing Ship: DD SAV Executioner2, Weapon: Electron Battery, Odds: 35%, Roll: 27, Result: HIT
+[Peer: 542477561] [Turn 1] [color=green]HIT![/color] Rolling Damage Table (d100+10 = 93)
+[Peer: 542477561] [Turn 1] DD SAV Executioner2 firing Electron Battery at AS UPFS Bolt2
+Combat Roll: Distance 5, Chance 35%, Rolled 27
+[Peer: 542477561] [Turn 1] Firing Ship: DD SAV Executioner2, Weapon: Electron Battery, Odds: 35%, Roll: 27, Result: HIT
+Damage Roll: 1d10+0 -> 1
+Damage Roll: d100(83) + DTM(10) = 93
+[Peer: 542477561] [Turn 1] [color=green]HIT![/color] Rolling Damage Table (d100+10 = 93)
+[Peer: 542477561] [Turn 1] UPFS Bolt2: Navigation Hit (ADF=0, MR=0)
+[Peer: 542477561] [Turn 1] FG SAV Asp2 firing Laser Battery at AS UPFS Bolt2
+[Peer: 542477561] [Turn 1] Firing Ship: FG SAV Asp2, Weapon: Laser Battery, Odds: 25%, Roll: 90, Result: MISS
+[Peer: 542477561] [Turn 1] FG SAV Asp2 firing Laser Battery at AS UPFS Bolt2
+Combat Roll: Distance 5, Chance 25%, Rolled 90
+[Peer: 542477561] [Turn 1] Firing Ship: FG SAV Asp2, Weapon: Laser Battery, Odds: 25%, Roll: 90, Result: MISS
+[Peer: 542477561] [Turn 1] [color=red]MISS![/color]
+[Peer: 542477561] [Turn 1] FG SAV Asp2 firing Laser Canon at AS UPFS Bolt2
+[Peer: 542477561] [Turn 1] Firing Ship: FG SAV Asp2, Weapon: Laser Canon, Odds: 45%, Roll: 42, Result: HIT
+[Peer: 542477561] [Turn 1] [color=green]HIT![/color] Rolling Damage Table (d100+0 = 92)
+[Peer: 542477561] [Turn 1] FG SAV Asp2 firing Laser Canon at AS UPFS Bolt2
+Combat Roll: Distance 5, Chance 45%, Rolled 42
+[Peer: 542477561] [Turn 1] Firing Ship: FG SAV Asp2, Weapon: Laser Canon, Odds: 45%, Roll: 42, Result: HIT
+Damage Roll: 2d10+0 -> 16
+Damage Roll: d100(92) + DTM(0) = 92
+[Peer: 542477561] [Turn 1] [color=green]HIT![/color] Rolling Damage Table (d100+0 = 92)
+[Peer: 542477561] [Turn 1] UPFS Bolt2: Navigation Hit (ADF=0, MR=0)
+[Peer: 542477561] [Turn 1] [color=red]System missing/destroyed -> FALLBACK HULL HIT[/color]
+[Peer: 542477561] [Turn 1] Ship destroyed: UPFS Bolt2
+[Peer: 542477561] [Turn 1] UPFS Bolt2 takes 16 Fallback Damage (Converted Effect)

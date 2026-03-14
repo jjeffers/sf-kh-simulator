@@ -24,6 +24,10 @@ func _process(_delta):
 	if not is_instance_valid(campaign) or not campaign.is_inside_tree():
 		return
 		
+	var current_scene = get_tree().current_scene
+	if not current_scene or current_scene.scene_file_path != "res://Scenes/CampaignMap.tscn":
+		return
+		
 	# Skip if not our turn or if already ready
 	if _has_finished_turn():
 		return
@@ -64,6 +68,9 @@ func _on_think_timeout():
 	await get_tree().create_timer(wait_time).timeout
 	
 	if not is_instance_valid(campaign): return
+	
+	if campaign.active_encounters.size() > 0:
+		return
 	
 	# Pass turn
 	ConsoleManager.log_message("[color=yellow]Campaign AI (%s) is ending its turn.[/color]" % faction)
@@ -222,7 +229,7 @@ func _find_strategic_target(fleet) -> String:
 		var min_dist = 999
 		for e_fleet in campaign.fleets:
 			if e_fleet.faction != faction:
-				var e_sys = e_fleet.current_system_id if not e_fleet.is_moving() else e_fleet.destination_id
+				var e_sys = e_fleet.current_system_id if not e_fleet.is_moving() else e_fleet.destination_system_id
 				if e_sys:
 					var path = _find_path(start, e_sys)
 					if path.size() > 0 and path.size() < min_dist:
