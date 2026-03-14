@@ -10,7 +10,6 @@ func before_each():
 	add_child_autofree(game_manager)
 	
 	# Stub out wait methods so tests run instantly
-	game_manager.time_between_phases = 0.0
 
 func test_seeker_deployment_and_activation():
 	# 1. Setup Minelayer

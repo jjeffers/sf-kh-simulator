@@ -96,7 +96,15 @@ func _refresh_ui():
 				_on_join_sathar()
 
 	if multiplayer.is_server() and not auto_started and not start_btn.disabled:
-		if "--auto-start" in args:
+		var has_auto = false
+		var expected_players = 1
+		for i in range(args.size()):
+			if args[i] == "--auto-start":
+				has_auto = true
+			if args[i] == "--wait" and i + 1 < args.size():
+				expected_players = args[i+1].to_int()
+		
+		if has_auto and NetworkManager.players.size() >= expected_players:
 			auto_started = true
 			# Small delay to ensure client synced before scene switch
 			get_tree().create_timer(1.0).timeout.connect(_on_start_pressed)

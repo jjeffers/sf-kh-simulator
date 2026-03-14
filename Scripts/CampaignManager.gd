@@ -213,24 +213,49 @@ func _initialize_ai_opponents():
 			
 	var has_upf_player = false
 	var has_sathar_player = false
+	var my_team = 0
 	
 	if has_node("/root/NetworkManager"):
 		var nm = get_node("/root/NetworkManager")
-		var teams = nm.lobby_data.get("teams", {})
+		var lobby_data = nm.get("lobby_data")
+		var teams = {}
+		if lobby_data and typeof(lobby_data) == TYPE_DICTIONARY:
+			teams = lobby_data.get("teams", {})
+			
 		for pid in teams.keys():
 			if teams[pid] == 1: has_upf_player = true
 			if teams[pid] == 2: has_sathar_player = true
+		if multiplayer.has_multiplayer_peer():
+			my_team = teams.get(multiplayer.get_unique_id(), 0)
 			
+	var is_local_bot = "--bot" in OS.get_cmdline_args()
+	var spawn_upf = false
+	var spawn_sathar = false
+	
 	if not has_upf_player:
+		if not multiplayer.has_multiplayer_peer() or multiplayer.is_server():
+			spawn_upf = true
+	elif my_team == 1 and is_local_bot:
+		spawn_upf = true
+		
+	if not has_sathar_player:
+		if not multiplayer.has_multiplayer_peer() or multiplayer.is_server():
+			spawn_sathar = true
+	elif my_team == 2 and is_local_bot:
+		spawn_sathar = true
+			
+	if spawn_upf:
 		var ai = load("res://Scripts/CampaignComputerOpponent.gd").new("UPF")
 		ai.name = "CampAI_UPF"
 		add_child(ai)
+		print("[CampaignManager] Attached CampAI_UPF to tree.")
 		ConsoleManager.log_message("[color=yellow]Campaign AI initialized for UPF.[/color]")
 		
-	if not has_sathar_player:
+	if spawn_sathar:
 		var ai = load("res://Scripts/CampaignComputerOpponent.gd").new("Sathar")
 		ai.name = "CampAI_Sathar"
 		add_child(ai)
+		print("[CampaignManager] Attached CampAI_Sathar to tree.")
 		ConsoleManager.log_message("[color=yellow]Campaign AI initialized for Sathar.[/color]")
 
 func _initialize_sathar_forces():
@@ -330,6 +355,7 @@ func _add_ships_to_fleet(fleet: CampaignFleet, composition: Dictionary):
 				if dummy.has_method(method_name):
 					dummy.call(method_name)
 					data["hull"] = dummy.hull
+					data["max_hull"] = dummy.max_hull
 				dummy.free()
 				
 			fleet.ships.append(data)
@@ -352,7 +378,7 @@ func _get_systems_with_fleets() -> Dictionary:
 	return cache
 
 func _get_connected_systems(sys_id: String) -> Array[String]:
-	var connected = []
+	var connected: Array[String] = []
 	for r in routes:
 		if r["origin"] == sys_id: connected.append(r["destination"])
 		elif r["destination"] == sys_id: connected.append(r["origin"])

@@ -8,10 +8,14 @@ func before_each():
 	add_child(campaign_manager)
 	
 	# Stub NetworkManager
-	var nm = Node.new()
-	nm.name = "NetworkManager"
-	nm.set("lobby_data", {"teams": {}}) # No teams assigned!
-	get_root_node().add_child(nm)
+	var nm = get_tree().root.get_node_or_null("NetworkManager")
+	if not nm:
+		nm = Node.new()
+		nm.name = "NetworkManager"
+		nm.set("lobby_data", {"teams": {}})
+		get_tree().root.add_child(nm)
+	else:
+		nm.lobby_data["teams"] = {}
 	
 	# Needs to load the map to initialize systems
 	campaign_manager._ready()
@@ -19,8 +23,11 @@ func before_each():
 func after_each():
 	if is_instance_valid(campaign_manager):
 		campaign_manager.queue_free()
-	var nm = get_root_node().get_node_or_null("NetworkManager")
-	if nm: nm.queue_free()
+	var nm = get_tree().root.get_node_or_null("NetworkManager")
+	if nm and not nm.has_method("sync_campaign_state"):
+		# Only free it if it's our raw Node stub
+		get_tree().root.remove_child(nm)
+		nm.free()
 
 func test_ai_instantiation():
 	# Since NetworkManager teams is empty, starting a new campaign should spawn two AIs
@@ -30,7 +37,7 @@ func test_ai_instantiation():
 	var has_sathar = false
 	
 	for child in campaign_manager.get_children():
-		if child is CampaignComputerOpponent:
+		if child.name.begins_with("CampAI_"):
 			if child.faction == "UPF": has_upf = true
 			if child.faction == "Sathar": has_sathar = true
 			
@@ -43,7 +50,7 @@ func test_sathar_ai_queues_repairs():
 	# Retrieve the Sathar AI
 	var ai = null
 	for child in campaign_manager.get_children():
-		if child is CampaignComputerOpponent and child.faction == "Sathar":
+		if child.name == "CampAI_Sathar":
 			ai = child
 			break
 			
@@ -73,15 +80,15 @@ func test_upf_ai_consumes_scc_capacity():
 	# Retrieve UPF AI
 	var ai = null
 	for child in campaign_manager.get_children():
-		if child is CampaignComputerOpponent and child.faction == "UPF":
+		if child.name == "CampAI_UPF":
 			ai = child
 			break
 			
 	assert_not_null(ai, "UPF AI missing.")
 	
 	var f = campaign_manager.create_new_fleet("UPF", "Prenglar", "Test Fleet")
-	# Prenglar is an SCC
-	campaign_manager.UPF_SCC_CAPACITIES["Prenglar"] = 50
+	campaign_manager.systems["Prenglar"]["is_scc"] = true
+	var cap = campaign_manager.UPF_SCC_CAPACITIES["Prenglar"]
 	
 	var s1 = {"name": "Test1", "hull": 80, "max_hull": 100, "unrepairable_adf_modifier": 1} # Critical sys
 	var s2 = {"name": "Test2", "hull": 90, "max_hull": 100} # Hull only
@@ -92,6 +99,6 @@ func test_upf_ai_consumes_scc_capacity():
 	ai._execute_repairs()
 	
 	var used = campaign_manager.upf_scc_capacity_used.get("Prenglar", 0)
-	assert_eq(used, 50, "UPF AI should have consumed exactly its daily capacity.")
+	assert_eq(used, cap, "UPF AI should have consumed exactly its daily capacity.")
 	assert_eq(s1["unrepairable_adf_modifier"], 0, "Critical ADF should be repaired.")
 	assert_eq(s2["hull"], 90, "Hull should not be repaired because capacity was exhausted by critical repairs.")

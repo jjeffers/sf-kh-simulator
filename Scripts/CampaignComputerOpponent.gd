@@ -61,7 +61,7 @@ func _on_think_timeout():
 	# Pass turn
 	ConsoleManager.log_message("[color=yellow]Campaign AI (%s) is ending its turn.[/color]" % faction)
 	if campaign.multiplayer.has_multiplayer_peer() and not campaign.multiplayer.is_server():
-		campaign.rpc_id(1, "request_end_turn", faction)
+		campaign.request_end_turn.rpc_id(1, faction)
 	else:
 		campaign.request_end_turn(faction)
 
@@ -264,10 +264,7 @@ func _find_path(start: String, end: String) -> Array:
 # --- PHASE 3: ENCOUNTERS ---
 func _evaluate_encounters():
 	var attacking_sys = ""
-	for sys_id in campaign.active_encounters.keys():
-		var encounter_info = campaign.active_encounters[sys_id]
-		# encounter_attackers dictionary is populated by CampaignManager
-		# Find if AI is the attacker here
+	for sys_id in campaign.active_encounters:
 		var attacker = campaign.encounter_attackers.get(sys_id, "")
 		if attacker == faction:
 			attacking_sys = sys_id
