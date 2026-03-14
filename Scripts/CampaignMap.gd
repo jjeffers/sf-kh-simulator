@@ -469,15 +469,7 @@ func _draw_systems():
 		scc_icon.custom_minimum_size = Vector2(24, 24)
 		scc_icon.position = pos + Vector2(12, -30) # same top-right offset
 		systems_container.add_child(scc_icon)
-		
-		# All Sathar Start Circles are SCCs
-		var scc_icon = TextureRect.new()
-		scc_icon.texture = load("res://Assets/Maintenance.svg")
-		scc_icon.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
-		scc_icon.custom_minimum_size = Vector2(24, 24)
-		scc_icon.position = pos + Vector2(12, -30) # same top-right offset
-		systems_container.add_child(scc_icon)
-		
+
 		var parent_sys_id = start_c.get("connected_system", "")
 		if campaign.systems.has(parent_sys_id):
 			var sys = campaign.systems[parent_sys_id]
