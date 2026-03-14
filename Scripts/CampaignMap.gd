@@ -71,6 +71,12 @@ func _ready():
 	scc_btn.pressed.connect(_on_scc_btn_pressed)
 	cancel_jump_btn.get_parent().add_child(scc_btn)
 	
+	scc_btn = Button.new()
+	scc_btn.text = "Access Shipyard"
+	scc_btn.disabled = true
+	scc_btn.pressed.connect(_on_scc_btn_pressed)
+	cancel_jump_btn.get_parent().add_child(scc_btn)
+	
 	fleet_list.item_selected.connect(_on_fleet_list_selected)
 	fleet_list.item_activated.connect(_on_fleet_list_activated)
 	ship_list_ui.multi_selected.connect(_on_ship_selection_changed)
@@ -455,6 +461,14 @@ func _draw_systems():
 		var node = _create_system_node(circle_id, display_name, pos, true)
 		systems_container.add_child(node)
 
+		
+		# All Sathar Start Circles are SCCs
+		var scc_icon = TextureRect.new()
+		scc_icon.texture = load("res://Assets/Maintenance.svg")
+		scc_icon.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+		scc_icon.custom_minimum_size = Vector2(24, 24)
+		scc_icon.position = pos + Vector2(12, -30) # same top-right offset
+		systems_container.add_child(scc_icon)
 		
 		# All Sathar Start Circles are SCCs
 		var scc_icon = TextureRect.new()

@@ -43,6 +43,7 @@ var INIT_UPF_ARMED_STATIONS = [
 var UPF_FORTRESSES: Array = []
 var UPF_ARMED_STATIONS: Array = []
 
+
 const UPF_STARSHIP_CONSTRUCTION_CENTERS = [
 	"Araks", "Cassidine", "Dramune", "Fromeltar", 
 	"Prenglar", "Theseus", "Truane's Star", "White Light"
@@ -871,6 +872,7 @@ func deserialize_state(state_data: Dictionary):
 		UPF_ARMED_STATIONS = saved_stations
 	else:
 		UPF_ARMED_STATIONS = INIT_UPF_ARMED_STATIONS.duplicate()
+
 
 	if state_data.has("upf_scc_capacity_used"):
 		upf_scc_capacity_used = state_data["upf_scc_capacity_used"].duplicate(true)
