@@ -58,6 +58,13 @@ func _on_think_timeout():
 	_execute_movement()
 	_evaluate_encounters()
 	
+	var wait_time = 0.5
+	if OS.has_feature("test"):
+		wait_time = 0.05
+	await get_tree().create_timer(wait_time).timeout
+	
+	if not is_instance_valid(campaign): return
+	
 	# Pass turn
 	ConsoleManager.log_message("[color=yellow]Campaign AI (%s) is ending its turn.[/color]" % faction)
 	if campaign.multiplayer.has_multiplayer_peer() and not campaign.multiplayer.is_server():
@@ -71,9 +78,9 @@ func _execute_repairs():
 	var sccs = []
 	for sid in campaign.systems.keys():
 		var sys = campaign.systems[sid]
-		if faction == "UPF" and (sys.get("is_scc", false) or sys.get("has_fortress", false)):
+		if faction == "UPF" and (sid in campaign.UPF_STARSHIP_CONSTRUCTION_CENTERS or sid in campaign.UPF_FORTRESSES):
 			sccs.append(sid)
-		elif faction == "Sathar" and sys.get("is_scc", false) and sys.get("occupying_faction", "") == "Sathar":
+		elif faction == "Sathar" and (sid in campaign.UPF_STARSHIP_CONSTRUCTION_CENTERS) and sys.get("occupying_faction", "") == "Sathar":
 			sccs.append(sid)
 			
 	if sccs.size() == 0: return
@@ -204,7 +211,7 @@ func _find_strategic_target(fleet) -> String:
 		var min_dist = 999
 		for sid in campaign.systems.keys():
 			var sys = campaign.systems[sid]
-			if sys.get("is_scc", false) or sys.get("has_fortress", false):
+			if sid in campaign.UPF_STARSHIP_CONSTRUCTION_CENTERS or sid in campaign.UPF_FORTRESSES:
 				var path = _find_path(start, sid)
 				if path.size() > 0 and path.size() < min_dist:
 					min_dist = path.size()
@@ -228,7 +235,7 @@ func _find_strategic_target(fleet) -> String:
 			var best_scc_dist = 999
 			for sid in campaign.systems.keys():
 				var sys = campaign.systems[sid]
-				if sys.get("has_fortress", false) or sys.get("is_scc", false):
+				if (sid in campaign.UPF_FORTRESSES) or (sid in campaign.UPF_STARSHIP_CONSTRUCTION_CENTERS):
 					var path = _find_path(start, sid)
 					if path.size() > 0 and path.size() < best_scc_dist:
 						best_scc_dist = path.size()
@@ -250,8 +257,8 @@ func _find_path(start: String, end: String) -> Array:
 		if node == end:
 			return path
 			
-		if campaign.systems.has(node):
-			var connections = campaign.systems[node].get("connections", [])
+		if campaign.systems.has(node) or node.begins_with("Start Circle"):
+			var connections = campaign._get_connected_systems(node)
 			for neighbor in connections:
 				if not visited.has(neighbor):
 					visited[neighbor] = true

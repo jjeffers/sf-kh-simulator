@@ -1,6 +1,167 @@
 Godot Engine v4.6.1.stable.official.14d19694e - https://godotengine.org
 Vulkan 1.4.318 - Forward+ - Using Device #0: Intel - Intel(R) Graphics (RPL-P)
 
+[color=green]Console Initialized. Press ~ to collapse.[/color]
+[CampaignManager] Successfully loaded ship_names.json dictionary.
 [MainMenu] Auto-Joining Campaign...
 Connecting to ws://127.0.0.1:7000
+[NetworkManager] Received Campaign State Sync
+[CampaignManager] Attached CampAI_UPF to tree.
+[color=yellow]Campaign AI initialized for UPF.[/color]
 [NetworkManager] Starting Game RPC received.
+[color=gray]Campaign AI (UPF) evaluating turn...[/color]
+Connections for Start Circle 6 = ["Prenglar"]
+Connections for Start Circle 4 = ["Fromeltar"]
+Connections for Start Circle 1 = ["Zebulon"]
+Connections for Start Circle 2 = ["Kizk-Kar"]
+Connections for Start Circle 6 = ["Prenglar"]
+Sathar AI target_id evaluated to: Start Circle 4 for fleet Strike Force NOVA at Prenglar
+Connections for Start Circle 6 = ["Prenglar"]
+Sathar AI path result: ["Prenglar", "Cassidine", "Fromeltar", "Start Circle 4"]
+DEBUG are_systems_connected: Checking A=Prenglar B=Cassidine
+DEBUG are_systems_connected: Found normal route match!
+AI ordered fleet Strike Force NOVA to move toward Start Circle 4 (next stop Cassidine).
+Connections for Start Circle 4 = ["Fromeltar"]
+Connections for Start Circle 6 = ["Prenglar"]
+Connections for Start Circle 2 = ["Kizk-Kar"]
+Connections for Start Circle 1 = ["Zebulon"]
+Connections for Start Circle 5 = ["K\'aken-Kar"]
+Sathar AI target_id evaluated to: Start Circle 4 for fleet Task Force Cassidine at Cassidine
+Sathar AI path result: ["Cassidine", "Fromeltar", "Start Circle 4"]
+DEBUG are_systems_connected: Checking A=Cassidine B=Fromeltar
+DEBUG are_systems_connected: Found normal route match!
+AI ordered fleet Task Force Cassidine to move toward Start Circle 4 (next stop Fromeltar).
+Connections for Start Circle 6 = ["Prenglar"]
+Connections for Start Circle 4 = ["Fromeltar"]
+Connections for Start Circle 1 = ["Zebulon"]
+Connections for Start Circle 2 = ["Kizk-Kar"]
+Connections for Start Circle 6 = ["Prenglar"]
+Sathar AI target_id evaluated to: Start Circle 4 for fleet Task Force Prenglar at Prenglar
+Connections for Start Circle 6 = ["Prenglar"]
+Sathar AI path result: ["Prenglar", "Cassidine", "Fromeltar", "Start Circle 4"]
+DEBUG are_systems_connected: Checking A=Prenglar B=Cassidine
+DEBUG are_systems_connected: Found normal route match!
+AI ordered fleet Task Force Prenglar to move toward Start Circle 4 (next stop Cassidine).
+Connections for Start Circle 3 = ["K\'tsa-Kar"]
+Connections for Start Circle 5 = ["K\'aken-Kar"]
+Connections for Start Circle 6 = ["Prenglar"]
+Connections for Start Circle 2 = ["Kizk-Kar"]
+Sathar AI target_id evaluated to: Start Circle 3 for fleet Militia White Light at White Light
+Sathar AI path result: ["White Light", "K\'tsa-Kar", "Start Circle 3"]
+DEBUG are_systems_connected: Checking A=White Light B=K'tsa-Kar
+DEBUG are_systems_connected: Found normal route match!
+AI ordered fleet Militia White Light to move toward Start Circle 3 (next stop K'tsa-Kar).
+Connections for Start Circle 6 = ["Prenglar"]
+Connections for Start Circle 1 = ["Zebulon"]
+Connections for Start Circle 4 = ["Fromeltar"]
+Connections for Start Circle 2 = ["Kizk-Kar"]
+Connections for Start Circle 6 = ["Prenglar"]
+Connections for Start Circle 1 = ["Zebulon"]
+Sathar AI target_id evaluated to: Start Circle 4 for fleet Militia Araks at Araks
+Connections for Start Circle 6 = ["Prenglar"]
+Connections for Start Circle 1 = ["Zebulon"]
+Sathar AI path result: ["Araks", "Athor", "Dixon\'s Star", "Cassidine", "Fromeltar", "Start Circle 4"]
+DEBUG are_systems_connected: Checking A=Araks B=Athor
+DEBUG are_systems_connected: Found normal route match!
+AI ordered fleet Militia Araks to move toward Start Circle 4 (next stop Athor).
+Connections for Start Circle 5 = ["K\'aken-Kar"]
+Connections for Start Circle 2 = ["Kizk-Kar"]
+Connections for Start Circle 5 = ["K\'aken-Kar"]
+Connections for Start Circle 2 = ["Kizk-Kar"]
+Connections for Start Circle 3 = ["K\'tsa-Kar"]
+Sathar AI target_id evaluated to: Start Circle 3 for fleet Militia K'aken-Kar at K'aken-Kar
+Connections for Start Circle 5 = ["K\'aken-Kar"]
+Connections for Start Circle 2 = ["Kizk-Kar"]
+Sathar AI path result: ["K\'aken-Kar", "K\'tsa-Kar", "Start Circle 3"]
+DEBUG are_systems_connected: Checking A=K'aken-Kar B=K'tsa-Kar
+DEBUG are_systems_connected: Found normal route match!
+AI ordered fleet Militia K'aken-Kar to move toward Start Circle 3 (next stop K'tsa-Kar).
+Connections for Start Circle 4 = ["Fromeltar"]
+Connections for Start Circle 6 = ["Prenglar"]
+Connections for Start Circle 2 = ["Kizk-Kar"]
+Connections for Start Circle 1 = ["Zebulon"]
+Connections for Start Circle 5 = ["K\'aken-Kar"]
+Sathar AI target_id evaluated to: Start Circle 4 for fleet Militia Dramune at Dramune
+Sathar AI path result: ["Dramune", "Cassidine", "Fromeltar", "Start Circle 4"]
+DEBUG are_systems_connected: Checking A=Dramune B=Cassidine
+DEBUG are_systems_connected: Found normal route match!
+AI ordered fleet Militia Dramune to move toward Start Circle 4 (next stop Cassidine).
+Connections for Start Circle 4 = ["Fromeltar"]
+Connections for Start Circle 2 = ["Kizk-Kar"]
+Connections for Start Circle 6 = ["Prenglar"]
+Connections for Start Circle 5 = ["K\'aken-Kar"]
+Sathar AI target_id evaluated to: Start Circle 4 for fleet Militia Fromeltar at Fromeltar
+Sathar AI path result: ["Fromeltar", "Start Circle 4"]
+DEBUG are_systems_connected: Checking A=Fromeltar B=Start Circle 4
+DEBUG are_systems_connected: Found START CIRCLE route match!
+AI ordered fleet Militia Fromeltar to move toward Start Circle 4 (next stop Start Circle 4).
+Connections for Start Circle 6 = ["Prenglar"]
+Connections for Start Circle 4 = ["Fromeltar"]
+Connections for Start Circle 1 = ["Zebulon"]
+Connections for Start Circle 2 = ["Kizk-Kar"]
+Connections for Start Circle 6 = ["Prenglar"]
+Sathar AI target_id evaluated to: Start Circle 4 for fleet Militia Gruna Garu at Gruna Garu
+Connections for Start Circle 6 = ["Prenglar"]
+Sathar AI path result: ["Gruna Garu", "Prenglar", "Cassidine", "Fromeltar", "Start Circle 4"]
+DEBUG are_systems_connected: Checking A=Gruna Garu B=Prenglar
+DEBUG are_systems_connected: Found normal route match!
+AI ordered fleet Militia Gruna Garu to move toward Start Circle 4 (next stop Prenglar).
+Connections for Start Circle 4 = ["Fromeltar"]
+Connections for Start Circle 6 = ["Prenglar"]
+Connections for Start Circle 2 = ["Kizk-Kar"]
+Connections for Start Circle 1 = ["Zebulon"]
+Connections for Start Circle 5 = ["K\'aken-Kar"]
+Sathar AI target_id evaluated to: Start Circle 4 for fleet Militia Dramune2 at Dramune
+Sathar AI path result: ["Dramune", "Cassidine", "Fromeltar", "Start Circle 4"]
+DEBUG are_systems_connected: Checking A=Dramune B=Cassidine
+DEBUG are_systems_connected: Found normal route match!
+AI ordered fleet Militia Dramune2 to move toward Start Circle 4 (next stop Cassidine).
+Connections for Start Circle 3 = ["K\'tsa-Kar"]
+Connections for Start Circle 6 = ["Prenglar"]
+Connections for Start Circle 5 = ["K\'aken-Kar"]
+Connections for Start Circle 2 = ["Kizk-Kar"]
+Sathar AI target_id evaluated to: Start Circle 3 for fleet Militia Theseus at Theseus
+Sathar AI path result: ["Theseus", "White Light", "K\'tsa-Kar", "Start Circle 3"]
+DEBUG are_systems_connected: Checking A=Theseus B=White Light
+DEBUG are_systems_connected: Found normal route match!
+AI ordered fleet Militia Theseus to move toward Start Circle 3 (next stop White Light).
+Connections for Start Circle 1 = ["Zebulon"]
+Connections for Start Circle 6 = ["Prenglar"]
+Connections for Start Circle 4 = ["Fromeltar"]
+Connections for Start Circle 2 = ["Kizk-Kar"]
+Connections for Start Circle 5 = ["K\'aken-Kar"]
+Connections for Start Circle 1 = ["Zebulon"]
+Connections for Start Circle 6 = ["Prenglar"]
+Sathar AI target_id evaluated to: Start Circle 4 for fleet Militia Truane's Star at Truane's Star
+Connections for Start Circle 1 = ["Zebulon"]
+Connections for Start Circle 6 = ["Prenglar"]
+Sathar AI path result: ["Truane\'s Star", "Dixon\'s Star", "Cassidine", "Fromeltar", "Start Circle 4"]
+DEBUG are_systems_connected: Checking A=Truane's Star B=Dixon's Star
+DEBUG are_systems_connected: Found normal route match!
+AI ordered fleet Militia Truane's Star to move toward Start Circle 4 (next stop Dixon's Star).
+Connections for Start Circle 2 = ["Kizk-Kar"]
+Connections for Start Circle 4 = ["Fromeltar"]
+Connections for Start Circle 5 = ["K\'aken-Kar"]
+Connections for Start Circle 2 = ["Kizk-Kar"]
+Sathar AI target_id evaluated to: Start Circle 4 for fleet Militia Kizk-Kar at Kizk-Kar
+Connections for Start Circle 2 = ["Kizk-Kar"]
+Sathar AI path result: ["Kizk-Kar", "Fromeltar", "Start Circle 4"]
+DEBUG are_systems_connected: Checking A=Kizk-Kar B=Fromeltar
+DEBUG are_systems_connected: Found normal route match!
+AI ordered fleet Militia Kizk-Kar to move toward Start Circle 4 (next stop Fromeltar).
+[NetworkManager] Received Campaign State Sync
+[NetworkManager] Received Campaign State Sync
+[NetworkManager] Received Campaign State Sync
+[NetworkManager] Received Campaign State Sync
+[NetworkManager] Received Campaign State Sync
+[NetworkManager] Received Campaign State Sync
+[NetworkManager] Received Campaign State Sync
+[NetworkManager] Received Campaign State Sync
+[NetworkManager] Received Campaign State Sync
+[NetworkManager] Received Campaign State Sync
+[NetworkManager] Received Campaign State Sync
+[NetworkManager] Received Campaign State Sync
+[NetworkManager] Received Campaign State Sync
+[NetworkManager] Received Campaign State Sync
+[color=yellow]Campaign AI (UPF) is ending its turn.[/color]
+[NetworkManager] Received Campaign State Sync

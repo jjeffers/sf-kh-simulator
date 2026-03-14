@@ -205,11 +205,6 @@ func _initialize_upf_forces():
 			_add_ships_to_fleet(target, {ship_type: 1})
 
 func _initialize_ai_opponents():
-	# Clean up any existing AIs
-	for child in get_children():
-		if child.name.begins_with("CampAI_"):
-			child.queue_free()
-			remove_child(child)
 			
 	var has_upf_player = false
 	var has_sathar_player = false
@@ -243,20 +238,31 @@ func _initialize_ai_opponents():
 			spawn_sathar = true
 	elif my_team == 2 and is_local_bot:
 		spawn_sathar = true
-			
 	if spawn_upf:
-		var ai = load("res://Scripts/CampaignComputerOpponent.gd").new("UPF")
-		ai.name = "CampAI_UPF"
-		add_child(ai)
-		print("[CampaignManager] Attached CampAI_UPF to tree.")
-		ConsoleManager.log_message("[color=yellow]Campaign AI initialized for UPF.[/color]")
+		if not has_node("CampAI_UPF"):
+			var ai = load("res://Scripts/CampaignComputerOpponent.gd").new("UPF")
+			ai.name = "CampAI_UPF"
+			add_child(ai)
+			print("[CampaignManager] Attached CampAI_UPF to tree.")
+			ConsoleManager.log_message("[color=yellow]Campaign AI initialized for UPF.[/color]")
+	else:
+		if has_node("CampAI_UPF"):
+			var child = get_node("CampAI_UPF")
+			child.queue_free()
+			remove_child(child)
 		
 	if spawn_sathar:
-		var ai = load("res://Scripts/CampaignComputerOpponent.gd").new("Sathar")
-		ai.name = "CampAI_Sathar"
-		add_child(ai)
-		print("[CampaignManager] Attached CampAI_Sathar to tree.")
-		ConsoleManager.log_message("[color=yellow]Campaign AI initialized for Sathar.[/color]")
+		if not has_node("CampAI_Sathar"):
+			var ai = load("res://Scripts/CampaignComputerOpponent.gd").new("Sathar")
+			ai.name = "CampAI_Sathar"
+			add_child(ai)
+			print("[CampaignManager] Attached CampAI_Sathar to tree.")
+			ConsoleManager.log_message("[color=yellow]Campaign AI initialized for Sathar.[/color]")
+	else:
+		if has_node("CampAI_Sathar"):
+			var child = get_node("CampAI_Sathar")
+			child.queue_free()
+			remove_child(child)
 
 func _initialize_sathar_forces():
 	var sathar_pool = []
@@ -384,7 +390,7 @@ func _get_connected_systems(sys_id: String) -> Array[String]:
 		elif r["destination"] == sys_id: connected.append(r["origin"])
 		
 	for sc in start_circles:
-		var sc_name = "Start Circle " + str(sc.get("id", 0))
+		var sc_name = "Start Circle " + str(int(sc.get("id", 0)))
 		if sys_id == sc_name: connected.append(sc.get("connected_system", ""))
 		elif sys_id == sc.get("connected_system", ""): connected.append(sc_name)
 		
