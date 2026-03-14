@@ -12,8 +12,8 @@ func before_each():
 	CampaignManager.fleets = []
 	CampaignManager.systems = {}
 	CampaignManager.start_circles = []
-	CampaignManager.active_encounters = {}
-	CampaignManager.sathar_ready = false
+	CampaignManager.active_encounters = []
+	CampaignManager.encounter_attackers = {}
 	CampaignManager.upf_ready = false
 	
 	# Mock some systems
