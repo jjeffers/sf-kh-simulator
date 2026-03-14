@@ -7206,7 +7206,7 @@ func show_game_over(msg: String):
 			btn_restart.text = "Return to Campaign Map"
 		# Only process aftermath once on the server, local clients will just view the result
 		if _is_server_or_offline():
-			_process_aftermath_repairs()
+			_perform_post_battle_repairs()
 			
 	panel_game_over.visible = true
 	_update_ui_state()
@@ -7505,6 +7505,15 @@ func _perform_post_battle_repairs() -> Dictionary:
 					var msg = "[color=yellow]%s failed to repair %s (Roll: %d)[/color]" % [s.name, dk, roll]
 					log_message(msg)
 					results[faction].append("%s failed to repair %s." % [s.name, dk.capitalize()])
+					
+	return results
+
+func _sync_campaign_results():
+	log_message("[color=cyan]=== AFTERMATH: SYNC ===[/color]")
+	
+	for s in ships:
+		if not is_instance_valid(s): continue
+		if s.is_destroyed or s.hull <= 0: continue
 					
 		if s.has_electrical_fire or s.has_disastrous_fire:
 			log_message("[color=red]%s was consumed by unresolved fires and destroyed![/color]" % s.name)
