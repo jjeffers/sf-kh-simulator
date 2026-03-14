@@ -43,6 +43,19 @@ var INIT_UPF_ARMED_STATIONS = [
 var UPF_FORTRESSES: Array = []
 var UPF_ARMED_STATIONS: Array = []
 
+const UPF_STARSHIP_CONSTRUCTION_CENTERS = [
+	"Araks", "Cassidine", "Dramune", "Fromeltar", 
+	"Prenglar", "Theseus", "Truane's Star", "White Light"
+]
+
+const UPF_SCC_CAPACITIES = {
+	"Araks": 20, "Cassidine": 50, "Dramune": 20, "Fromeltar": 40,
+	"Prenglar": 70, "Theseus": 20, "Truane's Star": 10, "White Light": 10
+}
+
+var sathar_repair_queue: Array = []
+var upf_scc_capacity_used: Dictionary = {}
+
 func _ready():
 	_load_map_data()
 	_load_ship_names_db()
@@ -551,6 +564,79 @@ func end_turn():
 				
 			if can_supply:
 				_resupply_fleet(fleet)
+				
+	# Reset UPF SCC Daily Capacity
+	upf_scc_capacity_used.clear()
+	
+	# Process Sathar 6-Day Repair Queue
+	for i in range(sathar_repair_queue.size() - 1, -1, -1):
+		var repair_job = sathar_repair_queue[i]
+		repair_job["days_remaining"] -= 1
+		
+		if repair_job["days_remaining"] <= 0:
+			var s_dict = repair_job["ship"]
+			var sys_id = repair_job["system_id"]
+			
+			ConsoleManager.log_message("[color=green]Sathar SCC at %s has completed repairs on %s.[/color]" % [sys_id, s_dict.get("name", "Ship")])
+			
+			# Spin up dummy ship to copy clean dictionary states
+			var dummy = load("res://Scripts/Ship.gd").new()
+			var cls = s_dict.get("class", "Fighter")
+			match cls:
+				"Fighter": dummy.configure_fighter()
+				"Assault Scout": dummy.configure_assault_scout()
+				"Frigate": dummy.configure_frigate()
+				"Minelayer": dummy.configure_minelayer()
+				"Destroyer": dummy.configure_destroyer()
+				"Light Cruiser": dummy.configure_light_cruiser()
+				"Heavy Cruiser": dummy.configure_heavy_cruiser()
+				"Battleship": dummy.configure_battleship()
+				"Assault Carrier": dummy.configure_assault_carrier()
+				
+			s_dict["hull"] = dummy.max_hull
+			s_dict["max_hull"] = dummy.max_hull
+			s_dict["current_adf_modifier"] = 0
+			s_dict["unrepairable_adf_modifier"] = 0
+			s_dict["current_mr_modifier"] = 0
+			s_dict["unrepairable_mr_modifier"] = 0
+			s_dict["has_electrical_fire"] = false
+			s_dict["has_disastrous_fire"] = false
+			s_dict["unrepairable_electrical_fire"] = false
+			s_dict["unrepairable_disastrous_fire"] = false
+			s_dict["ccs_damaged"] = false
+			s_dict["unrepairable_ccs"] = false
+			s_dict["icm_max"] = dummy.base_icm_max
+			s_dict["icm_current"] = dummy.base_icm_max
+			s_dict["unrepairable_icm"] = false
+			s_dict["ms_max"] = dummy.base_ms_max
+			s_dict["ms_current"] = dummy.base_ms_max
+			s_dict["unrepairable_ms"] = false
+			s_dict["unrepairable_hull"] = false
+			
+			if s_dict.has("weapons"):
+				for i_w in range(min(dummy.weapons.size(), s_dict["weapons"].size())):
+					var orig_w = dummy.weapons[i_w]
+					var cur_w = s_dict["weapons"][i_w]
+					cur_w["is_crippled"] = false
+					cur_w["unrepairable"] = false
+					cur_w["ammo"] = orig_w.get("max_ammo", 0)
+					cur_w["max_ammo"] = orig_w.get("max_ammo", 0)
+			
+			dummy.free()
+			
+			# Append to an existing stationary Sathar fleet, or create a new one.
+			var placed = false
+			for f in fleets:
+				if f.faction == "Sathar" and f.current_system_id == sys_id and not f.is_moving():
+					f.ships.append(s_dict)
+					placed = true
+					break
+					
+			if not placed:
+				var new_f = create_new_fleet("Sathar", sys_id, "Repaired Strike Group")
+				new_f.ships.append(s_dict)
+				
+			sathar_repair_queue.remove_at(i)
 			
 	emit_signal("campaign_day_advanced", current_day)
 	
@@ -568,6 +654,8 @@ func serialize_state() -> Dictionary:
 		"active_encounters": active_encounters,
 		"upf_fortresses": UPF_FORTRESSES,
 		"upf_armed_stations": UPF_ARMED_STATIONS,
+		"upf_scc_capacity_used": upf_scc_capacity_used,
+		"sathar_repair_queue": sathar_repair_queue,
 		"fleets": []
 	}
 	for f in fleets:
@@ -783,6 +871,16 @@ func deserialize_state(state_data: Dictionary):
 		UPF_ARMED_STATIONS = saved_stations
 	else:
 		UPF_ARMED_STATIONS = INIT_UPF_ARMED_STATIONS.duplicate()
+
+	if state_data.has("upf_scc_capacity_used"):
+		upf_scc_capacity_used = state_data["upf_scc_capacity_used"].duplicate(true)
+	else:
+		upf_scc_capacity_used.clear()
+		
+	if state_data.has("sathar_repair_queue"):
+		sathar_repair_queue = state_data["sathar_repair_queue"].duplicate(true)
+	else:
+		sathar_repair_queue.clear()
 	
 	active_encounters.clear()
 	for e in state_data.get("active_encounters", []):
