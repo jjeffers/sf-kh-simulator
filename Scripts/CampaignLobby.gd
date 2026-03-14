@@ -67,12 +67,12 @@ func _refresh_ui():
 		start_btn.disabled = true
 		start_btn.text = "Waiting for Host..."
 	else:
-		if has_upf and has_sathar and unassigned_list.item_count == 0:
+		if unassigned_list.item_count == 0:
 			start_btn.disabled = false
 			start_btn.text = "Launch Campaign"
 		else:
 			start_btn.disabled = true
-			start_btn.text = "Waiting for Players..."
+			start_btn.text = "Assign Factions to Start"
 
 	if lobby.get("is_saved_game", false):
 		var day = lobby.get("current_day", 1)
@@ -81,17 +81,6 @@ func _refresh_ui():
 		state_label.text = "Loaded Save: Day %d\nDestroyed Fortresses: %d\nDestroyed Stations: %d" % [day, f_destroyed, s_destroyed]
 	else:
 		state_label.text = "New Campaign\nDay 1"
-			
-	if not multiplayer.is_server():
-		start_btn.disabled = true
-		start_btn.text = "Waiting for Host..."
-	else:
-		if has_upf and has_sathar and unassigned_list.item_count == 0:
-			start_btn.disabled = false
-			start_btn.text = "Launch Campaign"
-		else:
-			start_btn.disabled = true
-			start_btn.text = "Waiting for Players..."
 
 	# Handle Auto-CLI actions
 	var args = OS.get_cmdline_args()
