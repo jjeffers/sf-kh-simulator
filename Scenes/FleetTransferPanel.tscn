@@ -1,0 +1,85 @@
+[gd_scene load_steps=2 format=3 uid="uid://b3v9x4m7c2p1n"]
+
+[ext_resource type="Script" path="res://Scripts/FleetTransferPanel.gd" id="1_x8d3k"]
+
+[node name="FleetTransferPanel" type="PanelContainer"]
+anchors_preset = 8
+anchor_left = 0.5
+anchor_top = 0.5
+anchor_right = 0.5
+anchor_bottom = 0.5
+offset_left = -350.0
+offset_top = -250.0
+offset_right = 350.0
+offset_bottom = 250.0
+grow_horizontal = 2
+grow_vertical = 2
+script = ExtResource("1_x8d3k")
+
+[node name="VBoxContainer" type="VBoxContainer" parent="."]
+layout_mode = 2
+
+[node name="HeaderLabel" type="Label" parent="VBoxContainer"]
+layout_mode = 2
+theme_override_font_sizes/font_size = 20
+text = "Transfer Ships"
+horizontal_alignment = 1
+
+[node name="HBoxContainer" type="HBoxContainer" parent="VBoxContainer"]
+layout_mode = 2
+size_flags_vertical = 3
+
+[node name="SourceVBox" type="VBoxContainer" parent="VBoxContainer/HBoxContainer"]
+layout_mode = 2
+size_flags_horizontal = 3
+
+[node name="SourceFleetLabel" type="Label" parent="VBoxContainer/HBoxContainer/SourceVBox"]
+layout_mode = 2
+text = "Source Fleet Group"
+horizontal_alignment = 1
+
+[node name="SourceShipsList" type="ItemList" parent="VBoxContainer/HBoxContainer/SourceVBox"]
+layout_mode = 2
+size_flags_vertical = 3
+select_mode = 2
+
+[node name="CenterBox" type="VBoxContainer" parent="VBoxContainer/HBoxContainer"]
+layout_mode = 2
+alignment = 1
+
+[node name="TransferRightBtn" type="Button" parent="VBoxContainer/HBoxContainer/CenterBox"]
+layout_mode = 2
+text = " >> "
+
+[node name="TransferLeftBtn" type="Button" parent="VBoxContainer/HBoxContainer/CenterBox"]
+layout_mode = 2
+text = " << "
+
+[node name="TargetVBox" type="VBoxContainer" parent="VBoxContainer/HBoxContainer"]
+layout_mode = 2
+size_flags_horizontal = 3
+
+[node name="TargetFleetDropdown" type="OptionButton" parent="VBoxContainer/HBoxContainer/TargetVBox"]
+layout_mode = 2
+
+[node name="TargetFleetNameEdit" type="LineEdit" parent="VBoxContainer/HBoxContainer/TargetVBox"]
+visible = false
+layout_mode = 2
+placeholder_text = "New Fleet Name"
+
+[node name="TargetShipsList" type="ItemList" parent="VBoxContainer/HBoxContainer/TargetVBox"]
+layout_mode = 2
+size_flags_vertical = 3
+select_mode = 2
+
+[node name="BottomHBox" type="HBoxContainer" parent="VBoxContainer"]
+layout_mode = 2
+alignment = 2
+
+[node name="CancelBtn" type="Button" parent="VBoxContainer/BottomHBox"]
+layout_mode = 2
+text = "Cancel"
+
+[node name="ConfirmBtn" type="Button" parent="VBoxContainer/BottomHBox"]
+layout_mode = 2
+text = "Confirm"

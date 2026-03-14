@@ -665,6 +665,59 @@ func rpc_rename_ship(fleet_idx: int, ship_idx: int, new_name: String):
 				var nm = get_node("/root/NetworkManager")
 				nm.sync_campaign_state.rpc(serialize_state())
 
+@rpc("any_peer", "call_local", "reliable")
+func rpc_transfer_ships(source_fleet_idx: int, target_fleet_idx: int, ship_indices: Array):
+	if source_fleet_idx >= 0 and source_fleet_idx < fleets.size() and target_fleet_idx >= 0 and target_fleet_idx < fleets.size():
+		var source = fleets[source_fleet_idx]
+		var target = fleets[target_fleet_idx]
+		
+		# Sort descending to safely remove from array without shifting subsequent indices
+		ship_indices.sort()
+		ship_indices.reverse()
+		
+		var ships_to_move = []
+		for idx in ship_indices:
+			if idx >= 0 and idx < source.ships.size():
+				ships_to_move.append(source.ships[idx])
+				source.ships.remove_at(idx)
+				
+		for ship in ships_to_move:
+			target.ships.append(ship)
+			
+		if source.ships.is_empty():
+			fleets.remove_at(source_fleet_idx)
+			
+		emit_signal("campaign_state_updated")
+		if multiplayer.is_server() and has_node("/root/NetworkManager"):
+			var nm = get_node("/root/NetworkManager")
+			nm.sync_campaign_state.rpc(serialize_state())
+
+@rpc("any_peer", "call_local", "reliable")
+func rpc_create_fleet_from_transfer(source_fleet_idx: int, ship_indices: Array, new_fleet_name: String):
+	if source_fleet_idx >= 0 and source_fleet_idx < fleets.size():
+		var source = fleets[source_fleet_idx]
+		
+		ship_indices.sort()
+		ship_indices.reverse()
+		
+		var ships_to_move = []
+		for idx in ship_indices:
+			if idx >= 0 and idx < source.ships.size():
+				ships_to_move.append(source.ships[idx])
+				source.ships.remove_at(idx)
+				
+		if ships_to_move.size() > 0:
+			var new_fleet = create_new_fleet(source.faction, source.current_system_id, new_fleet_name)
+			new_fleet.ships = ships_to_move
+			
+		if source.ships.is_empty():
+			fleets.remove_at(source_fleet_idx)
+			
+		emit_signal("campaign_state_updated")
+		if multiplayer.is_server() and has_node("/root/NetworkManager"):
+			var nm = get_node("/root/NetworkManager")
+			nm.sync_campaign_state.rpc(serialize_state())
+
 func remove_fleet(fleet: CampaignFleet):
 	fleets.erase(fleet)
 
