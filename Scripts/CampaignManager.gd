@@ -22,6 +22,7 @@ var upf_ready: bool = false
 var sathar_ready: bool = false
 
 var active_encounters: Array[String] = []
+var encounter_attackers: Dictionary = {}
 
 # Tracks destroyed stations for win/loss conditions
 var destroyed_stations_count: int = 0
@@ -137,6 +138,7 @@ func start_new_campaign():
 	fleets.clear()
 	destroyed_stations_count = 0
 	destroyed_fortresses_count = 0
+	encounter_attackers.clear()
 	
 	UPF_FORTRESSES = INIT_UPF_FORTRESSES.duplicate()
 	UPF_ARMED_STATIONS = INIT_UPF_ARMED_STATIONS.duplicate()
@@ -500,7 +502,18 @@ func set_encounter_ready(sys_name: String, faction: String, is_ready: bool):
 	ConsoleManager.log_message("[color=yellow]Encounter %s: %s is Ready[/color]" % [sys_name, faction])
 	
 	if multiplayer.is_server():
-		if encounter_ready_state[sys_name]["UPF"] and encounter_ready_state[sys_name]["Sathar"]:
+		var attacker = encounter_attackers.get(sys_name, "Both")
+		var should_start = false
+		
+		# If both sides arrived at the same time, we require both to be ready.
+		# Otherwise, the attacker controls when the battle starts.
+		if attacker == "Both":
+			should_start = encounter_ready_state[sys_name]["UPF"] and encounter_ready_state[sys_name]["Sathar"]
+		else:
+			# If the attacker is ready, we start it (the UI ensures only the attacker can click "Ready")
+			should_start = encounter_ready_state[sys_name][attacker]
+			
+		if should_start:
 			var nm = get_node("/root/NetworkManager")
 			nm.lobby_data["scenario"] = "campaign_encounter"
 			nm.lobby_data["encounter_system"] = sys_name
@@ -550,7 +563,7 @@ func end_turn():
 			was_moving_flags[fleet] = true
 			
 	_enforce_fighter_survival()
-	_check_for_encounters()
+	_check_for_encounters(arriving_fleets)
 			
 	for fleet in fleets:
 		# Rearm check: "Ships in supply will re-arm if they spend an entire day without moving or engaging in combat."
@@ -653,6 +666,7 @@ func serialize_state() -> Dictionary:
 		"destroyed_stations": destroyed_stations_count,
 		"destroyed_fortresses": destroyed_fortresses_count,
 		"active_encounters": active_encounters,
+		"encounter_attackers": encounter_attackers,
 		"upf_fortresses": UPF_FORTRESSES,
 		"upf_armed_stations": UPF_ARMED_STATIONS,
 		"upf_scc_capacity_used": upf_scc_capacity_used,
@@ -707,8 +721,9 @@ func _enforce_fighter_survival():
 						ConsoleManager.log_message("[color=red]Unsupported Fighter Destroyed in %s: %s[/color]" % [sys, ds_name])
 						df.remove_ship(ds)
 
-func _check_for_encounters():
+func _check_for_encounters(arriving_fleets: Array[CampaignFleet] = []):
 	active_encounters.clear()
+	encounter_attackers.clear()
 	# Group all stationary fleets by system
 	var systems_with_fleets = {}
 	for f in fleets:
@@ -728,6 +743,24 @@ func _check_for_encounters():
 		
 		if sathar_forces.size() > 0 and (upf_forces.size() > 0 or has_station):
 			active_encounters.append(sys)
+			
+			var attacker = "Both"
+			var upf_arrived = false
+			var sathar_arrived = false
+			for f in arriving_fleets:
+				if f.current_system_id == sys:
+					if f.faction == "UPF": upf_arrived = true
+					elif f.faction == "Sathar": sathar_arrived = true
+					
+			if upf_arrived and not sathar_arrived: attacker = "UPF"
+			elif sathar_arrived and not upf_arrived: attacker = "Sathar"
+			elif not upf_arrived and not sathar_arrived:
+				# This shouldn't normally happen (combat didn't resolve last turn),
+				# but default to Both to ensure both must be ready.
+				pass
+				
+			encounter_attackers[sys] = attacker
+			
 			emit_signal("campaign_encounter_triggered", sys, upf_forces, sathar_forces)
 
 func create_new_fleet(faction: String, system_id: String, fleet_name: String) -> CampaignFleet:
@@ -740,7 +773,7 @@ func rpc_rename_fleet(fleet_idx: int, new_name: String):
 	if fleet_idx >= 0 and fleet_idx < fleets.size():
 		fleets[fleet_idx].fleet_name = new_name
 		emit_signal("campaign_state_updated")
-		if multiplayer.is_server() and has_node("/root/NetworkManager"):
+		if multiplayer.has_multiplayer_peer() and multiplayer.is_server() and has_node("/root/NetworkManager"):
 			var nm = get_node("/root/NetworkManager")
 			nm.sync_campaign_state.rpc(serialize_state())
 
@@ -750,7 +783,7 @@ func rpc_rename_ship(fleet_idx: int, ship_idx: int, new_name: String):
 		if ship_idx >= 0 and ship_idx < fleets[fleet_idx].ships.size():
 			fleets[fleet_idx].ships[ship_idx]["name"] = new_name
 			emit_signal("campaign_state_updated")
-			if multiplayer.is_server() and has_node("/root/NetworkManager"):
+			if multiplayer.has_multiplayer_peer() and multiplayer.is_server() and has_node("/root/NetworkManager"):
 				var nm = get_node("/root/NetworkManager")
 				nm.sync_campaign_state.rpc(serialize_state())
 
@@ -777,7 +810,7 @@ func rpc_transfer_ships(source_fleet_idx: int, target_fleet_idx: int, ship_indic
 			fleets.remove_at(source_fleet_idx)
 			
 		emit_signal("campaign_state_updated")
-		if multiplayer.is_server() and has_node("/root/NetworkManager"):
+		if multiplayer.has_multiplayer_peer() and multiplayer.is_server() and has_node("/root/NetworkManager"):
 			var nm = get_node("/root/NetworkManager")
 			nm.sync_campaign_state.rpc(serialize_state())
 
@@ -803,7 +836,7 @@ func rpc_create_fleet_from_transfer(source_fleet_idx: int, ship_indices: Array, 
 			fleets.remove_at(source_fleet_idx)
 			
 		emit_signal("campaign_state_updated")
-		if multiplayer.is_server() and has_node("/root/NetworkManager"):
+		if multiplayer.has_multiplayer_peer() and multiplayer.is_server() and has_node("/root/NetworkManager"):
 			var nm = get_node("/root/NetworkManager")
 			nm.sync_campaign_state.rpc(serialize_state())
 
@@ -887,6 +920,11 @@ func deserialize_state(state_data: Dictionary):
 	active_encounters.clear()
 	for e in state_data.get("active_encounters", []):
 		active_encounters.append(e)
+		
+	encounter_attackers.clear()
+	var ea_data = state_data.get("encounter_attackers", {})
+	for k in ea_data.keys():
+		encounter_attackers[k] = ea_data[k]
 		
 	fleets.clear()
 	var fleets_arr = state_data.get("fleets", [])

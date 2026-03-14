@@ -699,7 +699,12 @@ func _on_system_gui_input(event: InputEvent, sys_name: String):
 		ConsoleManager.log_message("DEBUG Map GUI Input: sys=%s btn=%d" % [sys_name, event.button_index])
 		
 		if sys_name in campaign.active_encounters and event.button_index == MOUSE_BUTTON_LEFT:
-			campaign.rpc_open_encounter_dialog.rpc(sys_name)
+			var attacker = campaign.encounter_attackers.get(sys_name, "Both")
+			var my_fac = _get_my_faction()
+			if attacker == "Both" or attacker == my_fac:
+				campaign.rpc_open_encounter_dialog.rpc(sys_name)
+			else:
+				ConsoleManager.log_message("Waiting for Attacker to initiate encounter.")
 			return
 		
 		# If we have a fleet selected
@@ -1252,6 +1257,9 @@ func _handle_encounter_click(sys_name: String):
 	layer.set_meta("sys_name", sys_name)
 		
 	active_encounter_dialog = layer
+	
+	var attacker = CampaignManager.encounter_attackers.get(sys_name, "Both")
+	var is_attacker = (my_fac == attacker) or (attacker == "Both")
 		
 	# Build the popup UI panel
 	var panel = PanelContainer.new()
@@ -1386,15 +1394,21 @@ func _handle_encounter_click(sys_name: String):
 		retreat_btn.pressed.connect(callable_retreat)
 		btn_hbox.add_child(retreat_btn)
 		
-	var start_battle_btn = Button.new()
-	start_battle_btn.text = "Ready For Battle"
-	start_battle_btn.modulate = Color(1.0, 0.4, 0.4)
-	start_battle_btn.pressed.connect(func():
-		start_battle_btn.text = "Waiting for other player..."
-		start_battle_btn.disabled = true
-		_initiate_tactical_battle(sys_name)
-	)
-	btn_hbox.add_child(start_battle_btn)
+	if is_attacker:
+		var start_battle_btn = Button.new()
+		start_battle_btn.text = "Ready For Battle"
+		start_battle_btn.modulate = Color(1.0, 0.4, 0.4)
+		start_battle_btn.pressed.connect(func():
+			start_battle_btn.text = "Waiting for other player..."
+			start_battle_btn.disabled = true
+			_initiate_tactical_battle(sys_name)
+		)
+		btn_hbox.add_child(start_battle_btn)
+	else:
+		var waiting_lbl = Label.new()
+		waiting_lbl.text = "Waiting for Attacker..."
+		waiting_lbl.modulate = Color.GRAY
+		btn_hbox.add_child(waiting_lbl)
 	
 	vbox.add_child(btn_hbox)
 	layer.add_child(panel)

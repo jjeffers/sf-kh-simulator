@@ -14,11 +14,13 @@ func before_each():
 	CampaignManager.start_circles = []
 	CampaignManager.active_encounters = []
 	CampaignManager.encounter_attackers = {}
+	CampaignManager.sathar_ready = false
 	CampaignManager.upf_ready = false
 	
 	# Mock some systems
 	CampaignManager.systems["Prenglar"] = {"name": "Prenglar", "x": 0, "y": 0, "connections": ["Cassiopeia"]}
 	CampaignManager.systems["Cassiopeia"] = {"name": "Cassiopeia", "x": 1, "y": 0, "connections": ["Prenglar"]}
+	CampaignManager.routes = [{"origin": "Prenglar", "destination": "Cassiopeia"}]
 
 func after_each():
 	CampaignManager.fleets = []

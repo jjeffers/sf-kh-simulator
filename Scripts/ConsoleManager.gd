@@ -58,6 +58,7 @@ func _input(event):
 func toggle_console():
 	canvas.visible = not canvas.visible
 
+@rpc("any_peer", "call_local", "reliable")
 func log_message(msg: String):
 	print(msg.strip_edges()) # Still print to standard stdout
 	_logs.append(msg)
