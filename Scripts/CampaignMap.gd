@@ -425,22 +425,22 @@ func _draw_systems():
 				var fortress_bg = Panel.new()
 				var f_style = StyleBoxFlat.new()
 				f_style.bg_color = Color.WHITE
-				f_style.corner_radius_top_left = 16
-				f_style.corner_radius_top_right = 16
-				f_style.corner_radius_bottom_left = 16
-				f_style.corner_radius_bottom_right = 16
+				f_style.corner_radius_top_left = 24
+				f_style.corner_radius_top_right = 24
+				f_style.corner_radius_bottom_left = 24
+				f_style.corner_radius_bottom_right = 24
 				fortress_bg.add_theme_stylebox_override("panel", f_style)
-				fortress_bg.custom_minimum_size = Vector2(32, 32)
-				fortress_bg.size = Vector2(32, 32)
-				fortress_bg.position = pos + Vector2(-16, -34)
+				fortress_bg.custom_minimum_size = Vector2(48, 48)
+				fortress_bg.size = Vector2(48, 48)
+				fortress_bg.position = pos + Vector2(-24, -51)
 				systems_container.add_child(fortress_bg)
 
 			var station_icon = TextureRect.new()
 			station_icon.texture = load("res://Assets/upf_space_station.png")
 			station_icon.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
-			station_icon.custom_minimum_size = Vector2(24, 24)
+			station_icon.custom_minimum_size = Vector2(36, 36)
 			# Position it nicely offset from the system circle
-			station_icon.position = pos + Vector2(-12, -30)
+			station_icon.position = pos + Vector2(-18, -45)
 			systems_container.add_child(station_icon)
 			
 		# Draw SCC indicator if present
@@ -448,9 +448,9 @@ func _draw_systems():
 			var scc_icon = TextureRect.new()
 			scc_icon.texture = load("res://Assets/Maintenance.svg")
 			scc_icon.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
-			scc_icon.custom_minimum_size = Vector2(24, 24)
+			scc_icon.custom_minimum_size = Vector2(36, 36)
 			# Position it offset to the other side of the circle
-			scc_icon.position = pos + Vector2(12, -30)
+			scc_icon.position = pos + Vector2(18, -45)
 			systems_container.add_child(scc_icon)
 		
 	for start_c in campaign.start_circles:
@@ -466,8 +466,8 @@ func _draw_systems():
 		var scc_icon = TextureRect.new()
 		scc_icon.texture = load("res://Assets/Maintenance.svg")
 		scc_icon.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
-		scc_icon.custom_minimum_size = Vector2(24, 24)
-		scc_icon.position = pos + Vector2(12, -30) # same top-right offset
+		scc_icon.custom_minimum_size = Vector2(36, 36)
+		scc_icon.position = pos + Vector2(18, -45) # same top-right offset
 		systems_container.add_child(scc_icon)
 
 		var parent_sys_id = start_c.get("connected_system", "")
@@ -528,7 +528,7 @@ func _draw_fleets():
 					offset = Vector2(50, -70) # Shift second faction slightly right and up
 					
 				var btn = TextureButton.new()
-				btn.custom_minimum_size = Vector2(40, 40)
+				btn.custom_minimum_size = Vector2(60, 60)
 				btn.stretch_mode = TextureButton.STRETCH_KEEP_ASPECT_CENTERED
 				
 				var total_ships = 0
@@ -542,9 +542,9 @@ func _draw_fleets():
 				btn.tooltip_text = "%s forces: %d ships" % [faction, total_ships]
 				
 				if faction == "UPF":
-					btn.texture_normal = preload("res://Assets/UI/fleet_enemy_upf.svg") if is_enemy else preload("res://Assets/UI/fleet_friendly_upf.svg")
+					btn.texture_normal = preload("res://Assets/UI/fleet_enemy_upf.png") if is_enemy else preload("res://Assets/UI/fleet_friendly_upf.png")
 				elif faction == "Sathar":
-					btn.texture_normal = preload("res://Assets/UI/fleet_enemy_sathar.svg") if is_enemy else preload("res://Assets/UI/fleet_friendly_sathar.svg")
+					btn.texture_normal = preload("res://Assets/UI/fleet_enemy_sathar.png") if is_enemy else preload("res://Assets/UI/fleet_friendly_sathar.png")
 				
 				if requires_retreat:
 					var retreat_bg = Panel.new()
@@ -555,17 +555,17 @@ func _draw_fleets():
 					style.border_width_left = 2
 					style.border_width_right = 2
 					style.border_color = Color.WHITE
-					style.corner_radius_top_left = 25
-					style.corner_radius_top_right = 25
-					style.corner_radius_bottom_left = 25
-					style.corner_radius_bottom_right = 25
+					style.corner_radius_top_left = 35
+					style.corner_radius_top_right = 35
+					style.corner_radius_bottom_left = 35
+					style.corner_radius_bottom_right = 35
 					retreat_bg.add_theme_stylebox_override("panel", style)
-					retreat_bg.custom_minimum_size = Vector2(50, 50)
+					retreat_bg.custom_minimum_size = Vector2(70, 70)
 					retreat_bg.mouse_filter = Control.MOUSE_FILTER_IGNORE
-					retreat_bg.position = (pos - Vector2(25, 25)) + offset
+					retreat_bg.position = (pos - Vector2(35, 35)) + offset
 					fleets_container.add_child(retreat_bg)
 				
-				btn.position = (pos - Vector2(20, 20)) + offset
+				btn.position = (pos - Vector2(30, 30)) + offset
 				btn.pressed.connect(func(): _on_fleet_map_icon_clicked(first_f))
 				fleets_container.add_child(btn)
 				
@@ -573,7 +573,7 @@ func _draw_fleets():
 				lbl.text = "\n".join(names_array)
 				lbl.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 				lbl.add_theme_font_size_override("font_size", 12)
-				lbl.position = btn.position + Vector2(-40, 42)
+				lbl.position = btn.position + Vector2(-30, 62)
 				lbl.custom_minimum_size = Vector2(120, 20)
 				fleets_container.add_child(lbl)
 				
@@ -620,7 +620,7 @@ func _draw_fleets():
 		var offset = Vector2(0, -45)
 		
 		var btn = TextureButton.new()
-		btn.custom_minimum_size = Vector2(40, 40)
+		btn.custom_minimum_size = Vector2(60, 60)
 		btn.stretch_mode = TextureButton.STRETCH_KEEP_ASPECT_CENTERED
 		
 		var total_ships = 0
@@ -632,13 +632,13 @@ func _draw_fleets():
 		btn.tooltip_text = "Moving forces: %d ships" % total_ships
 		
 		if f_first.faction == "UPF":
-			btn.texture_normal = preload("res://Assets/UI/fleet_friendly_upf.svg")
+			btn.texture_normal = preload("res://Assets/UI/fleet_friendly_upf.png")
 		elif f_first.faction == "Sathar":
-			btn.texture_normal = preload("res://Assets/UI/fleet_friendly_sathar.svg")
+			btn.texture_normal = preload("res://Assets/UI/fleet_friendly_sathar.png")
 			
 		btn.modulate.a = 0.6 # Ghosted for in-transit
 			
-		btn.position = (interp_pos - Vector2(20, 20)) + offset
+		btn.position = (interp_pos - Vector2(30, 30)) + offset
 		btn.pressed.connect(func(): _on_fleet_map_icon_clicked(f_first))
 		fleets_container.add_child(btn)
 		
@@ -646,7 +646,7 @@ func _draw_fleets():
 		lbl.text = "\n".join(names_array)
 		lbl.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 		lbl.add_theme_font_size_override("font_size", 12)
-		lbl.position = btn.position + Vector2(-40, 42) # Centered beneath icon
+		lbl.position = btn.position + Vector2(-30, 62) # Centered beneath icon
 		lbl.custom_minimum_size = Vector2(120, 20)
 		fleets_container.add_child(lbl)
 
