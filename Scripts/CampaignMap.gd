@@ -529,6 +529,8 @@ func _draw_fleets():
 					
 				var btn = TextureButton.new()
 				btn.custom_minimum_size = Vector2(60, 60)
+				btn.size = Vector2(60, 60)
+				btn.ignore_texture_size = true
 				btn.stretch_mode = TextureButton.STRETCH_KEEP_ASPECT_CENTERED
 				
 				var total_ships = 0
@@ -621,6 +623,8 @@ func _draw_fleets():
 		
 		var btn = TextureButton.new()
 		btn.custom_minimum_size = Vector2(60, 60)
+		btn.size = Vector2(60, 60)
+		btn.ignore_texture_size = true
 		btn.stretch_mode = TextureButton.STRETCH_KEEP_ASPECT_CENTERED
 		
 		var total_ships = 0
