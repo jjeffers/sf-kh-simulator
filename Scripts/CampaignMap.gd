@@ -345,31 +345,51 @@ func _create_system_node(node_id: String, display_name: String, pos: Vector2, is
 	center_hbox.alignment = BoxContainer.ALIGNMENT_CENTER
 	center_hbox.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	
-	var btn = Panel.new()
-	btn.custom_minimum_size = Vector2(48, 48)
+	var btn = TextureRect.new()
+	var grad_tex = GradientTexture2D.new()
+	grad_tex.width = 128
+	grad_tex.height = 128
+	grad_tex.fill = GradientTexture2D.FILL_RADIAL
+	grad_tex.fill_from = Vector2(0.5, 0.5)
+	grad_tex.fill_to = Vector2(1.0, 0.5)
 	
-	var style = StyleBoxFlat.new()
-	style.corner_radius_top_left = 24
-	style.corner_radius_top_right = 24
-	style.corner_radius_bottom_left = 24
-	style.corner_radius_bottom_right = 24
+	var grad = Gradient.new()
+	grad.offsets = PackedFloat32Array([0.0, 0.3, 0.7, 1.0])
+	grad.colors = PackedColorArray([
+		Color(1, 1, 1, 1),
+		Color(1, 1, 1, 0.9),
+		Color(1, 1, 1, 0.3),
+		Color(1, 1, 1, 0)
+	])
+	grad_tex.gradient = grad
 	
+	btn.texture = grad_tex
+	btn.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+	btn.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
+	btn.custom_minimum_size = Vector2(72, 72)
+	btn.mouse_filter = Control.MOUSE_FILTER_STOP
+	
+	var tint_color = Color.WHITE
 	if is_sathar:
-		style.bg_color = Color(1.0, 0.2, 0.2, 1.0)
+		tint_color = Color(1.5, 0.1, 0.1, 1.0)
 	else:
-		style.bg_color = Color(0.05, 0.05, 0.1, 1.0)
-		style.border_width_left = 2
-		style.border_width_top = 2
-		style.border_width_right = 2
-		style.border_width_bottom = 2
-		style.border_color = Color(0.3, 0.6, 1.0, 1.0)
+		var spec = "G2"
+		if campaign.systems.has(node_id):
+			spec = campaign.systems[node_id].get("stellar_spectral_type", "G2")
+			
+		var letter = spec.substr(0,1).to_upper()
+		if letter == "O": tint_color = Color(0.1, 0.5, 1.5) # Vivid blue
+		elif letter == "B": tint_color = Color(0.3, 0.8, 1.5) # Bright cyan-blue
+		elif letter == "A": tint_color = Color(0.8, 0.9, 1.5) # Crisp white-blue
+		elif letter == "F": tint_color = Color(1.2, 1.2, 1.2) # Pure intense white
+		elif letter == "G": tint_color = Color(1.4, 1.2, 0.1) # Vibrant yellow
+		elif letter == "K": tint_color = Color(1.5, 0.6, 0.0) # Rich orange
+		elif letter == "M": tint_color = Color(1.5, 0.15, 0.15) # Deep glowing red
 		
-	var hover_style = style.duplicate()
-	hover_style.bg_color = style.bg_color.lightened(0.3)
-	if not is_sathar:
-		hover_style.bg_color = Color(0.3, 0.6, 1.0, 0.3)
-		
-	btn.add_theme_stylebox_override("panel", style)
+	btn.self_modulate = tint_color
+	
+	btn.mouse_entered.connect(func(): btn.self_modulate = tint_color.lightened(0.5))
+	btn.mouse_exited.connect(func(): btn.self_modulate = tint_color)
 	
 	btn.gui_input.connect(func(event): _on_system_gui_input(event, node_id))
 	center_hbox.add_child(btn)
