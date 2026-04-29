@@ -32,7 +32,20 @@ extends Control
 var target_lobby_scene = "res://Scenes/Lobby.tscn"
 
 func _ready():
-	_show_menu("startup")
+	var app_name = ProjectSettings.get_setting("application/config/name", "SFKH Simulator")
+	var version = ProjectSettings.get_setting("application/config/version", "Unknown")
+	DisplayServer.window_set_title("%s v%s" % [app_name, version])
+	
+	if not NetworkManager.disconnect_reason.is_empty():
+		var reason = NetworkManager.disconnect_reason
+		NetworkManager.disconnect_reason = ""
+		if NetworkManager.lobby_data.get("game_mode", "") == "campaign":
+			_show_menu("campaign_join")
+		else:
+			_show_menu("tactical")
+		status_label.text = reason
+	else:
+		_show_menu("startup")
 	
 	btn_start_campaign.pressed.connect(_on_btn_start_campaign)
 	btn_load_campaign.pressed.connect(_on_btn_load_campaign)
