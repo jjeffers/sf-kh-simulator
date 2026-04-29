@@ -45,6 +45,7 @@ func join_game(address = "", port = PORT):
 	print("Connecting to %s" % url)
 	
 	var peer = WebSocketMultiplayerPeer.new()
+	peer.handshake_headers = PackedStringArray(["ngrok-skip-browser-warning: true"])
 	var error = peer.create_client(url)
 	if error:
 		return error
