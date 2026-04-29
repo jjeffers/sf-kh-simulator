@@ -6,10 +6,10 @@ description: Run the full test suite
 
 ### Linux / WSL (Bash)
 1. Run the test command:
-   `/usr/local/bin/godot --headless --path . -s "addons/gut/gut_cmdln.gd"`
+   `godot --headless --path . -s "addons/gut/gut_cmdln.gd"`
 
 2. Individual tests can be run as follows:
-   `/usr/local/bin/godot --headless --path . -s "addons/gut/gut_cmdln.gd" -gtest="<path to test>"`
+   `godot --headless --path . -s "addons/gut/gut_cmdln.gd" -gtest="<path to test>"`
 
 ### Windows (PowerShell)
 1. Run the test command from PowerShell:

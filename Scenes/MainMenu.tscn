@@ -1,8 +1,8 @@
 [gd_scene format=3 uid="uid://d1a2b3c4d5e6"]
 
-[ext_resource type="Script" path="res://Scripts/MainMenu.gd" id="1_mainmenu"]
+[ext_resource type="Script" uid="uid://cfk8e336hadpu" path="res://Scripts/MainMenu.gd" id="1_mainmenu"]
 
-[node name="MainMenu" type="Control"]
+[node name="MainMenu" type="Control" unique_id=9463680]
 layout_mode = 3
 anchors_preset = 15
 anchor_right = 1.0
@@ -11,7 +11,7 @@ grow_horizontal = 2
 grow_vertical = 2
 script = ExtResource("1_mainmenu")
 
-[node name="StartupMenu" type="VBoxContainer" parent="."]
+[node name="StartupMenu" type="VBoxContainer" parent="." unique_id=917417488]
 layout_mode = 1
 anchors_preset = 8
 anchor_left = 0.5
@@ -26,36 +26,36 @@ grow_horizontal = 2
 grow_vertical = 2
 theme_override_constants/separation = 20
 
-[node name="Label" type="Label" parent="StartupMenu"]
+[node name="Label" type="Label" parent="StartupMenu" unique_id=907442916]
 layout_mode = 2
 text = "Second Sathar War"
 horizontal_alignment = 1
 
-[node name="BtnStartCampaign" type="Button" parent="StartupMenu"]
+[node name="BtnStartCampaign" type="Button" parent="StartupMenu" unique_id=1120418017]
 layout_mode = 2
 text = "Start Campaign"
 
-[node name="BtnLoadCampaign" type="Button" parent="StartupMenu"]
+[node name="BtnLoadCampaign" type="Button" parent="StartupMenu" unique_id=1827301659]
 layout_mode = 2
 text = "Load Campaign"
 
-[node name="BtnJoinCampaign" type="Button" parent="StartupMenu"]
+[node name="BtnJoinCampaign" type="Button" parent="StartupMenu" unique_id=1282318490]
 layout_mode = 2
 text = "Join Campaign"
 
-[node name="BtnStartScenario" type="Button" parent="StartupMenu"]
+[node name="BtnStartScenario" type="Button" parent="StartupMenu" unique_id=1105241421]
 layout_mode = 2
 text = "Start Scenario"
 
-[node name="BtnSettings" type="Button" parent="StartupMenu"]
+[node name="BtnSettings" type="Button" parent="StartupMenu" unique_id=1294440522]
 layout_mode = 2
 text = "Settings"
 
-[node name="BtnQuit" type="Button" parent="StartupMenu"]
+[node name="BtnQuit" type="Button" parent="StartupMenu" unique_id=1843833838]
 layout_mode = 2
 text = "Quit"
 
-[node name="CampaignHostMenu" type="VBoxContainer" parent="."]
+[node name="CampaignHostMenu" type="VBoxContainer" parent="." unique_id=109661662]
 visible = false
 layout_mode = 1
 anchors_preset = 8
@@ -71,45 +71,45 @@ grow_horizontal = 2
 grow_vertical = 2
 theme_override_constants/separation = 20
 
-[node name="Label" type="Label" parent="CampaignHostMenu"]
+[node name="Label" type="Label" parent="CampaignHostMenu" unique_id=2048244827]
 layout_mode = 2
 text = "Host Campaign"
 horizontal_alignment = 1
 
-[node name="HBoxIP" type="HBoxContainer" parent="CampaignHostMenu"]
+[node name="HBoxIP" type="HBoxContainer" parent="CampaignHostMenu" unique_id=390804834]
 layout_mode = 2
 
-[node name="Label" type="Label" parent="CampaignHostMenu/HBoxIP"]
+[node name="Label" type="Label" parent="CampaignHostMenu/HBoxIP" unique_id=1369057144]
 layout_mode = 2
 text = "IP:"
 
-[node name="HostIPInput" type="LineEdit" parent="CampaignHostMenu/HBoxIP"]
+[node name="HostIPInput" type="LineEdit" parent="CampaignHostMenu/HBoxIP" unique_id=910215612]
 layout_mode = 2
 size_flags_horizontal = 3
 text = "127.0.0.1"
 editable = false
 
-[node name="HBoxPort" type="HBoxContainer" parent="CampaignHostMenu"]
+[node name="HBoxPort" type="HBoxContainer" parent="CampaignHostMenu" unique_id=895219493]
 layout_mode = 2
 
-[node name="Label" type="Label" parent="CampaignHostMenu/HBoxPort"]
+[node name="Label" type="Label" parent="CampaignHostMenu/HBoxPort" unique_id=127161484]
 layout_mode = 2
 text = "Port:"
 
-[node name="HostPortInput" type="LineEdit" parent="CampaignHostMenu/HBoxPort"]
+[node name="HostPortInput" type="LineEdit" parent="CampaignHostMenu/HBoxPort" unique_id=10051905]
 layout_mode = 2
 size_flags_horizontal = 3
 text = "7000"
 
-[node name="BtnHostStart" type="Button" parent="CampaignHostMenu"]
+[node name="BtnHostStart" type="Button" parent="CampaignHostMenu" unique_id=1220272467]
 layout_mode = 2
 text = "Start Hosting"
 
-[node name="BtnHostBack" type="Button" parent="CampaignHostMenu"]
+[node name="BtnHostBack" type="Button" parent="CampaignHostMenu" unique_id=524550334]
 layout_mode = 2
 text = "Back"
 
-[node name="CampaignJoinMenu" type="VBoxContainer" parent="."]
+[node name="CampaignJoinMenu" type="VBoxContainer" parent="." unique_id=154404942]
 visible = false
 layout_mode = 1
 anchors_preset = 8
@@ -125,44 +125,44 @@ grow_horizontal = 2
 grow_vertical = 2
 theme_override_constants/separation = 20
 
-[node name="Label" type="Label" parent="CampaignJoinMenu"]
+[node name="Label" type="Label" parent="CampaignJoinMenu" unique_id=1377692994]
 layout_mode = 2
 text = "Join Campaign"
 horizontal_alignment = 1
 
-[node name="HBoxIP" type="HBoxContainer" parent="CampaignJoinMenu"]
+[node name="HBoxIP" type="HBoxContainer" parent="CampaignJoinMenu" unique_id=1422165937]
 layout_mode = 2
 
-[node name="Label" type="Label" parent="CampaignJoinMenu/HBoxIP"]
+[node name="Label" type="Label" parent="CampaignJoinMenu/HBoxIP" unique_id=1888198058]
 layout_mode = 2
 text = "IP:"
 
-[node name="JoinIPInput" type="LineEdit" parent="CampaignJoinMenu/HBoxIP"]
+[node name="JoinIPInput" type="LineEdit" parent="CampaignJoinMenu/HBoxIP" unique_id=1107327186]
 layout_mode = 2
 size_flags_horizontal = 3
 text = "127.0.0.1"
 
-[node name="HBoxPort" type="HBoxContainer" parent="CampaignJoinMenu"]
+[node name="HBoxPort" type="HBoxContainer" parent="CampaignJoinMenu" unique_id=863495518]
 layout_mode = 2
 
-[node name="Label" type="Label" parent="CampaignJoinMenu/HBoxPort"]
+[node name="Label" type="Label" parent="CampaignJoinMenu/HBoxPort" unique_id=966585516]
 layout_mode = 2
 text = "Port:"
 
-[node name="JoinPortInput" type="LineEdit" parent="CampaignJoinMenu/HBoxPort"]
+[node name="JoinPortInput" type="LineEdit" parent="CampaignJoinMenu/HBoxPort" unique_id=396316120]
 layout_mode = 2
 size_flags_horizontal = 3
 text = "7000"
 
-[node name="BtnJoinConnect" type="Button" parent="CampaignJoinMenu"]
+[node name="BtnJoinConnect" type="Button" parent="CampaignJoinMenu" unique_id=2063241331]
 layout_mode = 2
 text = "Connect"
 
-[node name="BtnJoinBack" type="Button" parent="CampaignJoinMenu"]
+[node name="BtnJoinBack" type="Button" parent="CampaignJoinMenu" unique_id=254654679]
 layout_mode = 2
 text = "Back"
 
-[node name="TacticalMenu" type="VBoxContainer" parent="."]
+[node name="TacticalMenu" type="VBoxContainer" parent="." unique_id=365502142]
 visible = false
 layout_mode = 1
 anchors_preset = 8
@@ -178,30 +178,30 @@ grow_horizontal = 2
 grow_vertical = 2
 theme_override_constants/separation = 20
 
-[node name="Label" type="Label" parent="TacticalMenu"]
+[node name="Label" type="Label" parent="TacticalMenu" unique_id=1437760332]
 layout_mode = 2
 text = "Tactical Scenario"
 horizontal_alignment = 1
 
-[node name="AddressInput" type="LineEdit" parent="TacticalMenu"]
+[node name="AddressInput" type="LineEdit" parent="TacticalMenu" unique_id=156246813]
 layout_mode = 2
 text = "127.0.0.1"
 placeholder_text = "Host Address"
 alignment = 1
 
-[node name="HostButton" type="Button" parent="TacticalMenu"]
+[node name="HostButton" type="Button" parent="TacticalMenu" unique_id=753055727]
 layout_mode = 2
 text = "Host Game"
 
-[node name="JoinButton" type="Button" parent="TacticalMenu"]
+[node name="JoinButton" type="Button" parent="TacticalMenu" unique_id=234760892]
 layout_mode = 2
 text = "Join Game"
 
-[node name="BtnBack" type="Button" parent="TacticalMenu"]
+[node name="BtnBack" type="Button" parent="TacticalMenu" unique_id=1514679938]
 layout_mode = 2
 text = "Back"
 
-[node name="StatusLabel" type="Label" parent="."]
+[node name="StatusLabel" type="Label" parent="." unique_id=81514429]
 layout_mode = 1
 anchors_preset = 7
 anchor_left = 0.5
