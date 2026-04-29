@@ -92,6 +92,14 @@ jobs:
           path: |
             ./Linux/kh.x86_64
 
+      - name: Upload macOS
+        uses: actions/upload-artifact@v4
+        with:
+          name: macOS Build
+          path: |
+            ./macOS/kh.zip
+            ./macOS/kh.dmg
+
       - name: Itch.io deployment
         if: github.ref == 'refs/heads/main'
         env:
@@ -112,7 +120,13 @@ jobs:
           cp "./Linux/kh.x86_64" itch_linux/ 2>/dev/null || true
           cp "./Linux/kh.pck" itch_linux/ 2>/dev/null || true
 
+          # Prep macOS upload directory
+          mkdir itch_mac
+          cp "./macOS/kh.zip" itch_mac/ 2>/dev/null || true
+          cp "./macOS/kh.dmg" itch_mac/ 2>/dev/null || true
+
           # Push to Itch.io using butler
           ./butler push itch_windows vomitron/sfkh-simulator:windows --userversion ${VERSION_STRING}
           ./butler push itch_linux vomitron/sfkh-simulator:linux --userversion ${VERSION_STRING}
+          ./butler push itch_mac vomitron/sfkh-simulator:mac --userversion ${VERSION_STRING}
     
