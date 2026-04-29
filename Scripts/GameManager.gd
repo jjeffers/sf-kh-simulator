@@ -302,8 +302,16 @@ func _setup_network_identity():
 		
 	# Set Window Title for Easy Identification
 	var side_name = get_side_name(my_side_id)
-	var title = "Hex Space Combat - Player %d (%s)" % [my_side_id, side_name]
+	var p_name = "Player"
+	if NetworkManager != null and "player_info" in NetworkManager:
+		p_name = NetworkManager.player_info.get("name", "Player")
+		
+	var title = "Hex Space Combat - %s (%s)" % [p_name, side_name]
 	get_window().title = title
+
+	if label_player_info:
+		label_player_info.text = "Player: %s\nSide: %s" % [p_name, side_name]
+		label_player_info.visible = true
 
 	# Force UI Update to show Side ID immediately
 	_update_ui_state()
@@ -4161,9 +4169,9 @@ func _update_ui_state():
 		if btn_exec_move: btn_exec_move.visible = false
 		label_status.text = "Game Over"
 
-	# Update Player Info Label
+	# Player Info Label is setup initially and should remain visible.
 	if label_player_info:
-		label_player_info.visible = false
+		label_player_info.visible = true
 
 func _on_undo():
 	if not selected_ship: return
