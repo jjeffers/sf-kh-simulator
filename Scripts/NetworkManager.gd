@@ -49,6 +49,8 @@ func join_game(address = "", port = PORT):
 	if error:
 		return error
 	multiplayer.multiplayer_peer = peer
+	
+	return OK
 
 func host_game(port = PORT):
 	var peer = WebSocketMultiplayerPeer.new()
@@ -66,6 +68,8 @@ func host_game(port = PORT):
 	
 	# Ensure clean state
 	game_setup_data.clear()
+	
+	return OK
 
 func _on_player_connected(id):
 	_register_player.rpc_id(id, player_info)
