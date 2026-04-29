@@ -85,7 +85,7 @@ func _has_deployed() -> bool:
 
 func _has_unmoved_ships() -> bool:
 	for s in game_manager.ships:
-		if is_instance_valid(s) and s.side_id == side_id and not s.has_moved and not s.has_orders and not s.is_exploding and not s.has_withdrawn:
+		if is_instance_valid(s) and s.side_id == side_id and not s.has_moved and not s.has_orders and not s.is_exploding and not s.is_destroyed and not s.has_withdrawn:
 			return true
 	return false
 
@@ -200,7 +200,7 @@ func _execute_movement():
 		var nearest_ship = null
 		var min_d = 999
 		for sh in game_manager.ships:
-			if is_instance_valid(sh) and not sh.is_exploding:
+			if is_instance_valid(sh) and not sh.is_exploding and not sh.is_destroyed:
 				var d = HexGrid.hex_distance(s_pos, sh.grid_position)
 				if d < min_d:
 					min_d = d
@@ -245,7 +245,7 @@ func _execute_movement():
 	var ship_to_move = null
 	var unmoved_count = 0
 	for s in game_manager.ships:
-		if is_instance_valid(s) and s.side_id == side_id and not s.has_moved and not s.has_orders and not s.is_exploding and not s.has_withdrawn:
+		if is_instance_valid(s) and s.side_id == side_id and not s.has_moved and not s.has_orders and not s.is_exploding and not s.is_destroyed and not s.has_withdrawn:
 			unmoved_count += 1
 			if ship_to_move == null:
 				ship_to_move = s
@@ -254,7 +254,7 @@ func _execute_movement():
 		return
 		
 	# Quick indicator if this is the start of the sequence
-	var total_my_ships = game_manager.ships.filter(func(s): return is_instance_valid(s) and s.side_id == side_id and not s.is_exploding).size()
+	var total_my_ships = game_manager.ships.filter(func(s): return is_instance_valid(s) and s.side_id == side_id and not s.is_exploding and not s.is_destroyed).size()
 	if unmoved_count == total_my_ships:
 		game_manager.log_message("[color=yellow]AI Computer Opponent Planning Movement...[/color]")
 		
@@ -270,12 +270,12 @@ func _execute_movement():
 			_flight_leader_targets[ship_to_move.name] = target_enemy
 		else:
 			target_enemy = _flight_leader_targets.get(leader.name, null)
-			if not is_instance_valid(target_enemy) or target_enemy.is_exploding:
+			if not is_instance_valid(target_enemy) or target_enemy.is_exploding or target_enemy.is_destroyed:
 				target_enemy = _pick_strike_target(ship_to_move)
 	else:
 		var min_dist = 9999
 		for e in game_manager.ships:
-			if is_instance_valid(e) and e.side_id != side_id and not e.is_exploding:
+			if is_instance_valid(e) and e.side_id != side_id and not e.is_exploding and not e.is_destroyed:
 				var d = HexGrid.hex_distance(start_hex, e.grid_position)
 				if d < min_dist:
 					min_dist = d
@@ -576,8 +576,8 @@ func _calculate_retreat_utility(ship: Ship) -> float:
 
 # --- COMBAT ---
 func _plan_combat() -> Array:
-	var my_ships = game_manager.ships.filter(func(s): return is_instance_valid(s) and s.side_id == side_id and not s.is_exploding)
-	var targets = game_manager.ships.filter(func(s): return is_instance_valid(s) and s.side_id != side_id and not s.is_exploding)
+	var my_ships = game_manager.ships.filter(func(s): return is_instance_valid(s) and s.side_id == side_id and not s.is_exploding and not s.is_destroyed)
+	var targets = game_manager.ships.filter(func(s): return is_instance_valid(s) and s.side_id != side_id and not s.is_exploding and not s.is_destroyed)
 	var attacks_data = []
 	
 	for ship in my_ships:
@@ -634,7 +634,7 @@ func _get_flight_leader(fighter: Ship) -> Ship:
 		
 	var potential_leaders = []
 	for ally in game_manager.ships:
-		if is_instance_valid(ally) and ally.side_id == fighter.side_id and ally.ship_class == "Fighter" and not ally.is_exploding:
+		if is_instance_valid(ally) and ally.side_id == fighter.side_id and ally.ship_class == "Fighter" and not ally.is_exploding and not ally.is_destroyed:
 			if HexGrid.hex_distance(fighter.grid_position, ally.grid_position) <= 20:
 				potential_leaders.append(ally)
 				
@@ -650,7 +650,7 @@ func _pick_strike_target(ship: Ship) -> Ship:
 	var best_utility = -999.0
 	
 	for e in game_manager.ships:
-		if is_instance_valid(e) and e.side_id != ship.side_id and not e.is_exploding:
+		if is_instance_valid(e) and e.side_id != ship.side_id and not e.is_exploding and not e.is_destroyed:
 			var dist = HexGrid.hex_distance(ship.grid_position, e.grid_position)
 			var u = 20.0 - (dist * 0.5) # Preference for closer targets, but heavily outweighed by ship class
 			
@@ -676,4 +676,3 @@ func _pick_strike_target(ship: Ship) -> Ship:
 				best_target = e
 				
 	return best_target
-

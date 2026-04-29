@@ -6,8 +6,18 @@ var output: RichTextLabel
 var max_lines: int = 200
 var _logs: Array[String] = []
 
+var _last_log_time: int = 0
+var _is_headless_bot: bool = false
+var _deadlock_timeout_ms: int = 60000 # 60 seconds
+
 func _ready():
 	process_mode = Node.PROCESS_MODE_ALWAYS
+	
+	_last_log_time = Time.get_ticks_msec()
+	var args = OS.get_cmdline_args()
+	if "--headless" in args and "--bot" in args:
+		_is_headless_bot = true
+		print("[ConsoleManager] Headless Bot Mode detected. Deadlock detection enabled (60s).")
 	
 	canvas = CanvasLayer.new()
 	canvas.layer = 100 # Ensure it draws on top of everything
@@ -58,8 +68,17 @@ func _input(event):
 func toggle_console():
 	canvas.visible = not canvas.visible
 
+func _process(_delta):
+	if _is_headless_bot:
+		if Time.get_ticks_msec() - _last_log_time > _deadlock_timeout_ms:
+			log_message("\n[color=red][DEADLOCK DETECTED] No log messages received for %d seconds. Exiting...[/color]\n" % (_deadlock_timeout_ms / 1000))
+			# Allow a tiny bit of time for print buffers to flush
+			await get_tree().create_timer(0.1).timeout
+			get_tree().quit(1)
+
 @rpc("any_peer", "call_local", "reliable")
 func log_message(msg: String):
+	_last_log_time = Time.get_ticks_msec()
 	print(msg.strip_edges()) # Still print to standard stdout
 	_logs.append(msg)
 	if _logs.size() > max_lines:

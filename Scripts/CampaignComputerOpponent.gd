@@ -195,7 +195,7 @@ func _process_sathar_repairs(fleet):
 func _execute_movement():
 	var idle_fleets = []
 	for f in campaign.fleets:
-		if f.faction == faction and not f.is_moving():
+		if f.faction == faction and not f.is_moving() and not campaign.active_encounters.has(f.current_system_id):
 			idle_fleets.append(f)
 			
 	for fleet in idle_fleets:
