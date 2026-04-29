@@ -2169,6 +2169,17 @@ func _update_key_hints():
 		hints += "[color=cyan][b]Scroll[/b][/color]: Zoom"
 		hints += "[/center]"
 		label_key_hints.text = hints
+	elif current_phase == Phase.COMBAT and current_combat_state == CombatState.PLANNING:
+		panel_key_hints.visible = true
+		var hints = "[center]"
+		hints += "[color=cyan][b]TAB[/b][/color]: Cycle Ships  |  "
+		hints += "[color=cyan][b]Q[/b][/color]: Cycle Weapons  |  "
+		hints += "[color=cyan][b]E[/b][/color]: Cycle Targets  |  "
+		hints += "[color=cyan][b]L-Click[/b][/color]: Select Target  |  "
+		hints += "[color=cyan][b]W/A/S/D[/b][/color]: Pan  |  "
+		hints += "[color=cyan][b]Scroll[/b][/color]: Zoom"
+		hints += "[/center]"
+		label_key_hints.text = hints
 	else:
 		panel_key_hints.visible = false
 
