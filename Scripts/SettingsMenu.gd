@@ -31,5 +31,16 @@ func _on_sfx_changed(value: float):
 		AudioServer.set_bus_volume_db(sfx_bus, linear_to_db(value))
 
 func _on_close_pressed():
+	_save_settings()
 	closed.emit()
 	queue_free()
+
+func _save_settings():
+	var config = ConfigFile.new()
+	config.load("user://settings.cfg")
+	if music_bus >= 0:
+		config.set_value("Audio", "music_volume", db_to_linear(AudioServer.get_bus_volume_db(music_bus)))
+	if sfx_bus >= 0:
+		config.set_value("Audio", "sfx_volume", db_to_linear(AudioServer.get_bus_volume_db(sfx_bus)))
+	config.save("user://settings.cfg")
+
