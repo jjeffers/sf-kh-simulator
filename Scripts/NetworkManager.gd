@@ -20,6 +20,7 @@ var player_info = {
 var loaded_players = {}
 
 var game_setup_data = {} # { "scenario": "key", "host_side": 0 }
+var disconnect_reason = ""
 
 # Lobby Data
 var lobby_data = {
@@ -89,10 +90,15 @@ func _register_player(new_player_info):
 		var client_version = new_player_info.get("version", "unknown")
 		
 		if server_version != client_version:
-			print("[NetworkManager] Rejecting Peer %d - Version Mismatch! Server: %s, Client: %s" % [new_player_id, server_version, client_version])
-			# Disconnect the peer; give it a tiny delay to ensure the RPC finishes first if needed,
-			# but disconnect_peer is usually fine to call immediately.
-			multiplayer.multiplayer_peer.disconnect_peer(new_player_id)
+			var msg = "Version Mismatch! Server: %s, Client: %s" % [server_version, client_version]
+			print("[NetworkManager] Rejecting Peer %d - %s" % [new_player_id, msg])
+			receive_rejection.rpc_id(new_player_id, msg)
+			# Disconnect the peer; give it a tiny delay to ensure the RPC finishes first
+			var timer = get_tree().create_timer(0.5)
+			timer.timeout.connect(func():
+				if multiplayer.multiplayer_peer:
+					multiplayer.multiplayer_peer.disconnect_peer(new_player_id)
+			)
 			return
 
 	players[new_player_id] = new_player_info
@@ -133,6 +139,11 @@ func _on_server_disconnected():
 	server_disconnected.emit()
 
 # --- Lobby RPCs ---
+
+@rpc("authority", "call_local", "reliable")
+func receive_rejection(reason: String):
+	print("[NetworkManager] Connection rejected: ", reason)
+	disconnect_reason = reason
 
 @rpc("any_peer", "call_local", "reliable")
 func request_team_change(team_id: int):
