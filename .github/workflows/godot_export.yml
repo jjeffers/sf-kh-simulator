@@ -98,7 +98,6 @@ jobs:
           name: macOS Build
           path: |
             ./macOS/kh.zip
-            ./macOS/kh.dmg
 
       - name: Itch.io deployment
         if: github.ref == 'refs/heads/main'
