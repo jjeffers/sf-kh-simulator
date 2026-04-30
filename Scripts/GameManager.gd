@@ -302,8 +302,16 @@ func _setup_network_identity():
 		
 	# Set Window Title for Easy Identification
 	var side_name = get_side_name(my_side_id)
-	var title = "Hex Space Combat - Player %d (%s)" % [my_side_id, side_name]
+	var p_name = "Player"
+	if NetworkManager != null and "player_info" in NetworkManager:
+		p_name = NetworkManager.player_info.get("name", "Player")
+		
+	var title = "Hex Space Combat - %s (%s)" % [p_name, side_name]
 	get_window().title = title
+
+	if label_player_info:
+		label_player_info.text = "Player: %s\nSide: %s" % [p_name, side_name]
+		label_player_info.visible = true
 
 	# Force UI Update to show Side ID immediately
 	_update_ui_state()
@@ -779,6 +787,25 @@ func _setup_ui():
 	label_player_info.position = Vector2(get_viewport_rect().size.x - 450, 10)
 	ui_layer.add_child(label_player_info)
 	
+	# Key Hints (Bottom Center)
+	panel_key_hints = PanelContainer.new()
+	panel_key_hints.anchor_top = 1.0
+	panel_key_hints.anchor_bottom = 1.0
+	panel_key_hints.anchor_left = 0.5
+	panel_key_hints.anchor_right = 0.5
+	panel_key_hints.grow_horizontal = Control.GROW_DIRECTION_BOTH
+	panel_key_hints.grow_vertical = Control.GROW_DIRECTION_BEGIN
+	panel_key_hints.offset_bottom = -20
+	panel_key_hints.visible = false
+	ui_layer.add_child(panel_key_hints)
+	
+	label_key_hints = RichTextLabel.new()
+	label_key_hints.bbcode_enabled = true
+	label_key_hints.fit_content = true
+	label_key_hints.autowrap_mode = TextServer.AUTOWRAP_OFF
+	label_key_hints.add_theme_font_size_override("normal_font_size", 16)
+	panel_key_hints.add_child(label_key_hints)
+	
 	# Audio Setup
 	var audio_node = Node.new()
 	audio_node.name = "AudioParams"
@@ -1066,6 +1093,8 @@ var label_center_message: Label
 var label_player_info: Label
 var label_status: Label
 var ship_status_panel # Typed as ShipStatusPanel, but checking if weak typing helps CI
+var panel_key_hints: PanelContainer
+var label_key_hints: RichTextLabel
 
 
 func log_message(msg: String):
@@ -2127,6 +2156,32 @@ func _update_phase_indicator():
 		
 	label_phase_indicator.text = text
 
+func _update_key_hints():
+	if not label_key_hints or not panel_key_hints: return
+	
+	if current_phase == Phase.MOVEMENT:
+		panel_key_hints.visible = true
+		var hints = "[center]"
+		hints += "[color=cyan][b]TAB[/b][/color]: Cycle Ships  |  "
+		hints += "[color=cyan][b]L-Click[/b][/color]: Plot Move  |  "
+		hints += "[color=cyan][b]R-Click[/b][/color]: Commit Move  |  "
+		hints += "[color=cyan][b]W/A/S/D[/b][/color]: Pan Camera  |  "
+		hints += "[color=cyan][b]Scroll[/b][/color]: Zoom"
+		hints += "[/center]"
+		label_key_hints.text = hints
+	elif current_phase == Phase.COMBAT and current_combat_state == CombatState.PLANNING:
+		panel_key_hints.visible = true
+		var hints = "[center]"
+		hints += "[color=cyan][b]TAB[/b][/color]: Cycle Ships  |  "
+		hints += "[color=cyan][b]Q[/b][/color]: Cycle Weapons  |  "
+		hints += "[color=cyan][b]E[/b][/color]: Cycle Targets  |  "
+		hints += "[color=cyan][b]L-Click[/b][/color]: Select Target  |  "
+		hints += "[color=cyan][b]W/A/S/D[/b][/color]: Pan  |  "
+		hints += "[color=cyan][b]Scroll[/b][/color]: Zoom"
+		hints += "[/center]"
+		label_key_hints.text = hints
+	else:
+		panel_key_hints.visible = false
 
 func _cycle_selection():
 	# Authority Check: Cannot cycle selection if it's not my turn (Movement)
@@ -3840,6 +3895,7 @@ func _update_ui_state():
 	if not ui_layer: return
 	
 	_update_phase_indicator()
+	_update_key_hints()
 	
 	# Reset Panels should be handled per-phase to avoid flicker
 	# panel_planning.visible = false 
@@ -4161,9 +4217,9 @@ func _update_ui_state():
 		if btn_exec_move: btn_exec_move.visible = false
 		label_status.text = "Game Over"
 
-	# Update Player Info Label
+	# Player Info Label is setup initially and should remain visible.
 	if label_player_info:
-		label_player_info.visible = false
+		label_player_info.visible = true
 
 func _on_undo():
 	if not selected_ship: return
@@ -4533,10 +4589,31 @@ func _on_drop_seeker_pressed():
 		log_message("Seeker placement mode OFF.")
 	queue_redraw()
 
-func _on_commit_move():
+func _on_commit_move(is_explicit_stop: bool = false):
 	# Authority Check
 	if my_side_id != 0 and current_side_id != my_side_id:
 		log_message("Not your turn! (Active: %d, You: %d)" % [current_side_id, my_side_id])
+		return
+		
+	# NEW: Auto-fill default forward path if no path plotted and not explicitly stopping
+	if current_path.is_empty() and not is_explicit_stop and selected_ship.speed > 0 and not selected_ship.is_docked:
+		var auto_path: Array[Vector3i] = []
+		var current_hex = selected_ship.grid_position
+		var dir_vec = HexGrid.get_direction_vec(selected_ship.facing)
+		for i in range(selected_ship.speed):
+			current_hex += dir_vec
+			auto_path.append(current_hex)
+		current_path = auto_path
+
+	# NEW: Pre-validate deceleration to avoid silent server rejections
+	var old_speed = selected_ship.speed
+	if selected_ship.is_docked:
+		old_speed = 0
+	var eff_adf = selected_ship.get_effective_adf()
+	var min_speed = max(0, old_speed - eff_adf)
+	
+	if current_path.size() < min_speed and not state_is_orbiting:
+		log_message("[color=red]Cannot commit! Must move at least %d hexes (ADF %d).[/color]" % [min_speed, eff_adf])
 		return
 		
 	# NETWORK: Send RPC
@@ -4645,10 +4722,18 @@ func register_movement_plan(ship_name: String, path: Array, final_facing: int, o
 		typed_path.append(Vector3i(p))
 	
 	if not _validate_move_path(ship, typed_path, final_facing, is_orbiting):
-		log_message("[Security] Move rejected: Invalid Path/Speed for %s" % ship.name)
+		var err_msg = "[Security] Move rejected: Invalid Path/Speed for %s" % ship.name
+		if _is_networked():
+			rpc_log_message.rpc_id(sender_id, err_msg)
+		else:
+			log_message(err_msg)
 		return
 
-	log_message("Orders Received for %s" % ship.name)
+	var msg = "Orders Received for %s" % ship.name
+	if _is_networked():
+		rpc_log_message.rpc_id(sender_id, msg)
+	else:
+		log_message(msg)
 	
 	# Store the Plan
 	ship.planned_path = typed_path
@@ -4718,7 +4803,9 @@ func rpc_sync_movement_plan(ship_name: String, path: Array, final_facing: int, o
 		typed_seekers.append(Vector3i(hex))
 	ship.planned_seekers_to_drop = typed_seekers
 	
-	log_message("Synced Orders for %s" % ship.name)
+	var msg = "Synced Orders for %s" % ship.name
+	if path.size() == 0: msg = "Synced Orders for %s: Hold Position" % ship.name
+	log_message(msg)
 	
 	# Update Visuals
 	_update_movement_ui_list()
@@ -6744,7 +6831,7 @@ func _handle_movement_click(hex: Vector3i):
 		if min_speed == 0:
 			log_message("Requesting Full Stop (Speed 0)...")
 			# Commit Empty Path = Stay in place
-			_on_commit_move()
+			_on_commit_move(true)
 			return
 		else:
 			log_message("Cannot stop! Min speed is %d" % min_speed)
@@ -7178,6 +7265,11 @@ func _on_ship_destroyed(ship: Ship):
 	ships.erase(ship)
 	_update_ship_visuals() # Re-calc stacks
 	log_message("Ship destroyed: %s" % ship.name)
+	
+	# Explicitly trigger explosion to ensure visual cleanup across all clients
+	if is_instance_valid(ship):
+		ship.trigger_explosion()
+		
 	_check_victory()
 
 func _check_victory():

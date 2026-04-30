@@ -31,6 +31,12 @@ var lobby_data = {
 }
 
 func _ready():
+	var config = ConfigFile.new()
+	if config.load("user://settings.cfg") == OK:
+		var loaded_name = config.get_value("Player", "name", "")
+		if loaded_name != "":
+			player_info["name"] = loaded_name
+
 	multiplayer.peer_connected.connect(_on_player_connected)
 	multiplayer.peer_disconnected.connect(_on_player_disconnected)
 	multiplayer.connected_to_server.connect(_on_connected_ok)

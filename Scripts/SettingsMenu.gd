@@ -2,6 +2,7 @@ extends CanvasLayer
 
 @onready var music_slider = $Panel/VBox/HBoxMusic/MusicSlider
 @onready var sfx_slider = $Panel/VBox/HBoxSFX/SFXSlider
+@onready var player_name_input = $Panel/VBox/HBoxPlayer/PlayerNameInput
 @onready var close_btn = $Panel/VBox/CloseBtn
 
 var music_bus: int
@@ -21,6 +22,12 @@ func _ready():
 		music_slider.value = db_to_linear(AudioServer.get_bus_volume_db(music_bus))
 	if sfx_bus >= 0:
 		sfx_slider.value = db_to_linear(AudioServer.get_bus_volume_db(sfx_bus))
+		
+	var config = ConfigFile.new()
+	if config.load("user://settings.cfg") == OK:
+		var loaded_name = config.get_value("Player", "name", "")
+		if loaded_name != "":
+			player_name_input.text = loaded_name
 
 func _on_music_changed(value: float):
 	if music_bus >= 0:
@@ -42,5 +49,13 @@ func _save_settings():
 		config.set_value("Audio", "music_volume", db_to_linear(AudioServer.get_bus_volume_db(music_bus)))
 	if sfx_bus >= 0:
 		config.set_value("Audio", "sfx_volume", db_to_linear(AudioServer.get_bus_volume_db(sfx_bus)))
+		
+	var p_name = player_name_input.text.strip_edges()
+	if p_name != "":
+		config.set_value("Player", "name", p_name)
+		# Immediately update NetworkManager if available
+		if NetworkManager and "player_info" in NetworkManager:
+			NetworkManager.player_info["name"] = p_name
+			
 	config.save("user://settings.cfg")
 

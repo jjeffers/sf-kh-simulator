@@ -19,6 +19,15 @@ offset_bottom = 150.0
 grow_horizontal = 2
 grow_vertical = 2
 
+[node name="ColorRect" type="ColorRect" parent="Panel"]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+color = Color(0.15, 0.15, 0.15, 1)
+
 [node name="VBox" type="VBoxContainer" parent="Panel"]
 anchors_preset = 15
 anchor_right = 1.0
@@ -37,6 +46,19 @@ layout_mode = 2
 theme_override_font_sizes/font_size = 24
 text = "Settings"
 horizontal_alignment = 1
+
+[node name="HBoxPlayer" type="HBoxContainer" parent="Panel/VBox"]
+layout_mode = 2
+
+[node name="Label" type="Label" parent="Panel/VBox/HBoxPlayer"]
+custom_minimum_size = Vector2(120, 0)
+layout_mode = 2
+text = "Player Name"
+
+[node name="PlayerNameInput" type="LineEdit" parent="Panel/VBox/HBoxPlayer"]
+layout_mode = 2
+size_flags_horizontal = 3
+placeholder_text = "Enter name..."
 
 [node name="HBoxMusic" type="HBoxContainer" parent="Panel/VBox"]
 layout_mode = 2
