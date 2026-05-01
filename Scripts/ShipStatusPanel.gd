@@ -64,7 +64,7 @@ func _setup_ui():
 	
 	name_label = Label.new()
 	name_label.text = "SHIP NAME"
-	name_label.add_theme_font_size_override("font_size", 18)
+	name_label.add_theme_font_size_override("font_size", 22)
 	name_label.add_theme_color_override("font_color", Color.YELLOW)
 	info_vbox.add_child(name_label)
 	
@@ -75,7 +75,7 @@ func _setup_ui():
 	
 	faction_label = Label.new()
 	faction_label.text = "Faction"
-	faction_label.add_theme_font_size_override("font_size", 12)
+	faction_label.add_theme_font_size_override("font_size", 15)
 	faction_label.add_theme_color_override("font_color", Color(0.6, 0.6, 0.6))
 	info_vbox.add_child(faction_label)
 

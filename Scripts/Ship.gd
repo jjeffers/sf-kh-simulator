@@ -1745,8 +1745,9 @@ func _draw():
 	if not is_ghost and show_info:
 		# Draw Name
 		var default_font = ThemeDB.fallback_font
-		var font_size = 14
+		var font_size = 18
 		var name_pos = Vector2(-size, -size - 10)
+		draw_string_outline(default_font, name_pos, get_display_name(), HORIZONTAL_ALIGNMENT_CENTER, -1, font_size, 2, Color.BLACK)
 		draw_string(default_font, name_pos, get_display_name(), HORIZONTAL_ALIGNMENT_CENTER, -1, font_size, Color.WHITE)
 		
 		# Draw Health Bar
