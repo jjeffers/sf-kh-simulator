@@ -1020,6 +1020,8 @@ func _on_fleet_list_activated(idx: int):
 	
 	var dialog = ConfirmationDialog.new()
 	dialog.title = "Rename Fleet"
+	dialog.add_theme_font_size_override("title_font_size", 24)
+	label.add_theme_font_size_override("font_size", 24)
 	dialog.add_child(vbox)
 	add_child(dialog)
 	
@@ -1115,6 +1117,8 @@ func _on_ship_list_activated(idx: int):
 	
 	var dialog = ConfirmationDialog.new()
 	dialog.title = "Rename Ship"
+	dialog.add_theme_font_size_override("title_font_size", 24)
+	label.add_theme_font_size_override("font_size", 24)
 	dialog.add_child(vbox)
 	add_child(dialog)
 	
@@ -1286,7 +1290,7 @@ func _handle_encounter_click(sys_name: String):
 	var title = Label.new()
 	title.text = "Combat Encounter: " + sys_name
 	title.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	title.add_theme_font_size_override("font_size", 24)
+	title.add_theme_font_size_override("font_size", 36)
 	vbox.add_child(title)
 	
 	var hs = HSeparator.new()
@@ -1295,6 +1299,8 @@ func _handle_encounter_click(sys_name: String):
 	var ship_list_label = RichTextLabel.new()
 	ship_list_label.bbcode_enabled = true
 	ship_list_label.custom_minimum_size = Vector2(0, 150)
+	ship_list_label.add_theme_font_size_override("normal_font_size", 24)
+	ship_list_label.add_theme_font_size_override("bold_font_size", 24)
 	ship_list_label.text = "[b]Friendly Forces Present:[/b]\n"
 	
 	var friendly_ships = []
@@ -1351,10 +1357,12 @@ func _handle_encounter_click(sys_name: String):
 	vbox.add_child(ship_list_label)
 	
 	var routes_dropdown = OptionButton.new()
+	routes_dropdown.add_theme_font_size_override("font_size", 24)
 	var valid_routes = []
 	if is_defender:
 		var retreat_label = Label.new()
 		retreat_label.text = "Select Retreat Destination:"
+		retreat_label.add_theme_font_size_override("font_size", 24)
 		vbox.add_child(retreat_label)
 		
 		# Find connected systems
@@ -1374,6 +1382,7 @@ func _handle_encounter_click(sys_name: String):
 			var mil_warning = Label.new()
 			mil_warning.text = "WARNING: Militia ships cannot retreat from their home system."
 			mil_warning.modulate = Color.ORANGE
+			mil_warning.add_theme_font_size_override("font_size", 24)
 			vbox.add_child(mil_warning)
 			
 		vbox.add_child(routes_dropdown)
@@ -1381,6 +1390,7 @@ func _handle_encounter_click(sys_name: String):
 		var attack_lbl = Label.new()
 		attack_lbl.text = "You are the Attacker."
 		attack_lbl.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+		attack_lbl.add_theme_font_size_override("font_size", 24)
 		vbox.add_child(attack_lbl)
 	
 	var btn_hbox = HBoxContainer.new()
@@ -1388,6 +1398,7 @@ func _handle_encounter_click(sys_name: String):
 	
 	var close_btn = Button.new()
 	close_btn.text = "Cancel"
+	close_btn.add_theme_font_size_override("font_size", 24)
 	close_btn.pressed.connect(func():
 		layer.name = "ClosingDialog" 
 		layer.queue_free()
@@ -1397,6 +1408,7 @@ func _handle_encounter_click(sys_name: String):
 	if is_defender and valid_routes.size() > 0 and friendly_ships.size() > 0:
 		var retreat_btn = Button.new()
 		retreat_btn.text = "Order Fleet Retreat"
+		retreat_btn.add_theme_font_size_override("font_size", 24)
 		var callable_retreat = func():
 			var selected_idx = routes_dropdown.selected
 			var target_sys = valid_routes[selected_idx]["sys"]
@@ -1410,6 +1422,7 @@ func _handle_encounter_click(sys_name: String):
 	if is_attacker:
 		var start_battle_btn = Button.new()
 		start_battle_btn.text = "Ready For Battle"
+		start_battle_btn.add_theme_font_size_override("font_size", 24)
 		start_battle_btn.modulate = Color(1.0, 0.4, 0.4)
 		start_battle_btn.pressed.connect(func():
 			start_battle_btn.text = "Waiting for other player..."
@@ -1420,6 +1433,7 @@ func _handle_encounter_click(sys_name: String):
 	else:
 		var waiting_lbl = Label.new()
 		waiting_lbl.text = "Waiting for Attacker..."
+		waiting_lbl.add_theme_font_size_override("font_size", 24)
 		waiting_lbl.modulate = Color.GRAY
 		btn_hbox.add_child(waiting_lbl)
 	

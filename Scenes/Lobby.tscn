@@ -13,6 +13,7 @@ script = ExtResource("1_lobby")
 
 [node name="OptionScenario" type="OptionButton" parent="."]
 layout_mode = 0
+theme_override_font_sizes/font_size = 24
 offset_left = 40.0
 offset_top = 40.0
 offset_right = 240.0
@@ -20,6 +21,7 @@ offset_bottom = 71.0
 
 [node name="ButtonStart" type="Button" parent="."]
 layout_mode = 1
+theme_override_font_sizes/font_size = 24
 anchors_preset = 1
 anchor_left = 1.0
 anchor_right = 1.0
@@ -52,15 +54,18 @@ layout_mode = 2
 
 [node name="Label" type="Label" parent="HBoxContainer/Team1Panel/VBoxContainer"]
 layout_mode = 2
+theme_override_font_sizes/font_size = 36
 text = "Team 1 (Attacker)"
 horizontal_alignment = 1
 
 [node name="List" type="ItemList" parent="HBoxContainer/Team1Panel/VBoxContainer"]
 layout_mode = 2
+theme_override_font_sizes/font_size = 24
 size_flags_vertical = 3
 
 [node name="ButtonJoin1" type="Button" parent="HBoxContainer/Team1Panel/VBoxContainer"]
 layout_mode = 2
+theme_override_font_sizes/font_size = 24
 text = "Join Team"
 
 [node name="Team2Panel" type="PanelContainer" parent="HBoxContainer"]
@@ -72,15 +77,18 @@ layout_mode = 2
 
 [node name="Label" type="Label" parent="HBoxContainer/Team2Panel/VBoxContainer"]
 layout_mode = 2
+theme_override_font_sizes/font_size = 36
 text = "Team 2 (Defender)"
 horizontal_alignment = 1
 
 [node name="List" type="ItemList" parent="HBoxContainer/Team2Panel/VBoxContainer"]
 layout_mode = 2
+theme_override_font_sizes/font_size = 24
 size_flags_vertical = 3
 
 [node name="ButtonJoin2" type="Button" parent="HBoxContainer/Team2Panel/VBoxContainer"]
 layout_mode = 2
+theme_override_font_sizes/font_size = 24
 text = "Join Team"
 
 [node name="UnassignedPanel" type="PanelContainer" parent="HBoxContainer"]
@@ -92,11 +100,13 @@ layout_mode = 2
 
 [node name="Label" type="Label" parent="HBoxContainer/UnassignedPanel/VBoxContainer"]
 layout_mode = 2
+theme_override_font_sizes/font_size = 36
 text = "Unassigned"
 horizontal_alignment = 1
 
 [node name="List" type="ItemList" parent="HBoxContainer/UnassignedPanel/VBoxContainer"]
 layout_mode = 2
+theme_override_font_sizes/font_size = 24
 size_flags_vertical = 3
 
 

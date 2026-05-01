@@ -21,7 +21,7 @@ layout_mode = 2
 
 [node name="HeaderLabel" type="Label" parent="VBoxContainer"]
 layout_mode = 2
-theme_override_font_sizes/font_size = 20
+theme_override_font_sizes/font_size = 30
 text = "Transfer Ships"
 horizontal_alignment = 1
 
