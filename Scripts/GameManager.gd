@@ -6987,11 +6987,14 @@ func _handle_ghost_input(hex: Vector3i):
 				# INVOLUNTARY FACING CHANGE: If MR < 0, forced turn toward planet
 				if turns_remaining < 0:
 					log_message("Gravity overwhelmed MR! Involuntary Facing Change down gravity well.")
-					# Calculate direction to planet from our CURRENT hex
 					var line_to_planet = HexGrid.get_line_coords(current_pos, planet_pos)
 					var forced_facing = -1
 					if line_to_planet.size() > 1:
-						forced_facing = HexGrid.get_hex_direction(current_pos, line_to_planet[1])
+						var ideal_facing = HexGrid.get_hex_direction(current_pos, line_to_planet[1])
+						if ideal_facing != -1 and ideal_facing != ghost_head_facing:
+							var diff = (ideal_facing - ghost_head_facing + 6) % 6
+							var step = 1 if diff <= 3 else -1
+							forced_facing = (ghost_head_facing + step + 6) % 6
 					
 					if forced_facing != -1 and forced_facing != ghost_head_facing:
 						# Update the ghost's facing immediately

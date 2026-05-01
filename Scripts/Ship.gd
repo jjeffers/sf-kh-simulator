@@ -1766,13 +1766,16 @@ func _draw():
 		draw_rect(fill_rect, health_color, true)
 
 func trigger_explosion():
-	if is_destroyed: return # Prevent double explosion/signal
+	if is_exploding: return # Prevent double explosion
 	
 	is_ms_active = false # Kill systems
 	is_exploding = true
-	is_destroyed = true
-	hull = 0
-	ship_destroyed.emit()
+	
+	if not is_destroyed:
+		is_destroyed = true
+		hull = 0
+		ship_destroyed.emit()
+		
 	queue_redraw()
 	
 	var particles = CPUParticles2D.new()

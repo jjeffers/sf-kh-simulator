@@ -86,16 +86,18 @@ func test_gravity_involuntary_facing_change():
 	# MR drops to -1.
 	# Facing changes toward planet. Line to planet from (0,-1,1) is (0,-1,1) -> (0,0,0).
 	# Direction from (0,-1,1) to (0,0,0) is Vector3i(0, 1, -1), which is index 1 (South-East).
-	# New forward vector is (0, 1, -1).
+	# Original facing is 3. Diff to 1 is -2 (+6 = 4). Step is -1.
+	# New facing is 3 - 1 = 2 (South-West).
+	# New forward vector is HexGrid.directions[2] which is Vector3i(-1, 1, 0).
 	
-	# Hex 2: Path bends and uses new forward vector from (0,-1,1) + (0,1,-1) = (0,0,0).
+	# Hex 2: Path bends and uses new forward vector from (0,-1,1) + (-1,1,0) = (-1,0,1).
 	
 	assert_eq(game_manager.gravity_penalty_applied_this_turn, true, "Gravity penalty applied")
 	assert_eq(game_manager.turns_remaining, -1, "MR driven below 0")
-	assert_eq(game_manager.ghost_head_facing, 1, "Involuntary facing change occurred toward the planet (Index 1)")
+	assert_eq(game_manager.ghost_head_facing, 2, "Involuntary facing change occurred toward the planet (Max 1 hex face / 60 degrees)")
 	
-	# Next hex from (0,-1,1) with new forward vec is (0, 0, 0)!
-	assert_eq(game_manager.ghost_head_pos, Vector3i(0, 0, 0), "Ghost diverted into a new hex heading towards the planet")
+	# Next hex from (0,-1,1) with new forward vec is (-1, 0, 1)!
+	assert_eq(game_manager.ghost_head_pos, Vector3i(-1, 0, 1), "Ghost diverted into a new hex heading towards the planet")
 
 func test_gravity_inward_turn_free():
 	# Position ship INSIDE well: (1, -1, 0)
