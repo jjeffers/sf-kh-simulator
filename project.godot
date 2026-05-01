@@ -40,6 +40,7 @@ enabled=PackedStringArray("res://addons/gut/plugin.cfg")
 
 [gui]
 
+theme/custom_font="res://Assets/Modenine-2OPd.ttf"
 theme/custom_font_size=24
 
 [rendering]
