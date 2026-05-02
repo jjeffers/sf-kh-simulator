@@ -6,7 +6,8 @@ extends Control
 @onready var TacticalMenu = $TacticalMenu
 @onready var status_label = $StatusLabel
 
-@onready var address_input = $TacticalMenu/AddressInput
+@onready var tactical_ip_input = $TacticalMenu/HBoxIP/TacticalIPInput
+@onready var tactical_port_input = $TacticalMenu/HBoxPort/TacticalPortInput
 @onready var host_button = $TacticalMenu/HostButton
 @onready var join_button = $TacticalMenu/JoinButton
 
@@ -35,6 +36,9 @@ func _ready():
 	var app_name = ProjectSettings.get_setting("application/config/name", "SFKH Simulator")
 	var version = ProjectSettings.get_setting("application/config/version", "Unknown")
 	DisplayServer.window_set_title("%s v%s" % [app_name, version])
+	
+	if has_node("StartupMenu/Label"):
+		$StartupMenu/Label.text = "Second Sathar War v%s" % version
 	
 	if not NetworkManager.disconnect_reason.is_empty():
 		var reason = NetworkManager.disconnect_reason
@@ -82,7 +86,10 @@ func _ready():
 		elif args[i] == "--join":
 			print("[MainMenu] Auto-Joining match...")
 			if i + 1 < args.size() and not args[i+1].begins_with("--"):
-				address_input.text = args[i+1]
+				var parts = args[i+1].split(":")
+				tactical_ip_input.text = parts[0]
+				if parts.size() > 1 and parts[1].is_valid_int():
+					tactical_port_input.text = parts[1]
 			call_deferred("_on_tactical_join")
 		elif args[i] == "--campaign-host":
 			print("[MainMenu] Auto-Hosting Campaign...")
@@ -190,6 +197,10 @@ func _on_campaign_host_start():
 	
 	var port = host_port_input.text.to_int()
 	if port <= 0: port = 7000
+	var ip = host_ip_input.text.strip_edges()
+	if ip.is_empty(): ip = "127.0.0.1"
+	
+	_save_last_server(ip, port)
 	
 	status_label.text = "Hosting Campaign on Port %d..." % port
 	var err = NetworkManager.host_game(port)
@@ -207,7 +218,7 @@ func _on_campaign_join_connect():
 	if port <= 0: port = 7000
 	if ip.is_empty(): ip = "127.0.0.1"
 	
-	_save_last_server(ip)
+	_save_last_server(ip, port)
 	
 	status_label.text = "Joining Campaign at %s:%d..." % [ip, port]
 	var err = NetworkManager.join_game(ip, port)
@@ -220,9 +231,12 @@ func _on_tactical_host():
 	target_lobby_scene = "res://Scenes/Lobby.tscn"
 	NetworkManager.lobby_data["game_mode"] = "tactical"
 	
-	_save_last_server(address_input.text)
-	var data = _get_target_address_port()
-	var port = data["port"]
+	var port = tactical_port_input.text.to_int()
+	if port <= 0: port = 7000
+	var addr = tactical_ip_input.text.strip_edges()
+	if addr.is_empty(): addr = "127.0.0.1"
+	
+	_save_last_server(addr, port)
 	
 	status_label.text = "Hosting Scenario on %d..." % port
 	var err = NetworkManager.host_game(port)
@@ -235,10 +249,12 @@ func _on_tactical_join():
 	target_lobby_scene = "res://Scenes/Lobby.tscn"
 	NetworkManager.lobby_data["game_mode"] = "tactical"
 	
-	_save_last_server(address_input.text)
-	var data = _get_target_address_port()
-	var addr = data["address"]
-	var port = data["port"]
+	var port = tactical_port_input.text.to_int()
+	if port <= 0: port = 7000
+	var addr = tactical_ip_input.text.strip_edges()
+	if addr.is_empty(): addr = "127.0.0.1"
+	
+	_save_last_server(addr, port)
 	
 	status_label.text = "Connecting to %s:%d..." % [addr, port]
 	var err = NetworkManager.join_game(addr, port)
@@ -262,28 +278,6 @@ func _transition_to_lobby():
 
 # --- Utilities ---
 
-func _get_target_address_port() -> Dictionary:
-	var txt = address_input.text.strip_edges()
-	var default_port = 7000
-	var default_addr = "127.0.0.1"
-	
-	if txt.is_empty():
-		return {"address": default_addr, "port": default_port}
-	
-	var parts = txt.split(":")
-	var addr = parts[0]
-	var port = default_port
-	
-	if parts.size() > 1:
-		var p_str = parts[1]
-		if p_str.is_valid_int():
-			port = p_str.to_int()
-	
-	if addr.is_empty():
-		addr = default_addr
-		
-	return {"address": addr, "port": port}
-
 const SETTINGS_FILE = "user://settings.cfg"
 
 func _load_last_server():
@@ -291,15 +285,20 @@ func _load_last_server():
 	var err = config.load(SETTINGS_FILE)
 	if err == OK:
 		var addr = config.get_value("Network", "server_address", "")
+		var port = config.get_value("Network", "server_port", 7000)
 		if not addr.is_empty():
-			address_input.text = addr
+			host_ip_input.text = addr
 			join_ip_input.text = addr
+			tactical_ip_input.text = addr
+		host_port_input.text = str(port)
+		join_port_input.text = str(port)
+		tactical_port_input.text = str(port)
 
-func _save_last_server(addr: String):
+func _save_last_server(addr: String, port: int):
 	addr = addr.strip_edges()
-	if addr.is_empty(): return
 	
 	var config = ConfigFile.new()
 	config.load(SETTINGS_FILE)
 	config.set_value("Network", "server_address", addr)
+	config.set_value("Network", "server_port", port)
 	config.save(SETTINGS_FILE)

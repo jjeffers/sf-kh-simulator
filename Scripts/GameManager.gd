@@ -90,6 +90,7 @@ var btn_repair_exec: Button
 
 # UI Nodes
 var ui_layer: CanvasLayer
+var ui_root: Control
 var btn_commit: Button
 var btn_undo: Button
 var label_phase_indicator: Label # NEW: Phase Indicator Label
@@ -491,6 +492,13 @@ func _setup_ui():
 		
 	ui_layer = CanvasLayer.new()
 	add_child(ui_layer)
+	ui_root = Control.new()
+	ui_root.set_anchors_preset(Control.PRESET_FULL_RECT)
+	ui_root.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	var tac_theme = Theme.new()
+	tac_theme.default_font_size = 30
+	ui_root.theme = tac_theme
+	ui_layer.add_child(ui_root)
 	
 	# NEW: Phase Indicator (Top Center)
 	var panel_phase = PanelContainer.new()
@@ -499,16 +507,16 @@ func _setup_ui():
 	panel_phase.anchor_top = 0.0
 	panel_phase.offset_top = 10
 	panel_phase.grow_horizontal = Control.GROW_DIRECTION_BOTH
-	ui_layer.add_child(panel_phase)
+	ui_root.add_child(panel_phase)
 	
 	label_phase_indicator = Label.new()
 	label_phase_indicator.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	label_phase_indicator.add_theme_font_size_override("font_size", 24)
+	label_phase_indicator.add_theme_font_size_override("font_size", 30)
 	panel_phase.add_child(label_phase_indicator)
 	
 	var vbox = VBoxContainer.new()
 	vbox.position = Vector2(20, 20)
-	ui_layer.add_child(vbox)
+	ui_root.add_child(vbox)
 	
 	label_status = Label.new()
 	label_status.visible = true # Repurposed for Phase Info & Planned Attacks
@@ -645,7 +653,7 @@ func _setup_ui():
 	panel_planning.grow_horizontal = Control.GROW_DIRECTION_BEGIN
 	panel_planning.custom_minimum_size.x = 220
 	panel_planning.visible = false
-	ui_layer.add_child(panel_planning)
+	ui_root.add_child(panel_planning)
 	
 	# Movement UI (Same position as Planning UI)
 	panel_movement = PanelContainer.new()
@@ -657,7 +665,7 @@ func _setup_ui():
 	panel_movement.grow_horizontal = Control.GROW_DIRECTION_BEGIN
 	panel_movement.custom_minimum_size.x = 220
 	panel_movement.visible = false
-	ui_layer.add_child(panel_movement)
+	ui_root.add_child(panel_movement)
 	
 	var pm_vbox = VBoxContainer.new()
 	panel_movement.add_child(pm_vbox)
@@ -727,7 +735,7 @@ func _setup_ui():
 	panel_log_container.anchor_top = 0.75
 	panel_log_container.anchor_bottom = 1.0
 	panel_log_container.modulate.a = 0.8
-	ui_layer.add_child(panel_log_container)
+	ui_root.add_child(panel_log_container)
 	
 	combat_log = RichTextLabel.new()
 	combat_log.scroll_following = true
@@ -742,7 +750,7 @@ func _setup_ui():
 	panel_game_over.visible = false
 	# Center it
 	panel_game_over.anchors_preset = Control.PRESET_CENTER
-	ui_layer.add_child(panel_game_over)
+	ui_root.add_child(panel_game_over)
 	
 	var go_vbox = VBoxContainer.new()
 	go_vbox.custom_minimum_size = Vector2(200, 100)
@@ -751,7 +759,7 @@ func _setup_ui():
 	label_winner = Label.new()
 	label_winner.text = "Winner!"
 	label_winner.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	label_winner.add_theme_font_size_override("font_size", 24)
+	label_winner.add_theme_font_size_override("font_size", 30)
 	go_vbox.add_child(label_winner)
 	
 	btn_restart = Button.new()
@@ -764,18 +772,20 @@ func _setup_ui():
 	label_center_message.text = ""
 	label_center_message.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	label_center_message.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
-	label_center_message.anchors_preset = Control.PRESET_CENTER
-	label_center_message.add_theme_font_size_override("font_size", 32)
+	label_center_message.anchors_preset = Control.PRESET_CENTER_BOTTOM
+	label_center_message.offset_bottom = -120
+	label_center_message.grow_horizontal = Control.GROW_DIRECTION_BOTH
+	label_center_message.add_theme_font_size_override("font_size", 40)
 	label_center_message.add_theme_color_override("font_color", Color.YELLOW)
 	label_center_message.add_theme_color_override("font_outline_color", Color.BLACK)
 	label_center_message.add_theme_constant_override("outline_size", 4)
 	label_center_message.visible = false
-	ui_layer.add_child(label_center_message)
+	ui_root.add_child(label_center_message)
 	
 	# Player Info (Top Right)
 	label_player_info = Label.new()
 	label_player_info.text = "Side: ?"
-	label_player_info.add_theme_font_size_override("font_size", 20)
+	label_player_info.add_theme_font_size_override("font_size", 25)
 	label_player_info.add_theme_color_override("font_outline_color", Color.BLACK)
 	label_player_info.add_theme_constant_override("outline_size", 4)
 	# Anchor top right
@@ -785,7 +795,7 @@ func _setup_ui():
 	# Minimap is 200x200.
 	# Let's put it at Top Center-Right?
 	label_player_info.position = Vector2(get_viewport_rect().size.x - 450, 10)
-	ui_layer.add_child(label_player_info)
+	ui_root.add_child(label_player_info)
 	
 	# Key Hints (Bottom Center)
 	panel_key_hints = PanelContainer.new()
@@ -797,13 +807,13 @@ func _setup_ui():
 	panel_key_hints.grow_vertical = Control.GROW_DIRECTION_BEGIN
 	panel_key_hints.offset_bottom = -20
 	panel_key_hints.visible = false
-	ui_layer.add_child(panel_key_hints)
+	ui_root.add_child(panel_key_hints)
 	
 	label_key_hints = RichTextLabel.new()
 	label_key_hints.bbcode_enabled = true
 	label_key_hints.fit_content = true
 	label_key_hints.autowrap_mode = TextServer.AUTOWRAP_OFF
-	label_key_hints.add_theme_font_size_override("normal_font_size", 16)
+	label_key_hints.add_theme_font_size_override("normal_font_size", 20)
 	panel_key_hints.add_child(label_key_hints)
 	
 	# Audio Setup
@@ -874,7 +884,7 @@ func _setup_ui():
 	mini_map.position = Vector2(get_viewport_rect().size.x - 220, 20)
 	# Make sure it stays anchored
 	mini_map.set_anchors_and_offsets_preset(Control.PRESET_TOP_RIGHT, Control.PRESET_MODE_KEEP_SIZE, 20)
-	ui_layer.add_child(mini_map)
+	ui_root.add_child(mini_map)
 
 func _build_deployment_panel(parent: Container):
 	# Deployment Panel
@@ -888,7 +898,7 @@ func _build_deployment_panel(parent: Container):
 	var dep_header = Label.new()
 	dep_header.text = "DEPLOYMENT PHASE"
 	dep_header.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	dep_header.add_theme_font_size_override("font_size", 18)
+	dep_header.add_theme_font_size_override("font_size", 22)
 	dep_vbox.add_child(dep_header)
 	
 	# ScrollContainer for list of ships
@@ -1038,7 +1048,7 @@ func _build_repair_panel(parent: Container):
 	var lbl = Label.new()
 	lbl.text = "DAMAGE CONTROL (DCR)"
 	lbl.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	lbl.add_theme_font_size_override("font_size", 16)
+	lbl.add_theme_font_size_override("font_size", 20)
 	vbox.add_child(lbl)
 	
 	var scroll = ScrollContainer.new()
@@ -2051,7 +2061,7 @@ func _spawn_hit_text(pos: Vector2, val: Variant):
 		lbl.modulate = Color(1.0, 0.6, 0.0) # Orange
 		
 	lbl.position = pos + Vector2(-20, -40) # Slightly above
-	lbl.add_theme_font_size_override("font_size", 20)
+	lbl.add_theme_font_size_override("font_size", 25)
 	add_child(lbl)
 	
 	var tween = create_tween()
@@ -3452,7 +3462,7 @@ func _update_repair_ui():
 		
 		var rem_lbl = Label.new()
 		rem_lbl.text = "Budget Remaining: %d" % (dcr_avail - ship_budget_used)
-		rem_lbl.add_theme_font_size_override("font_size", 12)
+		rem_lbl.add_theme_font_size_override("font_size", 15)
 		list_repair.add_child(rem_lbl)
 		
 		for dmg in damaged_systems:
@@ -5722,8 +5732,8 @@ func _draw_weapon_ranges(ghost: Ship, source: Ship):
 			font_ref = SystemFont.new()
 			font_ref.font_names = ["Sans-Serif"]
 			
-		draw_string_outline(font_ref, label_pos + Vector2(0, 5), full_label, HORIZONTAL_ALIGNMENT_CENTER, -1, 14, 2, Color.BLACK)
-		draw_string(font_ref, label_pos + Vector2(0, 5), full_label, HORIZONTAL_ALIGNMENT_CENTER, -1, 14, Color(1, 0.9, 0.9, 0.9))
+		draw_string_outline(font_ref, label_pos + Vector2(0, 5), full_label, HORIZONTAL_ALIGNMENT_CENTER, -1, 24, 2, Color.BLACK)
+		draw_string(font_ref, label_pos + Vector2(0, 5), full_label, HORIZONTAL_ALIGNMENT_CENTER, -1, 24, Color(1, 0.9, 0.9, 0.9))
 
 func _draw_orbit_ring(planet_hex: Vector3i, orbit_dir: int, color: Color):
 	var center = HexGrid.hex_to_pixel(planet_hex)
@@ -5767,8 +5777,8 @@ func _draw():
 				_draw_filled_hex(h, Color(1, 0.5, 0, 0.4)) # Translucent Orange
 				if font:
 					var text_offset = Vector2(0, 5) 
-					draw_string_outline(font, center + text_offset, "MINE", HORIZONTAL_ALIGNMENT_CENTER, -1, 14, 2, Color.BLACK)
-					draw_string(font, center + text_offset, "MINE", HORIZONTAL_ALIGNMENT_CENTER, -1, 14, Color.YELLOW)
+					draw_string_outline(font, center + text_offset, "MINE", HORIZONTAL_ALIGNMENT_CENTER, -1, 24, 2, Color.BLACK)
+					draw_string(font, center + text_offset, "MINE", HORIZONTAL_ALIGNMENT_CENTER, -1, 24, Color.YELLOW)
 					
 		if deployment_seekers_placed.size() > 0:
 			for h in deployment_seekers_placed:
@@ -5993,8 +6003,8 @@ func _draw():
 			# Draw Risk Label
 			var font = ThemeDB.fallback_font
 			var tip = points[points.size() - 1]
-			draw_string_outline(font, tip + Vector2(-30, -35), "%d%% Breakup Risk" % risk, HORIZONTAL_ALIGNMENT_CENTER, -1, 16, 2, Color.BLACK)
-			draw_string(font, tip + Vector2(-30, -35), "%d%% Breakup Risk" % risk, HORIZONTAL_ALIGNMENT_CENTER, -1, 16, Color.RED)
+			draw_string_outline(font, tip + Vector2(-30, -35), "%d%% Breakup Risk" % risk, HORIZONTAL_ALIGNMENT_CENTER, -1, 24, 2, Color.BLACK)
+			draw_string(font, tip + Vector2(-30, -35), "%d%% Breakup Risk" % risk, HORIZONTAL_ALIGNMENT_CENTER, -1, 24, Color.RED)
 		else:
 			ghost_ship.modulate = Color.WHITE
 		
@@ -6151,8 +6161,8 @@ func _draw():
 		for exp_entry in mr_expenditures:
 			var center = HexGrid.hex_to_pixel(exp_entry["pos"])
 			var offset = Vector2(0, -35) # Draw above the hex
-			draw_string_outline(font, center + offset, exp_entry["text"], HORIZONTAL_ALIGNMENT_CENTER, -1, 16, 2, Color.BLACK)
-			draw_string(font, center + offset, exp_entry["text"], HORIZONTAL_ALIGNMENT_CENTER, -1, 16, Color.RED)
+			draw_string_outline(font, center + offset, exp_entry["text"], HORIZONTAL_ALIGNMENT_CENTER, -1, 24, 2, Color.BLACK)
+			draw_string(font, center + offset, exp_entry["text"], HORIZONTAL_ALIGNMENT_CENTER, -1, 24, Color.RED)
 
 	# Draw Active Mines
 	for m in active_mines:
@@ -6186,8 +6196,8 @@ func _draw():
 			var m_pos = HexGrid.hex_to_pixel(hex)
 			var font = ThemeDB.fallback_font
 			# Draw shadow and then text
-			draw_string_outline(font, m_pos + Vector2(0, 5), "MINE", HORIZONTAL_ALIGNMENT_CENTER, -1, 14, 2, Color.BLACK)
-			draw_string(font, m_pos + Vector2(0, 5), "MINE", HORIZONTAL_ALIGNMENT_CENTER, -1, 14, Color.YELLOW)
+			draw_string_outline(font, m_pos + Vector2(0, 5), "MINE", HORIZONTAL_ALIGNMENT_CENTER, -1, 24, 2, Color.BLACK)
+			draw_string(font, m_pos + Vector2(0, 5), "MINE", HORIZONTAL_ALIGNMENT_CENTER, -1, 24, Color.YELLOW)
 			
 	# If Placement mode is on but we have no planned mines yet (or some placed, but we need to highlight the rest of the path)
 	if current_phase == Phase.MOVEMENT and is_instance_valid(selected_ship) and state_mine_placement:
@@ -6987,11 +6997,14 @@ func _handle_ghost_input(hex: Vector3i):
 				# INVOLUNTARY FACING CHANGE: If MR < 0, forced turn toward planet
 				if turns_remaining < 0:
 					log_message("Gravity overwhelmed MR! Involuntary Facing Change down gravity well.")
-					# Calculate direction to planet from our CURRENT hex
 					var line_to_planet = HexGrid.get_line_coords(current_pos, planet_pos)
 					var forced_facing = -1
 					if line_to_planet.size() > 1:
-						forced_facing = HexGrid.get_hex_direction(current_pos, line_to_planet[1])
+						var ideal_facing = HexGrid.get_hex_direction(current_pos, line_to_planet[1])
+						if ideal_facing != -1 and ideal_facing != ghost_head_facing:
+							var diff = (ideal_facing - ghost_head_facing + 6) % 6
+							var step = 1 if diff <= 3 else -1
+							forced_facing = (ghost_head_facing + step + 6) % 6
 					
 					if forced_facing != -1 and forced_facing != ghost_head_facing:
 						# Update the ghost's facing immediately
@@ -7041,7 +7054,7 @@ func _spawn_floating_text(text: String, grid_pos: Vector2, color: Color = Color.
 	lbl.custom_minimum_size = Vector2(200, 50)
 	lbl.z_index = 100
 	if ui_layer:
-		ui_layer.add_child(lbl)
+		ui_root.add_child(lbl)
 	else:
 		add_child(lbl)
 	
@@ -7103,11 +7116,17 @@ func rpc_trigger_icm_decision(attacker_name: String, weapon_name: String, weapon
 		return
 		
 	# --- HUMAN UI MODAL ---
+	_update_camera(target)
+	
 	if panel_icm: panel_icm.queue_free()
 	
 	panel_icm = PanelContainer.new()
-	ui_layer.add_child(panel_icm)
-	panel_icm.set_anchors_preset(Control.PRESET_CENTER)
+	ui_root.add_child(panel_icm)
+	panel_icm.set_anchors_preset(Control.PRESET_TOP_LEFT)
+	
+	# Target is centered by the camera, place dialog slightly offset from the screen center
+	var screen_center = get_viewport_rect().size / 2.0
+	panel_icm.position = screen_center + Vector2(100, -100)
 	
 	# Add style for readability
 	var style = StyleBoxFlat.new()
@@ -7348,7 +7367,7 @@ func _build_summary_panel():
 	panel_summary.add_child(scroll)
 	
 	lbl_summary_title = Label.new()
-	lbl_summary_title.add_theme_font_size_override("font_size", 32)
+	lbl_summary_title.add_theme_font_size_override("font_size", 40)
 	lbl_summary_title.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	vbox_main.add_child(lbl_summary_title)
 	
@@ -7417,7 +7436,7 @@ func _build_summary_panel():
 	main_center_wrapper.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	main_center_wrapper.add_child(panel_summary)
 	
-	ui_layer.add_child(main_center_wrapper)
+	ui_root.add_child(main_center_wrapper)
 
 func _show_battle_summary(title_text: String, side_id: int):
 	if _is_networked() and not multiplayer.is_server():

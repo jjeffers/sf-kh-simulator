@@ -15,7 +15,7 @@ compatibility/default_parent_skeleton_in_mesh_instance_3d=true
 [application]
 
 config/name="SFKH Simulator"
-config/version="0.29.1.dev"
+config/version="0.30.1"
 run/main_scene="res://Scenes/MainMenu.tscn"
 config/features=PackedStringArray("4.6", "Forward Plus")
 config/icon="uid://buxqpiwusk5wp"
@@ -37,6 +37,11 @@ window/stretch/aspect="expand"
 [editor_plugins]
 
 enabled=PackedStringArray("res://addons/gut/plugin.cfg")
+
+[gui]
+
+theme/custom_font="res://Assets/RobotPictures-lxP8q.otf"
+theme/custom_font_size=24
 
 [rendering]
 
