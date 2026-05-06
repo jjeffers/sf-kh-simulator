@@ -307,7 +307,8 @@ func _setup_network_identity():
 	if NetworkManager != null and "player_info" in NetworkManager:
 		p_name = NetworkManager.player_info.get("name", "Player")
 		
-	var title = "Hex Space Combat - %s (%s)" % [p_name, side_name]
+	var version = ProjectSettings.get_setting("application/config/version", "Unknown")
+	var title = "Hex Space Combat v%s - %s (%s)" % [version, p_name, side_name]
 	get_window().title = title
 
 	if label_player_info:
