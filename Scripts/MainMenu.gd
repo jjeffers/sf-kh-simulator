@@ -59,6 +59,14 @@ func _ready():
 		btn_settings.pressed.connect(_on_btn_settings)
 	btn_quit.pressed.connect(_on_quit_pressed)
 	
+	host_ip_input.text_changed.connect(func(t): join_ip_input.text = t; tactical_ip_input.text = t)
+	join_ip_input.text_changed.connect(func(t): host_ip_input.text = t; tactical_ip_input.text = t)
+	tactical_ip_input.text_changed.connect(func(t): host_ip_input.text = t; join_ip_input.text = t)
+	
+	host_port_input.text_changed.connect(func(t): join_port_input.text = t; tactical_port_input.text = t)
+	join_port_input.text_changed.connect(func(t): host_port_input.text = t; tactical_port_input.text = t)
+	tactical_port_input.text_changed.connect(func(t): host_port_input.text = t; join_port_input.text = t)
+	
 	btn_host_start.pressed.connect(_on_campaign_host_start)
 	btn_host_back.pressed.connect(func(): _show_menu("startup"))
 	
@@ -267,10 +275,12 @@ func _on_connection_success(_id, _info):
 	_transition_to_lobby()
 
 func _on_connection_failed():
-	status_label.text = "Connection Failed."
+	status_label.text = NetworkManager.disconnect_reason if not NetworkManager.disconnect_reason.is_empty() else "Connection Failed."
+	NetworkManager.disconnect_reason = ""
 
 func _on_server_disconnected():
-	status_label.text = "Server Disconnected."
+	status_label.text = NetworkManager.disconnect_reason if not NetworkManager.disconnect_reason.is_empty() else "Server Disconnected."
+	NetworkManager.disconnect_reason = ""
 
 func _transition_to_lobby():
 	if not is_inside_tree(): return
