@@ -275,10 +275,12 @@ func _on_connection_success(_id, _info):
 	_transition_to_lobby()
 
 func _on_connection_failed():
-	status_label.text = "Connection Failed."
+	status_label.text = NetworkManager.disconnect_reason if not NetworkManager.disconnect_reason.is_empty() else "Connection Failed."
+	NetworkManager.disconnect_reason = ""
 
 func _on_server_disconnected():
-	status_label.text = "Server Disconnected."
+	status_label.text = NetworkManager.disconnect_reason if not NetworkManager.disconnect_reason.is_empty() else "Server Disconnected."
+	NetworkManager.disconnect_reason = ""
 
 func _transition_to_lobby():
 	if not is_inside_tree(): return

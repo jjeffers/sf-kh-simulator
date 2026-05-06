@@ -44,6 +44,7 @@ func _ready():
 	multiplayer.server_disconnected.connect(_on_server_disconnected)
 
 func join_game(address = "", port = PORT):
+	disconnect_reason = ""
 	if address.is_empty():
 		address = "127.0.0.1"
 	
@@ -60,6 +61,7 @@ func join_game(address = "", port = PORT):
 	return OK
 
 func host_game(port = PORT):
+	disconnect_reason = ""
 	var peer = WebSocketMultiplayerPeer.new()
 	var error = peer.create_server(port)
 	if error:
@@ -137,10 +139,16 @@ func _on_connected_ok():
 	player_connected.emit(peer_id, player_info)
 
 func _on_connected_fail():
+	if disconnect_reason.is_empty():
+		disconnect_reason = "Connection Timeout or Server Unreachable"
+	print("[NetworkManager] Connection Failed: ", disconnect_reason)
 	multiplayer.multiplayer_peer = null
 	connection_failed.emit()
 
 func _on_server_disconnected():
+	if disconnect_reason.is_empty():
+		disconnect_reason = "Disconnected from server"
+	print("[NetworkManager] ", disconnect_reason)
 	multiplayer.multiplayer_peer = null
 	players.clear()
 	lobby_data["team_names"] = {} # Optional additional cleanup?
