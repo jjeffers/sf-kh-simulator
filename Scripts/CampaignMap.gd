@@ -774,6 +774,7 @@ func _update_ui():
 	var peer_id = multiplayer.get_unique_id() if NetworkManager.multiplayer.has_multiplayer_peer() else 1
 	var num = NetworkManager.lobby_data["player_numbers"].get(peer_id, NetworkManager.lobby_data["player_numbers"].get(str(peer_id), peer_id))
 	var version = ProjectSettings.get_setting("application/config/version", "Unknown")
+	version = str(version).trim_prefix("v")
 	DisplayServer.window_set_title("SFKH Campaign v%s - [%s] Player %d" % [version, my_faction, num])
 
 	top_bar_turn.text = "Day: %d" % campaign.current_day

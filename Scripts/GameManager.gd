@@ -308,6 +308,7 @@ func _setup_network_identity():
 		p_name = NetworkManager.player_info.get("name", "Player")
 		
 	var version = ProjectSettings.get_setting("application/config/version", "Unknown")
+	version = str(version).trim_prefix("v")
 	var title = "Hex Space Combat v%s - %s (%s)" % [version, p_name, side_name]
 	get_window().title = title
 

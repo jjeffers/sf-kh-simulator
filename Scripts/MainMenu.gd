@@ -35,6 +35,7 @@ var target_lobby_scene = "res://Scenes/Lobby.tscn"
 func _ready():
 	var app_name = ProjectSettings.get_setting("application/config/name", "SFKH Simulator")
 	var version = ProjectSettings.get_setting("application/config/version", "Unknown")
+	version = str(version).trim_prefix("v")
 	DisplayServer.window_set_title("%s v%s" % [app_name, version])
 	
 	if has_node("StartupMenu/Label"):
