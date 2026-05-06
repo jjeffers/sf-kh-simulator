@@ -59,6 +59,14 @@ func _ready():
 		btn_settings.pressed.connect(_on_btn_settings)
 	btn_quit.pressed.connect(_on_quit_pressed)
 	
+	host_ip_input.text_changed.connect(func(t): join_ip_input.text = t; tactical_ip_input.text = t)
+	join_ip_input.text_changed.connect(func(t): host_ip_input.text = t; tactical_ip_input.text = t)
+	tactical_ip_input.text_changed.connect(func(t): host_ip_input.text = t; join_ip_input.text = t)
+	
+	host_port_input.text_changed.connect(func(t): join_port_input.text = t; tactical_port_input.text = t)
+	join_port_input.text_changed.connect(func(t): host_port_input.text = t; tactical_port_input.text = t)
+	tactical_port_input.text_changed.connect(func(t): host_port_input.text = t; join_port_input.text = t)
+	
 	btn_host_start.pressed.connect(_on_campaign_host_start)
 	btn_host_back.pressed.connect(func(): _show_menu("startup"))
 	
